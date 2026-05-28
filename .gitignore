@@ -1,0 +1,25 @@
+__pycache__/
+*.pyc
+data/linearscm_t/*.npz
+.env
+wandb/
+.DS_Store
+dist/
+*.egg-info/
+
+# Virtual environments
+.venv/
+venv/
+
+# IDE
+.vscode/
+.idea/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Test artefacts
+.pytest_cache/
+.coverage
+htmlcov/
+
