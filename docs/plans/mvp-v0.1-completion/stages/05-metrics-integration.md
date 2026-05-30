@@ -16,8 +16,8 @@
 2. Build the evaluation pipeline.
    - File: `causaltemp_xai/eval.py` (new)
    - `evaluate_method(model, X_orig, CFs, X_train, graph, mechanisms, target_class) -> dict` computing, averaged over the batch:
-     `validity`, `proximity` (L1 & L2), `sparsity` (and its L0 complement = fraction altered), `ood_plausibility` (IF; LOF optional per MVP), `cf_faith_hard`, `cf_faith_soft`.
-     - For each `(x, x_cf)` pair: `t = derive_intervention_t(x, x_cf)`, then `CFfaith().score(x, x_cf, t, graph, mechanisms)`.
+     `validity`, `proximity` (L1 & L2), `sparsity` (and its L0 complement = fraction altered), `ood_plausibility` (IF; LOF optional per MVP), and **both** CF-faith metrics: `cf_faith_rollout_hard`, `cf_faith_rollout_soft`, `cf_faith_pearl_hard`, `cf_faith_pearl_soft`.
+     - For each `(x, x_cf)` pair: `t = derive_intervention_t(x, x_cf)`, then score with **both** semantics (see Stage 1 step 7 / index Decisions "keep both CF-faith metrics"): `CFfaith(semantics="noiseless_rollout").score(x, x_cf, t, graph, mechanisms)` → `rollout_*`, and `CFfaith(semantics="pearl_delta").score(...)` → `pearl_*`. Instantiate the two scorers once outside the loop.
    - Return a flat dict per method; the harness (Stage 8) aggregates across methods.
 
 3. Validate CF-faith end-to-end on ≥10 examples (MVP DoD item).
@@ -29,8 +29,8 @@
 
 5. **Fail-fast phenomenon check (the core scientific guard — do this before building IG/Shift-VR/figures).**
    - File: `experiments/phenomenon_check.py` (new, small) — or a clearly-marked block runnable as `uv run python -m experiments.phenomenon_check --config smoke`.
-   - On the smoke config + trained smoke TCN: generate CFs with **Wachter** and **CARLA-causal** for ~10 test instances, run `evaluate_method`, and print: per-method mean `cf_faith_hard`/`soft`, and the distribution of `derive_intervention_t` per method.
-   - Assert/flag the expected gap: `CARLA cf_faith_hard ≫ Wachter cf_faith_hard`, and that Wachter's `intervention_t` is **not** clustered at `T-1` (which would let a final-timestep-only edit score faithful — see the index "crux" and `cf_faith.py:108`).
+   - On the smoke config + trained smoke TCN: generate CFs with **Wachter** and **CARLA-causal** for ~10 test instances, run `evaluate_method`, and print: per-method mean of **both** CF-faith metrics (`cf_faith_rollout_*` and `cf_faith_pearl_*`), and the distribution of `derive_intervention_t` per method.
+   - Assert/flag the expected gap on the **default rollout metric** (the one CARLA is built to satisfy): `CARLA cf_faith_rollout_hard ≫ Wachter cf_faith_rollout_hard`, and that Wachter's `intervention_t` is **not** clustered at `T-1` (which would let a final-timestep-only edit score faithful — see the index "crux" and `cf_faith.py:108`). Also log the `pearl` metric for both methods — under the current CARLA (noiseless rollout), `cf_faith_pearl_hard` is expected ≈0 for CARLA too; that is the documented rollout-vs-pearl contrast, **not** a phenomenon failure. Only the rollout-metric gap gates the STOP decision below.
    - **If the gap is absent**: STOP, mark the stage with the finding in the index Issues section, and surface it to the user. Per the MVP risk table "H1 not confirmed" is a documentable outcome — but the decision must happen here, not after Stage 8 figures are built. Do not silently proceed.
 
 ---
@@ -39,8 +39,8 @@
 
 - [ ] `uv run pytest tests/test_axis_c.py tests/test_eval.py -q` passes, including the ≥10-example CF-faith validation.
 - [ ] `validity` returns a scalar in [0,1] for a batch and matches the manual flip-rate on a mock classifier; no stale callers remain (`grep` clean).
-- [ ] `evaluate_method` returns all keys: validity, proximity_l1, proximity_l2, sparsity, frac_altered, ood, cf_faith_hard, cf_faith_soft.
-- [ ] `uv run python -m experiments.phenomenon_check --config smoke` shows CARLA hard-faith ≫ Wachter hard-faith (or the absence is escalated to the user, not ignored).
+- [ ] `evaluate_method` returns all keys: validity, proximity_l1, proximity_l2, sparsity, frac_altered, ood, cf_faith_rollout_hard, cf_faith_rollout_soft, cf_faith_pearl_hard, cf_faith_pearl_soft.
+- [ ] `uv run python -m experiments.phenomenon_check --config smoke` shows CARLA `cf_faith_rollout_hard` ≫ Wachter `cf_faith_rollout_hard` (or the absence is escalated to the user, not ignored); both metrics are printed for both methods.
 
 ---
 
