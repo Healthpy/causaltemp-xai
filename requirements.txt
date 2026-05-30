@@ -1,10 +1,11 @@
-numpy>=1.24
-scipy>=1.10
-torch>=2.0
-scikit-learn>=1.3
-pandas>=2.0
-statsmodels>=0.14
-matplotlib>=3.7
-seaborn>=0.12
-pytest>=7.4
-pytest-cov>=4.1
+# This project uses `uv` for dependency management.
+# The authoritative dependency sources are `pyproject.toml` (declared ranges)
+# and `uv.lock` (pinned, reproducible resolution).
+#
+# Do NOT add a dependency list here — it would diverge from the lockfile.
+#
+#   uv sync --extra dev      # install runtime + dev dependencies
+#   uv run pytest tests/     # run the test suite
+#
+# This file is intentionally kept (without a package list) only as a pointer
+# for tools/users that expect a requirements.txt to exist.

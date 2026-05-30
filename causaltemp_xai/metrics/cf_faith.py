@@ -78,11 +78,11 @@ class CFfaith:
         -------
         dict with keys:
 
-        ``\"hard\"``
+        ``"hard"``
             1.0 if no retroactive change and SCM residual < ``tol``, else 0.0.
-        ``\"soft\"``
+        ``"soft"``
             Continuous score in ``[0, 1]``; 0.0 when retroactive changes exist.
-        \"\"\"
+        """
         x_orig = np.asarray(x_original, dtype=float)   # (T, k)
         x_cf_arr = np.asarray(x_cf, dtype=float)        # (T, k)
         T, k = x_orig.shape

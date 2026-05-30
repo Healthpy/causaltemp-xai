@@ -122,8 +122,19 @@ class TestCFFaithRetroactive:
         result = scorer.score(x_orig, x_cf, intervention_t, graph, mechanisms)
         assert result["soft"] == 0.0, f"Expected soft=0.0, got {result['soft']}"
 
-    def test_identical_cf_hard_is_one(self):
-        """Identical CF with zero intervention → forward residual is 0 → hard=1."""
+    def test_identical_cf_hard_is_zero(self):
+        """Identical CF (null intervention) → hard=0 under noiseless-rollout semantics.
+
+        CF-faith (noiseless-rollout definition) asks whether ``x_cf[t0:]`` *is* the
+        deterministic, noiseless VAR continuation of itself. The factual trajectory
+        carries innovation noise (scale ≈ 0.1 in the real generator), so a CF equal
+        to the factual deviates from its own noiseless rollout by ~the noise and is
+        correctly judged unfaithful. Only CFs that are themselves noiseless SCM
+        rollouts from the intervention point (e.g. CARLA-causal) score hard=1 — that
+        is the property the benchmark uses to separate causal from arbitrary CFs.
+        A do-nothing CF is degenerate (it flips no label) and is never produced by a
+        real method; see index "Decisions" (2026-05-30, CF-faith semantics).
+        """
         k, L, T = 3, 1, 20
         x_orig, graph, mechanisms = _make_simple_scm(k=k, L=L, T=T, seed=5)
         intervention_t = 5
@@ -131,5 +142,5 @@ class TestCFFaithRetroactive:
 
         scorer = CFfaith(tol=1e-3)
         result = scorer.score(x_orig, x_cf, intervention_t, graph, mechanisms)
-        assert result["hard"] == 1.0
+        assert result["hard"] == 0.0
 
