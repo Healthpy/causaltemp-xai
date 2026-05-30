@@ -98,7 +98,7 @@ See [resources/configs.md](resources/configs.md) for the locked configs and [res
 | # | Stage | Status | Notes | Commit |
 |---|-------|--------|-------|--------|
 | 1 | [Environment & packaging fix](stages/01-env-and-packaging.md) | DONE | Infra (`592654a`): uv env (py3.13, torch 2.12), build-backend, CI→uv, requirements→pointer, cf_faith docstring fix, #1 locked. Extension: `CFfaith(semantics=...)` adds `pearl_delta` alongside default `noiseless_rollout` + `TestCFFaithPearl` (cross-mode divergence asserted). 26/26 green | `592654a` · `feat(metrics): dual CF-faith` |
-| 2 | [Benchmark config & dataset persistence](stages/02-benchmark-config-and-data.md) | PENDING | | |
+| 2 | [Benchmark config & dataset persistence](stages/02-benchmark-config-and-data.md) | DONE | `config.py` (BenchmarkConfig + SMOKE/FULL/FULL_SPARSE presets, `CONFIGS`/`get_config`); `data_io.py` (stratified 60/20/20 `generate_and_save`/`load_dataset` + CLI); `.gitignore` now ignores all of `data/linearscm_t/` (datasets regenerated in CI). 12 new generator tests (acyclicity, split integrity, round-trip), 35/35 green. Smoke gen → exact 60/20/20, balanced classes. | `f3dc553` |
 | 3 | [TCNClassifier wrapper & training](stages/03-classifier-and-training.md) | PENDING | | |
 | 4 | [CF methods & intervention-time rule](stages/04-cf-methods-and-intervention.md) | PENDING | | |
 | 5 | [Metric fixes & batch evaluation](stages/05-metrics-integration.md) | PENDING | | |
