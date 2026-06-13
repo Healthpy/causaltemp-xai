@@ -11,7 +11,7 @@ Implements the four standard axes for evaluating counterfactual quality:
 
 from __future__ import annotations
 
-from typing import Callable, Literal
+from typing import Literal
 
 import numpy as np
 from sklearn.ensemble import IsolationForest
@@ -22,36 +22,41 @@ from sklearn.ensemble import IsolationForest
 # ---------------------------------------------------------------------------
 
 
-def validity(x_cf: np.ndarray, model: Callable[[np.ndarray], np.ndarray]) -> float:
-    """Check whether the counterfactual achieves a *different* class than it
-    would if it were the original (i.e. the model's prediction flipped).
+def validity(
+    x_cf: np.ndarray,
+    model,
+    target_class: int,
+) -> float:
+    """Fraction of counterfactuals predicted as ``target_class``.
 
-    In the common single-instance usage the caller compares ``model(x_cf)``
-    against the original prediction.  This function wraps that call so all
-    Axis-C metrics share the same interface.
+    This is the standard CF *validity* (flip-rate): the share of proposed
+    counterfactuals that the black-box model actually assigns to the desired
+    class.  A value of ``1.0`` means every CF achieved the target.
 
     Parameters
     ----------
     x_cf:
         Counterfactual instance(s).  Either a single instance of shape
-        ``(T, k)`` / ``(k,)`` or a batch of shape ``(N, T, k)`` / ``(N, k)``.
-        A batch dimension is added automatically for single instances.
+        ``(T, k)`` or a batch of shape ``(N, T, k)``.  A batch dimension is
+        added automatically for a single ``(T, k)`` instance.
     model:
-        Black-box classifier callable.  Must accept a batch array of shape
-        ``(N, ...)`` and return predicted class labels of shape ``(N,)``.
+        Classifier.  Either an object exposing ``predict`` (e.g.
+        :class:`~causaltemp_xai.classifiers.TCNClassifier`) or a plain callable
+        mapping a ``(N, T, k)`` batch to integer labels of shape ``(N,)``.
+    target_class:
+        The desired output class the counterfactuals should achieve.
 
     Returns
     -------
     float
-        Mean validity across the batch (fraction of CFs predicted as the
-        model's output class, which the caller can compare against a target).
+        Validity (flip-rate) in ``[0, 1]``.
     """
+    predict = getattr(model, "predict", model)
     batch = np.asarray(x_cf, dtype=float)
-    if batch.ndim == x_cf.ndim - 1 or batch.ndim < 2:
-        batch = batch[np.newaxis]  # add batch dim
-    preds = np.asarray(model(batch))
-    # Return raw predictions so callers can compare against their target
-    return preds
+    if batch.ndim == 2:  # single (T, k) → add batch dim
+        batch = batch[np.newaxis]
+    preds = np.asarray(predict(batch)).reshape(-1)
+    return float(np.mean(preds == target_class))
 
 
 # ---------------------------------------------------------------------------
