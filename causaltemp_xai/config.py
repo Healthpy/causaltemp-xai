@@ -90,6 +90,37 @@ CONFIGS: dict[str, BenchmarkConfig] = {
 }
 
 
+def shifted_config(
+    base: BenchmarkConfig,
+    noise_type: str = "uniform",
+    name: str | None = None,
+) -> BenchmarkConfig:
+    """Derive a Shift-VR environment from ``base`` by changing only the noise.
+
+    Returns a new config identical to ``base`` (same ``k``, ``L``, ``sparsity``,
+    ``seed``) except for ``noise_type``. Because :class:`LinearSCMT` builds the
+    graph and mechanisms in ``__init__`` from the seed *before* and independent
+    of the noise distribution, a generator built from this config has a
+    **bit-identical** ``graph`` and ``mechanisms`` to one built from ``base`` —
+    isolating a pure innovation-distribution shift (Axis D), per the pinned
+    Shift-VR protocol in ``resources/configs.md``.
+    """
+    if noise_type not in ("laplace", "uniform"):
+        raise ValueError(
+            f"noise_type must be 'laplace' or 'uniform', got {noise_type!r}"
+        )
+    return BenchmarkConfig(
+        k=base.k,
+        L=base.L,
+        sparsity=base.sparsity,
+        noise_type=noise_type,
+        T=base.T,
+        N=base.N,
+        seed=base.seed,
+        name=name or f"{base.name}_shift",
+    )
+
+
 def get_config(name: str) -> BenchmarkConfig:
     """Look up a preset by name.
 

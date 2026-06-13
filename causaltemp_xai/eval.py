@@ -18,6 +18,8 @@ cannot be ``hard=1`` under both; the contrast is itself a benchmark result.
 
 from __future__ import annotations
 
+import inspect
+
 import numpy as np
 
 from causaltemp_xai.methods.intervention import derive_intervention_t
@@ -114,3 +116,71 @@ def evaluate_method(
         "cf_faith_pearl_hard": float(np.mean(p_hard)),
         "cf_faith_pearl_soft": float(np.mean(p_soft)),
     }
+
+
+def _generate_batch(method, X, model, graph, mechanisms):
+    """Call ``method.generate_batch`` with the right signature.
+
+    CARLA-style recourse needs ``graph``/``mechanisms``; Wachter/DiCE do not.
+    We inspect the signature rather than special-casing class names.
+    """
+    params = inspect.signature(method.generate_batch).parameters
+    if "graph" in params or "mechanisms" in params:
+        return method.generate_batch(X, model, graph, mechanisms)
+    return method.generate_batch(X, model)
+
+
+def shift_vr(
+    model,
+    methods: dict,
+    X_base_test: np.ndarray,
+    X_shift_test: np.ndarray,
+    graph: np.ndarray,
+    mechanisms: list,
+    target_class: int = 1,
+) -> dict:
+    """Shift-VR-lite validity-retention metric (Axis D).
+
+    Protocol (pinned — see ``resources/configs.md``): keep the **frozen base
+    classifier** (no retraining). For each method, generate *fresh* CFs for the
+    base test inputs and for the shifted test inputs, measure validity on each,
+    and report the retention ratio ``validity(E_shift) / validity(E_base)``.
+
+    The signal comes from generating recourse for shifted inputs — **not** from
+    re-checking a fixed CF array, whose validity cannot change under a single
+    frozen classifier.
+
+    Parameters
+    ----------
+    model:
+        The frozen base classifier (exposing ``predict`` / ``torch_logits``).
+    methods:
+        Mapping ``{name: cf_method}``; each value exposes ``generate_batch``
+        (Wachter/DiCE: ``(X, model)``; CARLA: ``(X, model, graph, mechanisms)``).
+    X_base_test, X_shift_test:
+        Test inputs ``(N, T, k)`` from the base and shifted environments.
+    graph, mechanisms:
+        The (shared) SCM structure, passed to causal methods.
+    target_class:
+        Desired output class for validity.
+
+    Returns
+    -------
+    dict
+        ``{name: {"validity_base", "validity_shift", "shift_vr"}}``. ``shift_vr``
+        is ``validity_shift / validity_base``, or ``nan`` when no base CF is
+        valid (documented denominator-zero sentinel).
+    """
+    results: dict = {}
+    for name, method in methods.items():
+        cf_base = _generate_batch(method, X_base_test, model, graph, mechanisms)
+        cf_shift = _generate_batch(method, X_shift_test, model, graph, mechanisms)
+        v_base = validity(cf_base, model, target_class)
+        v_shift = validity(cf_shift, model, target_class)
+        ratio = v_shift / v_base if v_base > 0 else float("nan")
+        results[name] = {
+            "validity_base": v_base,
+            "validity_shift": v_shift,
+            "shift_vr": ratio,
+        }
+    return results

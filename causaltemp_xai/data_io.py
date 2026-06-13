@@ -28,7 +28,12 @@ from pathlib import Path
 import numpy as np
 
 from causaltemp_xai.benchmark.generator import LinearSCMT
-from causaltemp_xai.config import CONFIGS, BenchmarkConfig, get_config
+from causaltemp_xai.config import (
+    CONFIGS,
+    BenchmarkConfig,
+    get_config,
+    shifted_config,
+)
 
 #: Default root directory for persisted datasets (gitignored).
 DEFAULT_OUT_DIR = Path("data/linearscm_t")
@@ -186,12 +191,24 @@ def _build_arg_parser() -> argparse.ArgumentParser:
         default=str(DEFAULT_OUT_DIR),
         help=f"Output root directory (default: {DEFAULT_OUT_DIR}).",
     )
+    parser.add_argument(
+        "--shift-noise",
+        choices=("laplace", "uniform"),
+        default=None,
+        help=(
+            "Generate the Shift-VR environment instead: same SCM (graph/"
+            "mechanisms) as --config but this innovation distribution. Saved "
+            "under '<config>_shift'."
+        ),
+    )
     return parser
 
 
 def main(argv: list[str] | None = None) -> None:
     args = _build_arg_parser().parse_args(argv)
     config = get_config(args.config)
+    if args.shift_noise is not None:
+        config = shifted_config(config, noise_type=args.shift_noise)
     dest = generate_and_save(config, out_dir=args.out_dir)
 
     meta_path = dest / "meta.json"
