@@ -20,53 +20,81 @@
 
 ## Installation
 
+All Python tooling goes through [`uv`](https://docs.astral.sh/uv/) (never pip):
+
 ```bash
 git clone https://github.com/Healthpy/causaltemp-xai.git
 cd causaltemp-xai
-pip install -e .
+uv sync --extra dev        # creates .venv + uv.lock, installs deps + dev extras
 ```
 
-For development dependencies (pytest, coverage):
+## Reproduce v0.1
+
+The full benchmark runs end-to-end from a clean checkout. Datasets and the TCN
+checkpoint are **regenerated deterministically** (seeded), never committed.
 
 ```bash
-pip install -e ".[dev]"
+# 0. environment
+uv sync --extra dev
+
+# 1. generate the locked paper dataset (k=10, L=1, T=100, N=10_000, Laplace noise)
+uv run python -m causaltemp_xai.data_io --config full
+
+# 2. train + freeze the TCN classifier -> data/linearscm_t/full/tcn.pt
+uv run python -m causaltemp_xai.classifiers.tcn --config full --train --patience 20
+
+# 3. run the harness: 3 CF methods x Axis-C + both CF-faith metrics
+#    + IG attribution foil + Shift-VR-lite -> experiments/results.json (+ per_instance.csv)
+uv run python experiments/run_all.py --config full --n-cf 100
+
+# 4. render the 3 publication figures -> experiments/figures/
+uv run python experiments/figures.py --results experiments/results.json
 ```
 
-## Quickstart
+Swap `--config full` for `--config smoke` (k=5, T=30, N=500) for a fast pass; the
+smoke pipeline is what CI runs. The harness defaults to the official `dice-ml`
+gradient backend; pass `--no-dice-ml` to use the fast from-scratch DPP fallback
+(much quicker on the large `full` config). See
+[`docs/hypotheses_assessment.md`](docs/hypotheses_assessment.md) for the H1/H3/H4
+verdicts and the go/no-go decision.
+
+## Quickstart (library API)
 
 ```python
 import numpy as np
 from causaltemp_xai.benchmark.generator import LinearSCMT
-from causaltemp_xai.classifiers import TCN, train_tcn
+from causaltemp_xai.classifiers import TCNClassifier
 from causaltemp_xai.metrics import CFfaith, validity, proximity, sparsity
 
 # 1. Generate synthetic causal time-series
-gen = LinearSCMT(k=5, L=2, sparsity=0.3, noise_type="laplace", T=50, N=500, seed=42)
+gen = LinearSCMT(k=5, L=1, sparsity=0.2, noise_type="laplace", T=30, N=500, seed=0)
 data = gen.generate()
-# data["X"]          shape (500, 50, 5)  -- multivariate time-series
+# data["X"]          shape (500, 30, 5)  -- multivariate time-series
 # data["Y"]          shape (500,)        -- binary labels
-# data["graph"]      shape (5, 5, 2)     -- adjacency per lag
-# data["mechanisms"] list of 2 ndarrays  -- VAR coefficient matrices
+# data["graph"]      shape (5, 5, 1)     -- adjacency per lag
+# data["mechanisms"] list of 1 ndarray   -- VAR coefficient matrices
 
 X, Y = data["X"], data["Y"]
 
-# 2. Train a TCN classifier
-model = train_tcn((X[:400], Y[:400]), target_acc=0.90)
+# 2. Train a TCN classifier (sklearn-style wrapper; (N, T, k) in/out)
+clf = TCNClassifier(n_inputs=5, max_epochs=30)
+clf.fit(X[:400], Y[:400], X[400:], Y[400:])
 
 # 3. Evaluate causal faithfulness of a counterfactual
-scorer = CFfaith(tol=1e-3, scale=1.0)
+scorer = CFfaith(tol=1e-3, scale=1.0)              # default noiseless-rollout semantics
 x_orig = X[0]                  # shape (T, k)
 x_cf   = X[0].copy()           # build your CF here
 
 result = scorer.score(
     x_orig, x_cf,
-    intervention_t=25,
+    intervention_t=10,
     graph=data["graph"],
     mechanisms=data["mechanisms"],
 )
-print(result)   # {"hard": 1.0, "soft": 0.97}
+print(result)   # {"hard": ..., "soft": ...}
 
 # 4. Axis-C metrics
+print("validity :", validity(x_cf[np.newaxis], clf, target_class=1))
 print("proximity:", proximity(x_orig, x_cf, norm="l1"))
 print("sparsity :", sparsity(x_orig, x_cf))
 ```
@@ -75,17 +103,22 @@ print("sparsity :", sparsity(x_orig, x_cf))
 
 | Axis | Function / Class | Description |
 |------|-----------------|-------------|
-| **Validity** | `validity(x_cf, model)` | Model prediction on the CF (checks class flip). |
+| **Validity** | `validity(x_cf, model, target_class)` | Flip-rate: fraction of CFs the model assigns to `target_class`. |
 | **Proximity** | `proximity(x_original, x_cf, norm="l1")` | Mean L1 (or L2) distance between CF and original. Lower is better. |
 | **Sparsity** | `sparsity(x_original, x_cf)` | Fraction of unchanged features in [0, 1]. Higher is sparser. |
 | **OOD Plausibility** | `ood_plausibility(x_train, x_cf)` | IsolationForest decision score; higher means more in-distribution. |
 | **CF-faith (hard)** | `CFfaith.score(...)["hard"]` | 1.0 iff the CF exactly follows SCM mechanisms from the intervention time. |
 | **CF-faith (soft)** | `CFfaith.score(...)["soft"]` | exp(-L1 residual / scale); continuous relaxation of hard faithfulness. |
 
+Two CF-faith *semantics* are reported side by side (`CFfaith(semantics=...)`):
+`"noiseless_rollout"` (default — what CARLA-causal is built to satisfy) and
+`"pearl_delta"` (Pearl delta-recursion). A single CF cannot be `hard=1` under
+both; the contrast is itself a benchmark result.
+
 ## Running Tests
 
 ```bash
-pytest tests/
+uv run pytest tests/ -q
 ```
 
 ## Project Structure
@@ -93,19 +126,30 @@ pytest tests/
 ```
 causaltemp-xai/
 ├── causaltemp_xai/
+│   ├── config.py                # BenchmarkConfig + SMOKE/FULL presets, shifted_config
+│   ├── data_io.py               # stratified 60/20/20 split, generate/load datasets (+CLI)
+│   ├── eval.py                  # evaluate_method (Axis-C + both CF-faith) + shift_vr
 │   ├── benchmark/generator.py   # LinearSCM-T VAR(L) data generator
 │   ├── metrics/
-│   │   ├── cf_faith.py          # CFfaith class (hard + soft scores)
+│   │   ├── cf_faith.py          # CFfaith (noiseless_rollout | pearl_delta semantics)
 │   │   └── axis_c.py            # validity, proximity, sparsity, ood_plausibility
-│   ├── classifiers/tcn.py       # TCN + train_tcn()
+│   ├── classifiers/tcn.py       # TCN + TCNClassifier wrapper (+ train CLI)
+│   ├── attribution/
+│   │   ├── integrated_gradients.py   # hand-rolled IG attribution foil (WP3)
+│   │   └── perturbation_curves.py    # deletion / insertion curves
 │   └── methods/
-│       ├── wachter.py           # WachterCF stub
-│       ├── dice.py              # DiCECF stub
-│       └── carla.py             # CARLARecourse stub
-├── experiments/run_all.py
+│       ├── intervention.py      # derive_intervention_t (uniform rule)
+│       ├── wachter.py           # WachterCF (gradient CF)
+│       ├── dice.py              # DiCECF (dice-ml gradient + DPP fallback)
+│       └── carla.py             # CARLARecourse (causal noiseless-rollout recourse)
+├── experiments/
+│   ├── run_all.py               # end-to-end harness -> results.json + per_instance.csv
+│   ├── figures.py               # 3 publication figures -> experiments/figures/
+│   └── phenomenon_check.py      # fail-fast Wachter-vs-CARLA CF-faith guard
+├── docs/hypotheses_assessment.md  # H1/H3/H4 verdicts + go/no-go
 ├── tests/
 ├── notebooks/01_data_exploration.ipynb
-└── data/linearscm_t/            # generated datasets (gitignored)
+└── data/linearscm_t/            # generated datasets + checkpoints (gitignored)
 ```
 
 ## License

@@ -1,0 +1,92 @@
+{
+  "provenance": {
+    "config": {
+      "k": 10,
+      "L": 1,
+      "sparsity": 0.2,
+      "noise_type": "laplace",
+      "T": 100,
+      "N": 10000,
+      "seed": 42,
+      "name": "full"
+    },
+    "seed": 42,
+    "n_cf": 100,
+    "classifier_accuracy": {
+      "train": 0.831,
+      "val": 0.784,
+      "test": 0.787
+    },
+    "dice_backend": "fallback",
+    "target_class": 1
+  },
+  "methods": [
+    {
+      "n": 100,
+      "validity": 0.81,
+      "proximity_l1": 26.85426030733072,
+      "proximity_l2": 0.8561192308399984,
+      "sparsity": 0.0,
+      "frac_altered": 1.0,
+      "ood": 0.025569422952403772,
+      "cf_faith_rollout_hard": 0.0,
+      "cf_faith_rollout_soft": 0.7726343225270894,
+      "cf_faith_pearl_hard": 0.0,
+      "cf_faith_pearl_soft": 0.9736454657104648,
+      "method": "Wachter"
+    },
+    {
+      "n": 100,
+      "validity": 1.0,
+      "proximity_l1": 7.876011790564004,
+      "proximity_l2": 0.6021523293478281,
+      "sparsity": 0.00012,
+      "frac_altered": 0.99988,
+      "ood": 0.02627180998024158,
+      "cf_faith_rollout_hard": 0.0,
+      "cf_faith_rollout_soft": 0.7732737158083027,
+      "cf_faith_pearl_hard": 0.0,
+      "cf_faith_pearl_soft": 0.9918702585830643,
+      "method": "DiCE",
+      "dice_backend": "fallback"
+    },
+    {
+      "n": 100,
+      "validity": 0.0,
+      "proximity_l1": 155.77879186521756,
+      "proximity_l2": 8.386912886740136,
+      "sparsity": 0.39,
+      "frac_altered": 0.61,
+      "ood": 0.06603556557277612,
+      "cf_faith_rollout_hard": 1.0,
+      "cf_faith_rollout_soft": 0.999999993936476,
+      "cf_faith_pearl_hard": 0.0,
+      "cf_faith_pearl_soft": 0.7774462881966672,
+      "method": "CARLA"
+    }
+  ],
+  "attribution": {
+    "method": "IntegratedGradients",
+    "deletion_auc": 0.2345865491725504,
+    "insertion_auc": 0.3747875388510525,
+    "insertion_minus_deletion": 0.14020098967850209,
+    "n": 100
+  },
+  "shift_vr": {
+    "Wachter": {
+      "validity_base": 0.81,
+      "validity_shift": 0.9,
+      "shift_vr": 1.1111111111111112
+    },
+    "DiCE": {
+      "validity_base": 1.0,
+      "validity_shift": 1.0,
+      "shift_vr": 1.0
+    },
+    "CARLA": {
+      "validity_base": 0.0,
+      "validity_shift": 0.0,
+      "shift_vr": NaN
+    }
+  }
+}
