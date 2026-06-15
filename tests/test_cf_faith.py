@@ -122,8 +122,19 @@ class TestCFFaithRetroactive:
         result = scorer.score(x_orig, x_cf, intervention_t, graph, mechanisms)
         assert result["soft"] == 0.0, f"Expected soft=0.0, got {result['soft']}"
 
-    def test_identical_cf_hard_is_one(self):
-        """Identical CF with zero intervention → forward residual is 0 → hard=1."""
+    def test_identical_cf_hard_is_zero(self):
+        """Identical CF (null intervention) → hard=0 under noiseless-rollout semantics.
+
+        CF-faith (noiseless-rollout definition) asks whether ``x_cf[t0:]`` *is* the
+        deterministic, noiseless VAR continuation of itself. The factual trajectory
+        carries innovation noise (scale ≈ 0.1 in the real generator), so a CF equal
+        to the factual deviates from its own noiseless rollout by ~the noise and is
+        correctly judged unfaithful. Only CFs that are themselves noiseless SCM
+        rollouts from the intervention point (e.g. CARLA-causal) score hard=1 — that
+        is the property the benchmark uses to separate causal from arbitrary CFs.
+        A do-nothing CF is degenerate (it flips no label) and is never produced by a
+        real method; see index "Decisions" (2026-05-30, CF-faith semantics).
+        """
         k, L, T = 3, 1, 20
         x_orig, graph, mechanisms = _make_simple_scm(k=k, L=L, T=T, seed=5)
         intervention_t = 5
@@ -131,5 +142,125 @@ class TestCFFaithRetroactive:
 
         scorer = CFfaith(tol=1e-3)
         result = scorer.score(x_orig, x_cf, intervention_t, graph, mechanisms)
+        assert result["hard"] == 0.0
+
+
+# ---------------------------------------------------------------------------
+# Pearl delta-recursion semantics (the second, on-manifold metric)
+# ---------------------------------------------------------------------------
+
+
+def _abduct(x_orig, mechanisms):
+    """Recover the innovation sequence e[t] = x[t] - sum_l A_l @ x[t-l-1]."""
+    T, k = x_orig.shape
+    e = np.zeros((T, k))
+    for t in range(T):
+        pred = np.zeros(k)
+        for l, A in enumerate(mechanisms):
+            lag_t = t - l - 1
+            if lag_t >= 0:
+                pred += A @ x_orig[lag_t]
+        e[t] = x_orig[t] - pred
+    return e
+
+
+def _noiseless_rollout_cf(x_orig, mechanisms, t0, pert):
+    """CF that is a *pure* noiseless SCM rollout from t0 (off-manifold)."""
+    T, k = x_orig.shape
+    x_cf = x_orig.copy()
+    x_cf[t0] = x_orig[t0] + pert
+    for t in range(t0 + 1, T):
+        nxt = np.zeros(k)
+        for l, A in enumerate(mechanisms):
+            lag_t = t - l - 1
+            if lag_t >= 0:
+                nxt += A @ x_cf[lag_t]
+        x_cf[t] = nxt
+    return x_cf
+
+
+def _noise_reinjected_cf(x_orig, mechanisms, t0, pert):
+    """Pearl CF: intervene at t0, propagate while re-injecting original noise."""
+    T, k = x_orig.shape
+    e = _abduct(x_orig, mechanisms)
+    x_cf = x_orig.copy()
+    x_cf[t0] = x_orig[t0] + pert
+    for t in range(t0 + 1, T):
+        nxt = e[t].copy()
+        for l, A in enumerate(mechanisms):
+            lag_t = t - l - 1
+            if lag_t >= 0:
+                nxt += A @ x_cf[lag_t]
+        x_cf[t] = nxt
+    return x_cf
+
+
+class TestCFFaithPearl:
+    def test_invalid_semantics_raises(self):
+        """Unknown semantics is rejected at construction."""
+        with pytest.raises(ValueError):
+            CFfaith(semantics="bogus")
+
+    def test_identical_cf_pearl_hard_is_one(self):
+        """Identical CF → delta=0 → faithful under Pearl semantics (hard=1)."""
+        k, L, T = 3, 1, 20
+        x_orig, graph, mechanisms = _make_simple_scm(k=k, L=L, T=T, seed=5)
+        x_cf = x_orig.copy()
+
+        scorer = CFfaith(tol=1e-3, semantics="pearl_delta")
+        result = scorer.score(x_orig, x_cf, 5, graph, mechanisms)
         assert result["hard"] == 1.0
+
+    def test_noise_reinjected_cf_diverges(self):
+        """A Pearl CF (noise re-injected): pearl hard=1, but rollout hard=0.
+
+        This is the core divergence — the same CF is faithful under one metric
+        and unfaithful under the other. A noise-reinjected CF stays on the data
+        manifold (Pearl-faithful) but is not a pure noiseless rollout.
+        """
+        k, L, T = 3, 1, 25
+        x_orig, graph, mechanisms = _make_simple_scm(k=k, L=L, T=T, seed=6)
+        t0 = 8
+        rng = np.random.default_rng(11)
+        x_cf = _noise_reinjected_cf(x_orig, mechanisms, t0, rng.uniform(-0.4, 0.4, k))
+
+        pearl = CFfaith(tol=1e-3, semantics="pearl_delta").score(
+            x_orig, x_cf, t0, graph, mechanisms
+        )
+        rollout = CFfaith(tol=1e-3, semantics="noiseless_rollout").score(
+            x_orig, x_cf, t0, graph, mechanisms
+        )
+        assert pearl["hard"] == 1.0, f"pearl should accept, got {pearl}"
+        assert rollout["hard"] == 0.0, f"rollout should reject, got {rollout}"
+
+    def test_noiseless_built_cf_diverges(self):
+        """A pure noiseless-rollout CF: rollout hard=1, but pearl hard=0 (mirror)."""
+        k, L, T = 3, 1, 25
+        x_orig, graph, mechanisms = _make_simple_scm(k=k, L=L, T=T, seed=7)
+        t0 = 8
+        rng = np.random.default_rng(12)
+        x_cf = _noiseless_rollout_cf(x_orig, mechanisms, t0, rng.uniform(-0.4, 0.4, k))
+
+        rollout = CFfaith(tol=1e-3, semantics="noiseless_rollout").score(
+            x_orig, x_cf, t0, graph, mechanisms
+        )
+        pearl = CFfaith(tol=1e-3, semantics="pearl_delta").score(
+            x_orig, x_cf, t0, graph, mechanisms
+        )
+        assert rollout["hard"] == 1.0, f"rollout should accept, got {rollout}"
+        assert pearl["hard"] == 0.0, f"pearl should reject, got {pearl}"
+
+    def test_retroactive_zero_in_both_modes(self):
+        """A retroactive change is unfaithful under both semantics."""
+        k, L, T = 3, 1, 20
+        x_orig, graph, mechanisms = _make_simple_scm(k=k, L=L, T=T, seed=8)
+        t0 = 10
+        x_cf = x_orig.copy()
+        x_cf[3, 0] += 5.0  # change before t0
+
+        for sem in CFfaith.SEMANTICS:
+            result = CFfaith(tol=1e-3, semantics=sem).score(
+                x_orig, x_cf, t0, graph, mechanisms
+            )
+            assert result["hard"] == 0.0, f"{sem} should reject retroactive, got {result}"
 

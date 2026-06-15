@@ -43,9 +43,49 @@ class CFfaith:
       are present.
     """
 
-    def __init__(self, tol: float = 1e-4, scale: float = 1.0) -> None:
+    #: Supported faithfulness semantics (see :meth:`score`).
+    SEMANTICS = ("noiseless_rollout", "pearl_delta")
+
+    def __init__(
+        self,
+        tol: float = 1e-4,
+        scale: float = 1.0,
+        semantics: str = "noiseless_rollout",
+    ) -> None:
+        """Create a CF-faithfulness scorer.
+
+        Parameters
+        ----------
+        tol:
+            Residual threshold for the binary ``hard`` score and the retroactive
+            change check.
+        scale:
+            Normalising scale in the ``soft`` score ``exp(-residual / scale)``.
+        semantics:
+            Which faithfulness definition the forward check uses:
+
+            * ``"noiseless_rollout"`` (default) — a CF is faithful iff
+              ``x_cf[t0:]`` *is* the deterministic, noiseless VAR rollout of
+              itself. Rewards trajectories that are pure SCM continuations
+              (off the noisy data manifold).
+            * ``"pearl_delta"`` — a CF is faithful iff the difference
+              ``delta = x_cf - x_orig`` follows the homogeneous recursion
+              ``delta[t] = sum_l A_l @ delta[t-l]`` for ``t > t0`` (the original
+              innovations cancel via abduction). Rewards CFs that differ from the
+              factual *only* by the propagated intervention (on-manifold; the
+              textbook Pearl counterfactual).
+
+            The two reward structurally different counterfactuals — a single CF
+            cannot score ``hard=1`` under both. See the project plan's index
+            "Decisions" (keep both CF-faith metrics).
+        """
+        if semantics not in self.SEMANTICS:
+            raise ValueError(
+                f"semantics must be one of {self.SEMANTICS}, got {semantics!r}"
+            )
         self.tol = tol
         self.scale = scale
+        self.semantics = semantics
 
     def score(
         self,
@@ -78,11 +118,11 @@ class CFfaith:
         -------
         dict with keys:
 
-        ``\"hard\"``
+        ``"hard"``
             1.0 if no retroactive change and SCM residual < ``tol``, else 0.0.
-        ``\"soft\"``
+        ``"soft"``
             Continuous score in ``[0, 1]``; 0.0 when retroactive changes exist.
-        \"\"\"
+        """
         x_orig = np.asarray(x_original, dtype=float)   # (T, k)
         x_cf_arr = np.asarray(x_cf, dtype=float)        # (T, k)
         T, k = x_orig.shape
@@ -100,9 +140,20 @@ class CFfaith:
         # ------------------------------------------------------------------
         # (ii) SCM forward simulation from intervention_t
         # ------------------------------------------------------------------
-        # Build a combined history: use original up to intervention_t,
-        # then use x_cf values as the intervention, and simulate the rest.
-        simulated = x_cf_arr.copy()  # start from the proposed CF
+        # The forward check homogeneously rolls a *target* trajectory forward
+        # via the mechanisms and measures how far the proposed values deviate.
+        # The only difference between the two semantics is which trajectory is
+        # rolled/compared:
+        #   * noiseless_rollout: the CF itself (faithful => CF is a noiseless
+        #     SCM continuation of itself).
+        #   * pearl_delta: the difference delta = x_cf - x_orig (faithful =>
+        #     delta follows the homogeneous recursion; original noise cancels).
+        if self.semantics == "noiseless_rollout":
+            target = x_cf_arr
+        else:  # "pearl_delta"
+            target = x_cf_arr - x_orig
+
+        simulated = target.copy()  # values at <= intervention_t are held fixed
 
         # Re-simulate time steps *after* intervention_t using the mechanisms
         for t in range(intervention_t + 1, T):
@@ -114,8 +165,8 @@ class CFfaith:
                     x_t_pred += A @ simulated[lag_t]
             simulated[t] = x_t_pred
 
-        # L1 residual between the forward-simulated trajectory and the CF
-        residual_region = x_cf_arr[intervention_t:]
+        # L1 residual between the forward-simulated trajectory and the target
+        residual_region = target[intervention_t:]
         simulated_region = simulated[intervention_t:]
         l1_residual = float(np.abs(residual_region - simulated_region).mean())
 

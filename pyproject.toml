@@ -1,6 +1,6 @@
 [build-system]
 requires = ["setuptools>=68", "wheel"]
-build-backend = "setuptools.backends.legacy:build"
+build-backend = "setuptools.build_meta"
 
 [project]
 name = "causaltemp-xai"
@@ -29,6 +29,7 @@ dependencies = [
     "statsmodels>=0.14",
     "matplotlib>=3.7",
     "seaborn>=0.12",
+    "dice-ml>=0.12",
 ]
 
 [project.optional-dependencies]

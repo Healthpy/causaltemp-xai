@@ -1,6 +1,9 @@
 __pycache__/
 *.pyc
-data/linearscm_t/*.npz
+# Generated datasets are deterministic (seeded) and regenerated in CI — never committed.
+data/linearscm_t/
+# Plan-runner / autonomous-execution runtime logs.
+logs/
 .env
 wandb/
 .DS_Store

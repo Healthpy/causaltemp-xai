@@ -24,6 +24,8 @@ provided for convenience.
 from __future__ import annotations
 
 import numpy as np
+import torch
+import torch.nn.functional as F
 
 
 class WachterCF:
@@ -66,30 +68,62 @@ class WachterCF:
         self.n_steps = n_steps
         self.tol = tol
 
+    #: Multiplicative factor and max rounds for lambda escalation when no flip.
+    _LAM_GROWTH = 10.0
+    _MAX_ROUNDS = 5
+
     def generate(self, x: np.ndarray, model) -> np.ndarray:
         """Generate a single counterfactual for instance *x*.
 
         Parameters
         ----------
-        x : ndarray of shape ``(T, k)`` or ``(k,)``
-            Original time-series instance.
-        model : callable
-            Differentiable classifier; must accept a batch tensor ``(N, k, T)``
-            and return logits of shape ``(N, n_classes)``.
+        x : ndarray of shape ``(T, k)``
+            Original time-series instance (public ``(T, k)`` layout).
+        model : TCNClassifier
+            Differentiable classifier exposing ``torch_logits`` (accepts a
+            ``(T, k)``/``(N, T, k)`` tensor, returns ``(N, n_classes)`` logits).
 
         Returns
         -------
-        cf : ndarray, same shape as ``x``.
+        cf : ndarray of shape ``(T, k)``.
 
-        Implementation notes
-        --------------------
-        1. Wrap ``x`` as a leaf ``torch.Tensor`` with ``requires_grad=False``.
-        2. Initialise ``cf`` as a copy of ``x`` with ``requires_grad=True``.
-        3. Run Adam on ``cf`` for up to ``n_steps`` steps minimising
-           ``L(cf) = lam * cross_entropy(model(cf), target) + ||cf-x||^2``.
-        4. Stop early once the model predicts ``target_class`` (pred loss < tol).
-        5. Return ``cf.detach().numpy()``.
+        Notes
+        -----
+        Minimises ``L(cf) = lam * CE(model.torch_logits(cf), target) + ||cf-x||^2``
+        with Adam on a ``cf`` leaf tensor initialised at ``x``; stops early once
+        the prediction flips to ``target_class``. If no flip is found within
+        ``n_steps``, ``lam`` is escalated (``x10``, up to 5 rounds) to prioritise
+        the flip over proximity.
         """
-        raise NotImplementedError(
-            "WachterCF.generate() is a stub. Implement gradient-based CF search."
-        )
+        x_arr = np.asarray(x, dtype=np.float32)
+        x_t = torch.as_tensor(x_arr)  # constant reference (T, k)
+        target = torch.tensor([self.target_class], dtype=torch.long)
+
+        cf = x_t.clone().detach().requires_grad_(True)
+        best_cf = x_t.clone()
+        lam = float(self.lam)
+
+        for _round in range(self._MAX_ROUNDS):
+            optimiser = torch.optim.Adam([cf], lr=self.lr)
+            for _step in range(self.n_steps):
+                optimiser.zero_grad()
+                logits = model.torch_logits(cf)  # (1, n_classes)
+                pred_loss = F.cross_entropy(logits, target)
+                prox = ((cf - x_t) ** 2).sum()
+                loss = lam * pred_loss + prox
+                loss.backward()
+                optimiser.step()
+
+                if int(logits.argmax(dim=1).item()) == self.target_class:
+                    # Flip achieved — record and stop escalating.
+                    return cf.detach().cpu().numpy().astype(np.float32)
+            # No flip this round: keep the closest attempt, raise lam, continue.
+            best_cf = cf.detach().clone()
+            lam *= self._LAM_GROWTH
+
+        return best_cf.cpu().numpy().astype(np.float32)
+
+    def generate_batch(self, X: np.ndarray, model) -> np.ndarray:
+        """Generate one CF per instance in ``X`` of shape ``(N, T, k)``."""
+        X = np.asarray(X, dtype=np.float32)
+        return np.stack([self.generate(x, model) for x in X], axis=0)
