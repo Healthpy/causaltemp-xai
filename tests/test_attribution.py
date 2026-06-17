@@ -12,7 +12,7 @@ from causaltemp_xai.attribution import (
     integrated_gradients,
 )
 from causaltemp_xai.benchmark.generator import LinearSCMT
-from causaltemp_xai.classifiers import TCNClassifier
+from causaltemp_xai.classifiers import LSTMClassifier
 
 
 @pytest.fixture(scope="module")
@@ -20,10 +20,10 @@ def trained():
     gen = LinearSCMT(k=5, L=1, T=20, N=240, seed=0)
     data = gen.generate()
     X, Y = data["X"], data["Y"]
-    clf = TCNClassifier(
+    clf = LSTMClassifier(
         n_inputs=5,
-        n_levels=2,
-        n_channels=16,
+        hidden_size=16,
+        num_layers=2,
         dropout=0.0,
         lr=5e-3,
         batch_size=64,

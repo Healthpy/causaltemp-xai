@@ -9,7 +9,7 @@ import pytest
 from scipy.stats import ks_2samp
 
 from causaltemp_xai.benchmark.generator import LinearSCMT
-from causaltemp_xai.classifiers import TCNClassifier
+from causaltemp_xai.classifiers import LSTMClassifier
 from causaltemp_xai.config import SMOKE, shifted_config
 from causaltemp_xai.eval import shift_vr
 from causaltemp_xai.methods import CARLARecourse, WachterCF
@@ -67,10 +67,10 @@ class TestShiftVR:
         shift_data = shift.generate()
 
         X, Y = base_data["X"], base_data["Y"]
-        clf = TCNClassifier(
+        clf = LSTMClassifier(
             n_inputs=SMOKE.k,
-            n_levels=2,
-            n_channels=16,
+            hidden_size=16,
+            num_layers=2,
             dropout=0.0,
             lr=5e-3,
             batch_size=64,

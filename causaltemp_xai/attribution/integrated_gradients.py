@@ -1,4 +1,4 @@
-"""Integrated Gradients (Sundararajan et al., 2017) for the TCN classifier.
+"""Integrated Gradients (Sundararajan et al., 2017) for the LSTM classifier.
 
 A WP3 *attribution foil*: a faithful saliency method whose maps can score well
 on deletion/insertion curves while telling us nothing about causal
@@ -10,7 +10,7 @@ Sundararajan, M., Taly, A., & Yan, Q. (2017). *Axiomatic Attribution for Deep
 Networks.* ICML.
 
 Hand-rolled (no ``captum`` dependency) on top of
-:meth:`~causaltemp_xai.classifiers.TCNClassifier.torch_logits`, attributing the
+:meth:`~causaltemp_xai.classifiers.LSTMClassifier.torch_logits`, attributing the
 **target-class logit** (a scalar). The default baseline is the all-zeros series
 (documented choice — the natural reference for the zero-mean VAR data). The
 Riemann sum uses the midpoint rule, which satisfies the IG *completeness* axiom

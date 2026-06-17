@@ -1,4 +1,4 @@
-"""Tests for the three CF generators on a small trained TCN.
+"""Tests for the three CF generators on a small trained LSTM.
 
 Verifies output shapes/finiteness, that Wachter flips at least one label, and
 that CARLA-causal has zero retroactive change and is CF-faith (rollout) hard=1
@@ -11,21 +11,21 @@ import numpy as np
 import pytest
 
 from causaltemp_xai.benchmark.generator import LinearSCMT
-from causaltemp_xai.classifiers import TCNClassifier
+from causaltemp_xai.classifiers import LSTMClassifier
 from causaltemp_xai.methods import CARLARecourse, DiCECF, WachterCF, derive_intervention_t
 from causaltemp_xai.metrics.cf_faith import CFfaith
 
 
 @pytest.fixture(scope="module")
 def trained():
-    """Small VAR dataset + lightly trained TCNClassifier (shared across tests)."""
+    """Small VAR dataset + lightly trained LSTMClassifier (shared across tests)."""
     gen = LinearSCMT(k=5, L=1, T=30, N=300, seed=0)
     data = gen.generate()
     X, Y = data["X"], data["Y"]
-    clf = TCNClassifier(
+    clf = LSTMClassifier(
         n_inputs=5,
-        n_levels=2,
-        n_channels=16,
+        hidden_size=16,
+        num_layers=2,
         dropout=0.0,
         lr=5e-3,
         batch_size=64,

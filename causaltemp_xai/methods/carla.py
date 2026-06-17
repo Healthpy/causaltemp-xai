@@ -118,7 +118,7 @@ class CARLARecourse:
         ----------
         x : ndarray of shape ``(T, k)``
             Original time-series instance.
-        model : TCNClassifier
+        model : LSTMClassifier
             Differentiable classifier exposing ``torch_logits``.
         graph : ndarray ``(k, k, L)``
             SCM adjacency (carried for API symmetry; not used directly here).

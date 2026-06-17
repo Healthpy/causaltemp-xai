@@ -91,7 +91,7 @@ class DiCECF:
         ----------
         x : ndarray of shape ``(T, k)``
             Original time-series instance (public ``(T, k)`` layout).
-        model : TCNClassifier
+        model : LSTMClassifier
             Differentiable classifier exposing ``torch_logits``.
 
         Returns
@@ -166,7 +166,7 @@ class DiCECF:
         """Generate CFs via dice-ml's PyTorch gradient method.
 
         Builds a flatten/reshape adapter ``(N, T*k) -> P(class=target)`` around
-        ``TCNClassifier.torch_logits`` and a ``dice_ml.Data`` from the flattened
+        ``LSTMClassifier.torch_logits`` and a ``dice_ml.Data`` from the flattened
         background set, then runs ``method="gradient"``.
         """
         import dice_ml

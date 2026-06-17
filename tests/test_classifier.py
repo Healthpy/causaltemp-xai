@@ -1,4 +1,4 @@
-"""Tests for the TCNClassifier wrapper.
+"""Tests for the LSTMClassifier wrapper.
 
 Verifies:
 - Overfits a tiny synthetic set to high train accuracy in few epochs.
@@ -6,8 +6,7 @@ Verifies:
 - save/load round-trip yields identical predictions.
 - torch_logits returns a grad-enabled tensor and backprop reaches the input.
 - Shape contract: (T,k) / (N,T,k) flow through the classifier and CFfaith
-  with no manual transpose at the call site (the permute lives only inside
-  TCNClassifier).
+  with no manual transpose at the call site.
 """
 
 from __future__ import annotations
@@ -15,7 +14,7 @@ from __future__ import annotations
 import numpy as np
 import torch
 
-from causaltemp_xai.classifiers import TCNClassifier
+from causaltemp_xai.classifiers import LSTMClassifier
 from causaltemp_xai.metrics.cf_faith import CFfaith
 
 
@@ -37,12 +36,10 @@ def _separable_dataset(n=64, T=12, k=3, seed=0):
 
 
 def _small_clf(k=3, **kw):
-    # Small + fast: few levels/channels, high LR, no dropout for determinism.
     defaults = dict(
         n_inputs=k,
-        n_levels=2,
-        n_channels=16,
-        kernel_size=3,
+        hidden_size=16,
+        num_layers=2,
         dropout=0.0,
         lr=5e-3,
         batch_size=32,
@@ -51,7 +48,7 @@ def _small_clf(k=3, **kw):
         seed=0,
     )
     defaults.update(kw)
-    return TCNClassifier(**defaults)
+    return LSTMClassifier(**defaults)
 
 
 # ---------------------------------------------------------------------------
@@ -108,11 +105,11 @@ class TestPersistence:
     def test_save_load_identical_predictions(self, tmp_path):
         X, y = _separable_dataset(n=40, T=10, k=3, seed=6)
         clf = _small_clf(k=3, max_epochs=10).fit(X, y)
-        path = tmp_path / "tcn.pt"
+        path = tmp_path / "lstm.pt"
         clf.save(path)
         assert path.exists()
 
-        reloaded = TCNClassifier.load(path)
+        reloaded = LSTMClassifier.load(path)
         np.testing.assert_array_equal(clf.predict(X), reloaded.predict(X))
         np.testing.assert_allclose(
             clf.predict_proba(X), reloaded.predict_proba(X), atol=1e-6

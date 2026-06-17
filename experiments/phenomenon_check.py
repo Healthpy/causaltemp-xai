@@ -25,21 +25,21 @@ import sys
 import numpy as np
 
 from causaltemp_xai.benchmark.generator import LinearSCMT
-from causaltemp_xai.classifiers import TCNClassifier
+from causaltemp_xai.classifiers import LSTMClassifier
 from causaltemp_xai.config import get_config
 from causaltemp_xai.eval import evaluate_method
 from causaltemp_xai.methods import CARLARecourse, WachterCF, derive_intervention_t
 
 
 def _train_smoke_classifier(X, Y, k, seed=0):
-    """Lightly-trained TCN — accuracy is irrelevant to the construction-level
+    """Lightly-trained LSTM — accuracy is irrelevant to the construction-level
     CF-faith gap, so a small/fast model suffices for the guard."""
     n = len(X)
     n_tr = int(n * 0.8)
-    clf = TCNClassifier(
+    clf = LSTMClassifier(
         n_inputs=k,
-        n_levels=3,
-        n_channels=32,
+        hidden_size=32,
+        num_layers=2,
         dropout=0.0,
         lr=3e-3,
         batch_size=64,

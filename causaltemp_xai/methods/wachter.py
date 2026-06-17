@@ -79,7 +79,7 @@ class WachterCF:
         ----------
         x : ndarray of shape ``(T, k)``
             Original time-series instance (public ``(T, k)`` layout).
-        model : TCNClassifier
+        model : LSTMClassifier
             Differentiable classifier exposing ``torch_logits`` (accepts a
             ``(T, k)``/``(N, T, k)`` tensor, returns ``(N, n_classes)`` logits).
 

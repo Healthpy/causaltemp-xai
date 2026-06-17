@@ -41,7 +41,7 @@ def validity(
         added automatically for a single ``(T, k)`` instance.
     model:
         Classifier.  Either an object exposing ``predict`` (e.g.
-        :class:`~causaltemp_xai.classifiers.TCNClassifier`) or a plain callable
+        :class:`~causaltemp_xai.classifiers.LSTMClassifier`) or a plain callable
         mapping a ``(N, T, k)`` batch to integer labels of shape ``(N,)``.
     target_class:
         The desired output class the counterfactuals should achieve.

@@ -35,7 +35,7 @@ from causaltemp_xai.attribution import (  # noqa: E402
     insertion_curve,
     integrated_gradients,
 )
-from causaltemp_xai.classifiers import TCNClassifier  # noqa: E402
+from causaltemp_xai.classifiers import LSTMClassifier  # noqa: E402
 from causaltemp_xai.config import get_config, shifted_config  # noqa: E402
 from causaltemp_xai.data_io import (  # noqa: E402
     DEFAULT_OUT_DIR,
@@ -216,13 +216,13 @@ def run(config_name, n_cf, out_dir, use_dice_ml):
     X_test, Y_test = data["X_test"], data["Y_test"]
     graph, mech = data["graph"], data["mechanisms"]
 
-    ckpt = Path(out_dir) / cfg.name / "tcn.pt"
+    ckpt = Path(out_dir) / cfg.name / "lstm.pt"
     if not ckpt.exists():
         raise FileNotFoundError(
             f"no checkpoint at {ckpt}; train first: "
-            f"uv run python -m causaltemp_xai.classifiers.tcn --config {cfg.name} --train"
+            f"uv run python -m causaltemp_xai.classifiers.lstm --config {cfg.name} --train"
         )
-    clf = TCNClassifier.load(ckpt)
+    clf = LSTMClassifier.load(ckpt)
 
     accuracies = {
         "train": clf.score(X_train, data["Y_train"]),
