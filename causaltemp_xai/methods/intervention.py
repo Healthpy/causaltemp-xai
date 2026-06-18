@@ -12,7 +12,7 @@ from __future__ import annotations
 import numpy as np
 
 
-def derive_intervention_t(x: np.ndarray, x_cf: np.ndarray, tol: float = 1e-6) -> int:
+def derive_intervention_t(x: np.ndarray, x_cf: np.ndarray, tol: float = 1e-3) -> int:
     """Return the smallest ``t`` such that ``max_j |x_cf[t,j] - x[t,j]| > tol``.
 
     Parameters
