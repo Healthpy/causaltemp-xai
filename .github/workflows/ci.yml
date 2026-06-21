@@ -45,6 +45,6 @@ jobs:
       - name: Smoke harness (end-to-end pipeline)
         run: |
           uv run --no-sync --python 3.11 python -m causaltemp_xai.data_io --config smoke
-          uv run --no-sync --python 3.11 python -m causaltemp_xai.classifiers.tcn --config smoke --train
+          uv run --no-sync --python 3.11 python -m causaltemp_xai.classifiers.lstm --config smoke --train
           uv run --no-sync --python 3.11 python experiments/run_all.py --config smoke --n-cf 10 --no-dice-ml
           uv run --no-sync --python 3.11 python experiments/figures.py --results experiments/results.json
