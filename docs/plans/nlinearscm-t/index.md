@@ -101,7 +101,7 @@ CARLA/Wachter/DiCE *on the nonlinear SCM* are **out of scope** (collaborator's C
 
 | # | Stage | Status | Notes | Commit |
 |---|-------|--------|-------|--------|
-| 1 | [Mechanism abstraction + linear refactor (no behavior change)](stages/01-mechanism-abstraction.md) | DONE | `Mechanism`/`LinearMechanism` added; all 4 `A @ x` sites + eval + experiments + data_io routed through it; golden test pins v0.1 (L1 bit-for-bit, L2 boundary). Full suite green (95 tests); phenomenon_check smoke gate OK (CARLA rollout_hard=1.0). | `9529355` |
+| 1 | [Mechanism abstraction + linear refactor (no behavior change)](stages/01-mechanism-abstraction.md) | DONE | `Mechanism`/`LinearMechanism` added; all 4 `A @ x` sites + eval + experiments + data_io routed through it; golden test pins v0.1 (L1 bit-for-bit, L2 boundary). Full suite green (95 tests); phenomenon_check smoke gate OK (CARLA rollout_hard=1.0). | `41520ca` |
 | 2 | [MLPMechanism implementation](stages/02-mlp-mechanism.md) | PENDING | | |
 | 3 | [NlinearSCMT generator](stages/03-nlinear-generator.md) | PENDING | | |
 | 4 | [CF-faith generalization + oracle structural-CF](stages/04-cf-faith-and-oracle.md) | PENDING | | |
