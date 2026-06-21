@@ -1,3 +1,3 @@
-from .generator import LinearSCMT
+from .generator import LinearSCMT, NlinearSCMT
 
-__all__ = ["LinearSCMT"]
+__all__ = ["LinearSCMT", "NlinearSCMT"]
