@@ -10,7 +10,9 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
+from causaltemp_xai.benchmark.generator import NlinearSCMT
 from causaltemp_xai.benchmark.mechanisms import LinearMechanism
+from causaltemp_xai.benchmark.structural_cf import structural_counterfactual
 from causaltemp_xai.metrics.cf_faith import CFfaith
 
 
@@ -264,4 +266,76 @@ class TestCFFaithPearl:
                 x_orig, x_cf, t0, graph, mechanism
             )
             assert result["hard"] == 0.0, f"{sem} should reject retroactive, got {result}"
+
+
+# ---------------------------------------------------------------------------
+# Nonlinear mechanism (MLPMechanism via NlinearSCMT) — mirrors the linear
+# Pearl/compliant structure to confirm the abduction reformulation generalizes.
+# The frozen *linear* numbers are pinned bit-for-bit by tests/test_golden_linear.py;
+# these cases assert the same qualitative behaviour holds on a nonlinear SCM.
+# ---------------------------------------------------------------------------
+
+
+def _make_nlinear_scm(k: int = 3, L: int = 2, T: int = 25, seed: int = 5):
+    """Return (x_original, graph, mechanism) from a SMOKE-scale NlinearSCMT."""
+    gen = NlinearSCMT(k=k, L=L, T=T, N=4, seed=seed, hidden=8)
+    data = gen.generate(burn_in=20)
+    return data["X"][0], data["graph"], data["mechanism"]
+
+
+class TestCFFaithNonlinear:
+    def test_pearl_oracle_faithful_rollout_unfaithful(self):
+        """Nonlinear Pearl CF: pearl hard=1, rollout hard=0 (abduction works)."""
+        x_orig, graph, mechanism = _make_nlinear_scm(seed=5)
+        t0, node = 7, 0
+        value = x_orig[t0, node] + 0.4
+        x_cf = structural_counterfactual(x_orig, mechanism, t0, node, value)
+
+        pearl = CFfaith(tol=1e-4, semantics="pearl_delta").score(
+            x_orig, x_cf, t0, graph, mechanism
+        )
+        rollout = CFfaith(tol=1e-4, semantics="noiseless_rollout").score(
+            x_orig, x_cf, t0, graph, mechanism
+        )
+        assert pearl["hard"] == 1.0, f"pearl should accept, got {pearl}"
+        assert rollout["hard"] == 0.0, f"rollout should reject, got {rollout}"
+
+    def test_noiseless_oracle_rollout_faithful_pearl_unfaithful(self):
+        """Nonlinear noiseless CF: rollout hard=1, pearl hard=0 (mirror)."""
+        x_orig, graph, mechanism = _make_nlinear_scm(seed=6)
+        t0, node = 7, 1
+        value = x_orig[t0, node] + 0.4
+        x_cf = structural_counterfactual(
+            x_orig, mechanism, t0, node, value, noiseless=True
+        )
+
+        rollout = CFfaith(tol=1e-4, semantics="noiseless_rollout").score(
+            x_orig, x_cf, t0, graph, mechanism
+        )
+        pearl = CFfaith(tol=1e-4, semantics="pearl_delta").score(
+            x_orig, x_cf, t0, graph, mechanism
+        )
+        assert rollout["hard"] == 1.0, f"rollout should accept, got {rollout}"
+        assert pearl["hard"] == 0.0, f"pearl should reject, got {pearl}"
+
+    def test_identical_cf_pearl_hard_is_one(self):
+        """Identical CF on nonlinear SCM → pearl hard=1 (delta=0 generalizes)."""
+        x_orig, graph, mechanism = _make_nlinear_scm(seed=8)
+        x_cf = x_orig.copy()
+        result = CFfaith(tol=1e-4, semantics="pearl_delta").score(
+            x_orig, x_cf, 7, graph, mechanism
+        )
+        assert result["hard"] == 1.0
+
+    def test_retroactive_zero_in_both_modes(self):
+        """Retroactive change on nonlinear SCM is unfaithful under both semantics."""
+        x_orig, graph, mechanism = _make_nlinear_scm(seed=9)
+        t0 = 8
+        x_cf = x_orig.copy()
+        x_cf[2, 0] += 5.0  # change before t0
+        for sem in CFfaith.SEMANTICS:
+            r = CFfaith(tol=1e-4, semantics=sem).score(
+                x_orig, x_cf, t0, graph, mechanism
+            )
+            assert r["hard"] == 0.0, f"{sem} should reject retroactive, got {r}"
 
