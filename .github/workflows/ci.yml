@@ -10,13 +10,6 @@ jobs:
   test:
     runs-on: ubuntu-latest
 
-    # The runner is CPU-only, but the default torch wheel is the CUDA build,
-    # whose libtorch_cuda.so fails to load here (undefined symbol: ncclCommResume),
-    # breaking `import torch` and every test at collection. Tell uv to resolve the
-    # CPU torch wheels instead. See https://docs.astral.sh/uv/guides/integration/pytorch/
-    env:
-      UV_TORCH_BACKEND: cpu
-
     steps:
       - uses: actions/checkout@v4
 
@@ -30,6 +23,18 @@ jobs:
 
       - name: Install dependencies
         run: uv sync --extra dev --python 3.11
+
+      # The committed uv.lock pins torch to a CUDA build (from a private index),
+      # whose libtorch_cuda.so fails to load on this CPU-only runner
+      # (undefined symbol: ncclCommResume), breaking `import torch` and every test
+      # at collection. Reinstall the CPU torch wheel from the public PyTorch index
+      # over the locked CUDA one (UV_TORCH_BACKEND is ignored once the lock fixes
+      # the source). See https://docs.astral.sh/uv/guides/integration/pytorch/
+      - name: Use CPU torch (runner is CPU-only)
+        run: >-
+          uv pip install torch
+          --index-url https://download.pytorch.org/whl/cpu
+          --reinstall-package torch
 
       - name: Run tests
         run: uv run --python 3.11 pytest tests/ -q
