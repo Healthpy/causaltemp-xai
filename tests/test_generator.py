@@ -49,13 +49,13 @@ class TestOutputShapes:
     def test_mechanisms_length(self):
         gen = LinearSCMT(k=5, L=3, T=20, N=10, seed=1)
         data = gen.generate()
-        assert len(data["mechanisms"]) == 3
+        assert data["mechanism"].L == 3
 
     def test_mechanisms_matrix_shapes(self):
         k, L = 4, 2
         gen = LinearSCMT(k=k, L=L, T=20, N=10, seed=2)
         data = gen.generate()
-        for i, A in enumerate(data["mechanisms"]):
+        for i, A in enumerate(data["mechanism"].A_list):
             assert A.shape == (k, k), f"mechanism[{i}] has shape {A.shape}"
 
     def test_labels_binary(self):
@@ -199,7 +199,7 @@ class TestPersistenceRoundTrip:
             assert (dest / f"X_{split}.npy").exists()
             assert (dest / f"Y_{split}.npy").exists()
         assert (dest / "graph.npy").exists()
-        assert (dest / "mechanisms.npz").exists()
+        assert (dest / "mechanism.npz").exists()
         assert (dest / "meta.json").exists()
 
     def test_meta_reports_splits_and_balance(self, tmp_path):
@@ -222,8 +222,8 @@ class TestPersistenceRoundTrip:
             assert np.array_equal(a[f"X_{split}"], b[f"X_{split}"])
             assert np.array_equal(a[f"Y_{split}"], b[f"Y_{split}"])
         assert np.array_equal(a["graph"], b["graph"])
-        assert len(a["mechanisms"]) == SMOKE.L == len(b["mechanisms"])
-        for A_a, A_b in zip(a["mechanisms"], b["mechanisms"]):
+        assert a["mechanism"].L == SMOKE.L == b["mechanism"].L
+        for A_a, A_b in zip(a["mechanism"].A_list, b["mechanism"].A_list):
             assert np.array_equal(A_a, A_b)
 
     def test_load_matches_in_memory_generation(self, tmp_path):

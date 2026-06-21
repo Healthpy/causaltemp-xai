@@ -93,7 +93,7 @@ class CFfaith:
         x_cf: np.ndarray,
         intervention_t: int,
         graph: np.ndarray,
-        mechanisms: list[np.ndarray],
+        mechanism,
     ) -> dict[str, float]:
         """Compute hard and soft CF-faithfulness scores.
 
@@ -110,9 +110,10 @@ class CFfaith:
             Binary adjacency tensor of shape ``(k, k, L)`` from the SCM.
             Not used directly in computation but kept for API completeness /
             downstream analysis.
-        mechanisms:
-            List of *L* coefficient matrices ``A_l``, each of shape ``(k, k)``.
-            ``x_t = sum_l A_l @ x_{t-l-1} + noise``.
+        mechanism:
+            A :class:`~causaltemp_xai.benchmark.mechanisms.Mechanism` producing
+            the deterministic next-step mean ``x_t = mechanism.forward_numpy(window)``
+            (for the linear case ``x_t = sum_l A_l @ x_{t-l-1}``).
 
         Returns
         -------
@@ -126,7 +127,7 @@ class CFfaith:
         x_orig = np.asarray(x_original, dtype=float)   # (T, k)
         x_cf_arr = np.asarray(x_cf, dtype=float)        # (T, k)
         T, k = x_orig.shape
-        L = len(mechanisms)
+        L = mechanism.L
 
         # ------------------------------------------------------------------
         # (i) Retroactive change check
@@ -155,15 +156,17 @@ class CFfaith:
 
         simulated = target.copy()  # values at <= intervention_t are held fixed
 
-        # Re-simulate time steps *after* intervention_t using the mechanisms
+        # Re-simulate time steps *after* intervention_t using the mechanism.
+        # Each step feeds the mechanism exactly L rows (oldest→newest), zero-
+        # padding rows that reach before t=0 — replicating the original
+        # ``if lag_t >= 0`` guard (a zero row contributes nothing).
         for t in range(intervention_t + 1, T):
-            # Predict x_t from the history of simulated (post-intervention) values
-            x_t_pred = np.zeros(k)
-            for l, A in enumerate(mechanisms):
-                lag_t = t - l - 1
-                if lag_t >= 0:
-                    x_t_pred += A @ simulated[lag_t]
-            simulated[t] = x_t_pred
+            window = np.zeros((L, k))
+            for j in range(L):
+                src = t - L + j  # row position j maps to absolute time `src`
+                if src >= 0:
+                    window[j] = simulated[src]
+            simulated[t] = mechanism.forward_numpy(window)
 
         # L1 residual between the forward-simulated trajectory and the target
         residual_region = target[intervention_t:]

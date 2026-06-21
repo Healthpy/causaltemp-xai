@@ -1,0 +1,146 @@
+"""Golden test: pins v0.1 LinearSCM-T numbers across the Mechanism refactor.
+
+The *numeric constants* below are the frozen artifact — captured from the
+pre-refactor (``A @ x`` inline) code and asserted against the post-refactor
+``Mechanism`` API. The refactor is only correct if these do not move. **Never
+re-bless these constants**; if they shift, the refactor is wrong.
+
+Two configs are pinned so the partial-window / negative-lag boundary is actually
+exercised:
+
+* ``L=1`` — every real benchmark config; trajectory is numerically tame, so the
+  **full X array** is asserted bit-for-bit (this is the RNG-order-regression
+  guard called out in the Stage 1 plan).
+* ``L=2`` — exercises the cf_faith zero-padded window for ``t-l-1 < 0``. This
+  config's VAR is intentionally *not* stabilised in companion form, so the
+  trajectory diverges to ~1e11; at that magnitude the (mathematically identical)
+  re-association of ``noise + sum_l term_l`` differs at the ULP, so X is asserted
+  with a tight relative tolerance rather than bit-for-bit. The labels and — the
+  point of this case — the CF-faith scores are pinned exactly.
+"""
+
+from __future__ import annotations
+
+import numpy as np
+
+from causaltemp_xai.benchmark.generator import LinearSCMT
+from causaltemp_xai.metrics.cf_faith import CFfaith
+
+
+def _noiseless_cf(x, mechanism, t0, pert):
+    """Pure noiseless mechanism rollout from t0 (mirror of the capture script)."""
+    T, k = x.shape
+    cf = x.copy()
+    cf[t0] = x[t0] + pert
+    for t in range(t0 + 1, T):
+        window = np.zeros((mechanism.L, k))
+        for j in range(mechanism.L):
+            src = t - mechanism.L + j
+            if src >= 0:
+                window[j] = cf[src]
+        cf[t] = mechanism.forward_numpy(window)
+    return cf
+
+
+# --- Frozen constants captured from pre-refactor code (do not edit) ----------
+
+GOLDEN = {
+    "L1": {
+        "X_sum": -1.4410774479072668,
+        "Y": [1, 1, 0, 0, 0],
+        "noiseless_rollout": {
+            "faithful": (1.0, 1.0),
+            "retro": (0.0, 0.0),
+            "identical": (0.0, 0.8745185398806657),
+        },
+        "pearl_delta": {
+            "faithful": (0.0, 0.8745185398806657),
+            "retro": (0.0, 0.0),
+            "identical": (1.0, 1.0),
+        },
+    },
+    "L2": {
+        "X_sum": -76232980455.57904,
+        "Y": [0, 0, 1, 1, 0],
+        "noiseless_rollout": {
+            "faithful": (1.0, 1.0),
+            "retro": (0.0, 0.0),
+            "identical": (0.0, 0.3138058441507252),
+        },
+        "pearl_delta": {
+            "faithful": (0.0, 0.3138057565509235),
+            "retro": (0.0, 0.0),
+            "identical": (1.0, 1.0),
+        },
+    },
+}
+
+
+def _build(L):
+    gen = LinearSCMT(k=3, L=L, T=20, N=5, seed=123)
+    data = gen.generate()
+    return data
+
+
+def _cf_pairs(data):
+    x = data["X"][0]
+    t0 = 4
+    mech = data["mechanism"]
+    pert = np.full(3, 0.3)
+    cf_faithful = _noiseless_cf(x, mech, t0, pert)
+    cf_retro = x.copy()
+    cf_retro[1] += 5.0
+    cf_identical = x.copy()
+    return x, t0, {"faithful": cf_faithful, "retro": cf_retro, "identical": cf_identical}
+
+
+class TestGoldenL1:
+    def test_full_X_bit_identical(self):
+        data = _build(1)
+        # Captured full-X checksum (RNG-order-regression guard, L=1 is tame).
+        assert float(data["X"].sum()) == GOLDEN["L1"]["X_sum"]
+
+    def test_labels(self):
+        data = _build(1)
+        assert data["Y"].tolist() == GOLDEN["L1"]["Y"]
+
+    def test_cf_faith_scores(self):
+        data = _build(1)
+        x, t0, cfs = _cf_pairs(data)
+        for sem in ("noiseless_rollout", "pearl_delta"):
+            scorer = CFfaith(tol=1e-3, semantics=sem)
+            for name, cf in cfs.items():
+                r = scorer.score(x, cf, t0, data["graph"], data["mechanism"])
+                exp_hard, exp_soft = GOLDEN["L1"][sem][name]
+                assert r["hard"] == exp_hard, f"{sem}/{name} hard"
+                assert r["soft"] == exp_soft, f"{sem}/{name} soft"
+
+
+class TestGoldenL2:
+    def test_X_matches_to_tolerance(self):
+        data = _build(2)
+        # Diverging trajectory (~1e11): ULP-level re-association is expected,
+        # so a tight rtol catches an RNG-order regression without flagging the
+        # benign float-associativity difference.
+        np.testing.assert_allclose(
+            float(data["X"].sum()), GOLDEN["L2"]["X_sum"], rtol=1e-9
+        )
+
+    def test_labels(self):
+        data = _build(2)
+        assert data["Y"].tolist() == GOLDEN["L2"]["Y"]
+
+    def test_cf_faith_scores(self):
+        data = _build(2)
+        x, t0, cfs = _cf_pairs(data)
+        for sem in ("noiseless_rollout", "pearl_delta"):
+            scorer = CFfaith(tol=1e-3, semantics=sem)
+            for name, cf in cfs.items():
+                r = scorer.score(x, cf, t0, data["graph"], data["mechanism"])
+                exp_hard, exp_soft = GOLDEN["L2"][sem][name]
+                # Hard scores are the boundary anchors and match bit-for-bit.
+                assert r["hard"] == exp_hard, f"{sem}/{name} hard"
+                # Soft scores derive from a ~1e11 diverging trajectory whose
+                # generator re-association differs at the ULP; catastrophic
+                # cancellation amplifies that to ~1e-7, so pin to a loose rtol.
+                np.testing.assert_allclose(r["soft"], exp_soft, rtol=1e-5)

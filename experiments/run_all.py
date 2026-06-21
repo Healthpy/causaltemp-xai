@@ -71,7 +71,7 @@ def _generate(method, X, clf, graph, mech) -> np.ndarray:
     import inspect
 
     params = inspect.signature(method.generate_batch).parameters
-    if "graph" in params or "mechanisms" in params:
+    if "graph" in params or "mechanism" in params:
         cfs = method.generate_batch(X, clf, graph, mech)
     else:
         cfs = method.generate_batch(X, clf)
@@ -214,7 +214,7 @@ def run(config_name, n_cf, out_dir, use_dice_ml):
     data = load_dataset(cfg.name, out_dir=out_dir)
     X_train = data["X_train"]
     X_test, Y_test = data["X_test"], data["Y_test"]
-    graph, mech = data["graph"], data["mechanisms"]
+    graph, mech = data["graph"], data["mechanism"]
 
     ckpt = Path(out_dir) / cfg.name / "lstm.pt"
     if not ckpt.exists():

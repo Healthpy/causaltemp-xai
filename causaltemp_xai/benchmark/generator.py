@@ -15,6 +15,8 @@ from typing import Literal, Optional
 
 import numpy as np
 
+from causaltemp_xai.benchmark.mechanisms import LinearMechanism
+
 
 _NOISE_TYPES = ("laplace", "uniform")
 
@@ -63,8 +65,8 @@ class LinearSCMT:
         self.N = N
         self.seed = seed
         self._rng = np.random.default_rng(seed)
-        # Build the lagged graph and coefficient matrices once at construction
-        self.graph, self.mechanisms = self._build_graph_and_mechanisms()
+        # Build the lagged graph and mechanism once at construction.
+        self.graph, self.mechanism = self._build_graph_and_mechanisms()
 
     # ------------------------------------------------------------------
     # Public API
@@ -90,9 +92,9 @@ class LinearSCMT:
         ``"graph"``
             Binary adjacency tensor of shape ``(k, k, L)``.  ``graph[i, j, l]``
             is 1 if variable *j* causes variable *i* at lag ``l+1``.
-        ``"mechanisms"``
-            List of *L* float arrays each of shape ``(k, k)`` – the VAR
-            coefficient matrices (same ordering as ``graph``).
+        ``"mechanism"``
+            A :class:`~causaltemp_xai.benchmark.mechanisms.Mechanism` (here a
+            :class:`LinearMechanism`) producing the deterministic next-step mean.
         """
         total_T = self.T + burn_in
         X_full = np.zeros((self.N, total_T, self.k))
@@ -106,9 +108,11 @@ class LinearSCMT:
             self.N, total_T, self.k
         )
         for t in range(self.L, total_T):
+            # Lag window ordered oldest→newest: (N, L, k). t >= L always holds
+            # here, so the window is full (no zero-pad needed).
+            window = X_full[:, t - self.L : t, :]
             x_t = noise[:, t, :].copy()
-            for l, A in enumerate(self.mechanisms):
-                x_t += X_full[:, t - l - 1, :] @ A.T
+            x_t += self.mechanism.forward_numpy(window)
             X_full[:, t, :] = x_t
 
         X = X_full[:, burn_in:, :]  # shape (N, T, k)
@@ -123,20 +127,20 @@ class LinearSCMT:
             "X": X,
             "Y": Y,
             "graph": self.graph,
-            "mechanisms": self.mechanisms,
+            "mechanism": self.mechanism,
         }
 
     # ------------------------------------------------------------------
     # Private helpers
     # ------------------------------------------------------------------
 
-    def _build_graph_and_mechanisms(self) -> tuple[np.ndarray, list[np.ndarray]]:
+    def _build_graph_and_mechanisms(self) -> tuple[np.ndarray, LinearMechanism]:
         """Sample the causal graph and coefficient matrices.
 
         Returns
         -------
         graph : ndarray of shape ``(k, k, L)``
-        mechanisms : list of L ndarrays each of shape ``(k, k)``
+        mechanism : LinearMechanism wrapping the L coefficient matrices
         """
         k, L = self.k, self.L
         graph = np.zeros((k, k, L), dtype=float)
@@ -157,7 +161,7 @@ class LinearSCMT:
             A = _stabilise(A, target_radius=0.9)
             mechanisms.append(A)
 
-        return graph, mechanisms
+        return graph, LinearMechanism(mechanisms)
 
     def _sample_noise(self, *shape) -> np.ndarray:
         """Draw noise samples from the configured non-Gaussian distribution."""

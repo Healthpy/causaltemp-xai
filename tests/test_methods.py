@@ -75,7 +75,7 @@ class TestCARLA:
         clf, data = trained
         x = data["X"][0]
         cf = CARLARecourse(target_class=1, n_steps=60, t0_fractions=(0.5,)).generate(
-            x, clf, data["graph"], data["mechanisms"]
+            x, clf, data["graph"], data["mechanism"]
         )
         assert cf.shape == x.shape
         assert np.all(np.isfinite(cf))
@@ -84,7 +84,7 @@ class TestCARLA:
         clf, data = trained
         x = data["X"][3]
         cf = CARLARecourse(target_class=1, n_steps=60, t0_fractions=(0.5,)).generate(
-            x, clf, data["graph"], data["mechanisms"]
+            x, clf, data["graph"], data["mechanism"]
         )
         t0 = derive_intervention_t(x, cf)
         # Nothing before the derived intervention point may change.
@@ -95,11 +95,11 @@ class TestCARLA:
         clf, data = trained
         x = data["X"][3]
         cf = CARLARecourse(target_class=1, n_steps=60, t0_fractions=(0.5,)).generate(
-            x, clf, data["graph"], data["mechanisms"]
+            x, clf, data["graph"], data["mechanism"]
         )
         t0 = derive_intervention_t(x, cf)
         scorer = CFfaith(tol=1e-3, semantics="noiseless_rollout")
-        result = scorer.score(x, cf, t0, data["graph"], data["mechanisms"])
+        result = scorer.score(x, cf, t0, data["graph"], data["mechanism"])
         assert result["hard"] == 1.0, f"expected rollout hard=1, got {result}"
 
 

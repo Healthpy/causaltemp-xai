@@ -10,7 +10,7 @@ Layout written per config (``out_dir/<config.name>/``)::
     X_train.npy  X_val.npy  X_test.npy        # (n_split, T, k)
     Y_train.npy  Y_val.npy  Y_test.npy        # (n_split,)
     graph.npy                                  # (k, k, L)
-    mechanisms.npz                             # A_0 … A_{L-1}, each (k, k)
+    mechanism.npz                              # Mechanism.state_dict() (+ __type__)
     meta.json                                  # config + per-split class balance
 
 CLI::
@@ -28,6 +28,7 @@ from pathlib import Path
 import numpy as np
 
 from causaltemp_xai.benchmark.generator import LinearSCMT
+from causaltemp_xai.benchmark.mechanisms import mechanism_from_state_dict
 from causaltemp_xai.config import (
     CONFIGS,
     BenchmarkConfig,
@@ -109,7 +110,7 @@ def generate_and_save(
     )
     data = gen.generate()
     X, Y = data["X"], data["Y"]
-    graph, mechanisms = data["graph"], data["mechanisms"]
+    graph, mechanism = data["graph"], data["mechanism"]
 
     train_idx, val_idx, test_idx = stratified_split(Y, seed=config.seed)
 
@@ -119,13 +120,11 @@ def generate_and_save(
         np.save(dest / f"Y_{split_name}.npy", Y[idx])
 
     np.save(dest / "graph.npy", graph)
-    np.savez(
-        dest / "mechanisms.npz",
-        **{f"A_{l}": A for l, A in enumerate(mechanisms)},
-    )
+    np.savez(dest / "mechanism.npz", **mechanism.state_dict())
 
     meta = {
         "config": config.as_dict(),
+        "mechanism_type": str(mechanism.state_dict()["__type__"]),
         "split_fractions": list(SPLIT_FRACTIONS),
         "split_sizes": {name: int(len(idx)) for name, idx in splits.items()},
         "class_balance": {
@@ -149,7 +148,8 @@ def load_dataset(
     """Load a previously persisted dataset.
 
     Returns a dict with keys ``X_train/X_val/X_test``, ``Y_train/Y_val/Y_test``,
-    ``graph``, ``mechanisms`` (list of L arrays, ordered by lag), and ``meta``.
+    ``graph``, ``mechanism`` (a :class:`~causaltemp_xai.benchmark.mechanisms.Mechanism`),
+    and ``meta``.
     """
     src = Path(out_dir) / config_name
     if not src.exists():
@@ -165,10 +165,8 @@ def load_dataset(
 
     out["graph"] = np.load(src / "graph.npy")
 
-    with np.load(src / "mechanisms.npz") as mech:
-        # Restore lag order: A_0, A_1, … A_{L-1}
-        keys = sorted(mech.files, key=lambda s: int(s.split("_")[1]))
-        out["mechanisms"] = [mech[k] for k in keys]
+    with np.load(src / "mechanism.npz") as mech:
+        out["mechanism"] = mechanism_from_state_dict(dict(mech))
 
     with open(src / "meta.json") as fh:
         out["meta"] = json.load(fh)
