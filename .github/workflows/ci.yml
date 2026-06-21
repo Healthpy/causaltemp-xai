@@ -10,6 +10,13 @@ jobs:
   test:
     runs-on: ubuntu-latest
 
+    # The runner is CPU-only, but the default torch wheel is the CUDA build,
+    # whose libtorch_cuda.so fails to load here (undefined symbol: ncclCommResume),
+    # breaking `import torch` and every test at collection. Tell uv to resolve the
+    # CPU torch wheels instead. See https://docs.astral.sh/uv/guides/integration/pytorch/
+    env:
+      UV_TORCH_BACKEND: cpu
+
     steps:
       - uses: actions/checkout@v4
 
