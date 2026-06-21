@@ -26,19 +26,9 @@ from __future__ import annotations
 
 import numpy as np
 
-
-def _window(arr: np.ndarray, t: int, L: int, k: int) -> np.ndarray:
-    """Build the ``(L, k)`` lag window feeding the mechanism at time ``t``.
-
-    Rows ordered oldest→newest; rows reaching before ``t=0`` stay zero (the
-    ``if lag_t >= 0`` guard). Mirrors the window contract used everywhere else.
-    """
-    window = np.zeros((L, k))
-    for j in range(L):
-        src = t - L + j
-        if src >= 0:
-            window[j] = arr[src]
-    return window
+# Single source of truth for the lag-window contract (see mechanisms module
+# docstring). Re-exported as the module-private ``_window`` for callers/tests.
+from causaltemp_xai.benchmark.mechanisms import lag_window as _window
 
 
 def abduct_noise(x_orig: np.ndarray, mechanism) -> np.ndarray:

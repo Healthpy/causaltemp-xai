@@ -127,6 +127,18 @@ class TestMLPForward:
         for n in range(5):
             np.testing.assert_allclose(out[n], mech.forward_numpy(batch[n]), rtol=1e-12)
 
+    def test_forward_torch_is_differentiable(self):
+        """forward_torch must be autograd-safe w.r.t. history (needed by CARLA)."""
+        mech = _random_mlp(hidden=8, seed=17)
+        rng = np.random.default_rng(18)
+        history = torch.as_tensor(rng.normal(size=(mech.L, mech.k)))
+        history.requires_grad_(True)
+        out = mech.forward_torch(history)
+        out.sum().backward()
+        assert history.grad is not None
+        assert torch.isfinite(history.grad).all()
+        assert history.grad.shape == history.shape
+
     def test_contractive_boundedness(self):
         """300-step noiseless rollout stays finite and bounded across seeds."""
         graph = _dense_graph(k=5, L=2)

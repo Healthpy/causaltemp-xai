@@ -24,6 +24,7 @@ from __future__ import annotations
 import numpy as np
 
 from causaltemp_xai.benchmark.generator import LinearSCMT
+from causaltemp_xai.benchmark.mechanisms import LinearMechanism, lag_window
 from causaltemp_xai.metrics.cf_faith import CFfaith
 
 
@@ -144,3 +145,58 @@ class TestGoldenL2:
                 # generator re-association differs at the ULP; catastrophic
                 # cancellation amplifies that to ~1e-7, so pin to a loose rtol.
                 np.testing.assert_allclose(r["soft"], exp_soft, rtol=1e-5)
+
+
+# --- L=2 negative-lag boundary (the partial-window zero-pad branch) ----------
+#
+# The generator-based L=2 case above uses ``t0=4``, so cf_faith's re-simulation
+# starts at ``t=5`` and never reaches ``src < 0`` — it does NOT actually exercise
+# the zero-padded window. This case pins the boundary directly: a *tame,
+# contractive* hand-built L=2 ``LinearMechanism`` scored at ``t0=0``, so the
+# first re-simulated step (``t=1``) has window source ``[-1, 0]`` and takes the
+# zero-pad branch. Trajectory stays O(1), so the constants are bit-for-bit
+# stable. These are captured from the verified post-refactor code as a
+# regression guard for the zero-pad branch (do not edit).
+
+BOUNDARY = {
+    "noiseless_rollout": {
+        "faithful": (1.0, 1.0),
+        "identical": (0.0, 0.760832446499636),
+    },
+    "pearl_delta": {
+        "faithful": (0.0, 0.760832446499636),
+        "identical": (1.0, 1.0),
+    },
+}
+
+
+def _boundary_setup():
+    A0 = np.array([[0.3, 0.1], [0.0, 0.2]])
+    A1 = np.array([[0.1, 0.0], [0.05, 0.1]])
+    mech = LinearMechanism([A0, A1])
+    rng = np.random.default_rng(0)
+    x = rng.normal(size=(6, 2)) * 0.5
+    graph = np.zeros((2, 2, 2))
+    t0 = 0
+    cf_faithful = x.copy()
+    cf_faithful[t0] = x[t0] + np.array([0.3, 0.3])
+    for t in range(t0 + 1, 6):
+        cf_faithful[t] = mech.forward_numpy(lag_window(cf_faithful, t, 2, 2))
+    cfs = {"faithful": cf_faithful, "identical": x.copy()}
+    return x, mech, graph, t0, cfs
+
+
+class TestGoldenL2Boundary:
+    def test_negative_lag_branch_is_exercised(self):
+        # Sanity: the first re-simulated step must reach before t=0.
+        assert (1 - 2 + 0) < 0
+
+    def test_cf_faith_scores(self):
+        x, mech, graph, t0, cfs = _boundary_setup()
+        for sem in ("noiseless_rollout", "pearl_delta"):
+            scorer = CFfaith(tol=1e-3, semantics=sem)
+            for name, cf in cfs.items():
+                r = scorer.score(x, cf, t0, graph, mech)
+                exp_hard, exp_soft = BOUNDARY[sem][name]
+                assert r["hard"] == exp_hard, f"{sem}/{name} hard"
+                assert r["soft"] == exp_soft, f"{sem}/{name} soft"

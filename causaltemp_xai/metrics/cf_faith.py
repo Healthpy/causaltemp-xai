@@ -16,20 +16,9 @@ from typing import Optional
 
 import numpy as np
 
-
-def _window(arr: np.ndarray, t: int, L: int, k: int) -> np.ndarray:
-    """Build the ``(L, k)`` lag window feeding the mechanism at time ``t``.
-
-    Rows are ordered oldest→newest (``window[-1]`` is lag 1, ``x_{t-1}``); any
-    row that would reach before ``t=0`` is left zero, replicating the original
-    ``if lag_t >= 0`` guard (a zero row contributes nothing).
-    """
-    window = np.zeros((L, k))
-    for j in range(L):
-        src = t - L + j  # row position j maps to absolute time `src`
-        if src >= 0:
-            window[j] = arr[src]
-    return window
+# Single source of truth for the lag-window contract (see mechanisms module
+# docstring). Imported here so cf_faith and structural_cf cannot drift.
+from causaltemp_xai.benchmark.mechanisms import lag_window as _window
 
 
 class CFfaith:

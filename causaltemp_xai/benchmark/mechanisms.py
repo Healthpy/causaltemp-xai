@@ -49,6 +49,23 @@ except Exception:  # pragma: no cover - torch always present in this project
     torch = None  # type: ignore
 
 
+def lag_window(arr: np.ndarray, t: int, L: int, k: int) -> np.ndarray:
+    """Build the ``(L, k)`` lag window feeding a mechanism at time ``t``.
+
+    Rows are ordered oldest→newest (``window[-1]`` is lag 1, ``x_{t-1}``); any
+    row that would reach before ``t=0`` is left zero, replicating the original
+    ``if lag_t >= 0`` guard (a zero row contributes nothing). This is the single
+    source of truth for the window contract documented in the module docstring;
+    ``cf_faith`` and ``structural_cf`` both import it so they cannot drift.
+    """
+    window = np.zeros((L, k))
+    for j in range(L):
+        src = t - L + j  # row position j maps to absolute time `src`
+        if src >= 0:
+            window[j] = arr[src]
+    return window
+
+
 class Mechanism:
     """Abstract transition mechanism.
 

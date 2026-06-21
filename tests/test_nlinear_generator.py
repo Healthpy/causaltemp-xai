@@ -93,6 +93,10 @@ class TestStability:
             X = gen.generate()["X"]
             assert np.all(np.isfinite(X)), f"non-finite at seed {seed}"
             assert np.max(np.abs(X)) <= gen.clip, f"unbounded at seed {seed}"
+            # Contractive design keeps |x| ~O(1) (empirically <2). A far tighter
+            # ceiling than `clip` (1e3) so a *partial* loss of contractivity that
+            # still stays under the clip fallback is caught, not silently passed.
+            assert np.max(np.abs(X)) < 50.0, f"contractivity degraded at seed {seed}"
 
     def test_no_nan_or_inf(self):
         gen = NlinearSCMT(k=5, L=2, T=50, N=50, seed=7)
