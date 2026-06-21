@@ -21,6 +21,13 @@ from scipy.stats import kstest
 
 from causaltemp_xai.benchmark.generator import LinearSCMT, NlinearSCMT
 from causaltemp_xai.benchmark.mechanisms import MLPMechanism
+from causaltemp_xai.config import SMOKE_NL, shifted_config
+from causaltemp_xai.data_io import (
+    build_generator,
+    generate_and_save,
+    load_dataset,
+    stratified_split,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -203,3 +210,91 @@ class TestNoiseDist:
     def test_invalid_noise_type_raises(self):
         with pytest.raises(ValueError):
             NlinearSCMT(k=3, L=1, noise_type="invalid", seed=0)
+
+
+# ---------------------------------------------------------------------------
+# Config dispatch + nonlinear persistence (Stage 5)
+# ---------------------------------------------------------------------------
+
+
+class TestConfigDispatch:
+    def test_build_generator_returns_nlinear_for_mlp(self):
+        gen = build_generator(SMOKE_NL)
+        assert isinstance(gen, NlinearSCMT)
+        assert isinstance(gen.mechanism, MLPMechanism)
+        # Nonlinear hyperparameters threaded through from the config.
+        assert gen.hidden == SMOKE_NL.nonlinear["hidden"]
+        assert gen.decay_range == tuple(SMOKE_NL.nonlinear["decay_range"])
+
+    def test_shifted_config_preserves_mechanism_type_and_hyperparams(self):
+        shift = shifted_config(SMOKE_NL, noise_type="uniform")
+        assert shift.mechanism_type == "mlp"
+        assert shift.nonlinear == SMOKE_NL.nonlinear
+        assert shift.noise_type == "uniform"
+
+    def test_shifted_config_axis_d_invariant(self):
+        """Noise-only shift ⇒ bit-identical graph + MLP mechanism (Axis D)."""
+        base = build_generator(SMOKE_NL)
+        shift = build_generator(shifted_config(SMOKE_NL, noise_type="uniform"))
+        assert np.array_equal(base.graph, shift.graph)
+        # Mechanism weights are seed-built before any noise is drawn.
+        for name in ("W1", "b1", "W2", "b2", "decay"):
+            assert np.array_equal(
+                getattr(base.mechanism, name), getattr(shift.mechanism, name)
+            )
+        # Same deterministic forward map on a probe window.
+        rng = np.random.default_rng(7)
+        window = rng.normal(size=(4, SMOKE_NL.L, SMOKE_NL.k))
+        assert np.array_equal(
+            base.mechanism.forward_numpy(window),
+            shift.mechanism.forward_numpy(window),
+        )
+
+
+class TestNonlinearPersistence:
+    def test_save_creates_all_artifacts(self, tmp_path):
+        dest = generate_and_save(SMOKE_NL, out_dir=tmp_path)
+        for split in ("train", "val", "test"):
+            assert (dest / f"X_{split}.npy").exists()
+            assert (dest / f"Y_{split}.npy").exists()
+        assert (dest / "graph.npy").exists()
+        assert (dest / "mechanism.npz").exists()
+        assert (dest / "meta.json").exists()
+
+    def test_meta_records_mechanism_type_and_hyperparams(self, tmp_path):
+        generate_and_save(SMOKE_NL, out_dir=tmp_path)
+        loaded = load_dataset("smoke_nl", out_dir=tmp_path)
+        meta = loaded["meta"]
+        assert meta["mechanism_type"] == "mlp"
+        assert meta["nonlinear"] == SMOKE_NL.nonlinear
+        assert meta["config"]["mechanism_type"] == "mlp"
+        # Both classes present in every split (median-threshold rule).
+        for split in ("train", "val", "test"):
+            assert set(meta["class_balance"][split].keys()) == {"0", "1"}
+
+    def test_loaded_mechanism_is_mlp_and_reproduces_forward(self, tmp_path):
+        """The restored MLP mechanism reproduces forward outputs bit-for-bit."""
+        generate_and_save(SMOKE_NL, out_dir=tmp_path)
+        loaded = load_dataset("smoke_nl", out_dir=tmp_path)
+        mech = loaded["mechanism"]
+        assert isinstance(mech, MLPMechanism)
+
+        original = build_generator(SMOKE_NL).mechanism
+        rng = np.random.default_rng(11)
+        window = rng.normal(size=(8, SMOKE_NL.L, SMOKE_NL.k))
+        assert np.array_equal(
+            mech.forward_numpy(window), original.forward_numpy(window)
+        )
+
+    def test_round_trip_matches_in_memory_generation(self, tmp_path):
+        generate_and_save(SMOKE_NL, out_dir=tmp_path)
+        loaded = load_dataset("smoke_nl", out_dir=tmp_path)
+
+        gen = build_generator(SMOKE_NL)
+        data = gen.generate()
+        train, val, test = stratified_split(data["Y"], seed=SMOKE_NL.seed)
+        expected = {"train": train, "val": val, "test": test}
+        for split, idx in expected.items():
+            assert np.array_equal(loaded[f"X_{split}"], data["X"][idx])
+            assert np.array_equal(loaded[f"Y_{split}"], data["Y"][idx])
+        assert np.array_equal(loaded["graph"], data["graph"])

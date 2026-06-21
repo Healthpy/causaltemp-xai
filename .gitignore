@@ -1,7 +1,8 @@
 __pycache__/
 *.pyc
 # Generated datasets are deterministic (seeded) and regenerated in CI — never committed.
-data/linearscm_t/
+# Covers both linear (data/scm_t/<config>) and the legacy data/linearscm_t/ layout.
+data/
 # Plan-runner / autonomous-execution runtime logs.
 logs/
 .env

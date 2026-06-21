@@ -1,9 +1,17 @@
-"""Reproducible dataset generation, persistence, and loading for LinearSCM-T.
+"""Reproducible dataset generation, persistence, and loading for SCM-T.
 
 Datasets are deterministic given a :class:`~causaltemp_xai.config.BenchmarkConfig`
-(the SCM seed fixes the graph, mechanisms, trajectories, and labels), so the
+(the SCM seed fixes the graph, mechanism, trajectories, and labels), so the
 on-disk artifacts are **regenerated in CI** rather than committed — see the
-plan's pinned decision and ``.gitignore`` (``data/linearscm_t/`` is ignored).
+plan's pinned decision and ``.gitignore`` (``data/`` is ignored).
+
+Both mechanism families are handled transparently: ``config.mechanism_type``
+selects :class:`~causaltemp_xai.benchmark.generator.LinearSCMT` (``"linear"``)
+or :class:`~causaltemp_xai.benchmark.generator.NlinearSCMT` (``"mlp"``), and the
+mechanism is persisted via its polymorphic ``state_dict`` / restored via
+:func:`~causaltemp_xai.benchmark.mechanisms.mechanism_from_state_dict`. Each
+config is keyed by its (unique) ``name`` on disk, so linear and nonlinear
+datasets never collide.
 
 Layout written per config (``out_dir/<config.name>/``)::
 
@@ -16,6 +24,7 @@ Layout written per config (``out_dir/<config.name>/``)::
 CLI::
 
     uv run python -m causaltemp_xai.data_io --config smoke
+    uv run python -m causaltemp_xai.data_io --config smoke_nl
     uv run python -m causaltemp_xai.data_io --config full
 """
 
@@ -27,7 +36,7 @@ from pathlib import Path
 
 import numpy as np
 
-from causaltemp_xai.benchmark.generator import LinearSCMT
+from causaltemp_xai.benchmark.generator import LinearSCMT, NlinearSCMT
 from causaltemp_xai.benchmark.mechanisms import mechanism_from_state_dict
 from causaltemp_xai.config import (
     CONFIGS,
@@ -36,8 +45,9 @@ from causaltemp_xai.config import (
     shifted_config,
 )
 
-#: Default root directory for persisted datasets (gitignored).
-DEFAULT_OUT_DIR = Path("data/linearscm_t")
+#: Default root directory for persisted datasets (gitignored). Mechanism-agnostic:
+#: linear and nonlinear datasets coexist here, keyed by unique ``config.name``.
+DEFAULT_OUT_DIR = Path("data/scm_t")
 
 #: Train/val/test fractions.
 SPLIT_FRACTIONS = (0.6, 0.2, 0.2)
@@ -86,28 +96,58 @@ def _class_balance(y: np.ndarray) -> dict[str, int]:
     return {str(int(v)): int(c) for v, c in zip(values, counts)}
 
 
+def build_generator(config: BenchmarkConfig):
+    """Construct the SCM generator selected by ``config.mechanism_type``.
+
+    ``"linear"`` → :class:`LinearSCMT`; ``"mlp"`` → :class:`NlinearSCMT` built
+    with the ``config.nonlinear`` hyperparameters (``decay_range`` coerced from
+    the JSON list back to a tuple). Raises ``ValueError`` on an unknown type.
+    """
+    if config.mechanism_type == "linear":
+        return LinearSCMT(
+            k=config.k,
+            L=config.L,
+            sparsity=config.sparsity,
+            noise_type=config.noise_type,
+            T=config.T,
+            N=config.N,
+            seed=config.seed,
+        )
+    if config.mechanism_type == "mlp":
+        nl = dict(config.nonlinear or {})
+        if "decay_range" in nl:
+            nl["decay_range"] = tuple(nl["decay_range"])
+        return NlinearSCMT(
+            k=config.k,
+            L=config.L,
+            sparsity=config.sparsity,
+            noise_type=config.noise_type,
+            T=config.T,
+            N=config.N,
+            seed=config.seed,
+            **nl,
+        )
+    raise ValueError(
+        f"unknown mechanism_type {config.mechanism_type!r}; "
+        "expected 'linear' or 'mlp'"
+    )
+
+
 def generate_and_save(
     config: BenchmarkConfig,
     out_dir: Path | str = DEFAULT_OUT_DIR,
 ) -> Path:
     """Generate a dataset from ``config`` and persist it to disk.
 
-    Returns the directory the artifacts were written to
+    Dispatches on ``config.mechanism_type`` (linear VAR vs nonlinear MLP) via
+    :func:`build_generator`. Returns the directory the artifacts were written to
     (``out_dir/<config.name>/``).
     """
     out_dir = Path(out_dir)
     dest = out_dir / config.name
     dest.mkdir(parents=True, exist_ok=True)
 
-    gen = LinearSCMT(
-        k=config.k,
-        L=config.L,
-        sparsity=config.sparsity,
-        noise_type=config.noise_type,
-        T=config.T,
-        N=config.N,
-        seed=config.seed,
-    )
+    gen = build_generator(config)
     data = gen.generate()
     X, Y = data["X"], data["Y"]
     graph, mechanism = data["graph"], data["mechanism"]
@@ -125,6 +165,7 @@ def generate_and_save(
     meta = {
         "config": config.as_dict(),
         "mechanism_type": str(mechanism.state_dict()["__type__"]),
+        "nonlinear": config.nonlinear,
         "split_fractions": list(SPLIT_FRACTIONS),
         "split_sizes": {name: int(len(idx)) for name, idx in splits.items()},
         "class_balance": {
@@ -176,7 +217,7 @@ def load_dataset(
 
 def _build_arg_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Generate and persist a LinearSCM-T dataset."
+        description="Generate and persist an SCM-T dataset (linear or nonlinear)."
     )
     parser.add_argument(
         "--config",
