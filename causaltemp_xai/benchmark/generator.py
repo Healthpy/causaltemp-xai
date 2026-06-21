@@ -14,6 +14,19 @@
 Both share the graph sampler (:func:`_sample_graph`) so the no-self-loop-at-lag-1
 rule and the per-lag Bernoulli draw are identical, and ``eps_t`` is drawn from
 either a Laplace or Uniform distribution.
+
+Scope (this iteration)
+----------------------
+:class:`NlinearSCMT` ships nonlinear **transitions** with **additive noise**
+only. Additive noise makes Pearl abduction an exact subtraction
+(``eps = x − f(parents)``), so CF-faith and the oracle structural-CF
+(:mod:`causaltemp_xai.benchmark.structural_cf`) remain valid on the nonlinear
+mechanisms. Two axes are deliberately **out of scope** and left as future
+stress tests (see ``docs/plans/nlinearscm-t/`` Backlog #1): nonlinear *mixing*
+``x = g(z)`` (an invertible observation map over latents — iVAE/CITRIS
+identifiability) and *non-additive* (location-scale) noise. Both degrade
+abduction from exact to **partial** identification, which is why they are not
+mixed into this additive-transition benchmark.
 """
 
 from __future__ import annotations

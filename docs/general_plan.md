@@ -102,8 +102,18 @@ Other metrics:
     $T \in \{50, 100, 200\}$, $N = 10{,}000$ sequences. Ships with true
     graph, mixing, CF trajectories.
 
-2.  **NlinearSCM-T** --- Same structure, MLP mechanisms and nonlinear
-    mixing. Tests generalization beyond linear VAR identifiability.
+2.  **NlinearSCM-T** --- Same structure, **MLP transition mechanisms**.
+    Tests generalization beyond linear VAR identifiability. *Implemented*
+    (`feat/nlinearscm-t`) as **additive-noise per-node MLPs**
+    ($x_t^i = \text{decay}_i\,x_{t-1}^i + \text{gain}\cdot\tanh(\text{MLP}_i(\text{masked lags})) + \varepsilon_t^i$,
+    spectral-norm-capped weights for stability). Additive noise keeps Pearl
+    abduction an exact subtraction, so CF-faith and the oracle
+    structural-CF generalize to the nonlinear mechanisms (see
+    `causaltemp_xai/benchmark/mechanisms.py`, `structural_cf.py`). Nonlinear
+    **mixing** $x = g(z)$ (an invertible observation map over latents) is a
+    separate identifiability axis (iVAE/CITRIS) and is a **documented future
+    extension** — not built in this iteration (see
+    `docs/plans/nlinearscm-t/` Backlog #1).
 
 3.  **Movement SCMs** that you've created to validate your method.
 
@@ -159,7 +169,11 @@ Benchmarks assume causal sufficiency; unmeasured confounders left for
 future work.
 
 NlinearSCM-T exercises nonlinearity but without tight identifiability
-guarantees.
+guarantees. As shipped it covers nonlinear *transitions* with **additive
+noise** (abduction is exact ⇒ CF-faith / oracle structural-CF remain
+valid). Nonlinear **mixing** $g(z)$ and **non-additive (location-scale)**
+noise — which degrade abduction to *partial* identification — are
+deliberately deferred (future stress tests, not built here).
 
 We don't benchmark joint-training efficiency of causal methods.
 

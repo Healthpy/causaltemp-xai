@@ -27,6 +27,14 @@ so scalar/string fields come back as 0-d arrays (``d["__type__"]`` becomes
 ``array("linear")``, ``d["k"]`` becomes ``array(3)``). ``from_state_dict`` /
 :func:`mechanism_from_state_dict` therefore **coerce** non-array fields
 (``str(...)`` / ``int(...)`` / ``float(...)``) before use.
+
+Scope
+-----
+:class:`MLPMechanism` is an **additive-noise** transition (the noise is added
+*after* the deterministic mean, never inside ``forward_*``). That additivity is
+what keeps Pearl abduction an exact subtraction downstream. Nonlinear *mixing*
+``x = g(z)`` and *non-additive* noise are out of scope this iteration — see the
+:mod:`causaltemp_xai.benchmark.generator` module docstring and the plan Backlog.
 """
 
 from __future__ import annotations
