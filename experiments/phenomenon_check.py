@@ -64,7 +64,7 @@ def run(config_name: str = "smoke", n_instances: int = 10) -> dict:
     )
     data = gen.generate()
     X, Y = data["X"], data["Y"]
-    graph, mech = data["graph"], data["mechanisms"]
+    graph, mech = data["graph"], data["mechanism"]
 
     clf, n_tr = _train_smoke_classifier(X, Y, cfg.k, seed=cfg.seed)
     X_train = X[:n_tr]

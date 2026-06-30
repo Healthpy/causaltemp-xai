@@ -11,6 +11,13 @@ Usage
 -----
     uv run python experiments/run_all.py --config smoke           # CI smoke
     uv run python experiments/run_all.py --config full --n-cf 100  # paper results
+    uv run python experiments/run_all.py --config smoke_nl        # NlinearSCM-T
+
+For nonlinear configs (``smoke_nl`` / ``full_nl``, ``mechanism_type='mlp'``) the
+run routes to a dedicated oracle-structural-CF path: no LSTM checkpoint and no
+real CF methods are needed (CF methods on the nonlinear SCM are the collaborator's
+track — see plan Backlog #2), and CF-faith is exercised via the Stage-4 oracle
+positive control. See ``run_nonlinear``.
 
 Outputs (under ``experiments/``):
     results.json            one summary record per method + attribution + shift-vr
@@ -34,6 +41,9 @@ from causaltemp_xai.attribution import (  # noqa: E402
     deletion_curve,
     insertion_curve,
     integrated_gradients,
+)
+from causaltemp_xai.benchmark.structural_cf import (  # noqa: E402
+    structural_counterfactual,
 )
 from causaltemp_xai.classifiers import LSTMClassifier  # noqa: E402
 from causaltemp_xai.config import get_config, shifted_config  # noqa: E402
@@ -71,7 +81,7 @@ def _generate(method, X, clf, graph, mech) -> np.ndarray:
     import inspect
 
     params = inspect.signature(method.generate_batch).parameters
-    if "graph" in params or "mechanisms" in params:
+    if "graph" in params or "mechanism" in params:
         cfs = method.generate_batch(X, clf, graph, mech)
     else:
         cfs = method.generate_batch(X, clf)
@@ -205,16 +215,212 @@ def load_or_make_shift_test(cfg, out_dir):
 
 
 # ---------------------------------------------------------------------------
+# NlinearSCM-T smoke path — oracle structural-CF as the in-house "method"
+# ---------------------------------------------------------------------------
+#
+# Real CF methods (Wachter/DiCE/CARLA) on the nonlinear SCM are **out of scope**
+# (the collaborator's CF-methods track — Backlog #2; they need a nonlinear torch
+# rollout + an LSTM retrained on nonlinear data). To still exercise the CF-faith
+# metric path end-to-end on a nonlinear dataset, we use the Stage-4 *oracle
+# structural counterfactual* as the in-house "method": a ground-truth CF that is
+# faithful by construction. Its two variants are mutually exclusive positive
+# controls — the noisy (Pearl) oracle scores ``pearl_hard=1`` and the noiseless
+# (skeleton) oracle scores ``rollout_hard=1`` — which doubles as a demonstration
+# of the rollout-vs-pearl contrast on nonlinear data, classifier-free.
+
+#: Deterministic intervention magnitude for the oracle CF (> derive tol).
+ORACLE_SHIFT = 1.5
+
+
+def build_oracle_cfs(X_sel, mechanism, noiseless, shift=ORACLE_SHIFT):
+    """Build a ``(N, T, k)`` batch of oracle structural counterfactuals.
+
+    For each instance ``i`` we apply the deterministic atomic intervention
+    ``do(x[t0, node] = x[t0, node] + shift)`` with ``t0 = T // 2`` and
+    ``node = i % k`` (cycled so the batch spans nodes), then roll the known SCM
+    forward via :func:`structural_counterfactual`. ``noiseless=False`` reuses the
+    abducted factual noise (Pearl-faithful); ``noiseless=True`` rolls the
+    deterministic skeleton (rollout-faithful).
+    """
+    X_sel = np.asarray(X_sel, dtype=float)
+    T = X_sel.shape[1]
+    k = mechanism.k
+    t0 = T // 2
+    cfs = []
+    for i, x in enumerate(X_sel):
+        node = i % k
+        value = float(x[t0, node]) + shift
+        cfs.append(
+            structural_counterfactual(
+                x, mechanism, t0, node, value, noiseless=noiseless
+            )
+        )
+    return np.asarray(cfs, dtype=np.float32)
+
+
+def _score_oracle_batch(X_sel, CFs, graph, mechanism, method_name):
+    """Classifier-free batch metrics for an oracle-CF method.
+
+    Mirrors :func:`causaltemp_xai.eval.evaluate_method` minus ``validity``/``ood``
+    (no classifier needed — CF-faith is classifier-agnostic, the whole point of
+    the oracle positive control). Returns the batch-mean record plus per-instance
+    rows for the CSV dump.
+    """
+    rollout = CFfaith(semantics="noiseless_rollout")
+    pearl = CFfaith(semantics="pearl_delta")
+    prox_l1, prox_l2, spars = [], [], []
+    r_h, r_s, p_h, p_s = [], [], [], []
+    rows = []
+    for i, (x, x_cf) in enumerate(zip(X_sel, CFs)):
+        t = derive_intervention_t(x, x_cf)
+        r = rollout.score(x, x_cf, t, graph, mechanism)
+        p = pearl.score(x, x_cf, t, graph, mechanism)
+        px1 = proximity(x, x_cf, norm="l1")
+        px2 = proximity(x, x_cf, norm="l2")
+        sp = sparsity(x, x_cf)
+        prox_l1.append(px1)
+        prox_l2.append(px2)
+        spars.append(sp)
+        r_h.append(r["hard"])
+        r_s.append(r["soft"])
+        p_h.append(p["hard"])
+        p_s.append(p["soft"])
+        rows.append(
+            {
+                "method": method_name,
+                "instance": int(i),
+                "validity": None,  # classifier-agnostic oracle run
+                "proximity_l1": px1,
+                "proximity_l2": px2,
+                "sparsity": sp,
+                "intervention_t": int(t),
+                "cf_faith_rollout_hard": r["hard"],
+                "cf_faith_rollout_soft": r["soft"],
+                "cf_faith_pearl_hard": p["hard"],
+                "cf_faith_pearl_soft": p["soft"],
+            }
+        )
+    sparsity_mean = float(np.mean(spars))
+    rec = {
+        "method": method_name,
+        "n": int(len(CFs)),
+        "validity": None,
+        "proximity_l1": float(np.mean(prox_l1)),
+        "proximity_l2": float(np.mean(prox_l2)),
+        "sparsity": sparsity_mean,
+        "frac_altered": float(1.0 - sparsity_mean),
+        "ood": None,
+        "cf_faith_rollout_hard": float(np.mean(r_h)),
+        "cf_faith_rollout_soft": float(np.mean(r_s)),
+        "cf_faith_pearl_hard": float(np.mean(p_h)),
+        "cf_faith_pearl_soft": float(np.mean(p_s)),
+    }
+    return rec, rows
+
+
+def _ensure_dataset(config_name, out_dir):
+    """Load the named dataset, generating + persisting it first if absent."""
+    cfg = get_config(config_name)
+    try:
+        return load_dataset(cfg.name, out_dir=out_dir)
+    except FileNotFoundError:
+        print(f"[run_all] dataset for '{cfg.name}' missing — generating …")
+        generate_and_save(cfg, out_dir=out_dir)
+        return load_dataset(cfg.name, out_dir=out_dir)
+
+
+def run_nonlinear(config_name, n_cf, out_dir):
+    """NlinearSCM-T smoke run: score CF-faith on oracle structural-CFs.
+
+    No LSTM checkpoint and no real CF methods are required (both out of scope —
+    see the section banner). Writes the same ``results.json`` / ``per_instance.csv``
+    artifacts as :func:`run`, with the ``methods`` block populated by the two
+    oracle-CF positive controls.
+    """
+    cfg = get_config(config_name)
+    data = _ensure_dataset(config_name, out_dir)
+    X_test = data["X_test"]
+    graph, mech = data["graph"], data["mechanism"]
+
+    n = min(n_cf, len(X_test))
+    X_sel = X_test[:n]
+    print(
+        f"[run_all] config={cfg.name} (nonlinear MLP) k={cfg.k} T={cfg.T} | "
+        f"scoring CF-faith on {len(X_sel)} oracle structural-CFs"
+    )
+
+    oracle_variants = [
+        ("OracleCF-Pearl", False),
+        ("OracleCF-Rollout", True),
+    ]
+    summary, all_rows = [], []
+    for name, noiseless in oracle_variants:
+        print(f"[run_all] building oracle CFs: {name} …")
+        cfs = build_oracle_cfs(X_sel, mech, noiseless=noiseless)
+        rec, rows = _score_oracle_batch(X_sel, cfs, graph, mech, name)
+        summary.append(rec)
+        all_rows.extend(rows)
+
+    results = {
+        "provenance": {
+            "config": cfg.as_dict(),
+            "seed": cfg.seed,
+            "n_cf": int(len(X_sel)),
+            "mechanism_type": cfg.mechanism_type,
+            "target_class": TARGET_CLASS,
+            "note": (
+                "NlinearSCM-T smoke run. Real CF methods (Wachter/DiCE/CARLA) on "
+                "the nonlinear SCM are out of scope (collaborator's CF-methods "
+                "track — see plan Backlog #2). CF-faith here is exercised via the "
+                "Stage-4 oracle structural-CF positive control: the Pearl variant "
+                "is pearl_hard=1 and the rollout variant is rollout_hard=1 by "
+                "construction. validity/ood are omitted (classifier-agnostic)."
+            ),
+        },
+        "methods": summary,
+    }
+
+    EXP_DIR.mkdir(parents=True, exist_ok=True)
+    results_path = EXP_DIR / "results.json"
+    with open(results_path, "w") as fh:
+        json.dump(results, fh, indent=2)
+
+    per_instance_path = EXP_DIR / "per_instance.csv"
+    _write_csv(per_instance_path, all_rows)
+
+    print("\n=== NlinearSCM-T oracle CF-faith (batch means) ===")
+    hdr = (
+        f"{'Method':<18}{'prox_l1':>9}{'spars':>7}"
+        f"{'roll_h':>8}{'roll_s':>8}{'pearl_h':>8}{'pearl_s':>8}"
+    )
+    print(hdr)
+    print("-" * len(hdr))
+    for r in summary:
+        print(
+            f"{r['method']:<18}{r['proximity_l1']:>9.3f}{r['sparsity']:>7.2f}"
+            f"{r['cf_faith_rollout_hard']:>8.2f}{r['cf_faith_rollout_soft']:>8.2f}"
+            f"{r['cf_faith_pearl_hard']:>8.2f}{r['cf_faith_pearl_soft']:>8.2f}"
+        )
+    print(f"\n[run_all] wrote {results_path}")
+    print(f"[run_all] wrote {per_instance_path}")
+    return results
+
+
+# ---------------------------------------------------------------------------
 # Main run
 # ---------------------------------------------------------------------------
 
 
 def run(config_name, n_cf, out_dir, use_dice_ml):
     cfg = get_config(config_name)
+    if cfg.mechanism_type != "linear":
+        # Nonlinear configs route to the oracle-CF smoke path (no checkpoint /
+        # no real CF methods — see run_nonlinear's banner).
+        return run_nonlinear(config_name, n_cf, out_dir)
     data = load_dataset(cfg.name, out_dir=out_dir)
     X_train = data["X_train"]
     X_test, Y_test = data["X_test"], data["Y_test"]
-    graph, mech = data["graph"], data["mechanisms"]
+    graph, mech = data["graph"], data["mechanism"]
 
     ckpt = Path(out_dir) / cfg.name / "lstm.pt"
     if not ckpt.exists():
@@ -337,7 +543,11 @@ def _print_table(summary, attribution, shift):
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description="CausalTemp-XAI end-to-end harness.")
-    parser.add_argument("--config", default="smoke", choices=["smoke", "full", "full_sparse"])
+    parser.add_argument(
+        "--config",
+        default="smoke",
+        choices=["smoke", "full", "full_sparse", "smoke_nl", "full_nl"],
+    )
     parser.add_argument(
         "--n-cf",
         type=int,
@@ -354,7 +564,7 @@ def main(argv=None):
 
     n_cf = args.n_cf
     if n_cf is None:
-        n_cf = 20 if args.config == "smoke" else 100
+        n_cf = 20 if args.config.startswith("smoke") else 100
 
     run(args.config, n_cf, args.out_dir, use_dice_ml=not args.no_dice_ml)
     return 0

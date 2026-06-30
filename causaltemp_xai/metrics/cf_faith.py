@@ -16,6 +16,10 @@ from typing import Optional
 
 import numpy as np
 
+# Single source of truth for the lag-window contract (see mechanisms module
+# docstring). Imported here so cf_faith and structural_cf cannot drift.
+from causaltemp_xai.benchmark.mechanisms import lag_window as _window
+
 
 class CFfaith:
     """Causal faithfulness scorer for temporal counterfactuals.
@@ -68,12 +72,19 @@ class CFfaith:
               ``x_cf[t0:]`` *is* the deterministic, noiseless VAR rollout of
               itself. Rewards trajectories that are pure SCM continuations
               (off the noisy data manifold).
-            * ``"pearl_delta"`` — a CF is faithful iff the difference
-              ``delta = x_cf - x_orig`` follows the homogeneous recursion
-              ``delta[t] = sum_l A_l @ delta[t-l]`` for ``t > t0`` (the original
-              innovations cancel via abduction). Rewards CFs that differ from the
-              factual *only* by the propagated intervention (on-manifold; the
-              textbook Pearl counterfactual).
+            * ``"pearl_delta"`` — a CF is faithful iff it equals the
+              **abduction-action-prediction** counterfactual: abduct the
+              factual exogenous noise ``eps[t] = x_orig[t] -
+              mechanism.forward_numpy(window)`` (exact under additive noise),
+              hold the pre-intervention prefix + intervened step, then roll
+              forward reusing ``eps`` (``x_pred[t] = mechanism.forward_numpy(
+              window) + eps[t]``). Rewards CFs that differ from the factual
+              *only* by the propagated intervention (on-manifold; the textbook
+              Pearl counterfactual). For a **linear** mechanism this reduces
+              exactly to the homogeneous recursion ``delta[t] = sum_l A_l @
+              delta[t-l]`` (the factual innovations cancel), so the v0.1 linear
+              numbers are unchanged; for a nonlinear mechanism it is the correct
+              generalization (linear superposition no longer holds).
 
             The two reward structurally different counterfactuals — a single CF
             cannot score ``hard=1`` under both. See the project plan's index
@@ -93,7 +104,7 @@ class CFfaith:
         x_cf: np.ndarray,
         intervention_t: int,
         graph: np.ndarray,
-        mechanisms: list[np.ndarray],
+        mechanism,
     ) -> dict[str, float]:
         """Compute hard and soft CF-faithfulness scores.
 
@@ -110,9 +121,10 @@ class CFfaith:
             Binary adjacency tensor of shape ``(k, k, L)`` from the SCM.
             Not used directly in computation but kept for API completeness /
             downstream analysis.
-        mechanisms:
-            List of *L* coefficient matrices ``A_l``, each of shape ``(k, k)``.
-            ``x_t = sum_l A_l @ x_{t-l-1} + noise``.
+        mechanism:
+            A :class:`~causaltemp_xai.benchmark.mechanisms.Mechanism` producing
+            the deterministic next-step mean ``x_t = mechanism.forward_numpy(window)``
+            (for the linear case ``x_t = sum_l A_l @ x_{t-l-1}``).
 
         Returns
         -------
@@ -126,7 +138,7 @@ class CFfaith:
         x_orig = np.asarray(x_original, dtype=float)   # (T, k)
         x_cf_arr = np.asarray(x_cf, dtype=float)        # (T, k)
         T, k = x_orig.shape
-        L = len(mechanisms)
+        L = mechanism.L
 
         # ------------------------------------------------------------------
         # (i) Retroactive change check
@@ -140,32 +152,34 @@ class CFfaith:
         # ------------------------------------------------------------------
         # (ii) SCM forward simulation from intervention_t
         # ------------------------------------------------------------------
-        # The forward check homogeneously rolls a *target* trajectory forward
-        # via the mechanisms and measures how far the proposed values deviate.
-        # The only difference between the two semantics is which trajectory is
-        # rolled/compared:
-        #   * noiseless_rollout: the CF itself (faithful => CF is a noiseless
-        #     SCM continuation of itself).
-        #   * pearl_delta: the difference delta = x_cf - x_orig (faithful =>
-        #     delta follows the homogeneous recursion; original noise cancels).
+        # Each semantics builds a *reference* trajectory by rolling the
+        # mechanism forward from intervention_t and measures how far the
+        # proposed CF deviates from it. Both feed the mechanism exactly L rows
+        # (oldest→newest), zero-padding rows that reach before t=0 — replicating
+        # the original ``if lag_t >= 0`` guard (a zero row contributes nothing).
         if self.semantics == "noiseless_rollout":
+            # Faithful iff x_cf[t0:] *is* the deterministic, noiseless rollout of
+            # itself: roll x_cf forward with no noise and compare to x_cf.
             target = x_cf_arr
-        else:  # "pearl_delta"
-            target = x_cf_arr - x_orig
+            simulated = target.copy()  # values at <= intervention_t held fixed
+            for t in range(intervention_t + 1, T):
+                window = _window(simulated, t, L, k)
+                simulated[t] = mechanism.forward_numpy(window)
+        else:  # "pearl_delta": abduction-action-prediction (Pearl's 3 steps)
+            # 1. Abduct the factual exogenous noise (exact under additive noise).
+            # 2. Action: hold x_cf[:t0+1] (prefix + intervened step).
+            # 3. Predict: roll forward reusing the abducted noise.
+            # For linear f this reduces to delta[t] = sum_l A_l @ delta[t-l]
+            # (factual noise cancels); for nonlinear f it is the correct
+            # generalization. Faithful iff x_cf[t0:] matches this prediction.
+            target = x_cf_arr
+            simulated = x_cf_arr.copy()  # x_pred; values at <= t0 held fixed
+            for t in range(intervention_t + 1, T):
+                eps_t = x_orig[t] - mechanism.forward_numpy(_window(x_orig, t, L, k))
+                window = _window(simulated, t, L, k)
+                simulated[t] = mechanism.forward_numpy(window) + eps_t
 
-        simulated = target.copy()  # values at <= intervention_t are held fixed
-
-        # Re-simulate time steps *after* intervention_t using the mechanisms
-        for t in range(intervention_t + 1, T):
-            # Predict x_t from the history of simulated (post-intervention) values
-            x_t_pred = np.zeros(k)
-            for l, A in enumerate(mechanisms):
-                lag_t = t - l - 1
-                if lag_t >= 0:
-                    x_t_pred += A @ simulated[lag_t]
-            simulated[t] = x_t_pred
-
-        # L1 residual between the forward-simulated trajectory and the target
+        # L1 residual between the reference trajectory and the proposed CF.
         residual_region = target[intervention_t:]
         simulated_region = simulated[intervention_t:]
         l1_residual = float(np.abs(residual_region - simulated_region).mean())

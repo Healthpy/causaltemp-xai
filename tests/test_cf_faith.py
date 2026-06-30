@@ -10,6 +10,9 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
+from causaltemp_xai.benchmark.generator import NlinearSCMT
+from causaltemp_xai.benchmark.mechanisms import LinearMechanism
+from causaltemp_xai.benchmark.structural_cf import structural_counterfactual
 from causaltemp_xai.metrics.cf_faith import CFfaith
 
 
@@ -19,25 +22,25 @@ from causaltemp_xai.metrics.cf_faith import CFfaith
 
 
 def _make_simple_scm(k: int = 3, L: int = 1, T: int = 20, seed: int = 0):
-    """Return (x_original, graph, mechanisms) for a simple VAR(L) system."""
+    """Return (x_original, graph, mechanism) for a simple VAR(L) system."""
     rng = np.random.default_rng(seed)
     # Random stable coefficient matrices
-    mechanisms = []
+    A_list = []
     for _ in range(L):
         A = rng.uniform(-0.3, 0.3, (k, k))
-        mechanisms.append(A)
+        A_list.append(A)
 
-    graph = np.stack([(A != 0).astype(float) for A in mechanisms], axis=-1)  # (k, k, L)
+    graph = np.stack([(A != 0).astype(float) for A in A_list], axis=-1)  # (k, k, L)
 
     # Simulate T time steps
     x = np.zeros((T, k))
     noise = rng.laplace(0, 0.01, (T, k))
     for t in range(L, T):
-        for lag, A in enumerate(mechanisms, start=1):
+        for lag, A in enumerate(A_list, start=1):
             x[t] += A @ x[t - lag]
         x[t] += noise[t]
 
-    return x, graph, mechanisms
+    return x, graph, LinearMechanism(A_list)
 
 
 # ---------------------------------------------------------------------------
@@ -49,30 +52,30 @@ class TestCFFaithCompliant:
     def test_hard_score_is_one(self):
         """CF exactly obeying the SCM forward from intervention_t → hard=1."""
         k, L, T = 4, 1, 30
-        x_orig, graph, mechanisms = _make_simple_scm(k=k, L=L, T=T, seed=1)
+        x_orig, graph, mechanism = _make_simple_scm(k=k, L=L, T=T, seed=1)
         intervention_t = 10
         rng = np.random.default_rng(42)
 
         # Build a CF: identical up to intervention_t, then perturb at intervention_t
-        # and propagate forward strictly via the SCM mechanisms.
+        # and propagate forward strictly via the SCM mechanism.
         x_cf = x_orig.copy()
         x_cf[intervention_t] += rng.uniform(-0.5, 0.5, k)  # intervention
 
-        # Propagate exactly via mechanisms (no noise)
+        # Propagate exactly via mechanism (no noise)
         for t in range(intervention_t + 1, T):
             x_cf[t] = np.zeros(k)
-            for lag, A in enumerate(mechanisms, start=1):
+            for lag, A in enumerate(mechanism.A_list, start=1):
                 if t - lag >= 0:
                     x_cf[t] += A @ x_cf[t - lag]
 
         scorer = CFfaith(tol=1e-3)
-        result = scorer.score(x_orig, x_cf, intervention_t, graph, mechanisms)
+        result = scorer.score(x_orig, x_cf, intervention_t, graph, mechanism)
         assert result["hard"] == 1.0, f"Expected hard=1.0, got {result['hard']}"
 
     def test_soft_score_near_one(self):
         """SCM-compliant CF → soft score should be close to 1.0."""
         k, L, T = 3, 1, 25
-        x_orig, graph, mechanisms = _make_simple_scm(k=k, L=L, T=T, seed=2)
+        x_orig, graph, mechanism = _make_simple_scm(k=k, L=L, T=T, seed=2)
         intervention_t = 8
         rng = np.random.default_rng(7)
 
@@ -80,12 +83,12 @@ class TestCFFaithCompliant:
         x_cf[intervention_t] += rng.uniform(-0.3, 0.3, k)
         for t in range(intervention_t + 1, T):
             x_cf[t] = np.zeros(k)
-            for lag, A in enumerate(mechanisms, start=1):
+            for lag, A in enumerate(mechanism.A_list, start=1):
                 if t - lag >= 0:
                     x_cf[t] += A @ x_cf[t - lag]
 
         scorer = CFfaith(tol=1e-3, scale=1.0)
-        result = scorer.score(x_orig, x_cf, intervention_t, graph, mechanisms)
+        result = scorer.score(x_orig, x_cf, intervention_t, graph, mechanism)
         assert result["soft"] > 0.9, f"Expected soft>0.9, got {result['soft']}"
 
 
@@ -98,7 +101,7 @@ class TestCFFaithRetroactive:
     def test_hard_score_is_zero(self):
         """CF with a retroactive change (before intervention_t) → hard=0.0."""
         k, L, T = 4, 1, 30
-        x_orig, graph, mechanisms = _make_simple_scm(k=k, L=L, T=T, seed=3)
+        x_orig, graph, mechanism = _make_simple_scm(k=k, L=L, T=T, seed=3)
         intervention_t = 15
 
         x_cf = x_orig.copy()
@@ -106,20 +109,20 @@ class TestCFFaithRetroactive:
         x_cf[5] += 999.0  # blatant change before intervention
 
         scorer = CFfaith(tol=1e-3)
-        result = scorer.score(x_orig, x_cf, intervention_t, graph, mechanisms)
+        result = scorer.score(x_orig, x_cf, intervention_t, graph, mechanism)
         assert result["hard"] == 0.0, f"Expected hard=0.0, got {result['hard']}"
 
     def test_soft_score_is_zero_on_retroactive(self):
         """Retroactive CF → soft=0.0 (early-return path)."""
         k, L, T = 3, 1, 20
-        x_orig, graph, mechanisms = _make_simple_scm(k=k, L=L, T=T, seed=4)
+        x_orig, graph, mechanism = _make_simple_scm(k=k, L=L, T=T, seed=4)
         intervention_t = 10
 
         x_cf = x_orig.copy()
         x_cf[3, 0] += 5.0  # retroactive change
 
         scorer = CFfaith(tol=1e-4)
-        result = scorer.score(x_orig, x_cf, intervention_t, graph, mechanisms)
+        result = scorer.score(x_orig, x_cf, intervention_t, graph, mechanism)
         assert result["soft"] == 0.0, f"Expected soft=0.0, got {result['soft']}"
 
     def test_identical_cf_hard_is_zero(self):
@@ -136,12 +139,12 @@ class TestCFFaithRetroactive:
         real method; see index "Decisions" (2026-05-30, CF-faith semantics).
         """
         k, L, T = 3, 1, 20
-        x_orig, graph, mechanisms = _make_simple_scm(k=k, L=L, T=T, seed=5)
+        x_orig, graph, mechanism = _make_simple_scm(k=k, L=L, T=T, seed=5)
         intervention_t = 5
         x_cf = x_orig.copy()
 
         scorer = CFfaith(tol=1e-3)
-        result = scorer.score(x_orig, x_cf, intervention_t, graph, mechanisms)
+        result = scorer.score(x_orig, x_cf, intervention_t, graph, mechanism)
         assert result["hard"] == 0.0
 
 
@@ -150,13 +153,13 @@ class TestCFFaithRetroactive:
 # ---------------------------------------------------------------------------
 
 
-def _abduct(x_orig, mechanisms):
+def _abduct(x_orig, mechanism):
     """Recover the innovation sequence e[t] = x[t] - sum_l A_l @ x[t-l-1]."""
     T, k = x_orig.shape
     e = np.zeros((T, k))
     for t in range(T):
         pred = np.zeros(k)
-        for l, A in enumerate(mechanisms):
+        for l, A in enumerate(mechanism.A_list):
             lag_t = t - l - 1
             if lag_t >= 0:
                 pred += A @ x_orig[lag_t]
@@ -164,14 +167,14 @@ def _abduct(x_orig, mechanisms):
     return e
 
 
-def _noiseless_rollout_cf(x_orig, mechanisms, t0, pert):
+def _noiseless_rollout_cf(x_orig, mechanism, t0, pert):
     """CF that is a *pure* noiseless SCM rollout from t0 (off-manifold)."""
     T, k = x_orig.shape
     x_cf = x_orig.copy()
     x_cf[t0] = x_orig[t0] + pert
     for t in range(t0 + 1, T):
         nxt = np.zeros(k)
-        for l, A in enumerate(mechanisms):
+        for l, A in enumerate(mechanism.A_list):
             lag_t = t - l - 1
             if lag_t >= 0:
                 nxt += A @ x_cf[lag_t]
@@ -179,15 +182,15 @@ def _noiseless_rollout_cf(x_orig, mechanisms, t0, pert):
     return x_cf
 
 
-def _noise_reinjected_cf(x_orig, mechanisms, t0, pert):
+def _noise_reinjected_cf(x_orig, mechanism, t0, pert):
     """Pearl CF: intervene at t0, propagate while re-injecting original noise."""
     T, k = x_orig.shape
-    e = _abduct(x_orig, mechanisms)
+    e = _abduct(x_orig, mechanism)
     x_cf = x_orig.copy()
     x_cf[t0] = x_orig[t0] + pert
     for t in range(t0 + 1, T):
         nxt = e[t].copy()
-        for l, A in enumerate(mechanisms):
+        for l, A in enumerate(mechanism.A_list):
             lag_t = t - l - 1
             if lag_t >= 0:
                 nxt += A @ x_cf[lag_t]
@@ -204,11 +207,11 @@ class TestCFFaithPearl:
     def test_identical_cf_pearl_hard_is_one(self):
         """Identical CF → delta=0 → faithful under Pearl semantics (hard=1)."""
         k, L, T = 3, 1, 20
-        x_orig, graph, mechanisms = _make_simple_scm(k=k, L=L, T=T, seed=5)
+        x_orig, graph, mechanism = _make_simple_scm(k=k, L=L, T=T, seed=5)
         x_cf = x_orig.copy()
 
         scorer = CFfaith(tol=1e-3, semantics="pearl_delta")
-        result = scorer.score(x_orig, x_cf, 5, graph, mechanisms)
+        result = scorer.score(x_orig, x_cf, 5, graph, mechanism)
         assert result["hard"] == 1.0
 
     def test_noise_reinjected_cf_diverges(self):
@@ -219,16 +222,16 @@ class TestCFFaithPearl:
         manifold (Pearl-faithful) but is not a pure noiseless rollout.
         """
         k, L, T = 3, 1, 25
-        x_orig, graph, mechanisms = _make_simple_scm(k=k, L=L, T=T, seed=6)
+        x_orig, graph, mechanism = _make_simple_scm(k=k, L=L, T=T, seed=6)
         t0 = 8
         rng = np.random.default_rng(11)
-        x_cf = _noise_reinjected_cf(x_orig, mechanisms, t0, rng.uniform(-0.4, 0.4, k))
+        x_cf = _noise_reinjected_cf(x_orig, mechanism, t0, rng.uniform(-0.4, 0.4, k))
 
         pearl = CFfaith(tol=1e-3, semantics="pearl_delta").score(
-            x_orig, x_cf, t0, graph, mechanisms
+            x_orig, x_cf, t0, graph, mechanism
         )
         rollout = CFfaith(tol=1e-3, semantics="noiseless_rollout").score(
-            x_orig, x_cf, t0, graph, mechanisms
+            x_orig, x_cf, t0, graph, mechanism
         )
         assert pearl["hard"] == 1.0, f"pearl should accept, got {pearl}"
         assert rollout["hard"] == 0.0, f"rollout should reject, got {rollout}"
@@ -236,16 +239,16 @@ class TestCFFaithPearl:
     def test_noiseless_built_cf_diverges(self):
         """A pure noiseless-rollout CF: rollout hard=1, but pearl hard=0 (mirror)."""
         k, L, T = 3, 1, 25
-        x_orig, graph, mechanisms = _make_simple_scm(k=k, L=L, T=T, seed=7)
+        x_orig, graph, mechanism = _make_simple_scm(k=k, L=L, T=T, seed=7)
         t0 = 8
         rng = np.random.default_rng(12)
-        x_cf = _noiseless_rollout_cf(x_orig, mechanisms, t0, rng.uniform(-0.4, 0.4, k))
+        x_cf = _noiseless_rollout_cf(x_orig, mechanism, t0, rng.uniform(-0.4, 0.4, k))
 
         rollout = CFfaith(tol=1e-3, semantics="noiseless_rollout").score(
-            x_orig, x_cf, t0, graph, mechanisms
+            x_orig, x_cf, t0, graph, mechanism
         )
         pearl = CFfaith(tol=1e-3, semantics="pearl_delta").score(
-            x_orig, x_cf, t0, graph, mechanisms
+            x_orig, x_cf, t0, graph, mechanism
         )
         assert rollout["hard"] == 1.0, f"rollout should accept, got {rollout}"
         assert pearl["hard"] == 0.0, f"pearl should reject, got {pearl}"
@@ -253,14 +256,86 @@ class TestCFFaithPearl:
     def test_retroactive_zero_in_both_modes(self):
         """A retroactive change is unfaithful under both semantics."""
         k, L, T = 3, 1, 20
-        x_orig, graph, mechanisms = _make_simple_scm(k=k, L=L, T=T, seed=8)
+        x_orig, graph, mechanism = _make_simple_scm(k=k, L=L, T=T, seed=8)
         t0 = 10
         x_cf = x_orig.copy()
         x_cf[3, 0] += 5.0  # change before t0
 
         for sem in CFfaith.SEMANTICS:
             result = CFfaith(tol=1e-3, semantics=sem).score(
-                x_orig, x_cf, t0, graph, mechanisms
+                x_orig, x_cf, t0, graph, mechanism
             )
             assert result["hard"] == 0.0, f"{sem} should reject retroactive, got {result}"
+
+
+# ---------------------------------------------------------------------------
+# Nonlinear mechanism (MLPMechanism via NlinearSCMT) — mirrors the linear
+# Pearl/compliant structure to confirm the abduction reformulation generalizes.
+# The frozen *linear* numbers are pinned bit-for-bit by tests/test_golden_linear.py;
+# these cases assert the same qualitative behaviour holds on a nonlinear SCM.
+# ---------------------------------------------------------------------------
+
+
+def _make_nlinear_scm(k: int = 3, L: int = 2, T: int = 25, seed: int = 5):
+    """Return (x_original, graph, mechanism) from a SMOKE-scale NlinearSCMT."""
+    gen = NlinearSCMT(k=k, L=L, T=T, N=4, seed=seed, hidden=8)
+    data = gen.generate(burn_in=20)
+    return data["X"][0], data["graph"], data["mechanism"]
+
+
+class TestCFFaithNonlinear:
+    def test_pearl_oracle_faithful_rollout_unfaithful(self):
+        """Nonlinear Pearl CF: pearl hard=1, rollout hard=0 (abduction works)."""
+        x_orig, graph, mechanism = _make_nlinear_scm(seed=5)
+        t0, node = 7, 0
+        value = x_orig[t0, node] + 0.4
+        x_cf = structural_counterfactual(x_orig, mechanism, t0, node, value)
+
+        pearl = CFfaith(tol=1e-4, semantics="pearl_delta").score(
+            x_orig, x_cf, t0, graph, mechanism
+        )
+        rollout = CFfaith(tol=1e-4, semantics="noiseless_rollout").score(
+            x_orig, x_cf, t0, graph, mechanism
+        )
+        assert pearl["hard"] == 1.0, f"pearl should accept, got {pearl}"
+        assert rollout["hard"] == 0.0, f"rollout should reject, got {rollout}"
+
+    def test_noiseless_oracle_rollout_faithful_pearl_unfaithful(self):
+        """Nonlinear noiseless CF: rollout hard=1, pearl hard=0 (mirror)."""
+        x_orig, graph, mechanism = _make_nlinear_scm(seed=6)
+        t0, node = 7, 1
+        value = x_orig[t0, node] + 0.4
+        x_cf = structural_counterfactual(
+            x_orig, mechanism, t0, node, value, noiseless=True
+        )
+
+        rollout = CFfaith(tol=1e-4, semantics="noiseless_rollout").score(
+            x_orig, x_cf, t0, graph, mechanism
+        )
+        pearl = CFfaith(tol=1e-4, semantics="pearl_delta").score(
+            x_orig, x_cf, t0, graph, mechanism
+        )
+        assert rollout["hard"] == 1.0, f"rollout should accept, got {rollout}"
+        assert pearl["hard"] == 0.0, f"pearl should reject, got {pearl}"
+
+    def test_identical_cf_pearl_hard_is_one(self):
+        """Identical CF on nonlinear SCM → pearl hard=1 (delta=0 generalizes)."""
+        x_orig, graph, mechanism = _make_nlinear_scm(seed=8)
+        x_cf = x_orig.copy()
+        result = CFfaith(tol=1e-4, semantics="pearl_delta").score(
+            x_orig, x_cf, 7, graph, mechanism
+        )
+        assert result["hard"] == 1.0
+
+    def test_retroactive_zero_in_both_modes(self):
+        """Retroactive change on nonlinear SCM is unfaithful under both semantics."""
+        x_orig, graph, mechanism = _make_nlinear_scm(seed=9)
+        t0 = 8
+        x_cf = x_orig.copy()
+        x_cf[2, 0] += 5.0  # change before t0
+        for sem in CFfaith.SEMANTICS:
+            r = CFfaith(tol=1e-4, semantics=sem).score(
+                x_orig, x_cf, t0, graph, mechanism
+            )
+            assert r["hard"] == 0.0, f"{sem} should reject retroactive, got {r}"
 

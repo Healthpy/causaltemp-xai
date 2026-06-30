@@ -38,7 +38,7 @@ def evaluate_method(
     CFs: np.ndarray,
     X_train: np.ndarray,
     graph: np.ndarray,
-    mechanisms: list,
+    mechanism,
     target_class: int = 1,
 ) -> dict:
     """Compute the batch-averaged metric suite for one CF method.
@@ -56,8 +56,9 @@ def evaluate_method(
         Training instances ``(M, T, k)`` used to fit the OOD detector.
     graph:
         SCM adjacency ``(k, k, L)``.
-    mechanisms:
-        List of ``L`` VAR coefficient matrices ``A_l``, each ``(k, k)``.
+    mechanism:
+        A :class:`~causaltemp_xai.benchmark.mechanisms.Mechanism` (the SCM
+        transition), passed through to CF-faith.
     target_class:
         Desired output class for validity.
 
@@ -93,8 +94,8 @@ def evaluate_method(
         spars.append(sparsity(x, x_cf))
 
         t = derive_intervention_t(x, x_cf)
-        r = rollout.score(x, x_cf, t, graph, mechanisms)
-        p = pearl.score(x, x_cf, t, graph, mechanisms)
+        r = rollout.score(x, x_cf, t, graph, mechanism)
+        p = pearl.score(x, x_cf, t, graph, mechanism)
         r_hard.append(r["hard"])
         r_soft.append(r["soft"])
         p_hard.append(p["hard"])
@@ -118,15 +119,15 @@ def evaluate_method(
     }
 
 
-def _generate_batch(method, X, model, graph, mechanisms):
+def _generate_batch(method, X, model, graph, mechanism):
     """Call ``method.generate_batch`` with the right signature.
 
-    CARLA-style recourse needs ``graph``/``mechanisms``; Wachter/DiCE do not.
+    CARLA-style recourse needs ``graph``/``mechanism``; Wachter/DiCE do not.
     We inspect the signature rather than special-casing class names.
     """
     params = inspect.signature(method.generate_batch).parameters
-    if "graph" in params or "mechanisms" in params:
-        return method.generate_batch(X, model, graph, mechanisms)
+    if "graph" in params or "mechanism" in params:
+        return method.generate_batch(X, model, graph, mechanism)
     return method.generate_batch(X, model)
 
 
@@ -136,7 +137,7 @@ def shift_vr(
     X_base_test: np.ndarray,
     X_shift_test: np.ndarray,
     graph: np.ndarray,
-    mechanisms: list,
+    mechanism,
     target_class: int = 1,
 ) -> dict:
     """Shift-VR-lite validity-retention metric (Axis D).
@@ -156,10 +157,10 @@ def shift_vr(
         The frozen base classifier (exposing ``predict`` / ``torch_logits``).
     methods:
         Mapping ``{name: cf_method}``; each value exposes ``generate_batch``
-        (Wachter/DiCE: ``(X, model)``; CARLA: ``(X, model, graph, mechanisms)``).
+        (Wachter/DiCE: ``(X, model)``; CARLA: ``(X, model, graph, mechanism)``).
     X_base_test, X_shift_test:
         Test inputs ``(N, T, k)`` from the base and shifted environments.
-    graph, mechanisms:
+    graph, mechanism:
         The (shared) SCM structure, passed to causal methods.
     target_class:
         Desired output class for validity.
@@ -173,8 +174,8 @@ def shift_vr(
     """
     results: dict = {}
     for name, method in methods.items():
-        cf_base = _generate_batch(method, X_base_test, model, graph, mechanisms)
-        cf_shift = _generate_batch(method, X_shift_test, model, graph, mechanisms)
+        cf_base = _generate_batch(method, X_base_test, model, graph, mechanism)
+        cf_shift = _generate_batch(method, X_shift_test, model, graph, mechanism)
         v_base = validity(cf_base, model, target_class)
         v_shift = validity(cf_shift, model, target_class)
         ratio = v_shift / v_base if v_base > 0 else float("nan")

@@ -81,15 +81,16 @@ class CARLARecourse:
     # ------------------------------------------------------------------
 
     @staticmethod
-    def _rollout(x_t: torch.Tensor, t0: int, x_t0: torch.Tensor, A_list) -> torch.Tensor:
+    def _rollout(x_t: torch.Tensor, t0: int, x_t0: torch.Tensor, mechanism) -> torch.Tensor:
         """Build the CF trajectory: original up to ``t0``, free values at ``t0``,
-        noiseless VAR rollout after ``t0`` (differentiable w.r.t. ``x_t0``).
+        noiseless mechanism rollout after ``t0`` (differentiable w.r.t. ``x_t0``).
 
-        ``x_cf[t] = sum_l A_l @ x_cf[t-l-1]`` for ``t > t0`` (per-sample ``A @ x``,
-        matching ``cf_faith.py``). Never re-injects noise → the CF *is* its own
-        noiseless rollout, so CFfaith(noiseless_rollout).hard == 1 by construction.
+        ``x_cf[t] = mechanism.forward_torch(window)`` for ``t > t0`` (matching
+        ``cf_faith.py``). Never re-injects noise → the CF *is* its own noiseless
+        rollout, so CFfaith(noiseless_rollout).hard == 1 by construction.
         """
         T = x_t.shape[0]
+        L = mechanism.L
         rows: list[torch.Tensor] = []
         for t in range(T):
             if t < t0:
@@ -97,12 +98,14 @@ class CARLARecourse:
             elif t == t0:
                 rows.append(x_t0)            # free / intervened values
             else:
-                acc = torch.zeros_like(x_t0)
-                for l, A in enumerate(A_list):
-                    lag = t - l - 1
-                    if lag >= 0:
-                        acc = acc + A @ rows[lag]
-                rows.append(acc)
+                # Feed exactly L rows (oldest→newest), zero-padding rows that
+                # reach before t=0 (replicates the original ``if lag >= 0`` guard).
+                window_rows = []
+                for j in range(L):
+                    src = t - L + j
+                    window_rows.append(rows[src] if src >= 0 else torch.zeros_like(x_t0))
+                window = torch.stack(window_rows, dim=0)  # (L, k)
+                rows.append(mechanism.forward_torch(window))
         return torch.stack(rows, dim=0)      # (T, k)
 
     def generate(
@@ -110,7 +113,7 @@ class CARLARecourse:
         x: np.ndarray,
         model,
         graph: np.ndarray,
-        mechanisms: list,
+        mechanism,
     ) -> np.ndarray:
         """Generate a causally-faithful recourse for instance *x*.
 
@@ -122,8 +125,8 @@ class CARLARecourse:
             Differentiable classifier exposing ``torch_logits``.
         graph : ndarray ``(k, k, L)``
             SCM adjacency (carried for API symmetry; not used directly here).
-        mechanisms : list of ``(k, k)`` arrays
-            VAR coefficient matrices ``A_l``.
+        mechanism : Mechanism
+            Transition mechanism producing the deterministic next-step mean.
 
         Returns
         -------
@@ -141,7 +144,6 @@ class CARLARecourse:
         x_arr = np.asarray(x, dtype=np.float32)
         T, k = x_arr.shape
         x_t = torch.as_tensor(x_arr)
-        A_list = [torch.as_tensor(np.asarray(A, dtype=np.float32)) for A in mechanisms]
         target = torch.tensor([self.target_class], dtype=torch.long)
 
         if self.actionable_mask is None:
@@ -162,7 +164,7 @@ class CARLARecourse:
             for _step in range(self.n_steps):
                 optimiser.zero_grad()
                 x_t0 = x_orig_t0 + mask * delta
-                x_cf = self._rollout(x_t, t0, x_t0, A_list)
+                x_cf = self._rollout(x_t, t0, x_t0, mechanism)
                 logits = model.torch_logits(x_cf)
                 pred_loss = F.cross_entropy(logits, target)
                 prox = ((mask * delta) ** 2).sum()
@@ -172,7 +174,7 @@ class CARLARecourse:
 
             with torch.no_grad():
                 x_t0 = x_orig_t0 + mask * delta
-                x_cf = self._rollout(x_t, t0, x_t0, A_list)
+                x_cf = self._rollout(x_t, t0, x_t0, mechanism)
                 logits = model.torch_logits(x_cf)
                 flipped = int(logits.argmax(dim=1).item()) == self.target_class
                 prox_val = float(((mask * delta) ** 2).sum().item())
@@ -186,10 +188,10 @@ class CARLARecourse:
         return best[2]
 
     def generate_batch(
-        self, X: np.ndarray, model, graph: np.ndarray, mechanisms: list
+        self, X: np.ndarray, model, graph: np.ndarray, mechanism
     ) -> np.ndarray:
         """Generate one CF per instance in ``X`` of shape ``(N, T, k)``."""
         X = np.asarray(X, dtype=np.float32)
         return np.stack(
-            [self.generate(x, model, graph, mechanisms) for x in X], axis=0
+            [self.generate(x, model, graph, mechanism) for x in X], axis=0
         )
