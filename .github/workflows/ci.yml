@@ -24,12 +24,27 @@ jobs:
       - name: Install dependencies
         run: uv sync --extra dev --python 3.11
 
+      # The committed uv.lock pins torch to a CUDA build (from a private index),
+      # whose libtorch_cuda.so fails to load on this CPU-only runner
+      # (undefined symbol: ncclCommResume), breaking `import torch` and every test
+      # at collection. Reinstall the CPU torch wheel from the public PyTorch index
+      # over the locked CUDA one (UV_TORCH_BACKEND is ignored once the lock fixes
+      # the source). See https://docs.astral.sh/uv/guides/integration/pytorch/
+      - name: Use CPU torch (runner is CPU-only)
+        run: >-
+          uv pip install torch
+          --index-url https://download.pytorch.org/whl/cpu
+          --reinstall-package torch
+
+      # --no-sync: do NOT re-sync against the lockfile here — that would revert
+      # the CPU torch installed above back to the locked CUDA build. The env was
+      # already synced in "Install dependencies".
       - name: Run tests
-        run: uv run --python 3.11 pytest tests/ -q
+        run: uv run --no-sync --python 3.11 pytest tests/ -q
 
       - name: Smoke harness (end-to-end pipeline)
         run: |
-          uv run --python 3.11 python -m causaltemp_xai.data_io --config smoke
-          uv run --python 3.11 python -m causaltemp_xai.classifiers.tcn --config smoke --train
-          uv run --python 3.11 python experiments/run_all.py --config smoke --n-cf 10 --no-dice-ml
-          uv run --python 3.11 python experiments/figures.py --results experiments/results.json
+          uv run --no-sync --python 3.11 python -m causaltemp_xai.data_io --config smoke
+          uv run --no-sync --python 3.11 python -m causaltemp_xai.classifiers.lstm --config smoke --train
+          uv run --no-sync --python 3.11 python experiments/run_all.py --config smoke --n-cf 10 --no-dice-ml
+          uv run --no-sync --python 3.11 python experiments/figures.py --results experiments/results.json
