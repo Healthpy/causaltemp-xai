@@ -1,0 +1,23 @@
+{
+  "n_regimes": 3,
+  "class_balance": 0.48,
+  "X_shape": [
+    700,
+    50,
+    6
+  ],
+  "meta": {
+    "benchmark": "NlinearSCM-T-Regime",
+    "n_regimes": 3,
+    "transition_prob": 0.05,
+    "min_regime_len": 10,
+    "n_channels": 6,
+    "T": 50,
+    "N": 1000,
+    "noise_dist": "laplace",
+    "causal_channel": 5,
+    "label_threshold": -0.6916700030998412,
+    "class_balance": 0.488,
+    "seed": 42
+  }
+}

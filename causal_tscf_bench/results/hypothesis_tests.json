@@ -1,0 +1,53 @@
+{
+  "H1": {
+    "statistic": 34.0,
+    "p_value": 0.01171875,
+    "n_pairs": 8,
+    "median_diff": 4.772751591884589,
+    "H1_supported": true,
+    "BH_rejected": true
+  },
+  "H2": {
+    "statistic": 0.0,
+    "p_value": 1.0,
+    "n_pairs": 12,
+    "median_diff": -0.23833333333333334,
+    "H2_supported": false,
+    "BH_rejected": false
+  },
+  "H3": {
+    "statistic": 4.0,
+    "p_value": 0.375,
+    "n_pairs": 3,
+    "median_diff": 0.03225380501453837,
+    "H3_supported": false,
+    "BH_rejected": false
+  },
+  "H4": {
+    "skipped": true,
+    "reason": "NlinearSCMT_Nonmonotonic results not found"
+  },
+  "H5": {
+    "laplace_balance": 0.5028571428571429,
+    "gaussian_balance": 0.47285714285714286,
+    "diff_laplace_minus_gaussian": 0.030000000000000027,
+    "H5_supported": true,
+    "note": "single-seed comparison \u2014 not a significance test; H5 is a structural claim"
+  },
+  "H6": {
+    "fraction_in_range": 0.6,
+    "n_trials": 10,
+    "n_balanced": 6,
+    "p_value": 0.376953125,
+    "H6_supported": false,
+    "BH_rejected": false
+  },
+  "H7": {
+    "balances_by_n_regimes": {
+      "2": 0.53,
+      "3": 0.48
+    },
+    "balance_decreases_with_n_regimes": true,
+    "H7_supported": true
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "benchmark": "LinearSCM-T",
+  "n_channels": 6,
+  "max_lag": 2,
+  "edge_density": 0.3,
+  "noise_dist": "laplace",
+  "T": 50,
+  "N": 2000,
+  "sigma_w": 0.5,
+  "causal_channel": 5,
+  "label_threshold": 0.061622079886617165,
+  "class_balance": 0.474,
+  "seed": 42
+}

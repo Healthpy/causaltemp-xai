@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python experiments/03_run_methods.py --benchmark NlinearSCMT_Nonmonotonic --classifier lstm)",
+      "Bash(python experiments/04_evaluate_axes.py --benchmark NlinearSCMT_Nonmonotonic --classifier lstm --all_methods)"
+    ]
+  }
+}

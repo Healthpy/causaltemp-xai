@@ -1,0 +1,37 @@
+{
+  "benchmark": "LinearSCMT",
+  "classifier": "lstm",
+  "n_instances": 300,
+  "causal_channel": 5,
+  "causal_parents": [
+    2,
+    4,
+    5
+  ],
+  "methods": {
+    "timeshap": {
+      "ICC": 0.5267729024569998,
+      "MCC_coverage": 0.14,
+      "LD": null,
+      "MCC_disent": null
+    },
+    "dynamask": {
+      "ICC": 0.5575627480288197,
+      "MCC_coverage": 0.1733333333333333,
+      "LD": null,
+      "MCC_disent": null
+    },
+    "cbmt": {
+      "ICC": 0.16601338031479518,
+      "MCC_coverage": 0.9988888888888887,
+      "LD": null,
+      "MCC_disent": null
+    },
+    "ivae": {
+      "ICC": 0.0,
+      "MCC_coverage": 0.0,
+      "LD": 0.017068628007503233,
+      "MCC_disent": null
+    }
+  }
+}

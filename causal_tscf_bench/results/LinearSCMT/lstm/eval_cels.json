@@ -1,0 +1,23 @@
+{
+  "benchmark": "LinearSCMT",
+  "classifier": "lstm",
+  "method": "cels",
+  "n_instances": 300,
+  "axis_b": {
+    "SHD": 18.0,
+    "LagAcc": 0.0,
+    "TV_Confounding": 0.12933333333333333
+  },
+  "axis_c": {
+    "Validity": 0.98,
+    "Proximity": 1.102765787912739,
+    "Sparsity": 0.42889999999999995,
+    "OOD": -0.2375362771279457,
+    "TRSI": 0.07043742938925476,
+    "IVR": 0.9833333333333333,
+    "CF_faith_mean": -0.44702180320172696,
+    "CF_faith_std": 0.6832684573039168,
+    "CF_faith_hard": 0.013333333333333334,
+    "epsilon": 1.0385350339643808
+  }
+}

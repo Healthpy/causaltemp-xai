@@ -1,0 +1,37 @@
+{
+  "benchmark": "NlinearSCMT_Nonmonotonic",
+  "classifier": "lstm",
+  "n_instances": 300,
+  "causal_channel": 5,
+  "causal_parents": [
+    2,
+    4,
+    5
+  ],
+  "methods": {
+    "timeshap": {
+      "ICC": 0.3241240055566995,
+      "MCC_coverage": 0.31666666666666665,
+      "LD": null,
+      "MCC_disent": null
+    },
+    "dynamask": {
+      "ICC": 0.6620773139375694,
+      "MCC_coverage": 0.5388888888888889,
+      "LD": null,
+      "MCC_disent": null
+    },
+    "cbmt": {
+      "ICC": 0.1655300130505429,
+      "MCC_coverage": 0.8044444444444445,
+      "LD": null,
+      "MCC_disent": null
+    },
+    "ivae": {
+      "ICC": 0.0,
+      "MCC_coverage": 0.0,
+      "LD": 0.34211519403948615,
+      "MCC_disent": null
+    }
+  }
+}

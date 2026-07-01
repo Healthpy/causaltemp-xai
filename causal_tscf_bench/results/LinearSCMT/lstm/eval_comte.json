@@ -1,0 +1,23 @@
+{
+  "benchmark": "LinearSCMT",
+  "classifier": "lstm",
+  "method": "comte",
+  "n_instances": 300,
+  "axis_b": {
+    "SHD": 18.0,
+    "LagAcc": 0.0,
+    "TV_Confounding": 0.12933333333333333
+  },
+  "axis_c": {
+    "Validity": 1.0,
+    "Proximity": 6.340655639025646,
+    "Sparsity": 0.4833333333333333,
+    "OOD": -0.174140570876957,
+    "TRSI": 0.7994296158524884,
+    "IVR": 0.5166666666666667,
+    "CF_faith_mean": -4.709029570402024,
+    "CF_faith_std": 8.02300593357191,
+    "CF_faith_hard": 0.05,
+    "epsilon": 1.0385350339643808
+  }
+}

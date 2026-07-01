@@ -1,0 +1,23 @@
+{
+  "benchmark": "NlinearSCMT_Nonmonotonic",
+  "classifier": "lstm",
+  "method": "tsevo",
+  "n_instances": 300,
+  "axis_b": {
+    "SHD": 18.0,
+    "LagAcc": 0.0,
+    "TV_Confounding": 0.8633333333333336
+  },
+  "axis_c": {
+    "Validity": 1.0,
+    "Proximity": 8.03836347391407,
+    "Sparsity": 0.05338888888888893,
+    "OOD": -0.07379710456154,
+    "TRSI": 34.14765041509641,
+    "IVR": 1.0,
+    "CF_faith_mean": null,
+    "CF_faith_std": null,
+    "CF_faith_hard": 0.0,
+    "epsilon": null
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "benchmark": "NlinearSCMT_Nonmonotonic",
+  "classifier": "lstm",
+  "method": "dice",
+  "n_instances": 50,
+  "axis_b": {
+    "SHD": 18.0,
+    "LagAcc": 0.0,
+    "TV_Confounding": 0.8439999999999998
+  },
+  "axis_c": {
+    "Validity": 0.64,
+    "Proximity": 0.12538640790913105,
+    "Sparsity": 0.86,
+    "OOD": -0.20455457016736536,
+    "TRSI": 0.3839383477107578,
+    "IVR": 0.14,
+    "CF_faith_mean": null,
+    "CF_faith_std": null,
+    "CF_faith_hard": 0.0,
+    "epsilon": null
+  }
+}

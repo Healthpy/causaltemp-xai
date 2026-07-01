@@ -1,0 +1,13 @@
+{
+  "benchmark": "NlinearSCM-T-Nonmonotonic",
+  "identifiable": false,
+  "step_edges": 2,
+  "n_channels": 6,
+  "T": 50,
+  "N": 2000,
+  "noise_dist": "laplace",
+  "causal_channel": 5,
+  "label_threshold": -0.38227046279846477,
+  "class_balance": 0.504,
+  "seed": 42
+}

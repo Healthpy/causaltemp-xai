@@ -1,0 +1,23 @@
+{
+  "benchmark": "NlinearSCMT_Nonmonotonic",
+  "classifier": "lstm",
+  "method": "cels",
+  "n_instances": 300,
+  "axis_b": {
+    "SHD": 18.0,
+    "LagAcc": 0.0,
+    "TV_Confounding": 0.8633333333333336
+  },
+  "axis_c": {
+    "Validity": 1.0,
+    "Proximity": 0.14410141040124205,
+    "Sparsity": 0.3878222222222222,
+    "OOD": -0.2067362992995331,
+    "TRSI": 0.1557658662717806,
+    "IVR": 1.0,
+    "CF_faith_mean": null,
+    "CF_faith_std": null,
+    "CF_faith_hard": 0.0,
+    "epsilon": null
+  }
+}

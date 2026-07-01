@@ -1,0 +1,32 @@
+{
+  "benchmark": "NlinearSCM-T",
+  "n_channels": 6,
+  "max_lag": 2,
+  "edge_density": 0.3,
+  "noise_dist": "laplace",
+  "T": 50,
+  "N": 2000,
+  "sigma_w": 0.4,
+  "operator_pool": [
+    "identity",
+    "sin",
+    "cos",
+    "tanh",
+    "abs",
+    "square",
+    "exp_neg_abs"
+  ],
+  "operators_used": [
+    "sin",
+    "identity",
+    "abs",
+    "exp_neg_abs",
+    "square",
+    "tanh",
+    "cos"
+  ],
+  "causal_channel": 5,
+  "label_threshold": -0.21521739436581133,
+  "class_balance": 0.5045,
+  "seed": 42
+}
