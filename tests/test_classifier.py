@@ -148,7 +148,7 @@ class TestShapeContract:
 
         gen = LinearSCMT(k=3, L=1, T=15, N=40, seed=8)
         data = gen.generate()
-        X, graph, mechanisms = data["X"], data["graph"], data["mechanisms"]
+        X, graph, mechanism = data["X"], data["graph"], data["mechanism"]
 
         clf = _small_clf(k=3, max_epochs=5).fit(X, data["Y"])
 
@@ -161,5 +161,5 @@ class TestShapeContract:
 
         # CFfaith accepts the same (T, k) layout directly.
         scorer = CFfaith(tol=1e-3)
-        result = scorer.score(x_tk, x_tk.copy(), 5, graph, mechanisms)
+        result = scorer.score(x_tk, x_tk.copy(), 5, graph, mechanism)
         assert set(result.keys()) == {"hard", "soft"}

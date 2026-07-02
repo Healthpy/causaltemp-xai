@@ -41,8 +41,8 @@ class TestShiftedEnvironment:
         # Graph and mechanisms are built from the seed before noise sampling,
         # so they must be bit-identical across the two environments.
         np.testing.assert_array_equal(base.graph, shift.graph)
-        assert len(base.mechanisms) == len(shift.mechanisms)
-        for a, b in zip(base.mechanisms, shift.mechanisms):
+        assert base.mechanism.L == shift.mechanism.L
+        for a, b in zip(base.mechanism.A_list, shift.mechanism.A_list):
             np.testing.assert_array_equal(a, b)
 
     def test_noise_marginal_differs(self):
@@ -82,7 +82,7 @@ class TestShiftVR:
 
         X_base_test = X[400:404]
         X_shift_test = shift_data["X"][:4]
-        graph, mech = base_data["graph"], base_data["mechanisms"]
+        graph, mech = base_data["graph"], base_data["mechanism"]
 
         methods = {
             "wachter": WachterCF(target_class=1, n_steps=50, lr=0.1),

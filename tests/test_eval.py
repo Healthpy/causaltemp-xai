@@ -26,7 +26,7 @@ class _AllTargetModel:
         return np.ones(np.asarray(X).shape[0], dtype=int)
 
 
-def _noiseless_cf(x: np.ndarray, t0: int, delta: np.ndarray, mechanisms: list) -> np.ndarray:
+def _noiseless_cf(x: np.ndarray, t0: int, delta: np.ndarray, mechanism) -> np.ndarray:
     """Build an SCM-faithful CF: x held before ``t0``, intervened at ``t0``,
     noiseless VAR rollout after (mirrors CARLA's construction in numpy)."""
     T, k = x.shape
@@ -34,7 +34,7 @@ def _noiseless_cf(x: np.ndarray, t0: int, delta: np.ndarray, mechanisms: list) -
     cf[t0] = x[t0] + delta
     for t in range(t0 + 1, T):
         acc = np.zeros(k)
-        for l, A in enumerate(mechanisms):
+        for l, A in enumerate(mechanism.A_list):
             lag = t - l - 1
             if lag >= 0:
                 acc += A @ cf[lag]
@@ -50,7 +50,7 @@ def _dataset():
 class TestCFFaithValidation:
     def test_faithful_cfs_score_hard_one(self):
         data = _dataset()
-        X, mech, graph = data["X"], data["mechanisms"], data["graph"]
+        X, mech, graph = data["X"], data["mechanism"], data["graph"]
         rng = np.random.default_rng(0)
         t0 = 5
 
@@ -71,7 +71,7 @@ class TestCFFaithValidation:
 
     def test_retroactive_cfs_score_hard_zero(self):
         data = _dataset()
-        X, mech, graph = data["X"], data["mechanisms"], data["graph"]
+        X, mech, graph = data["X"], data["mechanism"], data["graph"]
         rng = np.random.default_rng(1)
 
         # Perturb every timestep → not a noiseless rollout of itself → hard 0.
@@ -84,7 +84,7 @@ class TestCFFaithValidation:
     def test_aggregate_matches_per_pair_manual(self):
         """The pipeline mean must equal a from-scratch per-pair computation."""
         data = _dataset()
-        X, mech, graph = data["X"], data["mechanisms"], data["graph"]
+        X, mech, graph = data["X"], data["mechanism"], data["graph"]
         rng = np.random.default_rng(2)
         t0 = 4
 
@@ -113,7 +113,7 @@ class TestCFFaithValidation:
 
     def test_returns_all_expected_keys(self):
         data = _dataset()
-        X, mech, graph = data["X"], data["mechanisms"], data["graph"]
+        X, mech, graph = data["X"], data["mechanism"], data["graph"]
         cfs = X[:N_EXAMPLES] + 0.1
         result = evaluate_method(
             _AllTargetModel(), X[:N_EXAMPLES], cfs, X, graph, mech, target_class=1

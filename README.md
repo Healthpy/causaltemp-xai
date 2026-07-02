@@ -11,6 +11,9 @@
 
 - **LinearSCM-T** - a VAR(L) benchmark generator with an explicit causal graph
   and non-Gaussian noise, so the true counterfactual distribution is known.
+- **NlinearSCM-T** - the nonlinear sibling: same graph, additive-noise per-node
+  MLP transition mechanisms (spectral-norm-capped for stability). Tests
+  generalization beyond linear VAR identifiability. See below.
 - **CFfaith** - a hard/soft metric that checks whether a proposed CF respects
   the causal mechanisms of the data-generating process.
 - **Axis-C metrics** - four complementary quality axes (validity, proximity,
@@ -40,7 +43,7 @@ uv sync --extra dev
 # 1. generate the locked paper dataset (k=10, L=1, T=100, N=10_000, Laplace noise)
 uv run python -m causaltemp_xai.data_io --config full
 
-# 2. train + freeze the TCN classifier -> data/linearscm_t/full/tcn.pt
+# 2. train + freeze the TCN classifier -> data/scm_t/full/tcn.pt
 uv run python -m causaltemp_xai.classifiers.tcn --config full --train --patience 20
 
 # 3. run the harness: 3 CF methods x Axis-C + both CF-faith metrics
@@ -58,6 +61,45 @@ gradient backend; pass `--no-dice-ml` to use the fast from-scratch DPP fallback
 [`docs/hypotheses_assessment.md`](docs/hypotheses_assessment.md) for the H1/H3/H4
 verdicts and the go/no-go decision.
 
+## NlinearSCM-T (nonlinear benchmark)
+
+`NlinearSCM-T` is the nonlinear sibling of LinearSCM-T: it keeps the same lagged
+causal graph but replaces the VAR coefficients with **additive-noise per-node
+MLP transitions**
+
+```
+x_t^i = decay_i · x_{t-1}^i  +  gain · tanh( MLP_i(masked lagged parents) )  +  eps_t^i
+```
+
+with spectral-norm-capped weights so trajectories stay bounded over long
+horizons. It tests generalization **beyond linear VAR identifiability**. Because
+the noise is **additive**, Pearl abduction is an exact subtraction
+(`eps = x − f(parents)`), so `CFfaith` (both the rollout and the
+abduction-based `pearl_delta` semantics) and the **oracle structural-CF** carry
+over unchanged to the nonlinear mechanisms.
+
+```bash
+# 1. generate the nonlinear dataset (smoke: k=5, T=30, N=500 / full_nl mirrors `full`)
+uv run python -m causaltemp_xai.data_io --config smoke_nl
+
+# 2. run the harness on the nonlinear config
+uv run python experiments/run_all.py --config smoke_nl     # or full_nl
+```
+
+On nonlinear configs `run_all.py` routes to a dedicated **oracle-CF path**: it
+needs no classifier checkpoint and runs no real CF methods, scoring CF-faith on
+the Stage-4 oracle structural counterfactual as a built-in positive control. Two
+mutually-exclusive oracle variants are emitted — the Pearl oracle scores
+`pearl_hard=1` and the noiseless (skeleton) oracle scores `rollout_hard=1` by
+construction — demonstrating the rollout-vs-pearl contrast on nonlinear data.
+
+**Scope:** this ships nonlinear *transitions* only. Nonlinear **mixing**
+`x = g(z)` (an invertible observation map over latents) and **non-additive**
+noise are a separate identifiability axis (iVAE/CITRIS) and are documented as a
+**future extension** — see the [`docs/plans/nlinearscm-t/`](docs/plans/nlinearscm-t/index.md)
+Backlog. Real CF methods (Wachter/DiCE/CARLA) on the nonlinear SCM are the
+collaborator's track and are likewise out of scope here.
+
 ## Quickstart (library API)
 
 ```python
@@ -72,7 +114,7 @@ data = gen.generate()
 # data["X"]          shape (500, 30, 5)  -- multivariate time-series
 # data["Y"]          shape (500,)        -- binary labels
 # data["graph"]      shape (5, 5, 1)     -- adjacency per lag
-# data["mechanisms"] list of 1 ndarray   -- VAR coefficient matrices
+# data["mechanism"]  Mechanism object    -- SCM transition (LinearMechanism here)
 
 X, Y = data["X"], data["Y"]
 
@@ -89,7 +131,7 @@ result = scorer.score(
     x_orig, x_cf,
     intervention_t=10,
     graph=data["graph"],
-    mechanisms=data["mechanisms"],
+    mechanism=data["mechanism"],
 )
 print(result)   # {"hard": ..., "soft": ...}
 
@@ -129,7 +171,10 @@ causaltemp-xai/
 │   ├── config.py                # BenchmarkConfig + SMOKE/FULL presets, shifted_config
 │   ├── data_io.py               # stratified 60/20/20 split, generate/load datasets (+CLI)
 │   ├── eval.py                  # evaluate_method (Axis-C + both CF-faith) + shift_vr
-│   ├── benchmark/generator.py   # LinearSCM-T VAR(L) data generator
+│   ├── benchmark/
+│   │   ├── generator.py         # LinearSCM-T VAR(L) + NlinearSCM-T MLP generators
+│   │   ├── mechanisms.py        # Mechanism / LinearMechanism / MLPMechanism (+ serialize)
+│   │   └── structural_cf.py     # oracle abduction-action-prediction counterfactual
 │   ├── metrics/
 │   │   ├── cf_faith.py          # CFfaith (noiseless_rollout | pearl_delta semantics)
 │   │   └── axis_c.py            # validity, proximity, sparsity, ood_plausibility
@@ -149,7 +194,7 @@ causaltemp-xai/
 ├── docs/hypotheses_assessment.md  # H1/H3/H4 verdicts + go/no-go
 ├── tests/
 ├── notebooks/01_data_exploration.ipynb
-└── data/linearscm_t/            # generated datasets + checkpoints (gitignored)
+└── data/scm_t/                 # generated datasets + checkpoints (gitignored)
 ```
 
 ## License
