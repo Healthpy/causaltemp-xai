@@ -36,8 +36,8 @@ from pathlib import Path
 
 import numpy as np
 
-from causaltemp_xai.benchmark.generator import LinearSCMT, NlinearSCMT
-from causaltemp_xai.benchmark.mechanisms import mechanism_from_state_dict
+from causaltemp_xai.benchmarks.generator import LinearSCMT, NlinearSCMT
+from causaltemp_xai.benchmarks.mechanisms import mechanism_from_state_dict
 from causaltemp_xai.config import (
     CONFIGS,
     BenchmarkConfig,

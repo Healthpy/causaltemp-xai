@@ -1,4 +1,4 @@
-"""Wachter et al. (2017) gradient-based counterfactual method — stub.
+﻿"""Wachter et al. (2017) gradient-based counterfactual method â€” stub.
 
 Reference
 ---------
@@ -115,7 +115,7 @@ class WachterCF:
                 optimiser.step()
 
                 if int(logits.argmax(dim=1).item()) == self.target_class:
-                    # Flip achieved — record and stop escalating.
+                    # Flip achieved â€” record and stop escalating.
                     return cf.detach().cpu().numpy().astype(np.float32)
             # No flip this round: keep the closest attempt, raise lam, continue.
             best_cf = cf.detach().clone()
@@ -124,6 +124,24 @@ class WachterCF:
         return best_cf.cpu().numpy().astype(np.float32)
 
     def generate_batch(self, X: np.ndarray, model) -> np.ndarray:
+        """Generate one CF per instance in ``X`` of shape ``(N, T, k)``."""
+        X = np.asarray(X, dtype=np.float32)
+        return np.stack([self.generate(x, model) for x in X], axis=0)
+
+
+    # ------------------------------------------------------------------
+    # CFExplainer alias interface
+    # ------------------------------------------------------------------
+
+    def fit(self, X_train, classifier) -> None:
+        """No-op — WachterCF needs no training data."""
+        pass
+
+    def explain(self, x, target_class: int, classifier) -> "np.ndarray":
+        """Alias for generate(x, classifier) with target_class from constructor."""
+        return self.generate(x, classifier)
+
+    def generate_batch(self, X: "np.ndarray", model) -> "np.ndarray":
         """Generate one CF per instance in ``X`` of shape ``(N, T, k)``."""
         X = np.asarray(X, dtype=np.float32)
         return np.stack([self.generate(x, model) for x in X], axis=0)

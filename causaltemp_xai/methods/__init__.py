@@ -1,27 +1,43 @@
-from .carla import CARLARecourse
-from .cfts_methods import (
-    CftsCelsCF,
+"""Counterfactual and attribution methods.
+
+The top-level namespace re-exports the most commonly used classes.
+The full method collections are available in the subpackages:
+  - causaltemp_xai.methods.counterfactual  (WachterCF, DiCECF, CARLARecourse, cfts_*)
+  - causaltemp_xai.methods.attribution     (integrated_gradients, deletion_curve, ...)
+"""
+
+from .base import CFExplainer, AttributionMethod
+from .counterfactual.wachter import WachterCF
+from .counterfactual.dice import DiCECF
+from .counterfactual.carla import CARLARecourse
+from .counterfactual.cfts_methods import (
+    CftsWachterCF,
+    CftsNativeGuideCF,
     CftsCOMTECF,
     CftsConfetiCF,
     CftsCountsCF,
-    CftsNativeGuideCF,
-    CftsWachterCF,
-    _DatasetAdapter,
+    CftsCelsCF,
 )
-from .dice import DiCECF
-from .intervention import derive_intervention_t
-from .wachter import WachterCF
+from .attribution.integrated_gradients import integrated_gradients
+from .attribution.perturbation_curves import deletion_curve, insertion_curve
+
+# Backward-compat: derive_intervention_t moved to scm.intervention
+from causaltemp_xai.scm.intervention import derive_intervention_t
 
 __all__ = [
+    "CFExplainer",
+    "AttributionMethod",
     "WachterCF",
     "DiCECF",
     "CARLARecourse",
-    "derive_intervention_t",
     "CftsWachterCF",
     "CftsNativeGuideCF",
     "CftsCOMTECF",
     "CftsConfetiCF",
     "CftsCountsCF",
     "CftsCelsCF",
-    "_DatasetAdapter",
+    "integrated_gradients",
+    "deletion_curve",
+    "insertion_curve",
+    "derive_intervention_t",
 ]

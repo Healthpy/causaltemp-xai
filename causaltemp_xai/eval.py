@@ -22,7 +22,7 @@ import inspect
 
 import numpy as np
 
-from causaltemp_xai.methods.intervention import derive_intervention_t
+from causaltemp_xai.scm.intervention import derive_intervention_t
 from causaltemp_xai.metrics.axis_c import (
     ood_plausibility,
     proximity,

@@ -1,4 +1,4 @@
-"""DiCE: Diverse Counterfactual Explanations (Mothilal et al., 2020) — stub.
+﻿"""DiCE: Diverse Counterfactual Explanations (Mothilal et al., 2020) â€” stub.
 
 Reference
 ---------
@@ -10,10 +10,10 @@ DiCE generates a *set* of diverse counterfactuals by jointly optimising:
 
     L = proximity_loss + diversity_loss + prediction_loss
 
-* **proximity_loss** – L2 distance from each CF to the original.
-* **diversity_loss** – determinantal point process (DPP) term that
+* **proximity_loss** â€“ L2 distance from each CF to the original.
+* **diversity_loss** â€“ determinantal point process (DPP) term that
   encourages the CFs to be spread out in feature space.
-* **prediction_loss** – cross-entropy between the CF prediction and the
+* **prediction_loss** â€“ cross-entropy between the CF prediction and the
   target class.
 """
 
@@ -110,13 +110,13 @@ class DiCECF:
                 cfs = self._generate_dice_ml(x, model)
                 self.backend_used = "dice-ml"
                 return cfs
-            except Exception as exc:  # noqa: BLE001 — one focused attempt, then fall back
+            except Exception as exc:  # noqa: BLE001 â€” one focused attempt, then fall back
                 self._last_dice_error = repr(exc)
         self.backend_used = "fallback"
         return self._generate_fallback(x, model)
 
     def generate_batch(self, X: np.ndarray, model) -> np.ndarray:
-        """Generate ``n_cfs`` CFs per instance → shape ``(N, n_cfs, T, k)``."""
+        """Generate ``n_cfs`` CFs per instance â†’ shape ``(N, n_cfs, T, k)``."""
         X = np.asarray(X, dtype=np.float32)
         return np.stack([self.generate(x, model) for x in X], axis=0)
 
@@ -212,3 +212,21 @@ class DiCECF:
         if cf_vals.shape[0] == 0:
             raise RuntimeError("dice-ml returned no counterfactuals")
         return cf_vals.reshape(cf_vals.shape[0], T, k)
+
+
+    # ------------------------------------------------------------------
+    # CFExplainer alias interface
+    # ------------------------------------------------------------------
+
+    def fit(self, X_train, classifier) -> None:
+        """Store training data for background dataset (used by dice-ml backend)."""
+        self.background_data = np.asarray(X_train, dtype=np.float32)
+
+    def explain(self, x, target_class: int, classifier) -> "np.ndarray":
+        """Alias: generate n_cfs and return the best (closest) one."""
+        cfs = self.generate(x, classifier)
+        if cfs.ndim == 3:
+            # Pick the CF closest to x in L2 distance
+            dists = np.linalg.norm((cfs - x).reshape(cfs.shape[0], -1), axis=1)
+            return cfs[np.argmin(dists)]
+        return cfs

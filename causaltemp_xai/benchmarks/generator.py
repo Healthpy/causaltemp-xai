@@ -35,7 +35,7 @@ from typing import Literal, Optional
 
 import numpy as np
 
-from causaltemp_xai.benchmark.mechanisms import LinearMechanism, MLPMechanism
+from causaltemp_xai.benchmarks.mechanisms import LinearMechanism, MLPMechanism
 
 
 _NOISE_TYPES = ("laplace", "uniform")

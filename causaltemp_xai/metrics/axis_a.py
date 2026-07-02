@@ -4,7 +4,7 @@ Four metrics that jointly characterise the quality of a latent concept
 representation produced by a concept-based XAI method (TCAV-T, CBM-T, iVAE,
 β-VAE, LEAP, …) evaluated against ground-truth generative factors.
 
-* **ICC** (novel) — Interventional Concept Consistency.
+* **icc_latent** (model-based latent intervention) — Interventional Concept Consistency.
   Perturbs each latent dimension independently and counts how often the
   classifier changes its prediction.  Under Hyvärinen (2019) / Song (2024)
   nonlinear-ICA identifiability, a high ICC_i implies that concept i is
@@ -104,7 +104,7 @@ def _marginal_entropy_binned(x: np.ndarray, n_bins: int = 20) -> float:
 # ---------------------------------------------------------------------------
 
 
-def icc(
+def icc_latent(
     X: np.ndarray,
     encoder: Callable,
     decoder: Callable,
@@ -379,3 +379,137 @@ def mcc(
     row_ind, col_ind = linear_sum_assignment(-corr_mat)
     matched_corrs = corr_mat[row_ind, col_ind]
     return float(matched_corrs.mean())
+
+
+# ---------------------------------------------------------------------------
+# Bench-ported additions
+# ---------------------------------------------------------------------------
+
+
+def icc(attribution: np.ndarray, int_channel: int) -> float:
+    """Intervention-Channel Consistency (attribution-mass variant).
+
+    Fraction of total attribution mass that falls on the ground-truth
+    intervened channel. Ported from causal_tscf_bench/metrics/axis_a.py.
+
+    Parameters
+    ----------
+    attribution : (T, k)
+    int_channel : ground-truth intervened channel index
+
+    Returns
+    -------
+    float in [0, 1]
+    """
+    total_mass = np.abs(attribution).sum()
+    if total_mass < 1e-12:
+        return 0.0
+    channel_mass = np.abs(attribution[:, int_channel]).sum()
+    return float(channel_mass / total_mass)
+
+
+def mcc_concept(
+    attribution: np.ndarray,
+    causal_parents: list,
+    threshold: float = 1e-3,
+) -> float:
+    """Causal Coverage — fraction of causal parent channels covered by attribution.
+
+    Parameters
+    ----------
+    attribution    : (T, k)
+    causal_parents : list of channel indices that are causal parents (ground-truth)
+    threshold      : minimum abs attribution per channel to count as covered
+
+    Returns
+    -------
+    float in [0, 1]; returns nan if causal_parents is empty
+    """
+    if not causal_parents:
+        return float("nan")
+    channel_totals = np.abs(attribution).sum(axis=0)  # (k,)
+    covered = sum(1 for p in causal_parents if channel_totals[p] > threshold)
+    return float(covered / len(causal_parents))
+
+
+def latent_disentanglement(Z: np.ndarray, X_channels: np.ndarray) -> float:
+    """Latent Disentanglement (LD) via linear R².
+
+    For each causal channel m, fit a linear regression from the best-aligned
+    latent dimension to X_channels[:, m] and record R². LD = mean R² over k.
+
+    Parameters
+    ----------
+    Z          : (N, latent_dim)
+    X_channels : (N, k) — ground-truth channel values (e.g. time-mean per channel)
+
+    Returns
+    -------
+    float in [0, 1]
+    """
+    from sklearn.linear_model import LinearRegression
+
+    latent_dim = Z.shape[1]
+    k = X_channels.shape[1]
+    r2_per_channel = []
+
+    for m in range(k):
+        y = X_channels[:, m]
+        best_r2 = -np.inf
+        for d in range(latent_dim):
+            reg = LinearRegression().fit(Z[:, [d]], y)
+            ss_res = np.sum((y - reg.predict(Z[:, [d]])) ** 2)
+            ss_tot = np.sum((y - y.mean()) ** 2) + 1e-12
+            r2 = 1 - ss_res / ss_tot
+            best_r2 = max(best_r2, r2)
+        r2_per_channel.append(max(0.0, best_r2))
+
+    return float(np.mean(r2_per_channel))
+
+
+def compute_axis_a(
+    attributions: np.ndarray,
+    int_channels: np.ndarray,
+    causal_parents_list: list,
+    Z: np.ndarray = None,
+    X_channels: np.ndarray = None,
+    Z_true: np.ndarray = None,
+) -> dict:
+    """Aggregate Axis A metrics over N instances.
+
+    Parameters
+    ----------
+    attributions        : (N, T, k)
+    int_channels        : (N,) ground-truth intervened channel per instance
+    causal_parents_list : list of length N, each a list of causal parent indices
+    Z                   : (N, latent_dim) optional; encoder outputs for LD/MCC
+    X_channels          : (N, k) optional; ground-truth channel means for LD
+    Z_true              : (N, K) optional; ground-truth latent factors for MCC
+
+    Returns
+    -------
+    dict with keys: ICC, MCC_coverage, LD, MCC_disent
+    """
+    N = attributions.shape[0]
+    icc_vals, mcc_vals = [], []
+
+    for i in range(N):
+        icc_vals.append(icc(attributions[i], int(int_channels[i])))
+        mc = mcc_concept(attributions[i], causal_parents_list[i])
+        if not np.isnan(mc):
+            mcc_vals.append(mc)
+
+    ld = float("nan")
+    if Z is not None and X_channels is not None:
+        ld = latent_disentanglement(Z, X_channels)
+
+    mcc_disent = float("nan")
+    if Z_true is not None and Z is not None and Z_true.shape == Z.shape:
+        mcc_disent = mcc(Z, Z_true)
+
+    return {
+        "ICC": float(np.mean(icc_vals)),
+        "MCC_coverage": float(np.mean(mcc_vals)) if mcc_vals else float("nan"),
+        "LD": ld,
+        "MCC_disent": mcc_disent,
+    }
