@@ -18,7 +18,7 @@ import numpy as np
 
 # Single source of truth for the lag-window contract (see mechanisms module
 # docstring). Imported here so cf_faith and structural_cf cannot drift.
-from causaltemp_xai.benchmark.mechanisms import lag_window as _window
+from causaltemp_xai.benchmarks.mechanisms import lag_window as _window
 
 
 class CFfaith:

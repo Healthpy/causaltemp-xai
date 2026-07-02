@@ -17,6 +17,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import DataLoader, TensorDataset
 
+from causaltemp_xai.classifiers.base import TSClassifier
+
 
 # ---------------------------------------------------------------------------
 # Core module
@@ -195,8 +197,14 @@ def train_lstm(
 # ---------------------------------------------------------------------------
 
 
-class LSTMClassifier:
+class LSTMClassifier(TSClassifier):
     """sklearn-style wrapper around :class:`LSTM` for the benchmark.
+
+    Inherits from :class:`~causaltemp_xai.classifiers.base.TSClassifier` so it
+    satisfies the ABC interface used by the evaluation harness.  The existing
+    ``fit()``, ``predict()``, and ``predict_proba()`` signatures are preserved
+    unchanged.
+
 
     **Shape contract.** Every public method accepts data in ``(T, k)`` (single
     instance) or ``(N, T, k)`` (batch) layout — the same convention used by the
@@ -239,6 +247,9 @@ class LSTMClassifier:
         device: Optional[str] = None,
         seed: int = 0,
     ) -> None:
+        # TSClassifier.__init__ sets self.n_classes and self.device (as str);
+        # we override self.device below with a torch.device object.
+        super().__init__(n_classes=n_classes, device=str(device or "cpu"))
         self.hparams = dict(
             n_inputs=n_inputs,
             n_classes=n_classes,

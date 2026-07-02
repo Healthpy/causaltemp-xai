@@ -34,7 +34,7 @@ Scope
 *after* the deterministic mean, never inside ``forward_*``). That additivity is
 what keeps Pearl abduction an exact subtraction downstream. Nonlinear *mixing*
 ``x = g(z)`` and *non-additive* noise are out of scope this iteration — see the
-:mod:`causaltemp_xai.benchmark.generator` module docstring and the plan Backlog.
+:mod:`causaltemp_xai.benchmarks.generator` module docstring and the plan Backlog.
 """
 
 from __future__ import annotations

@@ -1,4 +1,4 @@
-"""CARLA-style causal recourse — stub.
+﻿"""CARLA-style causal recourse â€” stub.
 
 Reference
 ---------
@@ -86,7 +86,7 @@ class CARLARecourse:
         noiseless mechanism rollout after ``t0`` (differentiable w.r.t. ``x_t0``).
 
         ``x_cf[t] = mechanism.forward_torch(window)`` for ``t > t0`` (matching
-        ``cf_faith.py``). Never re-injects noise → the CF *is* its own noiseless
+        ``cf_faith.py``). Never re-injects noise â†’ the CF *is* its own noiseless
         rollout, so CFfaith(noiseless_rollout).hard == 1 by construction.
         """
         T = x_t.shape[0]
@@ -98,7 +98,7 @@ class CARLARecourse:
             elif t == t0:
                 rows.append(x_t0)            # free / intervened values
             else:
-                # Feed exactly L rows (oldest→newest), zero-padding rows that
+                # Feed exactly L rows (oldestâ†’newest), zero-padding rows that
                 # reach before t=0 (replicates the original ``if lag >= 0`` guard).
                 window_rows = []
                 for j in range(L):
@@ -192,6 +192,41 @@ class CARLARecourse:
     ) -> np.ndarray:
         """Generate one CF per instance in ``X`` of shape ``(N, T, k)``."""
         X = np.asarray(X, dtype=np.float32)
+        return np.stack(
+            [self.generate(x, model, graph, mechanism) for x in X], axis=0
+        )
+
+
+    # ------------------------------------------------------------------
+    # CFExplainer alias interface + causal-info setter
+    # ------------------------------------------------------------------
+
+    def set_causal_info(self, graph, mechanism) -> None:
+        """Store SCM graph and mechanism for use in fit/explain."""
+        self._graph = graph
+        self._mechanism = mechanism
+
+    def fit(self, X_train, classifier) -> None:
+        """No-op — CARLA needs graph/mechanism, set via set_causal_info()."""
+        pass
+
+    def explain(self, x, target_class: int, classifier) -> "np.ndarray":
+        """Alias for generate(x, classifier, self._graph, self._mechanism)."""
+        graph = getattr(self, "_graph", None)
+        mechanism = getattr(self, "_mechanism", None)
+        if graph is None or mechanism is None:
+            raise RuntimeError(
+                "Call set_causal_info(graph, mechanism) before explain()."
+            )
+        return self.generate(x, classifier, graph, mechanism)
+
+    def generate_batch(self, X: "np.ndarray", model, graph=None, mechanism=None) -> "np.ndarray":
+        """Generate one CF per instance in ``X``."""
+        X = np.asarray(X, dtype=np.float32)
+        if graph is None:
+            graph = getattr(self, "_graph", None)
+        if mechanism is None:
+            mechanism = getattr(self, "_mechanism", None)
         return np.stack(
             [self.generate(x, model, graph, mechanism) for x in X], axis=0
         )

@@ -28,7 +28,7 @@ import numpy as np
 
 # Single source of truth for the lag-window contract (see mechanisms module
 # docstring). Re-exported as the module-private ``_window`` for callers/tests.
-from causaltemp_xai.benchmark.mechanisms import lag_window as _window
+from causaltemp_xai.benchmarks.mechanisms import lag_window as _window
 
 
 def abduct_noise(x_orig: np.ndarray, mechanism) -> np.ndarray:
@@ -43,7 +43,7 @@ def abduct_noise(x_orig: np.ndarray, mechanism) -> np.ndarray:
     x_orig:
         Factual trajectory, shape ``(T, k)``.
     mechanism:
-        A :class:`~causaltemp_xai.benchmark.mechanisms.Mechanism`.
+        A :class:`~causaltemp_xai.benchmarks.mechanisms.Mechanism`.
 
     Returns
     -------
@@ -75,7 +75,7 @@ def structural_counterfactual(
     x_orig:
         Factual trajectory, shape ``(T, k)``.
     mechanism:
-        A :class:`~causaltemp_xai.benchmark.mechanisms.Mechanism`.
+        A :class:`~causaltemp_xai.benchmarks.mechanisms.Mechanism`.
     t0:
         Intervention timestep. The prefix ``x_cf[:t0]`` is held to the factual.
     node:
