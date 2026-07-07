@@ -18,8 +18,13 @@
   the causal mechanisms of the data-generating process.
 - **Axis-C metrics** - four complementary quality axes (validity, proximity,
   sparsity, OOD plausibility) that together characterise a CF explanation.
-- **CF method stubs** - a uniform `generate(x, model)` interface for Wachter,
-  DiCE, and CARLA-style recourse, ready for implementation or wrapping.
+- **Six wired CF methods** - `CARLARecourse` (causal noiseless-rollout
+  recourse) plus five reference methods backed by the vendored `cfts` repo
+  (Wachter, COMTE, CONFETI, CounTS, CELS), all behind a uniform interface.
+  Native from-scratch `WachterCF`/`DiCECF` are also available via the library
+  API.
+- **Attribution foils** - integrated gradients + deletion/insertion
+  perturbation curves.
 
 ## Installation
 
@@ -31,10 +36,17 @@ cd causaltemp-xai
 uv sync --extra dev        # creates .venv + uv.lock, installs deps + dev extras
 ```
 
-## Reproduce v0.1
+## Reproduce the benchmark
 
-The full benchmark runs end-to-end from a clean checkout. Datasets and the TCN
-checkpoint are **regenerated deterministically** (seeded), never committed.
+The full benchmark runs end-to-end from a clean checkout. Datasets and the
+classifier checkpoint are **regenerated deterministically** (seeded), never
+committed.
+
+> **v0.1 note:** the frozen v0.1 numbers in
+> [`docs/hypotheses_assessment.md`](docs/hypotheses_assessment.md) were
+> produced with a TCN classifier and 3 CF methods. The TCN was dropped in the
+> package restructure (restoring it is on the roadmap); the current pipeline
+> trains an LSTM and runs 6 CF methods.
 
 ```bash
 # 0. environment
@@ -43,10 +55,10 @@ uv sync --extra dev
 # 1. generate the locked paper dataset (k=10, L=1, T=100, N=10_000, Laplace noise)
 uv run python -m causaltemp_xai.data_io --config full
 
-# 2. train + freeze the TCN classifier -> data/scm_t/full/tcn.pt
-uv run python -m causaltemp_xai.classifiers.tcn --config full --train --patience 20
+# 2. train + freeze the LSTM classifier -> data/scm_t/full/lstm.pt
+uv run python -m causaltemp_xai.classifiers.lstm --config full --train --patience 20
 
-# 3. run the harness: 3 CF methods x Axis-C + both CF-faith metrics
+# 3. run the harness: CF methods x Axis-C + both CF-faith metrics
 #    + IG attribution foil + Shift-VR-lite -> experiments/results.json (+ per_instance.csv)
 uv run python experiments/run_all.py --config full --n-cf 100
 
@@ -55,11 +67,30 @@ uv run python experiments/figures.py --results experiments/results.json
 ```
 
 Swap `--config full` for `--config smoke` (k=5, T=30, N=500) for a fast pass; the
-smoke pipeline is what CI runs. The harness defaults to the official `dice-ml`
-gradient backend; pass `--no-dice-ml` to use the fast from-scratch DPP fallback
-(much quicker on the large `full` config). See
+smoke pipeline is what CI runs. See
 [`docs/hypotheses_assessment.md`](docs/hypotheses_assessment.md) for the H1/H3/H4
 verdicts and the go/no-go decision.
+
+### Phased pipeline (recommended)
+
+The monolithic `run_all.py` above still works, but each stage of the pipeline
+is also available as its own numbered `uv run` script under `experiments/`,
+so you can regenerate just the stage you're iterating on. All outputs land
+under [`results/`](results/README.md) (figures **and** tables included)
+instead of being dumped into `experiments/`:
+
+```bash
+uv run python experiments/01_generate_benchmarks.py --config smoke   # or --all
+uv run python experiments/02_train_classifiers.py --config smoke     # linear configs only
+uv run python experiments/03_run_cf_methods.py --config smoke --n-cf 20
+uv run python experiments/04_evaluate_axes.py --config smoke
+uv run python experiments/05_run_oracle_nonlinear.py --config smoke_nl
+uv run python experiments/06_make_figures.py
+```
+
+See [`results/README.md`](results/README.md) for the on-disk layout each
+phase writes (`results/<config>/<classifier>/...`, `results/tables/`,
+`results/figures/`).
 
 ## NlinearSCM-T (nonlinear benchmark)
 
@@ -104,8 +135,8 @@ collaborator's track and are likewise out of scope here.
 
 ```python
 import numpy as np
-from causaltemp_xai.benchmark.generator import LinearSCMT
-from causaltemp_xai.classifiers import TCNClassifier
+from causaltemp_xai.benchmarks.generator import LinearSCMT
+from causaltemp_xai.classifiers import LSTMClassifier
 from causaltemp_xai.metrics import CFfaith, validity, proximity, sparsity
 
 # 1. Generate synthetic causal time-series
@@ -118,8 +149,8 @@ data = gen.generate()
 
 X, Y = data["X"], data["Y"]
 
-# 2. Train a TCN classifier (sklearn-style wrapper; (N, T, k) in/out)
-clf = TCNClassifier(n_inputs=5, max_epochs=30)
+# 2. Train an LSTM classifier (sklearn-style wrapper; (N, T, k) in/out)
+clf = LSTMClassifier(n_inputs=5, max_epochs=30)
 clf.fit(X[:400], Y[:400], X[400:], Y[400:])
 
 # 3. Evaluate causal faithfulness of a counterfactual
@@ -171,29 +202,47 @@ causaltemp-xai/
 │   ├── config.py                # BenchmarkConfig + SMOKE/FULL presets, shifted_config
 │   ├── data_io.py               # stratified 60/20/20 split, generate/load datasets (+CLI)
 │   ├── eval.py                  # evaluate_method (Axis-C + both CF-faith) + shift_vr
-│   ├── benchmark/
+│   ├── benchmarks/
 │   │   ├── generator.py         # LinearSCM-T VAR(L) + NlinearSCM-T MLP generators
 │   │   ├── mechanisms.py        # Mechanism / LinearMechanism / MLPMechanism (+ serialize)
 │   │   └── structural_cf.py     # oracle abduction-action-prediction counterfactual
+│   ├── scm/
+│   │   ├── intervention.py      # derive_intervention_t (uniform rule)
+│   │   ├── abduction.py         # noise abduction for Pearl counterfactuals
+│   │   └── counterfactual.py    # abduction-action-prediction machinery
 │   ├── metrics/
 │   │   ├── cf_faith.py          # CFfaith (noiseless_rollout | pearl_delta semantics)
-│   │   └── axis_c.py            # validity, proximity, sparsity, ood_plausibility
-│   ├── classifiers/tcn.py       # TCN + TCNClassifier wrapper (+ train CLI)
-│   ├── attribution/
-│   │   ├── integrated_gradients.py   # hand-rolled IG attribution foil (WP3)
-│   │   └── perturbation_curves.py    # deletion / insertion curves
+│   │   ├── axis_c.py            # validity, proximity, sparsity, OOD, TRSI, IVR
+│   │   └── axis_a|b|d.py        # concept, graph, robustness axis metrics
+│   ├── classifiers/lstm.py      # LSTM + LSTMClassifier wrapper (+ train CLI)
 │   └── methods/
-│       ├── intervention.py      # derive_intervention_t (uniform rule)
-│       ├── wachter.py           # WachterCF (gradient CF)
-│       ├── dice.py              # DiCECF (dice-ml gradient + DPP fallback)
-│       └── carla.py             # CARLARecourse (causal noiseless-rollout recourse)
+│       ├── counterfactual/
+│       │   ├── wachter.py       # WachterCF (gradient CF)
+│       │   ├── dice.py          # DiCECF (dice-ml gradient + DPP fallback)
+│       │   ├── carla.py         # CARLARecourse (causal noiseless-rollout recourse)
+│       │   └── cfts_methods.py  # cfts-backed Wachter/COMTE/CONFETI/CounTS/CELS
+│       ├── attribution/
+│       │   ├── integrated_gradients.py   # hand-rolled IG attribution foil (WP3)
+│       │   ├── perturbation_curves.py    # deletion / insertion curves
+│       │   ├── timeshap.py      # Monte-Carlo masking proxy (NOT official TimeSHAP)
+│       │   └── dynamask.py      # finite-difference saliency proxy (NOT official Dynamask)
+│       └── concept/             # CBM-T probe + iVAE (experimental, unwired)
+├── third_party/cfts_repo/       # vendored cfts reference implementations
 ├── experiments/
-│   ├── run_all.py               # end-to-end harness -> results.json + per_instance.csv
-│   ├── figures.py               # 3 publication figures -> experiments/figures/
-│   └── phenomenon_check.py      # fail-fast Wachter-vs-CARLA CF-faith guard
+│   ├── 01_generate_benchmarks.py    # phase 1: generate + persist datasets
+│   ├── 02_train_classifiers.py      # phase 2: train the LSTM classifier
+│   ├── 03_run_cf_methods.py         # phase 3: run CF methods + IG + shift-VR
+│   ├── 04_evaluate_axes.py          # phase 4: Axis-C + CF-faith on persisted CFs
+│   ├── 05_run_oracle_nonlinear.py   # phase 5: oracle structural-CF (NlinearSCM-T)
+│   ├── 06_make_figures.py           # phase 6: figures from results/
+│   ├── _common.py                   # shared paths/loading for the phased pipeline
+│   ├── run_all.py                   # monolithic end-to-end harness (legacy, still works)
+│   └── phenomenon_check.py          # fail-fast Wachter-vs-CARLA CF-faith guard
+├── results/                     # figures + tables written by the phased pipeline
 ├── docs/hypotheses_assessment.md  # H1/H3/H4 verdicts + go/no-go
+├── docs/PROJECT_PLAN.md         # PI project plan: objectives, milestones, todos
 ├── tests/
-├── notebooks/01_data_exploration.ipynb
+├── notebooks/                   # 01_data_exploration, 02_benchmark_exploration
 └── data/scm_t/                 # generated datasets + checkpoints (gitignored)
 ```
 
