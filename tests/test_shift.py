@@ -2,13 +2,11 @@
 
 from __future__ import annotations
 
-import math
-
 import numpy as np
 import pytest
 from scipy.stats import ks_2samp
 
-from causaltemp_xai.benchmark.generator import LinearSCMT
+from causaltemp_xai.benchmarks.generator import LinearSCMT
 from causaltemp_xai.classifiers import LSTMClassifier
 from causaltemp_xai.config import SMOKE, shifted_config
 from causaltemp_xai.eval import shift_vr
@@ -95,4 +93,9 @@ class TestShiftVR:
             assert 0.0 <= m["validity_base"] <= 1.0
             assert 0.0 <= m["validity_shift"] <= 1.0
             ratio = m["shift_vr"]
-            assert math.isnan(ratio) or 0.0 <= ratio  # ratio ≥ 0 (nan if base=0)
+            # M1 guard: the ratio is None (not reported) when validity_base
+            # is below the 0.3 stability floor; otherwise a ratio >= 0.
+            if m["validity_base"] >= 0.3:
+                assert ratio is not None and 0.0 <= ratio
+            else:
+                assert ratio is None
