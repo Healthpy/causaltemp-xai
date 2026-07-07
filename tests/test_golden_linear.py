@@ -5,26 +5,40 @@ pre-refactor (``A @ x`` inline) code and asserted against the post-refactor
 ``Mechanism`` API. The refactor is only correct if these do not move. **Never
 re-bless these constants**; if they shift, the refactor is wrong.
 
+Golden comparison policy (M0 decision, 2026-07-07)
+--------------------------------------------------
+Bit-for-bit identity of float-derived constants is **not achievable across
+platforms/BLAS builds**: ``@``-chains and reductions re-associate differently
+per build, moving results at the ULP (observed: L=1 X-checksum and one soft
+CF-faith score each off by ~1 ULP on Windows/MKL vs the capture machine).
+Therefore:
+
+* **Float-derived constants** (X checksums, soft CF-faith scores) are asserted
+  with ``rtol=1e-12``. This loses no discriminative power against the failure
+  mode these goldens guard — an RNG-order regression changes every draw, and
+  hence the constants, at O(1), thirteen orders of magnitude above the gate.
+* **Exact-by-construction values** (integer labels, hard CF-faith indicator
+  scores, which are 0/1 anchors) remain asserted with strict equality.
+
 Two configs are pinned so the partial-window / negative-lag boundary is actually
 exercised:
 
 * ``L=1`` — every real benchmark config; trajectory is numerically tame, so the
-  **full X array** is asserted bit-for-bit (this is the RNG-order-regression
-  guard called out in the Stage 1 plan).
+  **full X array** checksum is asserted at ``rtol=1e-12`` (this is the
+  RNG-order-regression guard called out in the Stage 1 plan).
 * ``L=2`` — exercises the cf_faith zero-padded window for ``t-l-1 < 0``. This
   config's VAR is intentionally *not* stabilised in companion form, so the
-  trajectory diverges to ~1e11; at that magnitude the (mathematically identical)
-  re-association of ``noise + sum_l term_l`` differs at the ULP, so X is asserted
-  with a tight relative tolerance rather than bit-for-bit. The labels and — the
-  point of this case — the CF-faith scores are pinned exactly.
+  trajectory diverges to ~1e11; catastrophic cancellation amplifies ULP noise
+  to ~1e-7 there, so its soft scores use the looser ``rtol=1e-5``. The labels
+  and hard scores are pinned exactly.
 """
 
 from __future__ import annotations
 
 import numpy as np
 
-from causaltemp_xai.benchmark.generator import LinearSCMT
-from causaltemp_xai.benchmark.mechanisms import LinearMechanism, lag_window
+from causaltemp_xai.benchmarks.generator import LinearSCMT
+from causaltemp_xai.benchmarks.mechanisms import LinearMechanism, lag_window
 from causaltemp_xai.metrics.cf_faith import CFfaith
 
 
@@ -96,10 +110,14 @@ def _cf_pairs(data):
 
 
 class TestGoldenL1:
-    def test_full_X_bit_identical(self):
+    def test_full_X_checksum(self):
         data = _build(1)
         # Captured full-X checksum (RNG-order-regression guard, L=1 is tame).
-        assert float(data["X"].sum()) == GOLDEN["L1"]["X_sum"]
+        # rtol=1e-12 per the golden policy: BLAS re-association moves the sum
+        # at the ULP; an RNG-order regression would move it at O(1).
+        np.testing.assert_allclose(
+            float(data["X"].sum()), GOLDEN["L1"]["X_sum"], rtol=1e-12
+        )
 
     def test_labels(self):
         data = _build(1)
@@ -113,8 +131,12 @@ class TestGoldenL1:
             for name, cf in cfs.items():
                 r = scorer.score(x, cf, t0, data["graph"], data["mechanism"])
                 exp_hard, exp_soft = GOLDEN["L1"][sem][name]
+                # Hard scores are 0/1 indicator anchors — exact by construction.
                 assert r["hard"] == exp_hard, f"{sem}/{name} hard"
-                assert r["soft"] == exp_soft, f"{sem}/{name} soft"
+                # Soft scores are float-derived — golden policy rtol.
+                np.testing.assert_allclose(
+                    r["soft"], exp_soft, rtol=1e-12, err_msg=f"{sem}/{name} soft"
+                )
 
 
 class TestGoldenL2:
@@ -199,4 +221,7 @@ class TestGoldenL2Boundary:
                 r = scorer.score(x, cf, t0, graph, mech)
                 exp_hard, exp_soft = BOUNDARY[sem][name]
                 assert r["hard"] == exp_hard, f"{sem}/{name} hard"
-                assert r["soft"] == exp_soft, f"{sem}/{name} soft"
+                # Float-derived soft scores follow the golden policy rtol.
+                np.testing.assert_allclose(
+                    r["soft"], exp_soft, rtol=1e-12, err_msg=f"{sem}/{name} soft"
+                )

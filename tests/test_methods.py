@@ -10,7 +10,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from causaltemp_xai.benchmark.generator import LinearSCMT
+from causaltemp_xai.benchmarks.generator import LinearSCMT
 from causaltemp_xai.classifiers import LSTMClassifier
 from causaltemp_xai.methods import CARLARecourse, DiCECF, WachterCF, derive_intervention_t
 from causaltemp_xai.metrics.cf_faith import CFfaith
@@ -119,7 +119,14 @@ class TestDiCE:
         assert np.all(np.isfinite(cfs))
 
     def test_dice_ml_backend_returns_cfs(self, trained):
-        """The user-selected dice-ml gradient path returns correctly-shaped CFs."""
+        """The user-selected dice-ml gradient path returns correctly-shaped CFs.
+
+        Gated on the dice-ml extra: without it DiCECF silently uses the
+        fallback backend, which is covered by ``test_fallback_shape_and_finite``
+        — asserting ``backend_used == "dice-ml"`` is only meaningful when the
+        library is importable (it requires Python >= 3.9).
+        """
+        pytest.importorskip("dice_ml", reason="dice-ml not installed")
         clf, data = trained
         X = data["X"]
         bg = X[:40]
