@@ -16,6 +16,8 @@ from typing import Literal
 import numpy as np
 from sklearn.ensemble import IsolationForest
 
+from causaltemp_xai.scm.intervention import INTERVENTION_TOL
+
 
 # ---------------------------------------------------------------------------
 # Validity
@@ -265,18 +267,31 @@ def trsi(X_cf: np.ndarray, X: np.ndarray) -> float:
     return float(l2_per_step.mean())
 
 
-def ivr(X_cf: np.ndarray, X: np.ndarray, T_int: int, eps: float = 1e-4) -> float:
+def ivr(X_cf: np.ndarray, X: np.ndarray, T_int: int, eps: float = INTERVENTION_TOL) -> float:
     """Irreversibility-Violation-Rate (IVR).
 
     Fraction of CF instances that modify any time step t < T_int.
     Under causal faithfulness, only t >= T_int should change.
+
+    The per-element threshold ``eps`` defaults to
+    :data:`~causaltemp_xai.scm.intervention.INTERVENTION_TOL` — the same
+    predicate ``derive_intervention_t`` uses to define the intervention
+    timestep (M1 fix, 2026-07-07; previously ``1e-4``, which flagged
+    float-scale reconstruction noise that the t0 definition itself certified
+    as "unchanged" — the CELS IVR=1.0 artifact).
+
+    NOTE: when ``T_int`` is *derived* via ``derive_intervention_t`` with the
+    same tolerance (as the phased pipeline does), IVR is 0 by construction —
+    in that wiring it is a pipeline-consistency canary, not a discriminative
+    score. It is discriminative only for methods that *declare* their own
+    intervention time (e.g. oracle structural CFs).
 
     Parameters
     ----------
     X_cf  : (N, T, k) or (T, k)
     X     : (N, T, k) or (T, k)
     T_int : intervention time step (changes before this are violations)
-    eps   : threshold below which changes are considered zero
+    eps   : per-element threshold below which changes are considered zero
 
     Returns
     -------

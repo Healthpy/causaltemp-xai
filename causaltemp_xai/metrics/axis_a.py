@@ -411,25 +411,54 @@ def icc(attribution: np.ndarray, int_channel: int) -> float:
 def mcc_concept(
     attribution: np.ndarray,
     causal_parents: list,
-    threshold: float = 1e-3,
 ) -> float:
-    """Causal Coverage — fraction of causal parent channels covered by attribution.
+    """Causal Coverage — chance-normalized attribution mass on causal parents.
+
+    .. math::
+
+        \\mathrm{MCC_{cov}} = \\frac{\\sum_{p \\in \\mathrm{Pa}} \\sum_t
+        |a_{t,p}| \\; / \\; \\sum_{j,t} |a_{t,j}|}{|\\mathrm{Pa}| / k}
+
+    i.e. the share of total attribution mass landing on ground-truth
+    causal-parent channels, divided by the share a *uniform* map would place
+    there. ``1.0`` = chance-level alignment; ``> 1`` = attribution
+    concentrates on causal parents; ``< 1`` = attribution actively avoids
+    them. Maximum is ``k / |Pa|`` (all mass on parents).
+
+    M1 redesign (2026-07-07). The previous formulation — fraction of parents
+    whose absolute channel mass exceeded a fixed ``threshold=1e-3`` — had two
+    defects: (i) the score depended on the attribution method's output
+    *scale*, not its alignment, and (ii) dense saliency maps (IG) cleared any
+    reasonable threshold on every channel, pinning the metric at the 1.0
+    ceiling with zero discriminative power. A scale-*relative* threshold
+    fixes (i) but not (ii) — dense maps still cover everything. The
+    continuous mass formulation is threshold-free, scale-invariant by
+    construction, mirrors the ``icc`` attribution-mass formulation already
+    used on this axis, and its chance normalization makes instances with
+    different parent counts comparable under a mean.
 
     Parameters
     ----------
     attribution    : (T, k)
     causal_parents : list of channel indices that are causal parents (ground-truth)
-    threshold      : minimum abs attribution per channel to count as covered
 
     Returns
     -------
-    float in [0, 1]; returns nan if causal_parents is empty
+    float in [0, k/len(causal_parents)]; 1.0 = chance. Returns nan if
+    ``causal_parents`` is empty (coverage of zero parents is undefined) or if
+    the attribution map carries (numerically) zero total mass.
     """
     if not causal_parents:
         return float("nan")
+    attribution = np.asarray(attribution, dtype=float)
+    k = attribution.shape[1]
+    total_mass = np.abs(attribution).sum()
+    if total_mass < 1e-12:
+        return float("nan")
     channel_totals = np.abs(attribution).sum(axis=0)  # (k,)
-    covered = sum(1 for p in causal_parents if channel_totals[p] > threshold)
-    return float(covered / len(causal_parents))
+    parent_share = float(sum(channel_totals[p] for p in causal_parents)) / float(total_mass)
+    chance_share = len(causal_parents) / k
+    return float(parent_share / chance_share)
 
 
 def latent_disentanglement(Z: np.ndarray, X_channels: np.ndarray) -> float:

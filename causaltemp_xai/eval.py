@@ -66,9 +66,18 @@ def evaluate_method(
     -------
     dict
         Flat dict of batch-mean metrics: ``validity``, ``proximity_l1``,
-        ``proximity_l2``, ``sparsity``, ``frac_altered``, ``ood``, and the four
+        ``proximity_l2``, ``sparsity``, ``frac_altered``, ``ood``, the four
         CF-faith keys ``cf_faith_rollout_hard/soft`` and
-        ``cf_faith_pearl_hard/soft``.  Also includes ``n`` (batch size).
+        ``cf_faith_pearl_hard/soft``, and the two **joint
+        faithfulness-validity** keys ``cf_faith_rollout_hard_valid`` /
+        ``cf_faith_pearl_hard_valid`` — the fraction of instances that are
+        *both* hard-faithful *and* classified as ``target_class``. The joint
+        criterion closes the tiny-edit gameability loophole (M1, 2026-07-07):
+        a near-no-op CF can pass the faithfulness check without consulting
+        the SCM, but it then fails to flip the classifier, so it earns no
+        joint credit. No proximity floor is needed — a CF that is tiny *and*
+        valid *and* faithful is genuinely good, not gaming.  Also includes
+        ``n`` (batch size).
     """
     X_orig = np.asarray(X_orig, dtype=float)
     CFs = np.asarray(CFs, dtype=float)
@@ -84,6 +93,12 @@ def evaluate_method(
     # Instantiate the two scorers once (outside the loop).
     rollout = CFfaith(semantics="noiseless_rollout")
     pearl = CFfaith(semantics="pearl_delta")
+
+    # Per-instance validity indicator (one predict call for the whole batch);
+    # reused by both the validity mean and the joint criterion below.
+    predict = getattr(model, "predict", model)
+    preds = np.asarray(predict(CFs)).reshape(-1)
+    valid_i = (preds == target_class).astype(float)  # (N,)
 
     prox_l1, prox_l2, spars = [], [], []
     r_hard, r_soft, p_hard, p_soft = [], [], [], []
@@ -106,7 +121,7 @@ def evaluate_method(
 
     return {
         "n": int(len(CFs)),
-        "validity": validity(CFs, model, target_class),
+        "validity": float(np.mean(valid_i)),
         "proximity_l1": float(np.mean(prox_l1)),
         "proximity_l2": float(np.mean(prox_l2)),
         "sparsity": sparsity_mean,
@@ -116,7 +131,21 @@ def evaluate_method(
         "cf_faith_rollout_soft": float(np.mean(r_soft)),
         "cf_faith_pearl_hard": float(np.mean(p_hard)),
         "cf_faith_pearl_soft": float(np.mean(p_soft)),
+        # Joint faithfulness-validity criterion (anti-gameability, M1):
+        # fraction of instances that are BOTH hard-faithful AND valid.
+        "cf_faith_rollout_hard_valid": float(np.mean(np.asarray(r_hard) * valid_i)),
+        "cf_faith_pearl_hard_valid": float(np.mean(np.asarray(p_hard) * valid_i)),
     }
+
+
+#: Minimum base validity below which the Shift-VR *ratio* is not reported
+#: (M1 decision, 2026-07-07). A retention ratio with a small denominator is
+#: numerically unstable at benchmark sample sizes: at ``n_cf=10``,
+#: ``validity_base=0.3`` means 3 successes, and a swing of a few instances
+#: moves the ratio by integer multiples (the CftsConfeti 2.67x artifact).
+#: Below this floor only the ``(validity_base, validity_shift)`` pair is
+#: reported; the ratio is ``None``.
+MIN_VALIDITY_BASE_FOR_RATIO = 0.3
 
 
 def _generate_batch(method, X, model, graph, mechanism):
@@ -168,9 +197,14 @@ def shift_vr(
     Returns
     -------
     dict
-        ``{name: {"validity_base", "validity_shift", "shift_vr"}}``. ``shift_vr``
-        is ``validity_shift / validity_base``, or ``nan`` when no base CF is
-        valid (documented denominator-zero sentinel).
+        ``{name: {"validity_base", "validity_shift", "shift_vr", "n_base",
+        "n_shift"}}``. The ``(validity_base, validity_shift)`` pair is always
+        reported. ``shift_vr`` is ``validity_shift / validity_base`` **only
+        when** ``validity_base >= MIN_VALIDITY_BASE_FOR_RATIO`` (0.3);
+        otherwise it is ``None`` — a retention ratio on a tiny denominator is
+        a small-sample artifact, not a robustness signal (M1 guard,
+        2026-07-07; ``None`` also serializes to valid JSON ``null``, unlike
+        the previous ``nan`` sentinel).
     """
     results: dict = {}
     for name, method in methods.items():
@@ -178,10 +212,15 @@ def shift_vr(
         cf_shift = _generate_batch(method, X_shift_test, model, graph, mechanism)
         v_base = validity(cf_base, model, target_class)
         v_shift = validity(cf_shift, model, target_class)
-        ratio = v_shift / v_base if v_base > 0 else float("nan")
+        if v_base >= MIN_VALIDITY_BASE_FOR_RATIO:
+            ratio = v_shift / v_base
+        else:
+            ratio = None  # pair still reported; ratio would be unstable
         results[name] = {
             "validity_base": v_base,
             "validity_shift": v_shift,
             "shift_vr": ratio,
+            "n_base": int(np.asarray(X_base_test).shape[0]),
+            "n_shift": int(np.asarray(X_shift_test).shape[0]),
         }
     return results

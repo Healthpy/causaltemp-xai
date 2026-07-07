@@ -9,7 +9,7 @@ from .dag import LaggedDAG, sample_dag
 from .operators import OPERATORS, INVERTIBLE_OPERATORS, Mechanism, sample_mechanism
 from .tscm import simulate_tscm, sample_noise
 from .abduction import abduct
-from .intervention import derive_intervention_t
+from .intervention import INTERVENTION_TOL, derive_intervention_t
 from .counterfactual import compute_gt_counterfactual
 
 __all__ = [
@@ -22,6 +22,7 @@ __all__ = [
     "simulate_tscm",
     "sample_noise",
     "abduct",
+    "INTERVENTION_TOL",
     "derive_intervention_t",
     "compute_gt_counterfactual",
 ]

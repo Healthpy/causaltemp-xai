@@ -26,8 +26,24 @@ import numpy as np
 # MOVED from methods/intervention.py — causaltemp_xai original implementation
 # ---------------------------------------------------------------------------
 
+#: Single source of truth for "is this element changed?" across the benchmark.
+#:
+#: ``derive_intervention_t`` (which *defines* the intervention timestep t0),
+#: the ``CFfaith`` retroactive gate, and ``axis_c.ivr`` all share this
+#: per-element threshold (M1 decision, 2026-07-07). Rationale: t0 is defined
+#: as the first timestep whose **per-element max** deviation exceeds this
+#: tolerance, so any downstream retroactive check must use the *same
+#: predicate at the same scale* — otherwise a region certified "unchanged" by
+#: the definition of t0 can be flagged "retroactively edited" by its own
+#: consumer (the CELS false-flag artifact: summed 1e-4 vs per-element 1e-3).
+#: A per-element max is also T×k-invariant: a summed check accumulates
+#: floating-point reconstruction noise linearly in the pre-window area.
+INTERVENTION_TOL = 1e-3
 
-def derive_intervention_t(x: np.ndarray, x_cf: np.ndarray, tol: float = 1e-3) -> int:
+
+def derive_intervention_t(
+    x: np.ndarray, x_cf: np.ndarray, tol: float = INTERVENTION_TOL
+) -> int:
     """Return the smallest ``t`` such that ``max_j |x_cf[t,j] - x[t,j]| > tol``.
 
     This is the benchmark's uniform heuristic: all CF methods (Wachter, DiCE,
@@ -39,7 +55,9 @@ def derive_intervention_t(x: np.ndarray, x_cf: np.ndarray, tol: float = 1e-3) ->
     x, x_cf:
         Original and counterfactual trajectories, shape ``(T, k)``.
     tol:
-        Per-element threshold below which a timestep is considered unchanged.
+        Per-element threshold below which a timestep is considered unchanged
+        (default :data:`INTERVENTION_TOL` — shared with the CF-faith
+        retroactive gate and ``axis_c.ivr``; see the constant's docstring).
 
     Returns
     -------

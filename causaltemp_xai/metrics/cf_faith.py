@@ -20,6 +20,11 @@ import numpy as np
 # docstring). Imported here so cf_faith and structural_cf cannot drift.
 from causaltemp_xai.benchmarks.mechanisms import lag_window as _window
 
+# Single source of truth for the per-element "is this element changed?"
+# threshold, shared with derive_intervention_t and axis_c.ivr (M1 decision,
+# 2026-07-07) — see the constant's docstring for the full rationale.
+from causaltemp_xai.scm.intervention import INTERVENTION_TOL
+
 
 class CFfaith:
     """Causal faithfulness scorer for temporal counterfactuals.
@@ -31,7 +36,15 @@ class CFfaith:
 
     1. **Retroactive check** – verifies that ``x_cf`` is identical to ``x``
        for all time steps *before* ``intervention_t``.  Any modification prior
-       to the intervention is a retroactive causality violation.
+       to the intervention is a retroactive causality violation.  "Modified"
+       uses the same per-element predicate (max ``|Δ| > retro_tol``, default
+       :data:`~causaltemp_xai.scm.intervention.INTERVENTION_TOL`) that
+       ``derive_intervention_t`` uses to *define* the intervention timestep,
+       so a region certified unchanged by the t0 definition can never be
+       flagged retroactive by this gate (M1 fix, 2026-07-07 — previously a
+       *summed* L1 vs ``1e-4`` accumulated float-scale reconstruction noise
+       over the T×k pre-window and falsely flagged full-trajectory-
+       reconstruction methods such as CELS).
 
     2. **SCM forward simulation** – starting from ``intervention_t``, simulates
        the SCM forward using the known VAR coefficient matrices and computes
@@ -55,16 +68,26 @@ class CFfaith:
         tol: float = 1e-4,
         scale: float = 1.0,
         semantics: str = "noiseless_rollout",
+        retro_tol: float = INTERVENTION_TOL,
     ) -> None:
         """Create a CF-faithfulness scorer.
 
         Parameters
         ----------
         tol:
-            Residual threshold for the binary ``hard`` score and the retroactive
-            change check.
+            Residual threshold for the binary ``hard`` score (forward
+            SCM-consistency check only).
         scale:
             Normalising scale in the ``soft`` score ``exp(-residual / scale)``.
+        retro_tol:
+            Per-element threshold for the retroactive change check. Defaults
+            to :data:`~causaltemp_xai.scm.intervention.INTERVENTION_TOL` so
+            the gate is consistent, by construction, with the
+            ``derive_intervention_t`` heuristic that defines ``intervention_t``
+            in the evaluation pipeline. Kept separate from ``tol``: the
+            forward residual is a *mean* over the post-intervention region
+            (a different quantity at a different scale), while the retro gate
+            is a per-element edit detector.
         semantics:
             Which faithfulness definition the forward check uses:
 
@@ -97,6 +120,7 @@ class CFfaith:
         self.tol = tol
         self.scale = scale
         self.semantics = semantics
+        self.retro_tol = retro_tol
 
     def score(
         self,
@@ -141,10 +165,13 @@ class CFfaith:
         L = mechanism.L
 
         # ------------------------------------------------------------------
-        # (i) Retroactive change check
+        # (i) Retroactive change check — per-element max, same predicate and
+        # scale as derive_intervention_t (M1 decision, 2026-07-07). A summed
+        # check here would grow with T×k from float-scale reconstruction
+        # noise alone and contradict the very definition of intervention_t.
         # ------------------------------------------------------------------
-        retro_delta = np.abs(x_cf_arr[:intervention_t] - x_orig[:intervention_t]).sum()
-        has_retroactive = retro_delta > self.tol
+        retro_region = np.abs(x_cf_arr[:intervention_t] - x_orig[:intervention_t])
+        has_retroactive = retro_region.size > 0 and float(retro_region.max()) > self.retro_tol
 
         if has_retroactive:
             return {"hard": 0.0, "soft": 0.0}

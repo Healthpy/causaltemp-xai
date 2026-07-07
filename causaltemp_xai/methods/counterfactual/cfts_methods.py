@@ -35,7 +35,12 @@ import torch.nn as nn
 # Register the submodule so `import cfts.*` works
 # ------------------------------------------------------------------
 
-_CFTS_ROOT = Path(__file__).parents[2] / "third_party" / "cfts_repo"
+# parents[3] = repo root (this file lives at
+# causaltemp_xai/methods/counterfactual/cfts_methods.py). Was parents[2]
+# before the restructure moved the file one level deeper; the stale index
+# silently worked only while the dead duplicate methods/cfts_methods.py
+# (correct depth) registered the path first — fixed 2026-07-07 (M1 rerun).
+_CFTS_ROOT = Path(__file__).parents[3] / "third_party" / "cfts_repo"
 if str(_CFTS_ROOT) not in sys.path:
     sys.path.insert(0, str(_CFTS_ROOT))
 
