@@ -179,7 +179,7 @@ To deploy temporal deep learning models in safety-critical settings, their post-
 1. [What-If Explanations Over Time: Counterfactuals for Time Series Classification](https://arxiv.org/html/2603.27792v1) — arXiv
 2. [EXPLAINABLE AI FOR TIME SERIES ANOMALY DETECTION](https://www.diva-portal.org/smash/get/diva2:1972404/FULLTEXT01.pdf) — Diva-Portal.org
 3. [Regularizing Temporal Explanations in Dynamic Neural Networks](https://www.mdpi.com/2079-9292/15/10/2200) — MDPI
-4. [Explanation-level Robustness for Temporal Deep Learning Under Distribution](https://oaji.net/pdfs.html?n=2026/3603-1778944619.pdf)
+4. [Explanation-level Robustness for Temporal Deep Learning Under Distribution](https://inass.org/wp-content/uploads/2026/03/2026063026-2.pdf)
 5. [Estimating Feature Attributions for Time Series Classification: Supervised Prediction of Integrated Gradients under the Multitas](https://www.diva-portal.org/smash/get/diva2:1876681/FULLTEXT01.pdf) — Diva-Portal.org
 6. [A Survey of Explainable Artificial Intelligence (XAI) in Financial Time Series Forecasting](https://laplaceinsights.com/wp-content/uploads/2026/01/A_Survey_of_Explainable_Artificial_Intelligence__XAI__in_Financial_Time_Series_Forecasting.pdf)
 7. [The application of explainable artificial intelligence in the prediction, diagnoses, treatment, and management of chronic diseases: A systematic review](https://pmc.ncbi.nlm.nih.gov/articles/PMC12647564/) — PMC
@@ -199,7 +199,7 @@ To deploy temporal deep learning models in safety-critical settings, their post-
 21. [Spatio-temporal graphical counterfactuals: an overview](http://scis.scichina.com/en/2026/141201.pdf)
 22. [Structural Causal Model Essentials](https://www.emergentmind.com/topics/structure-causal-model) — Emergent Mind
 23. [An Extended Class of Instrumental Variables for the Estimation of Causal Effects](https://economics.ucr.edu/wp-content/uploads/2019/11/HalWhite_Sem_6-2-06.pdf) — UCR Department of Economics
-24. [Daily Papers — Hugging Face](https://huggingface.co/papers?q=causal%20timestamp%20correctness)
+24. [CausalTime: Realistic Time-Series Generation for Benchmarking Causal Discovery](https://arxiv.org/abs/2310.01753) — arXiv (Cheng, Wang et al., ICLR 2024; corrected 2026-07-08, was a broken Hugging Face search-query link — see `docs/references_verified.md`)
 25. [Towards Causal Market Simulators](https://arxiv.org/html/2511.04469v4) — arXiv
 26. [DoFlow: Flow-based Generative Models for Interventional and Counterfactual Inference](https://openreview.net/forum?id=4IPIhOgVqz) — OpenReview
 27. [Methods in causal inference. Part 1: causal diagrams and confounding](https://pmc.ncbi.nlm.nih.gov/articles/PMC11588567/) — PMC / NIH
