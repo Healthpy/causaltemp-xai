@@ -1,0 +1,9 @@
+{
+  "config": "smoke_nonmonotonic",
+  "accuracies": {
+    "train": 0.9933333333333333,
+    "val": 0.95,
+    "test": 0.97
+  },
+  "target_acc": 0.9
+}
