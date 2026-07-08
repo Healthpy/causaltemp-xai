@@ -5,7 +5,7 @@ from __future__ import annotations
 import numpy as np
 import torch
 
-from causaltemp_xai.benchmark.mechanisms import (
+from causaltemp_xai.benchmarks.mechanisms import (
     LinearMechanism,
     MLPMechanism,
     mechanism_from_state_dict,

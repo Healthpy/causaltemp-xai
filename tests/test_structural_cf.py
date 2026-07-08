@@ -15,8 +15,8 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from causaltemp_xai.benchmark.generator import NlinearSCMT
-from causaltemp_xai.benchmark.structural_cf import (
+from causaltemp_xai.benchmarks.generator import NlinearSCMT
+from causaltemp_xai.benchmarks.structural_cf import (
     _window,
     abduct_noise,
     structural_counterfactual,

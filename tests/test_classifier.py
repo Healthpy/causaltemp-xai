@@ -144,7 +144,7 @@ class TestShapeContract:
     def test_tk_flows_through_classifier_and_cffaith(self):
         """One (T,k) instance flows through predict/proba/torch_logits and
         CFfaith.score with no transpose at the call site."""
-        from causaltemp_xai.benchmark.generator import LinearSCMT
+        from causaltemp_xai.benchmarks.generator import LinearSCMT
 
         gen = LinearSCMT(k=3, L=1, T=15, N=40, seed=8)
         data = gen.generate()

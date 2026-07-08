@@ -6,12 +6,12 @@ import numpy as np
 import pytest
 import torch
 
-from causaltemp_xai.attribution import (
+from causaltemp_xai.methods.attribution import (
     deletion_curve,
     insertion_curve,
     integrated_gradients,
 )
-from causaltemp_xai.benchmark.generator import LinearSCMT
+from causaltemp_xai.benchmarks.generator import LinearSCMT
 from causaltemp_xai.classifiers import LSTMClassifier
 
 

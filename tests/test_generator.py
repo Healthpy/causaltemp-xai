@@ -15,7 +15,7 @@ import numpy as np
 import pytest
 from scipy.stats import kstest
 
-from causaltemp_xai.benchmark.generator import LinearSCMT
+from causaltemp_xai.benchmarks.generator import LinearSCMT
 from causaltemp_xai.config import CONFIGS, SMOKE
 from causaltemp_xai.data_io import (
     SPLIT_FRACTIONS,

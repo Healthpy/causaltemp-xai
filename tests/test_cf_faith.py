@@ -10,9 +10,9 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from causaltemp_xai.benchmark.generator import NlinearSCMT
-from causaltemp_xai.benchmark.mechanisms import LinearMechanism
-from causaltemp_xai.benchmark.structural_cf import structural_counterfactual
+from causaltemp_xai.benchmarks.generator import NlinearSCMT
+from causaltemp_xai.benchmarks.mechanisms import LinearMechanism
+from causaltemp_xai.benchmarks.structural_cf import structural_counterfactual
 from causaltemp_xai.metrics.cf_faith import CFfaith
 
 

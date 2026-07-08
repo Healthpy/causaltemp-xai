@@ -11,9 +11,9 @@ from __future__ import annotations
 
 import numpy as np
 
-from causaltemp_xai.benchmark.generator import LinearSCMT
+from causaltemp_xai.benchmarks.generator import LinearSCMT
 from causaltemp_xai.eval import evaluate_method
-from causaltemp_xai.methods.intervention import derive_intervention_t
+from causaltemp_xai.scm.intervention import derive_intervention_t
 from causaltemp_xai.metrics.cf_faith import CFfaith
 
 N_EXAMPLES = 12

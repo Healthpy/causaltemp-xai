@@ -19,8 +19,8 @@ import numpy as np
 import pytest
 from scipy.stats import kstest
 
-from causaltemp_xai.benchmark.generator import LinearSCMT, NlinearSCMT
-from causaltemp_xai.benchmark.mechanisms import MLPMechanism
+from causaltemp_xai.benchmarks.generator import LinearSCMT, NlinearSCMT
+from causaltemp_xai.benchmarks.mechanisms import MLPMechanism
 from causaltemp_xai.config import SMOKE_NL, shifted_config
 from causaltemp_xai.data_io import (
     build_generator,
