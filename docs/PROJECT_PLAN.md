@@ -206,7 +206,9 @@ Owners: **[M&C]** Methodology & Coding Scientist, **[Lit]** Literature Intellige
     question for CAUKER/Causal-DAG-Prior, four omitted related-work benchmarks, full
     CausalProfiler read). No pipeline dependency. Dispatched this review; see §9.5. (This is the
     work the coordinating session's brief referred to as "Task #16" — see §9.5's note on task
-    numbering.)
+    numbering.) — **DONE 2026-07-08 (§9.6).** All three resolved with direct evidence; PI
+    independently corroborated the highest-priority finding via fresh `WebFetch` calls against the
+    primary sources. M6 is now fully closed, not merely "accepted with conditions."
 
 ---
 
@@ -625,3 +627,61 @@ corrupting) have been applied directly to `docs/BenchmarkingTSCFEs.md` by the co
 at the user's direct request, 2026-07-08. This is a separate, already-closed thread from this
 review's M6 dispatch (item 4 above) — the three *open* M6 follow-ups this review dispatches are
 unaffected by and independent of that reference-list edit.
+
+### 9.6 — 2026-07-08 (sixth pass): M6 follow-ups returned and independently corroborated — M6 now
+fully closed
+
+The Literature Intelligence dispatch from §9.5 (item 4) returned. Read the actual diff to
+`docs/references_verified.md` myself (new rows 47–50, the row-9 and row-11 novelty-ledger
+addenda, and the new "M6 follow-up pass" section with quoted evidence) rather than accepting the
+agent's own summary of itself.
+
+**Independent spot-check performed on the highest-priority, highest-stakes finding (Task 1, the
+lagged-graph question) — not just re-reading the agent's transcript.** I issued my own fresh
+`WebFetch` calls against the primary sources: `arxiv.org/html/2508.02879v3` (CAUKER) and
+`arxiv.org/html/2606.21776v1` (the O'Rourke Causal-DAG-Prior paper), independently of the agent's
+own session. Both reproduced, verbatim, the exact evidence the agent's report cites: CAUKER's
+non-recursive non-root transform `t_{v_j} = φ(v_j)(W × [e_.j] + b)` with a confirmed zero-hit
+search for lag/tau/AR/VAR terms tied to the graph structure, and the O'Rourke paper's explicit
+first-person design statement ("Rather than unrolling a dynamic SCM recurrently over time ... we
+favour a clean, scalable design: an acyclic graph that injects temporal structure
+non-recurrently...") plus its dilated-convolution series-mechanism equation. **This independently
+corroborates the agent's central verdict: neither closest competitor's causal DAG is time-lagged in
+this project's own formal sense. Confidence: High** (matching the agent's own tag, now backed by a
+second, independent extraction rather than resting on the agent's word alone). Net effect
+unchanged from the agent's own assessment: pillar (ii) of the novelty claim ("ground-truth *lagged*
+graph") survives essentially intact against both nearest competitors, and the delta stated in the
+existing Novelty Ledger row 9 is a floor, not the ceiling — a stronger position than the prior
+pass (§9.3) had established.
+
+**Tasks 2 and 3 accepted on the strength of the agent's demonstrated rigor in this and the prior
+M6 pass, without a full independent re-fetch of each** — proportionate to their lower novelty
+stakes (none of the four added benchmarks or CausalProfiler threaten the central claim either way,
+so the cost of an error here is much lower than on Task 1). The work itself shows the same
+discipline as the accepted prior pass: specific DOIs cross-corroborated against a second
+independent source (NeurIPS/OpenReview pages, GitHub repos, PMC), and honest confidence
+down-grades where corroboration was incomplete (XTSC-Bench tagged Medium-High, not High,
+specifically because the IEEE Xplore DOI itself could not be located — the right kind of granular
+honesty, not a blanket downgrade or a blanket High).
+
+**M6 status: now fully closed.** All three follow-ups from §9.3 are resolved with direct evidence
+(not inference), `docs/references_verified.md` was updated additively (existing rows/verdicts
+preserved, strike-through-not-delete convention maintained, consistent with this document's own
+policy), and the M6 DoD ("a novelty ledger... approved by PI") is satisfied. Task-list item 30
+(added in §9.5) is complete. No action needed before M7 framing uses the strengthened, narrowed
+novelty statement this pass produced — flagged for whoever drafts the related-work section as
+ready to use, not as a fresh open item.
+
+**One item deliberately left for later, not overlooked:** the agent itself flagged that its CAUKER
+finding rests on two independently-converging tool-mediated extractions rather than a byte-level
+human read of the ICLR 2026 camera-ready (poppler/`pdftoppm` was unavailable in its environment for
+direct PDF rendering of that specific file). My own independent `WebFetch` is a third convergent
+extraction, which further reduces this concern, but does not fully eliminate the residual gap
+between "three tool-mediated extractions agree" and "a human read the camera-ready PDF directly."
+Given the manuscript-framing use of this finding is still months out (M7), I am not treating this
+as blocking — noting it once, here, as a cheap final check worth doing close to manuscript freeze,
+not as an open task today.
+
+Nothing in this entry touches the still-in-progress Methodology & Coding dispatches from §9.5
+(pipeline-gap closure, method rename, ablation presets) — those are tracked separately and were
+not yet complete at the time of this entry.
