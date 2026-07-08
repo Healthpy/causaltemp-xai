@@ -13,9 +13,9 @@ from __future__ import annotations
 
 import numpy as np
 import pytest
-from scipy.stats import kstest
+from scipy.stats import kstest, kurtosis
 
-from causaltemp_xai.benchmarks.generator import LinearSCMT
+from causaltemp_xai.benchmarks.generator import _GAUSSIAN_STD, LinearSCMT
 from causaltemp_xai.config import CONFIGS, SMOKE
 from causaltemp_xai.data_io import (
     SPLIT_FRACTIONS,
@@ -124,6 +124,49 @@ class TestNoiseDist:
     def test_invalid_noise_type_raises(self):
         with pytest.raises((ValueError, NotImplementedError)):
             LinearSCMT(k=3, L=1, noise_type="invalid", seed=0).generate()
+
+    # -----------------------------------------------------------------
+    # M4/H5 negative-control ablation: Gaussian innovation noise.
+    # -----------------------------------------------------------------
+
+    def test_gaussian_does_not_reject_gaussian(self):
+        """Sanity-check the flip side of the two tests above: a KS test
+        should *not* reject the Gaussian hypothesis for Gaussian noise."""
+        gen = LinearSCMT(k=1, L=1, noise_type="gaussian", T=500, N=200, seed=0)
+        data = gen.generate()
+        samples = data["X"].ravel()
+        z = (samples - samples.mean()) / (samples.std() + 1e-9)
+        _, p = kstest(z, "norm")
+        assert p > 0.05, f"KS p-value {p:.4f} rejected Gaussian for Gaussian noise"
+
+    def test_gaussian_noise_variance_matches_laplace_variance(self):
+        """H5 isolates distribution *shape*, not scale: the Gaussian std is
+        chosen so its variance matches Laplace(scale=0.1)'s variance
+        (2*scale**2=0.02) closely -- confirms the ablation varies noise
+        shape, not innovation scale."""
+        rng = np.random.default_rng(1)
+        lap = rng.laplace(loc=0.0, scale=0.1, size=500_000)
+        gauss = rng.normal(loc=0.0, scale=_GAUSSIAN_STD, size=500_000)
+        assert abs(lap.var() - gauss.var()) < 0.001
+
+    def test_gaussian_distinguishable_from_laplace_by_kurtosis(self):
+        """Cheaply checkable structural property (not just 'it ran'):
+        Laplace is leptokurtic (excess kurtosis = 3 analytically) at any
+        scale; Gaussian's excess kurtosis is 0 by definition -- the two
+        innovation distributions are shape-distinguishable even at matched
+        variance."""
+        rng = np.random.default_rng(2)
+        lap = rng.laplace(loc=0.0, scale=0.1, size=200_000)
+        gauss = rng.normal(loc=0.0, scale=_GAUSSIAN_STD, size=200_000)
+        k_lap = kurtosis(lap, fisher=True)
+        k_gauss = kurtosis(gauss, fisher=True)
+        assert k_lap > 1.5, f"Laplace excess kurtosis too low: {k_lap:.2f}"
+        assert abs(k_gauss) < 0.5, f"Gaussian excess kurtosis should be ~0: {k_gauss:.2f}"
+
+    def test_gaussian_generate_is_reproducible(self):
+        gen_a = LinearSCMT(k=3, L=1, noise_type="gaussian", T=20, N=50, seed=5)
+        gen_b = LinearSCMT(k=3, L=1, noise_type="gaussian", T=20, N=50, seed=5)
+        np.testing.assert_array_equal(gen_a.generate()["X"], gen_b.generate()["X"])
 
 
 # ---------------------------------------------------------------------------

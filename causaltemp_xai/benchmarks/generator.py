@@ -11,9 +11,22 @@
 
       x_t  =  mechanism.forward_numpy(window_{t-L..t-1})  +  eps_t
 
-Both share the graph sampler (:func:`_sample_graph`) so the no-self-loop-at-lag-1
-rule and the per-lag Bernoulli draw are identical, and ``eps_t`` is drawn from
-either a Laplace or Uniform distribution.
+* :class:`RegimeSwitchNlinearSCMT` — M4/H7 ablation: two-regime structural
+  break layered on :class:`NlinearSCMT`. Same causal graph throughout; only
+  the per-node MLP mechanism's numeric parameters (decay/gain/weights)
+  switch, once, at a fixed deterministic timestep partway through each
+  trajectory's *observed* horizon. Minimal viable design (two regimes, one
+  switch point — no HMM, no learned transition probabilities); see
+  ``docs/m4_ablation_presets_smoke.md``.
+
+Both :class:`LinearSCMT` and :class:`NlinearSCMT` share the graph sampler
+(:func:`_sample_graph`) so the no-self-loop-at-lag-1 rule and the per-lag
+Bernoulli draw are identical, and ``eps_t`` is drawn from one of three
+innovation distributions: Laplace (default), Uniform, or Gaussian
+(``noise_type="gaussian"`` — M4/H5 negative-control ablation, added
+2026-07-08; variance-matched to the default Laplace scale so the ablation
+isolates innovation *shape*, not scale — see :data:`_GAUSSIAN_STD` and
+``docs/m4_ablation_presets_smoke.md``).
 
 Scope (this iteration)
 ----------------------
@@ -38,7 +51,16 @@ import numpy as np
 from causaltemp_xai.benchmarks.mechanisms import LinearMechanism, MLPMechanism
 
 
-_NOISE_TYPES = ("laplace", "uniform")
+_NOISE_TYPES = ("laplace", "uniform", "gaussian")
+
+#: Std-dev for the Gaussian innovation branch (M4/H5 negative-control
+#: ablation). Chosen to match the *variance* of the default
+#: ``laplace(loc=0, scale=0.1)`` innovation exactly — a Laplace(0, b)'s
+#: variance is ``2 * b**2``, so ``std = b * sqrt(2)`` — so the ablation
+#: isolates innovation-distribution *shape* (kurtosis), not scale. See
+#: ``docs/m4_ablation_presets_smoke.md`` for the derivation and the
+#: pre-registered H5 expected direction.
+_GAUSSIAN_STD = 0.1 * float(np.sqrt(2.0))
 
 
 def _sample_lag_mask(
@@ -87,8 +109,10 @@ class LinearSCMT:
         Probability that any given lagged edge is present in the causal graph.
         Value in ``(0, 1]``; lower values produce sparser graphs.
     noise_type:
-        Noise distribution for the innovation terms.  Either ``"laplace"`` or
-        ``"uniform"``.
+        Noise distribution for the innovation terms. One of ``"laplace"``
+        (default), ``"uniform"``, or ``"gaussian"`` — the last is the M4/H5
+        negative-control ablation, variance-matched to the Laplace default
+        (see :data:`_GAUSSIAN_STD`).
     T:
         Default trajectory length used by :meth:`generate`.
     N:
@@ -103,7 +127,7 @@ class LinearSCMT:
         k: int = 5,
         L: int = 2,
         sparsity: float = 0.3,
-        noise_type: Literal["laplace", "uniform"] = "laplace",
+        noise_type: Literal["laplace", "uniform", "gaussian"] = "laplace",
         T: int = 50,
         N: int = 200,
         seed: Optional[int] = 42,
@@ -218,12 +242,14 @@ class LinearSCMT:
         return graph, LinearMechanism(mechanisms)
 
     def _sample_noise(self, *shape) -> np.ndarray:
-        """Draw noise samples from the configured non-Gaussian distribution."""
+        """Draw noise samples from the configured innovation distribution."""
         size = shape if len(shape) > 1 else shape[0]
         if self.noise_type == "laplace":
             return self._rng.laplace(loc=0.0, scale=0.1, size=size)
-        else:  # uniform
+        elif self.noise_type == "uniform":
             return self._rng.uniform(low=-0.17, high=0.17, size=size)  # std ≈ 0.1
+        else:  # gaussian (M4/H5 negative-control ablation)
+            return self._rng.normal(loc=0.0, scale=_GAUSSIAN_STD, size=size)
 
 
 class NlinearSCMT:
@@ -236,10 +262,15 @@ class NlinearSCMT:
 
         x_t = mechanism.forward_numpy(window_{t-L..t-1}) + eps_t
 
-    The mechanism is contractive (leaky ``decay`` + bounded ``gain·tanh`` branch
-    with spectral-norm-capped weights), so trajectories stay bounded over long
-    horizons; a deterministic divergence-resample guard (then a clip fallback)
-    catches the rare blow-up without breaking ``same seed ⇒ identical X``.
+    The mechanism is contractive (leaky ``decay`` + bounded ``gain·tanh`` output
+    branch with spectral-norm-capped weights), so trajectories stay bounded over
+    long horizons; a deterministic divergence-resample guard (then a clip
+    fallback) catches the rare blow-up without breaking ``same seed ⇒
+    identical X``. This boundedness guarantee is unaffected by the ``activation``
+    choice (``"tanh"`` or the M4/H6 ``"nonmonotonic"`` ablation) because the
+    *output* branch is always ``tanh`` regardless — ``activation`` only selects
+    the *hidden*-layer nonlinearity (see
+    :class:`~causaltemp_xai.benchmarks.mechanisms.MLPMechanism`).
 
     Parameters
     ----------
@@ -256,7 +287,14 @@ class NlinearSCMT:
     init_gain:
         Weight-init scale: ``std = init_gain · √(1/fan_in)``.
     activation:
-        Hidden-layer activation (only ``"tanh"`` supported).
+        Hidden-layer activation: ``"tanh"`` (default, monotonic) or
+        ``"nonmonotonic"`` (M4/H6 ablation — a bounded ``sin`` activation with
+        the same ``|output| <= 1`` range and <=1 Lipschitz bound as ``tanh``,
+        so the contractive stability argument is unchanged; only
+        monotonicity of the *hidden* representation varies — the mechanism's
+        **output** branch is always ``tanh`` regardless of this choice. See
+        :mod:`causaltemp_xai.benchmarks.mechanisms` and
+        ``docs/m4_ablation_presets_smoke.md``).
     clip:
         Divergence threshold; a trajectory whose ``max|x|`` exceeds ``clip`` (or
         goes non-finite) is resampled, then clipped if still diverging.
@@ -269,7 +307,7 @@ class NlinearSCMT:
         k: int = 5,
         L: int = 2,
         sparsity: float = 0.3,
-        noise_type: Literal["laplace", "uniform"] = "laplace",
+        noise_type: Literal["laplace", "uniform", "gaussian"] = "laplace",
         T: int = 50,
         N: int = 200,
         seed: Optional[int] = 42,
@@ -278,7 +316,7 @@ class NlinearSCMT:
         decay_range: tuple[float, float] = (0.3, 0.8),
         spectral_cap: float = 0.9,
         init_gain: float = 0.7,
-        activation: str = "tanh",
+        activation: Literal["tanh", "nonmonotonic"] = "tanh",
         clip: float = 1e3,
         max_resample: int = 10,
     ) -> None:
@@ -389,12 +427,241 @@ class NlinearSCMT:
         return ~(finite & bounded)
 
     def _sample_noise(self, *shape) -> np.ndarray:
-        """Draw noise from the configured non-Gaussian distribution (as linear)."""
+        """Draw noise from the configured innovation distribution (as linear)."""
         size = shape if len(shape) > 1 else shape[0]
         if self.noise_type == "laplace":
             return self._rng.laplace(loc=0.0, scale=0.1, size=size)
-        else:  # uniform
+        elif self.noise_type == "uniform":
             return self._rng.uniform(low=-0.17, high=0.17, size=size)  # std ≈ 0.1
+        else:  # gaussian (M4/H5 negative-control ablation)
+            return self._rng.normal(loc=0.0, scale=_GAUSSIAN_STD, size=size)
+
+
+#: Default hyperparameters for the M4/H7 regime-switch ablation's two
+#: regimes. Regime 1 is deliberately set **identical** to
+#: :class:`NlinearSCMT`'s own class defaults (equivalently, ``config.
+#: _NL_HYPERPARAMS``) -- so regime 1 *is* the standard, un-ablated nonlinear
+#: mechanism family, and (given the same seed and the same graph/``hidden``)
+#: draws bit-identical weights to a plain :class:`NlinearSCMT` built with
+#: the same seed, since it is the first ``MLPMechanism.random`` call the RNG
+#: stream sees in both cases. This isolates the ablation to exactly one
+#: thing: the presence of a second, post-switch regime -- not a
+#: simultaneous change to the pre-switch dynamics too. Regime 2 then uses a
+#: **non-overlapping** ``decay_range`` (with a safety gap, not just a
+#: touching boundary) and a distinct ``gain``/``spectral_cap``, so "the two
+#: regimes have different effective parameters" is a deterministic, not
+#: merely probabilistic, structural property -- see
+#: ``tests/test_nlinear_generator.py::TestRegimeSwitchNlinearSCMT`` and
+#: ``docs/m4_ablation_presets_smoke.md``. Regime 2 is, if anything, *more*
+#: contractive than regime 1 (lower decay ceiling, lower gain, tighter
+#: spectral cap) -- a deliberately conservative choice so the ablation
+#: cannot itself introduce an instability the stability guard would need to
+#: catch.
+_REGIME1_DEFAULTS: dict = {
+    "decay_range": (0.3, 0.8),
+    "gain": 0.8,
+    "spectral_cap": 0.9,
+    "init_gain": 0.7,
+    "activation": "tanh",
+}
+_REGIME2_DEFAULTS: dict = {
+    "decay_range": (0.05, 0.25),
+    "gain": 0.35,
+    "spectral_cap": 0.5,
+    "init_gain": 0.35,
+    "activation": "tanh",
+}
+
+
+class RegimeSwitchNlinearSCMT:
+    """Two-regime structural-break extension of :class:`NlinearSCMT` (M4/H7).
+
+    Minimal-viable regime-switching ablation: **two** regimes and **one**
+    deterministic switch point — no HMM, no learned transition
+    probabilities (explicitly out of scope; see
+    ``docs/m4_ablation_presets_smoke.md``). Both regimes share the *same*
+    causal graph (:func:`_sample_graph`); only the per-node MLP mechanism's
+    numeric parameters (``decay``, ``gain``, weights) differ between
+    regimes — this is a **parameter** regime switch, not a graph change.
+
+    Regime 1 (:attr:`mechanism1`) governs every timestep ``t < switch_t``
+    (including the whole burn-in, so the pre-switch segment starts from a
+    settled state); regime 2 (:attr:`mechanism2`) governs ``t >= switch_t``,
+    where ``switch_t = burn_in + round(switch_frac * T)`` lands partway
+    through the *observed* (post-burn-in) window — by default at its
+    midpoint (``switch_frac=0.5``, i.e. "T/2"). This is meant to give
+    :func:`causaltemp_xai.eval.shift_vr` (Shift-VR) and CF-faith something
+    genuine to detect: a trajectory whose second half was generated by a
+    detectably different transition function than a CF method's implicit
+    model of the world assumes.
+
+    Downstream single-mechanism contract — read before using CF-faith /
+    oracle structural-CF / CARLA-style recourse on this preset
+    ---------------------------------------------------------------------
+    Every other module in this codebase
+    (:mod:`causaltemp_xai.metrics.cf_faith`,
+    :mod:`causaltemp_xai.benchmarks.structural_cf`, CARLA's on-manifold
+    recourse) assumes **one** time-invariant
+    :class:`~causaltemp_xai.benchmarks.mechanisms.Mechanism` per dataset —
+    ``Mechanism.forward_numpy`` takes only a lag *window*, with no notion of
+    "which regime" or absolute timestep. Rather than invasively add an
+    absolute-time argument to that interface everywhere it is called (a
+    large, high-blast-radius refactor well beyond a smoke-scale validation
+    task), :meth:`generate` returns ``mechanism1`` as the dataset's single
+    ``"mechanism"`` — exactly correct for the pre-switch segment, an
+    *assumed/nominal* model for the post-switch segment. ``mechanism2`` and
+    ``switch_t`` are returned alongside as ground-truth diagnostic metadata,
+    not wired into CF-faith/oracle-CF. Concretely: CF-faith/oracle-CF scores
+    computed by the standard pipeline on this preset measure faithfulness
+    against the **nominal** (regime-1) mechanism, not literally correct
+    ground truth for post-switch timesteps — this mismatch is the
+    deliberate stress condition H7 is testing for, not a bug, but it means
+    CF-faith numbers on this preset are not directly comparable to other
+    presets'. A rigorous (non-smoke) H7 study would need a regime-aware
+    oracle; that is explicitly out of scope here.
+
+    Parameters
+    ----------
+    k, L, sparsity, noise_type, T, N, seed:
+        As in :class:`NlinearSCMT`.
+    hidden:
+        Hidden width of each regime's per-node MLP (shared across regimes).
+    switch_frac:
+        Fraction of the observed window ``T`` after which regime 2 takes
+        over. Must be in ``(0, 1)``; default ``0.5`` (the midpoint, per the
+        H7 brief's "T/2").
+    regime1, regime2:
+        Hyperparameter dicts forwarded to
+        :meth:`~causaltemp_xai.benchmarks.mechanisms.MLPMechanism.random`
+        (``decay_range``, ``gain``, ``spectral_cap``, ``init_gain``,
+        ``activation``). Default to :data:`_REGIME1_DEFAULTS` /
+        :data:`_REGIME2_DEFAULTS` (non-overlapping ``decay_range`` and
+        distinct ``gain``, so the two regimes are deterministically, not
+        just statistically, distinguishable).
+    clip, max_resample:
+        As in :class:`NlinearSCMT`.
+    """
+
+    def __init__(
+        self,
+        k: int = 5,
+        L: int = 2,
+        sparsity: float = 0.3,
+        noise_type: Literal["laplace", "uniform", "gaussian"] = "laplace",
+        T: int = 50,
+        N: int = 200,
+        seed: Optional[int] = 42,
+        hidden: int = 16,
+        switch_frac: float = 0.5,
+        regime1: dict | None = None,
+        regime2: dict | None = None,
+        clip: float = 1e3,
+        max_resample: int = 10,
+    ) -> None:
+        if noise_type not in _NOISE_TYPES:
+            raise ValueError(f"noise_type must be one of {_NOISE_TYPES}, got {noise_type!r}")
+        if not (0.0 < switch_frac < 1.0):
+            raise ValueError(f"switch_frac must be in (0, 1), got {switch_frac!r}")
+        self.k = k
+        self.L = L
+        self.sparsity = sparsity
+        self.noise_type = noise_type
+        self.T = T
+        self.N = N
+        self.seed = seed
+        self.hidden = hidden
+        self.switch_frac = switch_frac
+        self.clip = clip
+        self.max_resample = max_resample
+        r1 = dict(_REGIME1_DEFAULTS) if regime1 is None else dict(regime1)
+        r2 = dict(_REGIME2_DEFAULTS) if regime2 is None else dict(regime2)
+        self.regime1_hparams = r1
+        self.regime2_hparams = r2
+        self._rng = np.random.default_rng(seed)
+        # Same graph for both regimes, sampled once before any mechanism
+        # weights or noise -- mirrors NlinearSCMT's build order.
+        self.graph = _sample_graph(self.k, self.L, self.sparsity, self._rng)
+        self.mechanism1 = MLPMechanism.random(self.graph, hidden=self.hidden, rng=self._rng, **r1)
+        self.mechanism2 = MLPMechanism.random(self.graph, hidden=self.hidden, rng=self._rng, **r2)
+
+    # ------------------------------------------------------------------
+    # Public API
+    # ------------------------------------------------------------------
+
+    def generate(self, burn_in: int = 100) -> dict:
+        """Generate the two-regime dataset.
+
+        Same contract as :class:`NlinearSCMT`, plus ``"mechanism_regime2"``
+        and ``"switch_t"`` (index into the *observed* ``(T,)`` window) —
+        see the class docstring's "downstream single-mechanism contract"
+        note for how ``"mechanism"`` (regime 1) should be interpreted.
+        """
+        total_T = self.T + burn_in
+        switch_t_abs = burn_in + int(round(self.switch_frac * self.T))
+        X_full = np.zeros((self.N, total_T, self.k))
+
+        self._roll(X_full, np.arange(self.N), total_T, switch_t_abs)
+        for _ in range(self.max_resample):
+            bad = self._diverging(X_full)
+            if not bad.any():
+                break
+            self._roll(X_full, np.nonzero(bad)[0], total_T, switch_t_abs)
+        if self._diverging(X_full).any():
+            np.clip(X_full, -self.clip, self.clip, out=X_full)
+
+        X = X_full[:, burn_in:, :]  # shape (N, T, k)
+
+        latent_final = X[:, -1, 0]
+        threshold = float(np.median(latent_final))
+        Y = (latent_final > threshold).astype(int)
+
+        return {
+            "X": X,
+            "Y": Y,
+            "graph": self.graph,
+            "mechanism": self.mechanism1,
+            "mechanism_regime2": self.mechanism2,
+            "switch_t": switch_t_abs - burn_in,
+        }
+
+    # ------------------------------------------------------------------
+    # Private helpers
+    # ------------------------------------------------------------------
+
+    def _roll(self, X_full: np.ndarray, rows: np.ndarray, total_T: int, switch_t_abs: int) -> None:
+        """Simulate the forward dynamics for ``rows`` in place, switching
+        from ``mechanism1`` to ``mechanism2`` at absolute time ``switch_t_abs``."""
+        rows = np.sort(np.asarray(rows))
+        n = int(rows.size)
+        if n == 0:
+            return
+        sub = np.zeros((n, total_T, self.k))
+        for lag in range(self.L):
+            sub[:, lag, :] = self._sample_noise(n, self.k) * 0.1
+        noise = self._sample_noise(n * total_T * self.k).reshape(n, total_T, self.k)
+        for t in range(self.L, total_T):
+            window = sub[:, t - self.L : t, :]  # (n, L, k), oldest→newest
+            mech = self.mechanism1 if t < switch_t_abs else self.mechanism2
+            x_t = noise[:, t, :].copy()
+            x_t += mech.forward_numpy(window)
+            sub[:, t, :] = x_t
+        X_full[rows] = sub
+
+    def _diverging(self, X_full: np.ndarray) -> np.ndarray:
+        """Boolean ``(N,)`` mask of trajectories that blew up or went non-finite."""
+        finite = np.isfinite(X_full).all(axis=(1, 2))
+        bounded = np.abs(np.nan_to_num(X_full, nan=np.inf)).max(axis=(1, 2)) <= self.clip
+        return ~(finite & bounded)
+
+    def _sample_noise(self, *shape) -> np.ndarray:
+        """Draw noise from the configured innovation distribution (as linear)."""
+        size = shape if len(shape) > 1 else shape[0]
+        if self.noise_type == "laplace":
+            return self._rng.laplace(loc=0.0, scale=0.1, size=size)
+        elif self.noise_type == "uniform":
+            return self._rng.uniform(low=-0.17, high=0.17, size=size)  # std ≈ 0.1
+        else:  # gaussian (M4/H5 negative-control ablation)
+            return self._rng.normal(loc=0.0, scale=_GAUSSIAN_STD, size=size)
 
 
 def _stabilise(A: np.ndarray, target_radius: float = 0.9) -> np.ndarray:

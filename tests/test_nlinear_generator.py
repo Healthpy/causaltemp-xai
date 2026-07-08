@@ -19,8 +19,12 @@ import numpy as np
 import pytest
 from scipy.stats import kstest
 
-from causaltemp_xai.benchmarks.generator import LinearSCMT, NlinearSCMT
-from causaltemp_xai.benchmarks.mechanisms import MLPMechanism
+from causaltemp_xai.benchmarks.generator import (
+    LinearSCMT,
+    NlinearSCMT,
+    RegimeSwitchNlinearSCMT,
+)
+from causaltemp_xai.benchmarks.mechanisms import MLPMechanism, _ACTIVATIONS_NP
 from causaltemp_xai.config import SMOKE_NL, shifted_config
 from causaltemp_xai.data_io import (
     build_generator,
@@ -214,6 +218,142 @@ class TestNoiseDist:
     def test_invalid_noise_type_raises(self):
         with pytest.raises(ValueError):
             NlinearSCMT(k=3, L=1, noise_type="invalid", seed=0)
+
+    # -------------------------------------------------------------
+    # M4/H5 negative-control ablation: Gaussian innovation noise.
+    # -------------------------------------------------------------
+
+    def test_gaussian_does_not_reject_gaussian(self):
+        gen = NlinearSCMT(k=1, L=1, noise_type="gaussian", T=500, N=200, seed=0)
+        data = gen.generate()
+        samples = data["X"].ravel()
+        z = (samples - samples.mean()) / (samples.std() + 1e-9)
+        _, p = kstest(z, "norm")
+        assert p > 0.05, f"KS p-value {p:.4f} rejected Gaussian for Gaussian noise"
+
+    def test_gaussian_generate_is_reproducible(self):
+        gen_a = NlinearSCMT(k=3, L=1, noise_type="gaussian", T=20, N=50, seed=5)
+        gen_b = NlinearSCMT(k=3, L=1, noise_type="gaussian", T=20, N=50, seed=5)
+        np.testing.assert_array_equal(gen_a.generate()["X"], gen_b.generate()["X"])
+
+
+# ---------------------------------------------------------------------------
+# M4/H6 non-monotonic mechanism ablation
+# ---------------------------------------------------------------------------
+
+
+class TestNonmonotonicActivation:
+    def test_nlinear_scmt_accepts_nonmonotonic_activation(self):
+        gen = NlinearSCMT(k=4, L=1, T=20, N=30, seed=0, activation="nonmonotonic")
+        data = gen.generate()
+        assert data["mechanism"].activation == "nonmonotonic"
+        assert np.all(np.isfinite(data["X"]))
+
+    def test_activation_is_actually_non_monotonic_in_domain(self):
+        """Structural property, not empirical: sin has a local max in
+        [0, pi] (sin(0) < sin(pi/2) > sin(pi)), unlike tanh which is
+        strictly increasing everywhere -- confirms this is a genuine
+        non-monotonic activation, not a relabeled tanh."""
+        f = _ACTIVATIONS_NP["nonmonotonic"]
+        y0, y1, y2 = f(0.0), f(np.pi / 2), f(np.pi)
+        assert y0 < y1 and y1 > y2, f"expected a local max, got {y0}, {y1}, {y2}"
+
+    def test_activation_is_bounded_like_tanh(self):
+        """Same |output| <= 1 bound as tanh -- the H6 ablation varies
+        monotonicity, not the boundedness the stability guard relies on
+        (the mechanism's *output* branch is always tanh regardless of the
+        hidden activation -- see MLPMechanism docstring)."""
+        f = _ACTIVATIONS_NP["nonmonotonic"]
+        x = np.linspace(-50, 50, 5000)
+        assert np.all(np.abs(f(x)) <= 1.0 + 1e-9)
+
+    def test_finite_and_bounded_long_horizon_nonmonotonic(self):
+        """Mirrors TestStability's tanh-activation check for the
+        nonmonotonic hidden activation -- global boundedness must hold
+        regardless (the output branch is still the fixed outer tanh)."""
+        for seed in range(20):
+            gen = NlinearSCMT(k=6, L=2, T=100, N=100, seed=seed, activation="nonmonotonic")
+            X = gen.generate()["X"]
+            assert np.all(np.isfinite(X)), f"non-finite at seed {seed}"
+            assert np.max(np.abs(X)) <= gen.clip, f"unbounded at seed {seed}"
+
+
+# ---------------------------------------------------------------------------
+# M4/H7 regime-switching ablation
+# ---------------------------------------------------------------------------
+
+
+class TestRegimeSwitchNlinearSCMT:
+    def test_output_shapes(self):
+        gen = RegimeSwitchNlinearSCMT(k=4, L=1, T=30, N=50, seed=0)
+        data = gen.generate()
+        assert data["X"].shape == (50, 30, 4)
+        assert data["Y"].shape == (50,)
+        assert data["graph"].shape == (4, 4, 1)
+
+    def test_mechanism_and_regime2_are_mlp(self):
+        gen = RegimeSwitchNlinearSCMT(k=4, L=1, T=30, N=20, seed=0)
+        data = gen.generate()
+        assert isinstance(data["mechanism"], MLPMechanism)
+        assert isinstance(data["mechanism_regime2"], MLPMechanism)
+        assert data["mechanism"] is gen.mechanism1
+        assert data["mechanism_regime2"] is gen.mechanism2
+
+    def test_switch_t_is_at_requested_fraction(self):
+        gen = RegimeSwitchNlinearSCMT(k=3, L=1, T=30, N=10, seed=0, switch_frac=0.5)
+        data = gen.generate()
+        assert data["switch_t"] == 15  # T // 2, index into the observed window
+
+    def test_two_regimes_have_deterministically_different_parameters(self):
+        """Non-overlapping decay_range + distinct gain by construction -- a
+        cheaply checkable structural property, not just 'it ran'."""
+        gen = RegimeSwitchNlinearSCMT(k=5, L=1, T=30, N=10, seed=0)
+        assert gen.mechanism1.decay.min() > gen.mechanism2.decay.max()
+        assert gen.mechanism1.gain != gen.mechanism2.gain
+
+    def test_regimes_produce_different_forward_output(self):
+        gen = RegimeSwitchNlinearSCMT(k=5, L=1, T=30, N=10, seed=0)
+        rng = np.random.default_rng(99)
+        window = rng.normal(size=(gen.L, gen.k))
+        out1 = gen.mechanism1.forward_numpy(window)
+        out2 = gen.mechanism2.forward_numpy(window)
+        assert not np.allclose(out1, out2)
+
+    def test_reproducibility(self):
+        gen_a = RegimeSwitchNlinearSCMT(k=4, L=1, T=30, N=40, seed=7)
+        gen_b = RegimeSwitchNlinearSCMT(k=4, L=1, T=30, N=40, seed=7)
+        data_a, data_b = gen_a.generate(), gen_b.generate()
+        np.testing.assert_array_equal(data_a["X"], data_b["X"])
+        np.testing.assert_array_equal(data_a["Y"], data_b["Y"])
+        assert data_a["switch_t"] == data_b["switch_t"]
+
+    def test_finite_and_bounded(self):
+        """Boundedness must hold despite the mid-trajectory mechanism swap:
+        each regime is individually contractive (see _REGIME1_DEFAULTS /
+        _REGIME2_DEFAULTS), so switching between two individually-bounded
+        maps cannot itself introduce a blow-up."""
+        for seed in range(10):
+            gen = RegimeSwitchNlinearSCMT(k=5, L=2, T=100, N=100, seed=seed)
+            X = gen.generate()["X"]
+            assert np.all(np.isfinite(X)), f"non-finite at seed {seed}"
+            assert np.max(np.abs(X)) <= gen.clip, f"unbounded at seed {seed}"
+
+    def test_invalid_switch_frac_raises(self):
+        with pytest.raises(ValueError):
+            RegimeSwitchNlinearSCMT(k=3, L=1, T=20, N=10, seed=0, switch_frac=1.5)
+        with pytest.raises(ValueError):
+            RegimeSwitchNlinearSCMT(k=3, L=1, T=20, N=10, seed=0, switch_frac=0.0)
+
+    def test_invalid_noise_type_raises(self):
+        with pytest.raises(ValueError):
+            RegimeSwitchNlinearSCMT(k=3, L=1, T=20, N=10, seed=0, noise_type="invalid")
+
+    def test_build_generator_dispatch(self):
+        from causaltemp_xai.config import SMOKE_REGIME
+        gen = build_generator(SMOKE_REGIME)
+        assert isinstance(gen, RegimeSwitchNlinearSCMT)
+        assert gen.mechanism1.gain == SMOKE_REGIME.nonlinear["regime1"]["gain"]
+        assert gen.mechanism2.gain == SMOKE_REGIME.nonlinear["regime2"]["gain"]
 
 
 # ---------------------------------------------------------------------------

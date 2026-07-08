@@ -11,6 +11,15 @@ claim). All presets fix ``L=1``: with a single lag the VAR is trivially acyclic
 across time and ``generator._stabilise`` guarantees stationarity. Do not bump
 ``L`` without revisiting ``_stabilise`` (per-matrix spectral scaling is only
 valid at ``L=1``).
+
+Additionally, three M4 benchmark-extension **ablation presets** are
+registered below, at the same smoke scale as ``SMOKE``/``SMOKE_NL`` (k=5,
+T=30, N=500, seed=0) -- ``SMOKE_GAUSSIAN`` (H5 negative control),
+``SMOKE_NONMONOTONIC`` (H6 non-monotonic mechanism), and ``SMOKE_REGIME`` (H7
+regime-switching). See ``docs/m4_ablation_presets_smoke.md`` for the full
+design, pre-registered expected direction, and smoke-scale preliminary
+finding for each. **No full-scale variant of any of these three presets
+exists or is planned as part of this work.**
 """
 
 from __future__ import annotations
@@ -142,6 +151,105 @@ FULL_NL = BenchmarkConfig(
 )
 
 
+# ---------------------------------------------------------------------------
+# M4 benchmark-extension ablation presets (H5/H6/H7) -- SMOKE-SCALE ONLY
+# ---------------------------------------------------------------------------
+#
+# Each preset below varies exactly one field/hyperparameter-group from a
+# locked SMOKE-family preset, mirroring shifted_config/seeded_variant's
+# "vary exactly one field" convention -- but, like SMOKE_NL, each is
+# registered as a first-class named preset (not built ad hoc per
+# invocation) so it can be passed directly as `--config <name>` to the
+# phased experiment pipeline (experiments/01-04). All three are built at
+# the same smoke scale as SMOKE/SMOKE_NL (k=5, T=30, N=500, seed=0).
+#
+# See docs/m4_ablation_presets_smoke.md for the full design + pre-registered
+# expected direction + smoke-scale preliminary finding for each. **No
+# full-scale ("full"/"full_nl"-analogue) variant of any of these three
+# presets exists or is planned as part of this work.**
+
+#: H5 negative control: SMOKE with Gaussian (instead of Laplace) innovation
+#: noise, variance-matched to Laplace(scale=0.1) so the ablation isolates
+#: noise *shape*, not innovation scale (see generator._GAUSSIAN_STD).
+#: Pre-registered expected direction: weakens or nulls the validity/CF-faith
+#: divergence that is this project's core phenomenon (H5).
+SMOKE_GAUSSIAN = BenchmarkConfig(
+    k=SMOKE.k,
+    L=SMOKE.L,
+    sparsity=SMOKE.sparsity,
+    noise_type="gaussian",
+    T=SMOKE.T,
+    N=SMOKE.N,
+    seed=SMOKE.seed,
+    name="smoke_gaussian",
+    mechanism_type=SMOKE.mechanism_type,
+    nonlinear=dict(SMOKE.nonlinear) if SMOKE.nonlinear is not None else None,
+)
+
+#: H6 non-monotonic mechanism ablation: SMOKE_NL with the per-node MLP's
+#: hidden activation swapped from "tanh" (monotonic) to "nonmonotonic" (a
+#: bounded, odd `sin` activation -- see mechanisms._ACTIVATIONS_NP). The
+#: mechanism's **output** branch stays `gain*tanh(...)` regardless (see the
+#: MLPMechanism docstring), so the global boundedness guarantee is
+#: unaffected -- only the hidden representation's monotonicity varies.
+_NL_HYPERPARAMS_NONMONOTONIC: dict = {**_NL_HYPERPARAMS, "activation": "nonmonotonic"}
+
+SMOKE_NONMONOTONIC = BenchmarkConfig(
+    k=SMOKE_NL.k,
+    L=SMOKE_NL.L,
+    sparsity=SMOKE_NL.sparsity,
+    noise_type=SMOKE_NL.noise_type,
+    T=SMOKE_NL.T,
+    N=SMOKE_NL.N,
+    seed=SMOKE_NL.seed,
+    name="smoke_nonmonotonic",
+    mechanism_type="mlp",
+    nonlinear=dict(_NL_HYPERPARAMS_NONMONOTONIC),
+)
+
+#: H7 regime-switching ablation: SMOKE_NL-scale dataset with a single
+#: deterministic structural break at T/2
+#: (see ``causaltemp_xai.benchmarks.generator.RegimeSwitchNlinearSCMT``).
+#: Regime 1 is identical to `_NL_HYPERPARAMS` (the standard, un-ablated
+#: nonlinear mechanism family -- same as SMOKE_NL) so the ablation isolates
+#: exactly one thing: the presence of a second, post-switch regime. Regime 2
+#: uses a non-overlapping `decay_range` + distinct `gain`/`spectral_cap`
+#: (deterministically, not just statistically, different effective
+#: parameters). `mechanism_type="mlp_regime_switch"` is dispatched by
+#: `data_io.build_generator`.
+_REGIME_NL_HYPERPARAMS: dict = {
+    "hidden": _NL_HYPERPARAMS["hidden"],
+    "switch_frac": 0.5,
+    "regime1": {
+        "decay_range": list(_NL_HYPERPARAMS["decay_range"]),
+        "gain": _NL_HYPERPARAMS["gain"],
+        "spectral_cap": _NL_HYPERPARAMS["spectral_cap"],
+        "init_gain": _NL_HYPERPARAMS["init_gain"],
+        "activation": _NL_HYPERPARAMS["activation"],
+    },
+    "regime2": {
+        "decay_range": [0.05, 0.25],
+        "gain": 0.35,
+        "spectral_cap": 0.5,
+        "init_gain": 0.35,
+        "activation": "tanh",
+    },
+}
+
+SMOKE_REGIME = BenchmarkConfig(
+    k=SMOKE_NL.k,
+    L=SMOKE_NL.L,
+    sparsity=SMOKE_NL.sparsity,
+    noise_type=SMOKE_NL.noise_type,
+    T=SMOKE_NL.T,
+    N=SMOKE_NL.N,
+    seed=SMOKE_NL.seed,
+    name="smoke_regime",
+    mechanism_type="mlp_regime_switch",
+    nonlinear=dict(_REGIME_NL_HYPERPARAMS),
+)
+
+
 #: Registry of all named configs.
 CONFIGS: dict[str, BenchmarkConfig] = {
     "smoke": SMOKE,
@@ -149,6 +257,9 @@ CONFIGS: dict[str, BenchmarkConfig] = {
     "full_sparse": FULL_SPARSE,
     "smoke_nl": SMOKE_NL,
     "full_nl": FULL_NL,
+    "smoke_gaussian": SMOKE_GAUSSIAN,
+    "smoke_nonmonotonic": SMOKE_NONMONOTONIC,
+    "smoke_regime": SMOKE_REGIME,
 }
 
 
@@ -247,7 +358,8 @@ def get_config(name: str) -> BenchmarkConfig:
     ----------
     name:
         One of ``"smoke"``, ``"full"``, ``"full_sparse"``, ``"smoke_nl"``,
-        ``"full_nl"``.
+        ``"full_nl"``, ``"smoke_gaussian"``, ``"smoke_nonmonotonic"``,
+        ``"smoke_regime"``.
 
     Raises
     ------

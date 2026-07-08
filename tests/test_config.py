@@ -11,8 +11,21 @@ from __future__ import annotations
 
 import numpy as np
 
-from causaltemp_xai.benchmarks.generator import LinearSCMT
-from causaltemp_xai.config import SMOKE, seeded_variant
+from causaltemp_xai.benchmarks.generator import (
+    LinearSCMT,
+    NlinearSCMT,
+    RegimeSwitchNlinearSCMT,
+)
+from causaltemp_xai.config import (
+    CONFIGS,
+    SMOKE,
+    SMOKE_GAUSSIAN,
+    SMOKE_NL,
+    SMOKE_NONMONOTONIC,
+    SMOKE_REGIME,
+    seeded_variant,
+)
+from causaltemp_xai.data_io import build_generator
 
 
 class TestSeededVariant:
@@ -78,3 +91,92 @@ class TestSeededVariant:
         data1, data2 = gen1.generate(), gen2.generate()
         np.testing.assert_array_equal(data1["X"], data2["X"])
         np.testing.assert_array_equal(data1["Y"], data2["Y"])
+
+
+# ---------------------------------------------------------------------------
+# M4 benchmark-extension ablation presets (H5/H6/H7) -- SMOKE-SCALE ONLY.
+# These tests check config-level correctness (registration, "vary exactly
+# one field", reproducibility) of the three new presets; see
+# tests/test_generator.py, tests/test_nlinear_generator.py, and
+# tests/test_mechanisms.py for the generator/mechanism-level structural
+# properties (non-monotonicity, regime-parameter difference, noise-shape
+# distinguishability), and docs/m4_ablation_presets_smoke.md for the design
+# + smoke-scale preliminary findings. No full-scale variant of any of these
+# three presets exists.
+# ---------------------------------------------------------------------------
+
+
+class TestSmokeGaussianPreset:
+    """H5 negative control: SMOKE with Gaussian innovation noise."""
+
+    def test_registered_and_varies_only_noise_type(self):
+        assert CONFIGS["smoke_gaussian"] is SMOKE_GAUSSIAN
+        assert SMOKE_GAUSSIAN.noise_type == "gaussian"
+        assert SMOKE_GAUSSIAN.name == "smoke_gaussian"
+        for field in ("k", "L", "sparsity", "T", "N", "seed",
+                      "mechanism_type", "nonlinear"):
+            assert getattr(SMOKE_GAUSSIAN, field) == getattr(SMOKE, field)
+
+    def test_build_generator_dispatches_linear_with_gaussian_noise(self):
+        gen = build_generator(SMOKE_GAUSSIAN)
+        assert isinstance(gen, LinearSCMT)
+        assert gen.noise_type == "gaussian"
+
+    def test_reproducible_given_fixed_seed(self):
+        gen_a = build_generator(SMOKE_GAUSSIAN)
+        gen_b = build_generator(SMOKE_GAUSSIAN)
+        np.testing.assert_array_equal(gen_a.generate()["X"], gen_b.generate()["X"])
+
+
+class TestSmokeNonmonotonicPreset:
+    """H6 non-monotonic mechanism ablation: SMOKE_NL with a non-monotonic
+    hidden activation instead of tanh."""
+
+    def test_registered_and_varies_only_activation(self):
+        assert CONFIGS["smoke_nonmonotonic"] is SMOKE_NONMONOTONIC
+        assert SMOKE_NONMONOTONIC.mechanism_type == "mlp"
+        assert SMOKE_NONMONOTONIC.nonlinear["activation"] == "nonmonotonic"
+        for field in ("hidden", "gain", "decay_range", "spectral_cap", "init_gain"):
+            assert SMOKE_NONMONOTONIC.nonlinear[field] == SMOKE_NL.nonlinear[field]
+        for field in ("k", "L", "sparsity", "noise_type", "T", "N", "seed"):
+            assert getattr(SMOKE_NONMONOTONIC, field) == getattr(SMOKE_NL, field)
+
+    def test_build_generator_returns_nlinear_with_nonmonotonic_activation(self):
+        gen = build_generator(SMOKE_NONMONOTONIC)
+        assert isinstance(gen, NlinearSCMT)
+        assert gen.mechanism.activation == "nonmonotonic"
+
+    def test_reproducible_given_fixed_seed(self):
+        gen_a = build_generator(SMOKE_NONMONOTONIC)
+        gen_b = build_generator(SMOKE_NONMONOTONIC)
+        np.testing.assert_array_equal(gen_a.generate()["X"], gen_b.generate()["X"])
+
+
+class TestSmokeRegimePreset:
+    """H7 regime-switching ablation: a single deterministic structural break
+    at T/2, layered on the SMOKE_NL-scale nonlinear mechanism."""
+
+    def test_registered_and_dispatches_to_regime_switch_generator(self):
+        assert CONFIGS["smoke_regime"] is SMOKE_REGIME
+        assert SMOKE_REGIME.mechanism_type == "mlp_regime_switch"
+        gen = build_generator(SMOKE_REGIME)
+        assert isinstance(gen, RegimeSwitchNlinearSCMT)
+
+    def test_other_fields_match_smoke_nl(self):
+        for field in ("k", "L", "sparsity", "noise_type", "T", "N", "seed"):
+            assert getattr(SMOKE_REGIME, field) == getattr(SMOKE_NL, field)
+
+    def test_two_regimes_have_deterministically_different_parameters(self):
+        """Non-overlapping decay_range + distinct gain by construction --
+        a cheaply checkable structural property, not just 'it ran'."""
+        gen = build_generator(SMOKE_REGIME)
+        assert gen.mechanism1.decay.min() > gen.mechanism2.decay.max()
+        assert gen.mechanism1.gain != gen.mechanism2.gain
+
+    def test_reproducible_given_fixed_seed(self):
+        gen_a = build_generator(SMOKE_REGIME)
+        gen_b = build_generator(SMOKE_REGIME)
+        data_a, data_b = gen_a.generate(), gen_b.generate()
+        np.testing.assert_array_equal(data_a["X"], data_b["X"])
+        np.testing.assert_array_equal(data_a["Y"], data_b["Y"])
+        assert data_a["switch_t"] == data_b["switch_t"]

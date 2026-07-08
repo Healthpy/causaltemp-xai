@@ -36,7 +36,11 @@ from pathlib import Path
 
 import numpy as np
 
-from causaltemp_xai.benchmarks.generator import LinearSCMT, NlinearSCMT
+from causaltemp_xai.benchmarks.generator import (
+    LinearSCMT,
+    NlinearSCMT,
+    RegimeSwitchNlinearSCMT,
+)
 from causaltemp_xai.benchmarks.mechanisms import mechanism_from_state_dict
 from causaltemp_xai.config import (
     CONFIGS,
@@ -101,7 +105,11 @@ def build_generator(config: BenchmarkConfig):
 
     ``"linear"`` → :class:`LinearSCMT`; ``"mlp"`` → :class:`NlinearSCMT` built
     with the ``config.nonlinear`` hyperparameters (``decay_range`` coerced from
-    the JSON list back to a tuple). Raises ``ValueError`` on an unknown type.
+    the JSON list back to a tuple); ``"mlp_regime_switch"`` →
+    :class:`RegimeSwitchNlinearSCMT` (M4/H7 ablation) built with
+    ``config.nonlinear``'s ``hidden``/``switch_frac``/``regime1``/``regime2``
+    (each regime dict's ``decay_range`` coerced from list to tuple). Raises
+    ``ValueError`` on an unknown type.
     """
     if config.mechanism_type == "linear":
         return LinearSCMT(
@@ -127,9 +135,30 @@ def build_generator(config: BenchmarkConfig):
             seed=config.seed,
             **nl,
         )
+    if config.mechanism_type == "mlp_regime_switch":
+        nl = dict(config.nonlinear or {})
+        regime1 = dict(nl.get("regime1", {}))
+        regime2 = dict(nl.get("regime2", {}))
+        if "decay_range" in regime1:
+            regime1["decay_range"] = tuple(regime1["decay_range"])
+        if "decay_range" in regime2:
+            regime2["decay_range"] = tuple(regime2["decay_range"])
+        return RegimeSwitchNlinearSCMT(
+            k=config.k,
+            L=config.L,
+            sparsity=config.sparsity,
+            noise_type=config.noise_type,
+            T=config.T,
+            N=config.N,
+            seed=config.seed,
+            hidden=nl.get("hidden", 16),
+            switch_frac=nl.get("switch_frac", 0.5),
+            regime1=regime1 or None,
+            regime2=regime2 or None,
+        )
     raise ValueError(
         f"unknown mechanism_type {config.mechanism_type!r}; "
-        "expected 'linear' or 'mlp'"
+        "expected 'linear', 'mlp', or 'mlp_regime_switch'"
     )
 
 
@@ -162,6 +191,13 @@ def generate_and_save(
     np.save(dest / "graph.npy", graph)
     np.savez(dest / "mechanism.npz", **mechanism.state_dict())
 
+    # M4/H7 regime-switch ablation: persist the second regime's mechanism too,
+    # if present (absent for every other mechanism_type -- zero behavior
+    # change for existing "linear"/"mlp" presets).
+    mechanism_regime2 = data.get("mechanism_regime2")
+    if mechanism_regime2 is not None:
+        np.savez(dest / "mechanism_regime2.npz", **mechanism_regime2.state_dict())
+
     meta = {
         "config": config.as_dict(),
         "mechanism_type": str(mechanism.state_dict()["__type__"]),
@@ -176,6 +212,8 @@ def generate_and_save(
             "graph": list(graph.shape),
         },
     }
+    if "switch_t" in data:
+        meta["switch_t"] = int(data["switch_t"])
     with open(dest / "meta.json", "w") as fh:
         json.dump(meta, fh, indent=2)
 
@@ -190,7 +228,11 @@ def load_dataset(
 
     Returns a dict with keys ``X_train/X_val/X_test``, ``Y_train/Y_val/Y_test``,
     ``graph``, ``mechanism`` (a :class:`~causaltemp_xai.benchmark.mechanisms.Mechanism`),
-    and ``meta``.
+    and ``meta``. For the M4/H7 regime-switch preset (``mechanism_type ==
+    "mlp_regime_switch"``) also includes ``mechanism_regime2`` (present only
+    if ``mechanism_regime2.npz`` exists on disk -- absent for every other
+    preset); ``meta["switch_t"]`` carries the regime-switch index into the
+    observed ``(T,)`` window.
     """
     src = Path(out_dir) / config_name
     if not src.exists():
@@ -208,6 +250,12 @@ def load_dataset(
 
     with np.load(src / "mechanism.npz") as mech:
         out["mechanism"] = mechanism_from_state_dict(dict(mech))
+
+    # M4/H7 regime-switch ablation: optional second-regime mechanism.
+    regime2_path = src / "mechanism_regime2.npz"
+    if regime2_path.exists():
+        with np.load(regime2_path) as mech2:
+            out["mechanism_regime2"] = mechanism_from_state_dict(dict(mech2))
 
     with open(src / "meta.json") as fh:
         out["meta"] = json.load(fh)

@@ -178,7 +178,13 @@ class LinearMechanism(Mechanism):
         return cls(A_list)
 
 
-_ACTIVATIONS_NP = {"tanh": np.tanh}
+#: Hidden-layer activation registry. ``"tanh"`` is the original monotonic
+#: choice; ``"nonmonotonic"`` (``np.sin``) is the M4/H6 ablation -- bounded in
+#: ``[-1, 1]`` and 1-Lipschitz (``|cos| <= 1``) just like ``tanh``, so it
+#: shares tanh's boundedness/Lipschitz properties exactly, but is genuinely
+#: non-monotonic (a local max at ``pi/2``, unlike strictly-increasing
+#: ``tanh``) -- see ``docs/m4_ablation_presets_smoke.md``.
+_ACTIVATIONS_NP = {"tanh": np.tanh, "nonmonotonic": np.sin}
 
 
 def _spectral_cap(W: np.ndarray, s: float) -> np.ndarray:
@@ -222,8 +228,13 @@ class MLPMechanism(Mechanism):
         Stacked weights ``W1 (k, H, k*L)``, ``b1 (k, H)``, ``W2 (k, 1, H)``,
         ``b2 (k, 1)``.
     activation:
-        Hidden-layer activation (only ``"tanh"`` supported). The output branch is
-        always ``tanh`` for boundedness.
+        Hidden-layer activation: ``"tanh"`` (default, monotonic) or
+        ``"nonmonotonic"`` (M4/H6 ablation -- ``sin``, bounded in ``[-1, 1]``
+        and 1-Lipschitz like ``tanh``, but not monotonic; see
+        ``docs/m4_ablation_presets_smoke.md``). The **output** branch is
+        always ``tanh`` regardless of this choice, so the mechanism's global
+        boundedness guarantee is unaffected by which hidden activation is
+        selected -- only the hidden representation's monotonicity varies.
 
     Notes
     -----
@@ -376,6 +387,8 @@ class MLPMechanism(Mechanism):
         masked = flat.unsqueeze(1) * w["masked_weight"].unsqueeze(0)  # (N, k, k*L)
         if self.activation == "tanh":
             h = torch.tanh(torch.einsum("khd,nkd->nkh", w["W1"], masked) + w["b1"])
+        elif self.activation == "nonmonotonic":
+            h = torch.sin(torch.einsum("khd,nkd->nkh", w["W1"], masked) + w["b1"])
         else:  # pragma: no cover - guarded in __init__
             raise ValueError(f"unsupported activation {self.activation!r}")
         out = (torch.einsum("koh,nkh->nko", w["W2"], h) + w["b2"])[..., 0]  # (N, k)

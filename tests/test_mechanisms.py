@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import numpy as np
+import pytest
 import torch
 
 from causaltemp_xai.benchmarks.mechanisms import (
@@ -231,3 +232,85 @@ class TestMLPSerialization:
         history = rng.normal(size=(L, k))
         out = mech.forward_numpy(history)
         assert np.isclose(out[0], mech.decay[0] * history[-1, 0])
+
+
+# ---------------------------------------------------------------------------
+# M4/H6 non-monotonic mechanism ablation
+# ---------------------------------------------------------------------------
+
+
+class TestMLPNonmonotonicActivation:
+    def test_random_accepts_nonmonotonic(self):
+        mech = _random_mlp(hidden=8, seed=40, activation="nonmonotonic")
+        assert mech.activation == "nonmonotonic"
+
+    def test_numpy_torch_agree(self):
+        mech = _random_mlp(hidden=8, seed=41, activation="nonmonotonic")
+        rng = np.random.default_rng(42)
+        history = rng.normal(size=(mech.L, mech.k))
+        np_out = mech.forward_numpy(history)
+        torch_out = mech.forward_torch(torch.as_tensor(history)).numpy()
+        assert np.max(np.abs(np_out - torch_out)) < 1e-5
+
+    def test_numpy_torch_agree_batched(self):
+        mech = _random_mlp(hidden=16, seed=46, activation="nonmonotonic")
+        rng = np.random.default_rng(47)
+        batch = rng.normal(size=(9, mech.L, mech.k))
+        np_out = mech.forward_numpy(batch)
+        torch_out = mech.forward_torch(torch.as_tensor(batch)).numpy()
+        assert np.max(np.abs(np_out - torch_out)) < 1e-5
+
+    def test_forward_torch_is_differentiable(self):
+        """forward_torch must stay autograd-safe w.r.t. history (needed by
+        CARLA) with the nonmonotonic hidden activation too."""
+        mech = _random_mlp(hidden=8, seed=43, activation="nonmonotonic")
+        rng = np.random.default_rng(44)
+        history = torch.as_tensor(rng.normal(size=(mech.L, mech.k)))
+        history.requires_grad_(True)
+        out = mech.forward_torch(history)
+        out.sum().backward()
+        assert history.grad is not None
+        assert torch.isfinite(history.grad).all()
+        assert history.grad.shape == history.shape
+
+    def test_contractive_boundedness(self):
+        """Same 300-step rollout stability check as the tanh test above --
+        the output branch is always tanh regardless of hidden activation,
+        so boundedness must be unaffected by this ablation."""
+        graph = _dense_graph(k=5, L=2)
+        for seed in range(10):
+            mech = _random_mlp(graph=graph, hidden=8, seed=seed, activation="nonmonotonic")
+            window = np.random.default_rng(2000 + seed).normal(size=(mech.L, mech.k))
+            for _ in range(300):
+                nxt = mech.forward_numpy(window)
+                window = np.vstack([window[1:], nxt[None, :]])
+                assert np.all(np.isfinite(window))
+            assert np.max(np.abs(window)) < 100.0
+
+    def test_activation_is_actually_non_monotonic_in_domain(self):
+        """Structural check on the function itself: sin has a local max in
+        [0, pi] (unlike tanh, which is strictly increasing everywhere)."""
+        from causaltemp_xai.benchmarks.mechanisms import _ACTIVATIONS_NP
+        f = _ACTIVATIONS_NP["nonmonotonic"]
+        y0, y1, y2 = f(0.0), f(np.pi / 2), f(np.pi)
+        assert y0 < y1 and y1 > y2
+
+    def test_activation_is_bounded_like_tanh(self):
+        from causaltemp_xai.benchmarks.mechanisms import _ACTIVATIONS_NP
+        f = _ACTIVATIONS_NP["nonmonotonic"]
+        x = np.linspace(-50, 50, 5000)
+        assert np.all(np.abs(f(x)) <= 1.0 + 1e-9)
+
+    def test_invalid_activation_still_rejected(self):
+        with pytest.raises(ValueError):
+            _random_mlp(hidden=4, seed=45, activation="relu")
+
+    def test_state_dict_round_trip_preserves_nonmonotonic_activation(self):
+        mech = _random_mlp(hidden=8, seed=48, activation="nonmonotonic")
+        restored = mechanism_from_state_dict(mech.state_dict())
+        assert restored.activation == "nonmonotonic"
+        rng = np.random.default_rng(49)
+        history = rng.normal(size=(mech.L, mech.k))
+        np.testing.assert_array_equal(
+            mech.forward_numpy(history), restored.forward_numpy(history)
+        )
