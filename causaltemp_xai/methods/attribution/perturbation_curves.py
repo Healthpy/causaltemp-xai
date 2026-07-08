@@ -55,7 +55,7 @@ def _curve(
         probs[i] = _confidence(model, cur.reshape(x_arr.shape), target_class)
 
     # Normalised AUC over the fraction axis [0, 1].
-    auc = float(np.trapezoid(probs) / n_steps)
+    auc = float(np.trapz(probs) / n_steps)
     return probs, auc
 
 
