@@ -157,11 +157,19 @@ The current scientific core exists only as uncommitted files on a refactor branc
 Owners: **[M&C]** Methodology & Coding Scientist, **[Lit]** Literature Intelligence, **[R&W]** Results & Writing Scientist.
 
 ### P0 — Blocking
+0. **[M&C] NEW 2026-07-08 (§9.5) — Close the M2 method-roster + smoke_nl pipeline-validation gap.**
+   Verified directly (not taken on trust): `PearlCARLARecourse` (commit `145c3f3`) is fully
+   implemented and unit-tested but is **absent from `experiments/03_run_cf_methods.py::build_methods()`**
+   — the one registry every phase-03/04/07 run reads — so it has never flowed through the actual
+   pipeline in any run, smoke or full. Independently, `results/smoke_nl/lstm/` contains only
+   `train_report.json` and `table_axis_c_cf_faith.csv` has zero `smoke_nl,lstm,*` rows: phases
+   03–04 of the current phased pipeline have **never been run on `smoke_nl` at all**, with any
+   method roster. Dispatched to Methodology & Coding this review; see §9.5. Smoke-scale only.
 1. **[M&C]** Commit the untracked pipeline (`experiments/01–06`, `_common.py`), `results/` policy, new method files, and docs; merge refactor branch to main with CI green. (M0)
 2. **[M&C]** Resolve the 3 failing tests: tolerance-based golden policy + root-cause of the CF-faith golden failure + dice-ml backend gate. (M0)
 3. **[M&C]** Fix the IVR/CF-faith retroactive tolerance mismatch; re-score CELS; re-run smoke pipelines. Current CELS rows in `results/tables/table_axis_c_cf_faith.csv` are artifacts and must not survive into any draft. (M1)
 4. **[M&C]** Fix `MCC_coverage` threshold ceiling; add adversarial metric tests. (M1)
-5. **[M&C]** Rename-or-replace decision executed for proxy Dynamask/TimeSHAP/CBM-T (no original names on proxies); seed the TimeSHAP RNG; remove the dead `methods/cfts_methods.py` duplicate; fix stale README. (M0/M3)
+5. **[M&C]** Rename-or-replace decision executed for proxy Dynamask/TimeSHAP/CBM-T (no original names on proxies); seed the TimeSHAP RNG; remove the dead `methods/cfts_methods.py` duplicate; fix stale README. (M0/M3) — **Dynamask/TimeSHAP half dispatched 2026-07-08 (§9.5)**: rename + seed + test for the two attribution proxies only (CBM-T explicitly held out, separately scoped). `causaltemp_xai/methods/cfts_methods.py` dead-duplicate removal already landed (commit `88564c5`, pre-dates this review); README drift not yet re-audited this pass.
 6. **[Lit]** Recreate `docs/references_verified.md`: verify all 46 references in `BenchmarkingTSCFEs.md`; flag fabricated/uncheckable entries. **No writing task may cite an unverified reference.** (M6) — **Done 2026-07-08.** See `docs/references_verified.md`: 28 verified, 14 verified-with-corrections, 3 unverifiable, 1 confirmed not a citable reference (#24, a Hugging Face search-results page). **Highest-severity finding: reference #4 (hosted on oaji.net) could not be found anywhere independently — not in the journal's own site, not in its own archive index, zero web corroboration — and is the sole support for a specific, load-bearing empirical claim repeated ~4 times in the draft. Standing rule: no number from ref #4 may appear in any manuscript without independent human in-browser confirmation.** Also: refs #1/#33 and #17/#18 are each the same paper double-cited under two URL formats — collapse before any manuscript use. See §9.3 for the PI's review of this deliverable.
 7. **[Lit]** Novelty verification pass on the central "no such benchmark exists" claim against CausalTime / TCS / ExplainTS / XTSC-Bench / DoFlow and 2025–26 successors. (M6) — **Done 2026-07-08.** Verdict (see `docs/references_verified.md` Deliverable 2): the claim does **not** survive unmodified but survives narrowed to require the exact structural-CF ground truth be used **as an evaluation oracle for independently-produced, post-hoc CF-explainer methods** — CAUKER (ICLR 2026 Oral) and "A Causal DAG Prior for Synthetic TS Classification Datasets" (arXiv 2606.21776) already jointly cover ground-truth-DAG + classification labels; DoFlow (arXiv 2511.02137) already covers analytical structural counterfactuals (for forecasting). Neither builds the explainer-evaluation harness that is CausalTemp-XAI's actual contribution. **Adopt this narrowed wording for M7 framing** — see §9.3. **Not yet closed — open before M7 manuscript freeze:** (a) confirm whether CAUKER's/O'Rourke's causal DAG is genuinely *time-lagged* (edges spanning explicit lags τ, matching this project's own TSCM formalism) or a coarser per-instance generative DAG that gets temporalized some other way — the ledger doesn't resolve this and it changes how much of pillar (ii) they really cover; (b) add CausalDynamics (NeurIPS 2025), TimeGraph (KDD 2025/26), XTSC-Bench, and AMEE to related-work (found by Lit, omitted by the draft; none threaten the claim); (c) CausalProfiler (arXiv 2511.22842) needs a full read, not abstract-only, before submission — closest-sounding title match found, not yet ruled out.
 7a. **[PI/M&C] Reopened 2026-07-08 — M0's "git status clean" DoD is not actually met.** Independent audit found 8 test files (`tests/test_attribution.py`, `test_cf_faith.py`, `test_classifier.py`, `test_eval.py`, `test_generator.py`, `test_mechanisms.py`, `test_nlinear_generator.py`, `test_structural_cf.py`) whose package-restructure import-path fixes (`causaltemp_xai.benchmark`→`benchmarks`, `causaltemp_xai.attribution`→`methods.attribution`, `causaltemp_xai.methods.intervention`→`scm.intervention`) exist **only in the uncommitted working tree**, not in any commit. Verified directly: `causaltemp_xai/benchmark/` (singular) no longer contains real code in the committed tree (only an empty, gitignored leftover directory), and no top-level `causaltemp_xai/attribution` package exists post-restructure — so a genuine clean checkout of `HEAD` right now fails test **collection** on these 8 files (`ModuleNotFoundError`), independent of anything M1 fixed. This is a trivial fix (the correct content already sits on disk, uncommitted) but it means M0's own DoD — "`git status` clean … README reproduces the phased pipeline from a clean checkout" — is not yet satisfied despite M0 being reported closed, and "CI green on main" cannot be claimed until this lands. **Do not merge to main, and do not cite "147/147"-style pass counts as a property of the repository, until these 8 files are committed and a real clean-checkout run is verified green.** See §9 for the full PI review. (M0, reopened)
@@ -190,6 +198,15 @@ Owners: **[M&C]** Methodology & Coding Scientist, **[Lit]** Literature Intellige
 26. **[M&C]** DTW-based CF-faith variant reported alongside residual-based (bridges plan definition and implementation).
 27. **[M&C]** Topological-Causality sub-study on NlinearSCM-T (explicitly deferred in the plan — keep deferred).
 28. **[R&W]** Workshop-paper spin-off of the frozen v0.1 phenomenon while v1.0 matures.
+29. **[M&C] NEW 2026-07-08 (§9.5)** — M4 ablation-preset **code + smoke-scale-only validation**
+    (Gaussian-noise negative control H5, non-monotonic mechanism H6, regime-switching H7).
+    Full-scale runs of these ablations are explicitly **not** in scope for this item — held
+    pending the pipeline-clearance gate, same as item 10. Dispatched this review; see §9.5.
+30. **[Lit] NEW 2026-07-08 (§9.5)** — the three open M6 follow-ups from §9.3 (lagged-graph
+    question for CAUKER/Causal-DAG-Prior, four omitted related-work benchmarks, full
+    CausalProfiler read). No pipeline dependency. Dispatched this review; see §9.5. (This is the
+    work the coordinating session's brief referred to as "Task #16" — see §9.5's note on task
+    numbering.)
 
 ---
 
@@ -460,3 +477,151 @@ than introducing a new empirical claim into scope. **Updated:** reference-verifi
 `docs/references_verified.md`. P0 items 6/7 remain **done**; no change to their status. M6's three open
 follow-ups from §9.3 (lagged-graph question, four omitted benchmarks, full CausalProfiler read) are
 unaffected and still outstanding, still correctly scoped to before M7, not now.
+
+### 9.5 — 2026-07-08 (fifth pass): independent M2 review; smoke-scale pipeline-clearance gate;
+dispatch of pipeline-gap closure (M&C), method-zoo rename (M&C), M4 ablation-preset code (M&C),
+and the three remaining M6 follow-ups (Lit)
+
+**Binding context for this review:** the user issued a hard constraint (2026-07-08) — no
+`full`/`full_nl`-scale run may be assigned, started, or recommended as imminent until the entire
+experiment pipeline has been validated end-to-end **at smoke scale**, across every phase and every
+CF method, on both linear and nonlinear configs. Task-list item 10 (full-scale run) stays **on
+hold**; nothing in this review un-holds it or assigns work that depends on it.
+
+**M2 core code — reviewed independently (read the actual diffs, not the design doc's summary of
+itself). Assessed as sound. Confidence: High.**
+
+- `causaltemp_xai/stats.py` (`git show 145c3f3`): read in full. `bootstrap_ci` (flat percentile
+  bootstrap) and `hierarchical_bootstrap_ci` (two-level seed→instance cluster bootstrap) are both
+  correctly implemented — NaN-dropping before resampling, degenerate point-CI for `n=1` (never a
+  fabricated spread), `n_groups==1` correctly reduces to instance-only resampling (no phantom
+  between-seed variability invented when there is only one seed), and the general two-level loop
+  (resample seeds with replacement, then resample instances within each *resampled* seed with
+  replacement, pool, recompute) is the textbook cluster bootstrap for exactly this two-level
+  structure. The design rationale for hierarchical-over-flat (a flat pool understates uncertainty
+  whenever seeds differ systematically) is scientifically correct and matches the smoke-scale
+  demonstration in `docs/m2_multiseed_and_pearl_carla.md` §1.4 (CARLA/CftsCOMTE at validity=1.0
+  every seed → degenerate CI; CftsWachter's one bad seed, 0.80 vs 1.00/1.00 → visibly wider CI).
+  No objection.
+- `PearlCARLARecourse` (`causaltemp_xai/methods/counterfactual/carla.py`): read in full alongside
+  the untouched `CARLARecourse`. The noise-abduction (`eps[t] = x_orig[t] -
+  mechanism.forward_numpy(window)`) and Pearl rollout are mechanically correct and match
+  `CFfaith`'s own `pearl_delta` construction exactly, as claimed. Keeping it as a fully independent
+  class (not a subclass/refactor of `CARLARecourse`) rather than risk `CARLARecourse`'s pinned
+  behavior is the right risk trade-off given this codebase's own existing convention (the six
+  `Cfts*CF` classes already duplicate `generate_batch` rather than share a base).
+- **`lam_prox=0.1` documentation — adequate for a future reader. Confidence: High.** The class
+  docstring alone (not just the design doc) carries the full causal chain: the homogeneous
+  recursion the Pearl delta obeys, why it decays under the stability requirement, why
+  `lam_prox=0.5` quadratically over-penalizes the larger delta a long horizon needs, and the
+  concrete empirical numbers (0.07 vs 0.40 validity at the longest tested horizon) that motivated
+  `0.1`. A reader with zero conversational context gets the same explanation I have. Combined with
+  commit `145c3f3`'s message recording the PI accept-now/revisit-later decision, this item is
+  closed — no documentation fix needed.
+- **One real gap found by independent verification, not by trusting the design doc's own framing.**
+  `docs/m2_multiseed_and_pearl_carla.md` §1.4 frames its smoke validation as "scope deliberately
+  reduced from a full 6-method run" (3 of the pre-M2 6 methods) — true, but incomplete: I checked
+  `experiments/03_run_cf_methods.py::build_methods()` (the actual registry every phase-03/04/07 run
+  reads) directly, and `PearlCARLARecourse` — the M2 milestone's own second deliverable — is **not
+  in it at all**. It is only ever instantiated directly inside `tests/test_methods.py::
+  TestPearlCARLA`. This means the horizon-sweep numbers in the design doc's §2.3 (the `lam_prox`
+  tuning finding) were produced by some standalone/ad hoc invocation outside the committed
+  experiment scripts, and `PearlCARLARecourse` has **never once flowed through the actual
+  reproducible pipeline** — not in the 3-method smoke validation, not anywhere. This is a materially
+  bigger gap than "3 of 6 methods" — it is "the new method has zero pipeline integration."
+- **Second, independently-found gap, not mentioned in the design doc at all:** I checked
+  `results/smoke_nl/lstm/` directly — it contains only `train_report.json` (Phase 02's output).
+  There is no `cf/` subdirectory, and `results/tables/table_axis_c_cf_faith.csv` has **zero**
+  `smoke_nl,lstm,<method>` rows (only the two `smoke_nl,oracle,OracleCF-{Pearl,Rollout}` rows from
+  Phase 05). Phases 03–04 of the *current* phased pipeline have never been executed against the
+  nonlinear smoke config at all, with any method roster — even though Phase 03's own docstring
+  explicitly documents that it supports nonlinear configs and expects to be run there
+  ("exploratory, not a validated benchmark claim," its own words). Whether the stale claim in this
+  document's own §3 ("Results produced: smoke + smoke_nl runs... 6 methods + 2 oracles") refers to
+  the superseded legacy harness (`run_all.py`/`run_cfts.py`) rather than the current phased
+  pipeline was not resolved — irrelevant either way, since it is the *current* pipeline's smoke_nl
+  coverage that "entire pipeline cleared at smoke scale" requires, and that coverage is currently
+  zero.
+
+**Verdict: "entire experiment pipeline cleared at smoke scale" is currently false, on two
+independently-verified counts, not one.** Both are closeable at smoke scale with no full-scale
+dependency. Filed as new P0 item **0** (top of file 5's blocking list — see there for the finding
+detail) and dispatched now (Methodology & Coding, task brief below) as the single highest-priority
+assignment of this review — nothing else (M3, M4, a preliminary H1/H3/H4 read) should be treated as
+more urgent than closing this, since it is what "the pipeline is clean" actually depends on.
+
+**Task-list numbering — a discrepancy I could not resolve, flagged rather than silently papered
+over.** The coordinating brief referred to "Task #8/#10/#12/#13/#16" using an informal numbering
+that does not match this document's own §5 P0/P1/P2 item numbers (e.g. the M2 design doc's own
+title cites "Task #8, #10" for multi-seed-CI + Pearl-CARLA, but §5's item 10 is actually "run
+full/full_nl," item 11 is Pearl-CARLA). I searched for an actual task-tracking tool
+(`TaskList`/`TaskGet`/`TaskUpdate`, as referenced in my own brief) via `ToolSearch` and found none
+available in this session — only `TaskStop` (kill a running background task) exists. I have
+therefore tracked everything through this document's own §5 TODO list and this log, as in every
+prior review, and mapped the brief's "#13 full-scale run" → item 10, "#12 H1/H3/H4 reassessment" →
+the not-yet-separately-itemized O2 reassessment work, and "#16 M6 follow-ups" → the three open
+items from §9.3 (now also itemized as new item 30). **If a separate, authoritative task tracker
+exists outside this document that a different session/tool context can reach, it should be
+reconciled against these item numbers by whoever can access it — I could not verify one exists.**
+
+**Task #13 (full-scale run): confirmed still ON HOLD, not touched.** No work assigned or
+recommended in this review depends on it or brings it closer to "imminent."
+
+**Task #12 (H1/H3/H4 full re-assessment): stays on hold, by my own judgment, with one narrow
+exception I am taking on myself, not delegating.** O2's real, falsifiable threshold (≥6 methods ×
+≥5 seeds × n_cf≥100 with CIs) cannot be met at smoke scale and I am not pretending otherwise. But
+once the pipeline-gap-closure task below returns real data (all 7 methods, 3 seeds, n_cf=10, smoke
+scale), I will personally do a preliminary, explicitly-labeled-as-underpowered H1/H3/H4 read as
+part of my own review of that data — not a separate dispatched task, not a claim that O2 is
+powered, just an honest "does the qualitative shape still hold with the fuller method roster"
+sanity check, the same spirit as the existing smoke validation's own framing.
+
+**Dispatched this review (all smoke-scale-only; see each agent's own task brief for full detail
+and hard constraints — summarized here):**
+
+1. **Methodology & Coding — pipeline-gap closure (P0 item 0, top priority).** Wire
+   `PearlCARLARecourse` into `build_methods()`; run Phases 01→04 on `smoke_nl` for the first time
+   through the current pipeline; re-run Phase 07 on `smoke` with the full 7-method roster
+   (3 seeds, n_cf=10, matching the existing validation's scale); add a regression test so this
+   specific method-missing-from-registry class of gap cannot silently recur; regenerate the 3
+   figures if the added methods change them. Explicitly required to make an *documented*, not
+   silent, decision about `n_steps` consistency (the existing `CARLA` entry in `build_methods()`
+   overrides `n_steps=300`, but the validated `lam_prox=0.1` finding used the class default of 500
+   — wiring `PearlCARLA` in at 300 would run it at a step count never validated for that
+   hyperparameter choice, exactly the kind of silent parameter drift a reviewer would catch).
+2. **Methodology & Coding — Dynamask/TimeSHAP rename (P0 item 5, half).** Rename the two proxy
+   attribution classes to honest names (e.g. `FDSaliency`, `MCMaskSHAP`), seed `TimeSHAP`'s
+   currently-unseeded RNG, add real unit tests (currently zero), add a small provenance note.
+   CBM-T explicitly excluded from this task (lower severity, separately scoped later). File-disjoint
+   from task 1 (`causaltemp_xai/methods/attribution/*` vs. `experiments/03_run_cf_methods.py`) —
+   dispatched in parallel, not sequentially, deliberately.
+3. **Methodology & Coding — M4 ablation-preset code + smoke-only validation (new item 29).**
+   Gaussian-noise negative control (H5 — confirmed by reading `benchmarks/generator.py` directly
+   that only `("laplace", "uniform")` are currently supported; Gaussian is genuinely new code, not
+   a flag flip), non-monotonic mechanism variant (H6), minimal regime-switching variant (H7). Code
+   + tests + a smoke-scale-only preliminary finding per ablation, explicitly forbidden from
+   recommending or approaching a full-scale run. File-disjoint from tasks 1–2
+   (`causaltemp_xai/config.py`, `benchmarks/generator.py`) — dispatched in parallel.
+4. **Literature Intelligence — the three open M6 follow-ups (new item 30).** The lagged-graph
+   question for CAUKER/Causal-DAG-Prior (highest priority of the three — it changes how much of
+   this project's novelty claim survives), the four omitted related-work benchmarks
+   (CausalDynamics, TimeGraph, XTSC-Bench, AMEE), and a full (not abstract-only) read of
+   CausalProfiler. No pipeline dependency; compatible with the smoke-only constraint trivially.
+
+**Not dispatched, held by explicit choice (not oversight):** TSEvo/Glacier official-code
+integration (M3) — held pending a literature feasibility check on official-code availability that
+was not part of this review's scope, to avoid a Methodology & Coding task starting on an
+unconfirmed premise; CBM-T/iVAE wiring into an Axis-A phase (M3) — held one cycle because it
+plausibly touches `experiments/03_run_cf_methods.py`/`_common.py`, the same files task 1 above is
+actively modifying, and sequencing avoids a conflict; task #12's full re-assessment — held per
+above, pending task 1's data, with only the narrow preliminary read reserved for the PI directly.
+
+**Note from the coordinating session (relayed, not independently re-verified by me — out of this
+review's scope and already reported as done):** reference-list corrections from
+`docs/references_verified.md` (title/URL/metadata fixes for 15 "verified-with-corrections" entries,
+inline flags on 2 unverifiable entries, duplicate-pair annotations for #1/#33 and #17/#18 without
+renumbering, given ~90+ inline citation groups in the body text that a manual renumber would risk
+corrupting) have been applied directly to `docs/BenchmarkingTSCFEs.md` by the coordinating session
+at the user's direct request, 2026-07-08. This is a separate, already-closed thread from this
+review's M6 dispatch (item 4 above) — the three *open* M6 follow-ups this review dispatches are
+unaffected by and independent of that reference-list edit.

@@ -39,9 +39,9 @@ from causaltemp_xai.methods import (  # noqa: E402
     CftsConfetiCF,
     CftsCountsCF,
     CftsWachterCF,
-    _DatasetAdapter,
 )
-from causaltemp_xai.methods.intervention import derive_intervention_t  # noqa: E402
+from causaltemp_xai.methods.counterfactual.cfts_methods import _DatasetAdapter  # noqa: E402
+from causaltemp_xai.scm.intervention import derive_intervention_t  # noqa: E402
 from causaltemp_xai.metrics.axis_c import proximity, sparsity  # noqa: E402
 from causaltemp_xai.metrics.cf_faith import CFfaith  # noqa: E402
 
@@ -142,7 +142,7 @@ def run(config_name, n_cf, out_dir):
     data = load_dataset(cfg.name, out_dir=out_dir)
     X_train, y_train = data["X_train"], data["Y_train"]
     X_test, Y_test = data["X_test"], data["Y_test"]
-    graph, mech = data["graph"], data["mechanisms"]
+    graph, mech = data["graph"], data["mechanism"]
 
     ckpt = Path(out_dir) / cfg.name / "lstm.pt"
     if not ckpt.exists():

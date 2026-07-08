@@ -32,3 +32,5 @@ htmlcov/
 experiments/results.json
 experiments/per_instance.csv
 
+causal_tscf_bench/
+.claude/

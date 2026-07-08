@@ -24,7 +24,7 @@ import sys
 
 import numpy as np
 
-from causaltemp_xai.benchmark.generator import LinearSCMT
+from causaltemp_xai.benchmarks.generator import LinearSCMT
 from causaltemp_xai.classifiers import LSTMClassifier
 from causaltemp_xai.config import get_config
 from causaltemp_xai.eval import evaluate_method
