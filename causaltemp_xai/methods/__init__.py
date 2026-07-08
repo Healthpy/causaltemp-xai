@@ -2,14 +2,15 @@
 
 The top-level namespace re-exports the most commonly used classes.
 The full method collections are available in the subpackages:
-  - causaltemp_xai.methods.counterfactual  (WachterCF, DiCECF, CARLARecourse, cfts_*)
+  - causaltemp_xai.methods.counterfactual  (WachterCF, DiCECF, CARLARecourse,
+                                             PearlCARLARecourse, cfts_*)
   - causaltemp_xai.methods.attribution     (integrated_gradients, deletion_curve, ...)
 """
 
 from .base import CFExplainer, AttributionMethod
 from .counterfactual.wachter import WachterCF
 from .counterfactual.dice import DiCECF
-from .counterfactual.carla import CARLARecourse
+from .counterfactual.carla import CARLARecourse, PearlCARLARecourse
 from .counterfactual.cfts_methods import (
     CftsWachterCF,
     CftsNativeGuideCF,
@@ -30,6 +31,7 @@ __all__ = [
     "WachterCF",
     "DiCECF",
     "CARLARecourse",
+    "PearlCARLARecourse",
     "CftsWachterCF",
     "CftsNativeGuideCF",
     "CftsCOMTECF",

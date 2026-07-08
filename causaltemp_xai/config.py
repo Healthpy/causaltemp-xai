@@ -187,6 +187,59 @@ def shifted_config(
     )
 
 
+def seeded_variant(
+    base: BenchmarkConfig,
+    seed: int,
+    name: str | None = None,
+) -> BenchmarkConfig:
+    """Derive a multi-seed replicate of ``base`` by changing only ``seed`` (M2, O2).
+
+    Returns a new config identical to ``base`` (same ``k``, ``L``, ``sparsity``,
+    ``noise_type``, ``T``, ``N``, ``mechanism_type``, ``nonlinear``) except for
+    ``seed`` and ``name`` -- mirrors :func:`shifted_config`'s "vary exactly one
+    field" pattern, but for the multi-seed protocol (plan Standing Decision #4:
+    every headline number carries a CI from M2 onward, which requires >=5 seeds
+    through generator -> classifier -> CF selection). Because the SCM seed
+    drives the graph, the mechanism weights, and the trajectories in one shot
+    (:func:`causaltemp_xai.data_io.build_generator`), and the dataset split
+    (:func:`causaltemp_xai.data_io.stratified_split`) and the classifier
+    (``LSTMClassifier(seed=cfg.seed, ...)``) are both seeded from
+    ``cfg.seed`` too, changing only this one field re-seeds *every* stage of
+    the pipeline in one call -- generation, split, training, and (since CF
+    selection in ``experiments/_common.select_flip_candidates`` is a
+    deterministic function of the seeded ``X_test`` order) CF-instance
+    selection. Not registered in :data:`CONFIGS`: like ``shifted_config``,
+    this is built ad hoc per invocation, keyed by the returned config's
+    (unique) ``name`` on disk.
+
+    Parameters
+    ----------
+    base:
+        The registered preset to replicate (e.g. ``SMOKE``, ``FULL``).
+    seed:
+        The new seed. Deliberately **not** special-cased when it equals
+        ``base.seed`` -- the returned config still gets a distinct ``name``
+        (default ``f"{base.name}_seed{seed}"``) and therefore a fresh on-disk
+        directory, so every seed replicate (including one that happens to
+        reuse the base preset's own seed value) is unambiguous and never
+        silently aliases the original un-suffixed run.
+    name:
+        Override the default ``f"{base.name}_seed{seed}"`` name.
+    """
+    return BenchmarkConfig(
+        k=base.k,
+        L=base.L,
+        sparsity=base.sparsity,
+        noise_type=base.noise_type,
+        T=base.T,
+        N=base.N,
+        seed=seed,
+        name=name or f"{base.name}_seed{seed}",
+        mechanism_type=base.mechanism_type,
+        nonlinear=dict(base.nonlinear) if base.nonlinear is not None else None,
+    )
+
+
 def get_config(name: str) -> BenchmarkConfig:
     """Look up a preset by name.
 
