@@ -224,8 +224,8 @@ causaltemp-xai/
 │       ├── attribution/
 │       │   ├── integrated_gradients.py   # hand-rolled IG attribution foil (WP3)
 │       │   ├── perturbation_curves.py    # deletion / insertion curves
-│       │   ├── timeshap.py      # Monte-Carlo masking proxy (NOT official TimeSHAP)
-│       │   └── dynamask.py      # finite-difference saliency proxy (NOT official Dynamask)
+│       │   ├── mc_mask_shap.py  # MCMaskSHAP: Monte-Carlo masking proxy (NOT official TimeSHAP)
+│       │   └── fd_saliency.py   # FDSaliency: finite-difference saliency proxy (NOT official Dynamask)
 │       └── concept/             # CBM-T probe + iVAE (experimental, unwired)
 ├── third_party/cfts_repo/       # vendored cfts reference implementations
 ├── experiments/
