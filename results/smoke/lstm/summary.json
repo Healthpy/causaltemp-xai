@@ -73,19 +73,19 @@
     {
       "n": 20,
       "validity": 0.55,
-      "proximity_l1": 14.342794911869316,
-      "proximity_l2": 2.251620371645907,
-      "sparsity": 0.7343333333333334,
-      "frac_altered": 0.2656666666666666,
-      "ood": 0.04678772549278666,
+      "proximity_l1": 14.312600411843329,
+      "proximity_l2": 2.218019290716019,
+      "sparsity": 0.7296666666666666,
+      "frac_altered": 0.2703333333333334,
+      "ood": 0.047585161991009185,
       "cf_faith_rollout_hard": 0.45,
-      "cf_faith_rollout_soft": 0.8716343997145566,
+      "cf_faith_rollout_soft": 0.8735319198637919,
       "cf_faith_pearl_hard": 0.45,
-      "cf_faith_pearl_soft": 0.9048264214695209,
+      "cf_faith_pearl_soft": 0.8960079294763099,
       "cf_faith_rollout_hard_valid": 0.0,
       "cf_faith_pearl_hard_valid": 0.0,
       "method": "CftsConfeti",
-      "trsi": 0.4863100507030819,
+      "trsi": 0.4881265456056446,
       "ivr": 0.0
     },
     {
@@ -123,6 +123,24 @@
       "method": "CftsWachter",
       "trsi": 1.4504496797446893,
       "ivr": 0.0
+    },
+    {
+      "n": 20,
+      "validity": 0.95,
+      "proximity_l1": 38.551750630810325,
+      "proximity_l2": 7.220450080625177,
+      "sparsity": 0.5840000000000002,
+      "frac_altered": 0.4159999999999998,
+      "ood": 0.017092847706905657,
+      "cf_faith_rollout_hard": 0.0,
+      "cf_faith_rollout_soft": 0.7845716374938614,
+      "cf_faith_pearl_hard": 1.0,
+      "cf_faith_pearl_soft": 0.999999952403039,
+      "cf_faith_rollout_hard_valid": 0.0,
+      "cf_faith_pearl_hard_valid": 0.95,
+      "method": "PearlCARLA",
+      "trsi": 0.7612982540412067,
+      "ivr": 0.0
     }
   ],
   "attribution": {
@@ -137,7 +155,7 @@
     "MCC_coverage": 1.2783180962505345,
     "LD": NaN,
     "MCC_disent": NaN,
-    "InputSens": 0.030469371983198334,
+    "InputSens": 0.02760517330874296,
     "n": 20
   },
   "axis_b": {

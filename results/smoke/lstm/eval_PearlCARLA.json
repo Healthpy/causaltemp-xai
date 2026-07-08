@@ -1,0 +1,18 @@
+{
+  "n": 20,
+  "validity": 0.95,
+  "proximity_l1": 38.551750630810325,
+  "proximity_l2": 7.220450080625177,
+  "sparsity": 0.5840000000000002,
+  "frac_altered": 0.4159999999999998,
+  "ood": 0.017092847706905657,
+  "cf_faith_rollout_hard": 0.0,
+  "cf_faith_rollout_soft": 0.7845716374938614,
+  "cf_faith_pearl_hard": 1.0,
+  "cf_faith_pearl_soft": 0.999999952403039,
+  "cf_faith_rollout_hard_valid": 0.0,
+  "cf_faith_pearl_hard_valid": 0.95,
+  "method": "PearlCARLA",
+  "trsi": 0.7612982540412067,
+  "ivr": 0.0
+}
