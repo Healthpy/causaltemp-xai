@@ -25,6 +25,14 @@ results/<config>/oracle/         nonlinear configs (smoke_nl / full_nl)       (P
 
 results/tables/
     table_axis_c_cf_faith.csv    accumulated, one row per (benchmark, classifier, method) run
+    table_seed_aggregate_<config>_<classifier>.csv
+                                  multi-seed pooled means + bootstrap 95% CIs (Phase 07)
+
+results/<config>_seed<N>/        one seed replicate of <config> (M2 multi-seed protocol)
+    ...                          same layout as results/<config>/ above -- each seed
+                                  writes to its own directory via
+                                  causaltemp_xai.config.seeded_variant, never overwriting
+                                  another seed's or the un-suffixed base config's artifacts
 
 results/figures/
     fig1_validity_vs_cffaith.png
@@ -74,7 +82,16 @@ uv run python experiments/05_run_oracle_nonlinear.py --config smoke_nl
 
 # 6. Render figures from everything under results/
 uv run python experiments/06_make_figures.py
+
+# 7. Multi-seed replication (M2): run phases 01-04 once per seed, then pool
+#    with bootstrap 95% CIs. Each seed writes to results/<config>_seed<N>/ --
+#    the un-suffixed results/<config>/ from a single-seed run above is never
+#    touched.
+uv run python experiments/07_aggregate_seeds.py --config smoke --seeds 0 1 2 3 4 --n-cf 20
 ```
 
 See `docs/plans/mvp-v0.1-completion/` and `docs/plans/nlinearscm-t/` for the
-design rationale behind each metric and the linear/nonlinear benchmark split.
+design rationale behind each metric and the linear/nonlinear benchmark split,
+and `docs/m2_multiseed_and_pearl_carla.md` for the multi-seed/bootstrap-CI
+design and the Pearl-CARLA (`causaltemp_xai.methods.PearlCARLARecourse`)
+noise-reinjecting recourse variant added in M2.

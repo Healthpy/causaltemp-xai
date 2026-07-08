@@ -1,0 +1,9 @@
+{
+  "config": "smoke_seed2",
+  "accuracies": {
+    "train": 1.0,
+    "val": 0.98,
+    "test": 0.97
+  },
+  "target_acc": 0.9
+}
