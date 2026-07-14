@@ -19,6 +19,14 @@
   switch point — no HMM, no learned transition probabilities); see
   ``docs/m4_ablation_presets_smoke.md``.
 
+* :class:`HMMRegimeSwitchNlinearSCMT` — M4/H7 ablation, HMM variant: the same
+  parameter-only regime switch, but driven by a genuine **hidden Markov
+  process** (``R in {2, 3}`` regimes, an ``R x R`` transition matrix, random
+  per-sequence change-points) instead of a single deterministic break. Kept
+  alongside :class:`RegimeSwitchNlinearSCMT` (not replacing it) so the
+  deterministic-single-break vs. stochastic-multi-break contrast is a clean
+  A/B for H7.
+
 Both :class:`LinearSCMT` and :class:`NlinearSCMT` share the graph sampler
 (:func:`_sample_graph`) so the no-self-loop-at-lag-1 rule and the per-lag
 Bernoulli draw are identical, and ``eps_t`` is drawn from one of three
@@ -645,6 +653,263 @@ class RegimeSwitchNlinearSCMT:
             x_t = noise[:, t, :].copy()
             x_t += mech.forward_numpy(window)
             sub[:, t, :] = x_t
+        X_full[rows] = sub
+
+    def _diverging(self, X_full: np.ndarray) -> np.ndarray:
+        """Boolean ``(N,)`` mask of trajectories that blew up or went non-finite."""
+        finite = np.isfinite(X_full).all(axis=(1, 2))
+        bounded = np.abs(np.nan_to_num(X_full, nan=np.inf)).max(axis=(1, 2)) <= self.clip
+        return ~(finite & bounded)
+
+    def _sample_noise(self, *shape) -> np.ndarray:
+        """Draw noise from the configured innovation distribution (as linear)."""
+        size = shape if len(shape) > 1 else shape[0]
+        if self.noise_type == "laplace":
+            return self._rng.laplace(loc=0.0, scale=0.1, size=size)
+        elif self.noise_type == "uniform":
+            return self._rng.uniform(low=-0.17, high=0.17, size=size)  # std ≈ 0.1
+        else:  # gaussian (M4/H5 negative-control ablation)
+            return self._rng.normal(loc=0.0, scale=_GAUSSIAN_STD, size=size)
+
+
+#: Third regime's defaults for the R=3 HMM preset -- an *intermediate*
+#: dynamics between regime 1 (:data:`_REGIME1_DEFAULTS`, most persistent) and
+#: regime 2 (:data:`_REGIME2_DEFAULTS`, most contractive), so the three
+#: regimes are ordered and deterministically distinguishable by ``decay``.
+#: Its ``decay_range`` sits strictly between the other two with a safety gap.
+_REGIME3_DEFAULTS: dict = {
+    "decay_range": (0.15, 0.28),
+    "gain": 0.55,
+    "spectral_cap": 0.7,
+    "init_gain": 0.5,
+    "activation": "tanh",
+}
+
+
+class HMMRegimeSwitchNlinearSCMT:
+    """Hidden-Markov regime-switching extension of :class:`NlinearSCMT` (M4/H7).
+
+    Unlike :class:`RegimeSwitchNlinearSCMT` (two regimes, a single
+    *deterministic* switch at T/2), this generator draws a genuine **hidden
+    Markov regime path** per sequence: at each timestep the active regime is
+    sampled from an ``R x R`` transition matrix with a strong self-transition
+    probability (:attr:`p_stay`), so regimes *persist* and structural breaks
+    occur at **random change-points** — a different number and placement of
+    breaks per trajectory. ``R in {2, 3}`` regimes are supported (per
+    ``docs/updated_general_plan.md`` §Benchmarks, NlinearSCM-T
+    regime-switching ablation).
+
+    All regimes share the *same* causal graph (:func:`_sample_graph`); only
+    the per-node MLP mechanism's numeric parameters differ between regimes —
+    a **parameter** regime switch, not a graph change, exactly as in
+    :class:`RegimeSwitchNlinearSCMT`.
+
+    Regime 0 (:attr:`mechanisms` ``[0]``) is drawn as the **first**
+    :meth:`~causaltemp_xai.benchmarks.mechanisms.MLPMechanism.random` call
+    after the graph, so — given the same seed, graph, and ``hidden`` — it is
+    bit-identical to a plain :class:`NlinearSCMT`. This isolates the ablation
+    to exactly the HMM structure. The regime path is drawn from an
+    **independent** RNG stream (seeded ``[seed, 777]``) so the mechanism
+    weights are unaffected by the path sampling.
+
+    Downstream single-mechanism contract
+    -------------------------------------
+    Identical in spirit to :class:`RegimeSwitchNlinearSCMT`: CF-faith,
+    oracle structural-CF, and CARLA-style recourse all assume **one**
+    time-invariant mechanism per dataset. :meth:`generate` therefore returns
+    regime 0 as the dataset's single ``"mechanism"`` — the *nominal* model —
+    with the full regime set (``"mechanisms"``), the ``"transition_matrix"``,
+    and the per-sequence ground-truth ``"regime_path"`` (shape ``(N, T)``)
+    returned as diagnostic metadata, **not** wired into CF-faith/oracle-CF.
+    CF-faith scores on this preset therefore measure faithfulness against the
+    nominal (regime-0) mechanism, not literally-correct ground truth at
+    timesteps the chain has switched away from regime 0 — this mismatch is
+    the deliberate H7 stress condition, not a bug, and means CF-faith numbers
+    on this preset are not directly comparable to other presets'.
+
+    Parameters
+    ----------
+    k, L, sparsity, noise_type, T, N, seed:
+        As in :class:`NlinearSCMT`.
+    hidden:
+        Hidden width of each regime's per-node MLP (shared across regimes).
+    n_regimes:
+        Number of regimes ``R in {2, 3}``.
+    p_stay:
+        Self-transition probability of the HMM (diagonal of the transition
+        matrix). Must be in ``(0, 1)``; default ``0.9`` (regimes persist for
+        ~10 steps on average, giving a handful of change-points over a
+        ``T``-step observed window). The off-diagonal mass ``1 - p_stay`` is
+        split uniformly over the other ``R - 1`` regimes.
+    regimes:
+        Optional explicit list of ``R`` hyperparameter dicts forwarded to
+        :meth:`MLPMechanism.random`. Defaults to the first ``R`` of
+        (:data:`_REGIME1_DEFAULTS`, :data:`_REGIME2_DEFAULTS`,
+        :data:`_REGIME3_DEFAULTS`), which have non-overlapping ``decay_range``
+        so the regimes are deterministically, not merely statistically,
+        distinguishable.
+    clip, max_resample:
+        As in :class:`NlinearSCMT`.
+    """
+
+    def __init__(
+        self,
+        k: int = 5,
+        L: int = 2,
+        sparsity: float = 0.3,
+        noise_type: Literal["laplace", "uniform", "gaussian"] = "laplace",
+        T: int = 50,
+        N: int = 200,
+        seed: Optional[int] = 42,
+        hidden: int = 16,
+        n_regimes: int = 3,
+        p_stay: float = 0.9,
+        regimes: list[dict] | None = None,
+        clip: float = 1e3,
+        max_resample: int = 10,
+    ) -> None:
+        if noise_type not in _NOISE_TYPES:
+            raise ValueError(f"noise_type must be one of {_NOISE_TYPES}, got {noise_type!r}")
+        if n_regimes not in (2, 3):
+            raise ValueError(f"n_regimes must be 2 or 3, got {n_regimes!r}")
+        if not (0.0 < p_stay < 1.0):
+            raise ValueError(f"p_stay must be in (0, 1), got {p_stay!r}")
+        self.k = k
+        self.L = L
+        self.sparsity = sparsity
+        self.noise_type = noise_type
+        self.T = T
+        self.N = N
+        self.seed = seed
+        self.hidden = hidden
+        self.n_regimes = n_regimes
+        self.p_stay = p_stay
+        self.clip = clip
+        self.max_resample = max_resample
+        if regimes is None:
+            defaults = (_REGIME1_DEFAULTS, _REGIME2_DEFAULTS, _REGIME3_DEFAULTS)
+            hparams = [dict(defaults[r]) for r in range(n_regimes)]
+        else:
+            if len(regimes) != n_regimes:
+                raise ValueError(
+                    f"regimes must have length n_regimes={n_regimes}, got {len(regimes)}"
+                )
+            hparams = [dict(r) for r in regimes]
+        self.regime_hparams = hparams
+        self._rng = np.random.default_rng(seed)
+        # Independent stream for the regime path so mechanism weights (drawn
+        # from self._rng) stay bit-identical to a plain NlinearSCMT for
+        # regime 0. See class docstring.
+        self._path_rng = np.random.default_rng([seed if seed is not None else 0, 777])
+        # One graph, shared by all regimes; sampled before any mechanism
+        # weights -- mirrors NlinearSCMT / RegimeSwitchNlinearSCMT build order.
+        self.graph = _sample_graph(self.k, self.L, self.sparsity, self._rng)
+        self.mechanisms = [
+            MLPMechanism.random(self.graph, hidden=self.hidden, rng=self._rng, **hp)
+            for hp in hparams
+        ]
+        self.transition_matrix = self._build_transition_matrix()
+
+    # ------------------------------------------------------------------
+    # Public API
+    # ------------------------------------------------------------------
+
+    def generate(self, burn_in: int = 100) -> dict:
+        """Generate the HMM regime-switching dataset.
+
+        Same core contract as :class:`NlinearSCMT` (``X``, ``Y``, ``graph``,
+        ``mechanism``), plus regime-switching diagnostics: ``"mechanisms"``
+        (the full ``R``-element list), ``"transition_matrix"`` (``(R, R)``),
+        and ``"regime_path"`` (``(N, T)`` int array of the active regime at
+        each *observed* timestep). See the class docstring's downstream
+        single-mechanism contract for how ``"mechanism"`` (regime 0) should
+        be interpreted.
+        """
+        total_T = self.T + burn_in
+        # Full regime path over burn-in + observed window, deterministic
+        # given the seed and independent of the noise/weight draws.
+        self._regime_path_full = self._sample_regime_path(self.N, total_T)
+        X_full = np.zeros((self.N, total_T, self.k))
+
+        self._roll(X_full, np.arange(self.N), total_T)
+        for _ in range(self.max_resample):
+            bad = self._diverging(X_full)
+            if not bad.any():
+                break
+            self._roll(X_full, np.nonzero(bad)[0], total_T)
+        if self._diverging(X_full).any():
+            np.clip(X_full, -self.clip, self.clip, out=X_full)
+
+        X = X_full[:, burn_in:, :]  # shape (N, T, k)
+        regime_path = self._regime_path_full[:, burn_in:]  # (N, T)
+
+        latent_final = X[:, -1, 0]
+        threshold = float(np.median(latent_final))
+        Y = (latent_final > threshold).astype(int)
+
+        return {
+            "X": X,
+            "Y": Y,
+            "graph": self.graph,
+            "mechanism": self.mechanisms[0],
+            "mechanisms": self.mechanisms,
+            "transition_matrix": self.transition_matrix,
+            "regime_path": regime_path,
+        }
+
+    # ------------------------------------------------------------------
+    # Private helpers
+    # ------------------------------------------------------------------
+
+    def _build_transition_matrix(self) -> np.ndarray:
+        """``(R, R)`` row-stochastic matrix: ``p_stay`` on the diagonal, the
+        remaining ``1 - p_stay`` mass split uniformly over other regimes."""
+        R = self.n_regimes
+        off = (1.0 - self.p_stay) / (R - 1)
+        P = np.full((R, R), off)
+        np.fill_diagonal(P, self.p_stay)
+        return P
+
+    def _sample_regime_path(self, n: int, total_T: int) -> np.ndarray:
+        """Sample an ``(n, total_T)`` integer regime path from the HMM.
+
+        Every sequence starts in regime 0 (so the burn-in settles from the
+        nominal dynamics), then transitions each step per
+        :attr:`transition_matrix`. Vectorised over sequences.
+        """
+        path = np.zeros((n, total_T), dtype=int)
+        cumP = np.cumsum(self.transition_matrix, axis=1)  # (R, R)
+        for t in range(1, total_T):
+            u = self._path_rng.random(n)
+            cur = path[:, t - 1]
+            # Next regime = first column whose cumulative prob exceeds u,
+            # per the current regime's transition row.
+            path[:, t] = (u[:, None] >= cumP[cur]).sum(axis=1)
+        np.clip(path, 0, self.n_regimes - 1, out=path)
+        return path
+
+    def _roll(self, X_full: np.ndarray, rows: np.ndarray, total_T: int) -> None:
+        """Simulate the forward dynamics for ``rows`` in place, applying each
+        timestep's per-sequence active regime mechanism (grouped by regime)."""
+        rows = np.sort(np.asarray(rows))
+        n = int(rows.size)
+        if n == 0:
+            return
+        path = self._regime_path_full[rows]  # (n, total_T)
+        sub = np.zeros((n, total_T, self.k))
+        for lag in range(self.L):
+            sub[:, lag, :] = self._sample_noise(n, self.k) * 0.1
+        noise = self._sample_noise(n * total_T * self.k).reshape(n, total_T, self.k)
+        for t in range(self.L, total_T):
+            window = sub[:, t - self.L : t, :]  # (n, L, k), oldest→newest
+            x_t = noise[:, t, :].copy()
+            reg_t = path[:, t]  # (n,) active regime per sequence at time t
+            out = np.zeros((n, self.k))
+            for r in range(self.n_regimes):
+                mask = reg_t == r
+                if mask.any():
+                    out[mask] = self.mechanisms[r].forward_numpy(window[mask])
+            sub[:, t, :] = x_t + out
         X_full[rows] = sub
 
     def _diverging(self, X_full: np.ndarray) -> np.ndarray:

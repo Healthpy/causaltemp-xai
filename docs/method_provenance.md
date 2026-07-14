@@ -1,72 +1,54 @@
 # Method provenance notes
 
 Seed for the eventual M3 method-provenance table (docs/PROJECT_PLAN.md P0
-item 5). This is a short disclosure of what two attribution baselines in
-`causaltemp_xai/methods/attribution/` actually are, not the full table.
+item 5). This is a short disclosure of what the attribution methods in
+`causaltemp_xai/methods/attribution/` actually are.
 
-Both classes below were originally named after the paper they were meant to
-approximate (`Dynamask`, `TimeSHAP`). That violated this lab's standing
-decision that no proxy implementation ships under an original method's name
-(docs/PROJECT_PLAN.md Standing Decision #3) and was tracked as risk R4
-("misrepresented baselines... fatal if published"). Both have been renamed
-and disclosed; see each class's module docstring for the full technical
-diff against the paper it approximates.
+Both attribution methods that were previously acknowledged *proxies* (named
+`FDSaliency`/`MCMaskSHAP` after being renamed off the original method names
+under Standing Decision #3 / risk R4) have now been **replaced by the official
+implementations**. No attribution method in this package is a proxy any more.
 
-## `FDSaliency` (`causaltemp_xai/methods/attribution/fd_saliency.py`)
+## `TimeSHAP` (`causaltemp_xai/methods/attribution/timeshap.py`)
 
-- **Implementation source:** this codebase (ported from
-  `causal_tscf_bench/methods/attribution/dynamask.py`, then renamed here).
-  Acknowledged proxy, not a reimplementation.
-- **What it computes:** forward finite-difference numerical gradient of the
-  target class's predicted probability with respect to each `(t, feature)`
-  coordinate, `(P(y=target | x + eps*e_{t,m}) - P(y=target | x)) / eps`.
-  Closer in spirit to vanilla gradient saliency than to any mask-learning
-  method.
-- **Paradigm/paper it was meant to approximate:** Dynamask (Crabbe & van der
-  Schaar, 2021, "Explaining Time Series Predictions with Dynamic Masks",
-  ICML 2021) — a *learned soft temporal mask* optimized against a
-  perturbation objective (prediction-preservation vs. sparsity/entropy),
-  with extremal-mask and rate-distortion extensions.
-- **What the real thing would need:** the mask-learning optimization loop
-  itself (gradient descent over a mask tensor against Dynamask's objective,
-  including its blur/baseline perturbation operator and the
-  extremal-mask variant) is not implemented anywhere in this codebase. An
-  official implementation exists:
-  [`JonathanCrabbe/Dynamask`](https://github.com/JonathanCrabbe/Dynamask)
-  (the paper authors' own repo). Integrating it would mean vendoring or
-  depending on that package and adapting its optimization loop to this
-  codebase's `TSClassifier` interface (`predict_proba`) — not yet attempted,
-  not scoped for this task.
+- **Implementation source:** the official `timeshap` library (feedzai/timeshap,
+  the paper authors' own package), added as a project dependency. This module
+  is a thin adapter, not a reimplementation.
+- **What it computes:** genuine TimeSHAP cell-level Shapley values (Bento et
+  al., 2021, "TimeSHAP: Explaining Recurrent Models through Sequence
+  Perturbations", KDD 2021), pivoted into a dense `(T, k)` map.
+- **Adapter choices (disclosed):** the pruning stage is bypassed
+  (`pruned_idx = 0`) so the map spans the whole sequence, and all cells are
+  requested (`top_x_events = T`, `top_x_feats = k`); the perturbation baseline
+  is TimeSHAP's average event (from `fit`, else a zero event). These are
+  interface-adaptation choices, not changes to TimeSHAP's estimator. See the
+  module docstring for the full detail.
+- **Dependency note:** `timeshap` imports `shap.explainers._kernel.Kernel`,
+  removed in `shap>=0.44`, so `shap` is pinned to `0.42.1`. Nothing else in the
+  repo uses `shap`.
+- **Replaces:** the former `MCMaskSHAP` proxy (a flat Monte-Carlo
+  random-coalition Shapley sampler with no pruning/hierarchy), now removed.
 
-## `MCMaskSHAP` (`causaltemp_xai/methods/attribution/mc_mask_shap.py`)
+## `Dynamask` (`causaltemp_xai/methods/attribution/dynamask.py`)
 
-- **Implementation source:** this codebase (ported from
-  `causal_tscf_bench/methods/attribution/timeshap.py`, then renamed and
-  seeded here). Acknowledged proxy, not a reimplementation.
-- **What it computes:** a flat Monte-Carlo random-coalition Shapley-value
-  estimator — i.i.d. uniformly random binary masks drawn directly over the
-  full `(T, k)` grid, no pruning stage, no hierarchy. In the same general
-  family as KernelSHAP / permutation-SHAP, not TimeSHAP's method. Its RNG is
-  now seeded (`seed: int | None = None` constructor argument; `seed=None`
-  falls back to a fixed internal seed of `0`, so the class is
-  reproducible-by-default like every other seeded stochastic component in
-  this codebase — see the class docstring for the precedent this follows).
-- **Paradigm/paper it was meant to approximate:** TimeSHAP (Bento et al.,
-  2021, "TimeSHAP: Explaining Recurrent Models through Sequence
-  Perturbations", KDD 2021) — a *structured*, hierarchical Shapley estimator
-  that first prunes to the relevant event horizon (event-level Shapley
-  pruning), then estimates feature-level Shapley values, then optionally
-  cell-level (event x feature) values, each level's coalition sampling
-  informed by the coarser level above it, with a learned/empirical "average
-  event" perturbation operator rather than an arbitrary zero/mean baseline.
-- **What the real thing would need:** the event-pruning stage and the
-  hierarchical feature/cell coalition scheme are not implemented anywhere in
-  this codebase. An official implementation exists:
-  [`feedzai/timeshap`](https://github.com/feedzai/timeshap) (also on PyPI as
-  `timeshap`, the paper authors' own package). Integrating it would mean
-  adding it as a dependency and adapting its pruning/explainer API to this
-  codebase's `(N, T, k)` tensor convention and `TSClassifier` interface —
-  not yet attempted, not scoped for this task.
+- **Implementation source:** the authors' official Dynamask implementation
+  ([`JonathanCrabbe/Dynamask`](https://github.com/JonathanCrabbe/Dynamask)),
+  vendored as a git submodule at `third_party/dynamask_repo/` (mirroring
+  `third_party/cfts_repo/`). This module is a thin adapter over the vendored
+  `attribution.mask.Mask` optimizer.
+- **What it computes:** genuine Dynamask (Crabbe & van der Schaar, 2021,
+  "Explaining Time Series Predictions with Dynamic Masks", ICML 2021) — a
+  learned soft temporal mask `M in [0, 1]^{T x k}` fit by gradient descent
+  against Dynamask's perturbation objective (prediction-preservation + size
+  regulator + temporal-smoothness penalty), returned as the `(T, k)` map.
+- **Adapter choices (disclosed):** the classifier's differentiable path
+  (`torch_logits` + softmax) is the black box `f`; the perturbation operator is
+  Dynamask's Gaussian blur (default) or fade-moving-average; the loss is
+  Dynamask's classification `log_loss`. Dynamask preserves the model's full
+  predictive distribution, so the mask is class-agnostic — `target_class` is
+  accepted for interface compatibility but does not change the result.
+- **Replaces:** the former `FDSaliency` proxy (a per-coordinate
+  finite-difference numerical gradient), now removed.
 
 ## Explicitly out of scope here
 

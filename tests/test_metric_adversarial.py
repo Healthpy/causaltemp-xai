@@ -31,7 +31,6 @@ from causaltemp_xai.eval import MIN_VALIDITY_BASE_FOR_RATIO, evaluate_method, sh
 from causaltemp_xai.metrics.axis_a import icc, mcc_concept
 from causaltemp_xai.metrics.axis_c import (
     ivr,
-    ood_mahalanobis,
     ood_plausibility,
     proximity,
     sparsity,
@@ -161,7 +160,7 @@ class TestSparsityAdversarial:
 
 
 # ---------------------------------------------------------------------------
-# Axis C: OOD plausibility (IsolationForest + Mahalanobis reference)
+# Axis C: OOD plausibility (IsolationForest)
 # ---------------------------------------------------------------------------
 
 
@@ -178,12 +177,6 @@ class TestOODAdversarial:
         score_in = ood_plausibility(X_train, cf_in)
         assert score_out < score_in
         assert score_out < 0  # IsolationForest flags it as anomalous outright
-
-    def test_mahalanobis_orders_the_same_way(self):
-        X_train = self._train()
-        cf_out = 50.0 * np.ones((1, 10, 3))
-        cf_in = X_train[:1]
-        assert ood_mahalanobis(cf_out, X_train) > ood_mahalanobis(cf_in, X_train)
 
 
 # ---------------------------------------------------------------------------

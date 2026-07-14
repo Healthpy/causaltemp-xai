@@ -59,11 +59,12 @@ uv run python -m causaltemp_xai.data_io --config full
 uv run python -m causaltemp_xai.classifiers.lstm --config full --train --patience 20
 
 # 3. run the harness: CF methods x Axis-C + both CF-faith metrics
-#    + IG attribution foil + Shift-VR-lite -> experiments/results.json (+ per_instance.csv)
-uv run python experiments/run_all.py --config full --n-cf 100
+#    + IG attribution foil + Shift-VR-lite -> results/full/<classifier>/...
+uv run python experiments/03_run_cf_methods.py --config full --n-cf 100
+uv run python experiments/04_evaluate_axes.py --config full
 
-# 4. render the 3 publication figures -> experiments/figures/
-uv run python experiments/figures.py --results experiments/results.json
+# 4. render the 3 publication figures -> results/figures/
+uv run python experiments/06_make_figures.py
 ```
 
 Swap `--config full` for `--config smoke` (k=5, T=30, N=500) for a fast pass; the
@@ -71,13 +72,13 @@ smoke pipeline is what CI runs. See
 [`docs/hypotheses_assessment.md`](docs/hypotheses_assessment.md) for the H1/H3/H4
 verdicts and the go/no-go decision.
 
-### Phased pipeline (recommended)
+### Phased pipeline
 
-The monolithic `run_all.py` above still works, but each stage of the pipeline
-is also available as its own numbered `uv run` script under `experiments/`,
-so you can regenerate just the stage you're iterating on. All outputs land
-under [`results/`](results/README.md) (figures **and** tables included)
-instead of being dumped into `experiments/`:
+Each stage of the pipeline above is its own numbered `uv run` script under
+`experiments/`, so you can regenerate just the stage you're iterating on. All
+outputs land under [`results/`](results/README.md) (figures **and** tables
+included) — nothing is written into `experiments/`, which holds only the
+runnable scripts:
 
 ```bash
 uv run python experiments/01_generate_benchmarks.py --config smoke   # or --all
@@ -86,6 +87,7 @@ uv run python experiments/03_run_cf_methods.py --config smoke --n-cf 20
 uv run python experiments/04_evaluate_axes.py --config smoke
 uv run python experiments/05_run_oracle_nonlinear.py --config smoke_nl
 uv run python experiments/06_make_figures.py
+uv run python experiments/08_citris_graph.py --config smoke_nl   # CITRIS self-graphing + H3 graph-error split (nonlinear configs)
 ```
 
 See [`results/README.md`](results/README.md) for the on-disk layout each
@@ -114,10 +116,10 @@ over unchanged to the nonlinear mechanisms.
 uv run python -m causaltemp_xai.data_io --config smoke_nl
 
 # 2. run the harness on the nonlinear config
-uv run python experiments/run_all.py --config smoke_nl     # or full_nl
+uv run python experiments/05_run_oracle_nonlinear.py --config smoke_nl     # or full_nl
 ```
 
-On nonlinear configs `run_all.py` routes to a dedicated **oracle-CF path**: it
+On nonlinear configs, the pipeline routes to a dedicated **oracle-CF path**: it
 needs no classifier checkpoint and runs no real CF methods, scoring CF-faith on
 the Stage-4 oracle structural counterfactual as a built-in positive control. Two
 mutually-exclusive oracle variants are emitted — the Pearl oracle scores
@@ -224,8 +226,8 @@ causaltemp-xai/
 │       ├── attribution/
 │       │   ├── integrated_gradients.py   # hand-rolled IG attribution foil (WP3)
 │       │   ├── perturbation_curves.py    # deletion / insertion curves
-│       │   ├── mc_mask_shap.py  # MCMaskSHAP: Monte-Carlo masking proxy (NOT official TimeSHAP)
-│       │   └── fd_saliency.py   # FDSaliency: finite-difference saliency proxy (NOT official Dynamask)
+│       │   ├── timeshap.py      # TimeSHAP: official feedzai timeshap wrapper (Bento et al., 2021)
+│       │   └── dynamask.py      # Dynamask: official Dynamask submodule wrapper (Crabbe & van der Schaar, 2021)
 │       └── concept/             # CBM-T probe + iVAE (experimental, unwired)
 ├── third_party/cfts_repo/       # vendored cfts reference implementations
 ├── experiments/
@@ -235,9 +237,8 @@ causaltemp-xai/
 │   ├── 04_evaluate_axes.py          # phase 4: Axis-C + CF-faith on persisted CFs
 │   ├── 05_run_oracle_nonlinear.py   # phase 5: oracle structural-CF (NlinearSCM-T)
 │   ├── 06_make_figures.py           # phase 6: figures from results/
-│   ├── _common.py                   # shared paths/loading for the phased pipeline
-│   ├── run_all.py                   # monolithic end-to-end harness (legacy, still works)
-│   └── phenomenon_check.py          # fail-fast Wachter-vs-CARLA CF-faith guard
+│   ├── 07_aggregate_seeds.py        # phase 7: multi-seed pooling + bootstrap CIs (M2)
+│   └── _common.py                   # shared paths/loading for the phased pipeline
 ├── results/                     # figures + tables written by the phased pipeline
 ├── docs/hypotheses_assessment.md  # H1/H3/H4 verdicts + go/no-go
 ├── docs/PROJECT_PLAN.md         # PI project plan: objectives, milestones, todos

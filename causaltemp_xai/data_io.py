@@ -37,6 +37,7 @@ from pathlib import Path
 import numpy as np
 
 from causaltemp_xai.benchmarks.generator import (
+    HMMRegimeSwitchNlinearSCMT,
     LinearSCMT,
     NlinearSCMT,
     RegimeSwitchNlinearSCMT,
@@ -156,9 +157,32 @@ def build_generator(config: BenchmarkConfig):
             regime1=regime1 or None,
             regime2=regime2 or None,
         )
+    if config.mechanism_type == "mlp_regime_hmm":
+        nl = dict(config.nonlinear or {})
+        regimes = nl.get("regimes")
+        if regimes is not None:
+            regimes = [
+                {**r, "decay_range": tuple(r["decay_range"])}
+                if "decay_range" in r
+                else dict(r)
+                for r in regimes
+            ]
+        return HMMRegimeSwitchNlinearSCMT(
+            k=config.k,
+            L=config.L,
+            sparsity=config.sparsity,
+            noise_type=config.noise_type,
+            T=config.T,
+            N=config.N,
+            seed=config.seed,
+            hidden=nl.get("hidden", 16),
+            n_regimes=nl.get("n_regimes", 3),
+            p_stay=nl.get("p_stay", 0.9),
+            regimes=regimes,
+        )
     raise ValueError(
         f"unknown mechanism_type {config.mechanism_type!r}; "
-        "expected 'linear', 'mlp', or 'mlp_regime_switch'"
+        "expected 'linear', 'mlp', 'mlp_regime_switch', or 'mlp_regime_hmm'"
     )
 
 
@@ -197,6 +221,20 @@ def generate_and_save(
     mechanism_regime2 = data.get("mechanism_regime2")
     if mechanism_regime2 is not None:
         np.savez(dest / "mechanism_regime2.npz", **mechanism_regime2.state_dict())
+
+    # M4/H7 HMM regime-switch ablation ("mlp_regime_hmm"): persist every
+    # regime's mechanism (regime 0 is already saved as mechanism.npz above),
+    # the transition matrix, and the per-sequence ground-truth regime path.
+    # Absent for every other mechanism_type -- zero change for existing presets.
+    regime_mechanisms = data.get("mechanisms")
+    if regime_mechanisms is not None and len(regime_mechanisms) > 1:
+        for r, mech in enumerate(regime_mechanisms):
+            np.savez(dest / f"mechanism_regime{r}.npz", **mech.state_dict())
+        np.save(dest / "transition_matrix.npy", data["transition_matrix"])
+        # regime_path is (N, T); split it to match the X_{split}.npy layout so
+        # a loaded split's regime path aligns row-for-row with its X/Y.
+        for split_name, idx in splits.items():
+            np.save(dest / f"regime_path_{split_name}.npy", data["regime_path"][idx])
 
     meta = {
         "config": config.as_dict(),
@@ -256,6 +294,24 @@ def load_dataset(
     if regime2_path.exists():
         with np.load(regime2_path) as mech2:
             out["mechanism_regime2"] = mechanism_from_state_dict(dict(mech2))
+
+    # M4/H7 HMM regime-switch ablation ("mlp_regime_hmm"): optional full
+    # regime set + transition matrix + per-split regime paths. Present only if
+    # transition_matrix.npy was written (absent for every other preset).
+    tm_path = src / "transition_matrix.npy"
+    if tm_path.exists():
+        out["transition_matrix"] = np.load(tm_path)
+        mechanisms = []
+        r = 0
+        while (src / f"mechanism_regime{r}.npz").exists():
+            with np.load(src / f"mechanism_regime{r}.npz") as mech_r:
+                mechanisms.append(mechanism_from_state_dict(dict(mech_r)))
+            r += 1
+        out["mechanisms"] = mechanisms
+        for split_name in ("train", "val", "test"):
+            rp_path = src / f"regime_path_{split_name}.npy"
+            if rp_path.exists():
+                out[f"regime_path_{split_name}"] = np.load(rp_path)
 
     with open(src / "meta.json") as fh:
         out["meta"] = json.load(fh)

@@ -249,6 +249,58 @@ SMOKE_REGIME = BenchmarkConfig(
     nonlinear=dict(_REGIME_NL_HYPERPARAMS),
 )
 
+#: H7 regime-switching ablation, **HMM variant**: SMOKE_NL-scale dataset with
+#: a genuine hidden Markov regime path (``R=3`` regimes, per-sequence random
+#: change-points) rather than SMOKE_REGIME's single deterministic T/2 break
+#: (see ``causaltemp_xai.benchmarks.generator.HMMRegimeSwitchNlinearSCMT``).
+#: Regime 0 is identical to `_NL_HYPERPARAMS` (the standard, un-ablated
+#: nonlinear mechanism family -- same as SMOKE_NL), so the ablation isolates
+#: exactly the HMM structure. `mechanism_type="mlp_regime_hmm"` is dispatched
+#: by `data_io.build_generator`. Kept alongside `smoke_regime` (not replacing
+#: it) so the deterministic-single-break vs. stochastic-multi-break contrast
+#: is a clean A/B for the H7 writeup.
+_REGIME_HMM_HYPERPARAMS: dict = {
+    "hidden": _NL_HYPERPARAMS["hidden"],
+    "n_regimes": 3,
+    "p_stay": 0.9,
+    "regimes": [
+        {
+            "decay_range": list(_NL_HYPERPARAMS["decay_range"]),
+            "gain": _NL_HYPERPARAMS["gain"],
+            "spectral_cap": _NL_HYPERPARAMS["spectral_cap"],
+            "init_gain": _NL_HYPERPARAMS["init_gain"],
+            "activation": _NL_HYPERPARAMS["activation"],
+        },
+        {
+            "decay_range": [0.05, 0.25],
+            "gain": 0.35,
+            "spectral_cap": 0.5,
+            "init_gain": 0.35,
+            "activation": "tanh",
+        },
+        {
+            "decay_range": [0.15, 0.28],
+            "gain": 0.55,
+            "spectral_cap": 0.7,
+            "init_gain": 0.5,
+            "activation": "tanh",
+        },
+    ],
+}
+
+SMOKE_REGIME_HMM = BenchmarkConfig(
+    k=SMOKE_NL.k,
+    L=SMOKE_NL.L,
+    sparsity=SMOKE_NL.sparsity,
+    noise_type=SMOKE_NL.noise_type,
+    T=SMOKE_NL.T,
+    N=SMOKE_NL.N,
+    seed=SMOKE_NL.seed,
+    name="smoke_regime_hmm",
+    mechanism_type="mlp_regime_hmm",
+    nonlinear=dict(_REGIME_HMM_HYPERPARAMS),
+)
+
 
 #: Registry of all named configs.
 CONFIGS: dict[str, BenchmarkConfig] = {
@@ -260,6 +312,7 @@ CONFIGS: dict[str, BenchmarkConfig] = {
     "smoke_gaussian": SMOKE_GAUSSIAN,
     "smoke_nonmonotonic": SMOKE_NONMONOTONIC,
     "smoke_regime": SMOKE_REGIME,
+    "smoke_regime_hmm": SMOKE_REGIME_HMM,
 }
 
 

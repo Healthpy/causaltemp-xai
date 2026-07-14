@@ -81,6 +81,82 @@ class TestSparsity:
         x = np.random.default_rng(1).normal(size=(3, 3))
         assert sparsity(x, x.copy()) == 1.0
 
+    def test_detailed_channel_sparsity(self):
+        """Test channel-level sparsity: channels entirely unchanged across time."""
+        # x has shape (T=3, k=4)
+        x = np.zeros((3, 4))
+        x_cf = x.copy()
+        # Modify channel 0 (all timepoints)
+        x_cf[:, 0] = 1.0
+        # Channels 1, 2, 3 are unchanged → 3/4 channel sparsity
+        result = sparsity(x, x_cf, return_detailed=True)
+        assert isinstance(result, dict)
+        assert result["channels"] == 0.75
+
+    def test_detailed_timepoint_sparsity(self):
+        """Test timepoint-level sparsity: timepoints entirely unchanged across channels."""
+        x = np.zeros((3, 4))
+        x_cf = x.copy()
+        # Modify timepoint 0 (all channels)
+        x_cf[0, :] = 1.0
+        # Timepoints 1, 2 are unchanged → 2/3 timepoint sparsity
+        result = sparsity(x, x_cf, return_detailed=True)
+        assert isinstance(result, dict)
+        assert result["timepoints"] == 2 / 3
+
+    def test_detailed_mixed_changes(self):
+        """Test with partial channel and timepoint modifications."""
+        x = np.zeros((5, 4))
+        x_cf = x.copy()
+        # Modify entire channel 0 (all timepoints in this channel)
+        x_cf[:, 0] = 1.0
+        result = sparsity(x, x_cf, return_detailed=True)
+        # Channels: 0 is entirely changed, 1,2,3 are unchanged → 3/4
+        assert result["channels"] == 3 / 4
+        # Timepoints: all have channel 0 changed → 0/5
+        assert result["timepoints"] == 0.0
+
+    def test_detailed_timepoint_only_changes(self):
+        """Test when only specific timepoints are modified."""
+        x = np.zeros((4, 3))
+        x_cf = x.copy()
+        # Modify only the first two timepoints entirely
+        x_cf[0, :] = 1.0
+        x_cf[1, :] = 1.0
+        result = sparsity(x, x_cf, return_detailed=True)
+        # Channels: all have some timepoints changed → 0/3
+        assert result["channels"] == 0.0
+        # Timepoints: 2 and 3 are unchanged → 2/4
+        assert result["timepoints"] == 2 / 4
+
+    def test_backward_compatibility_no_detailed(self):
+        """Default behavior returns scalar (backward compatible)."""
+        x = np.zeros((2, 3))
+        x_cf = x.copy()
+        x_cf[0, 0] = 1.0
+        result = sparsity(x, x_cf)
+        assert isinstance(result, float)
+        assert result == 5 / 6
+
+    def test_detailed_identical(self):
+        """When nothing changes, all sparsity metrics are 1.0."""
+        x = np.random.default_rng(42).normal(size=(5, 6))
+        result = sparsity(x, x.copy(), return_detailed=True)
+        assert result["channels"] == 1.0
+        assert result["timepoints"] == 1.0
+
+    def test_tolerance_propagates_to_all_metrics(self):
+        """Tolerance should apply to all three sparsity measures."""
+        x = np.zeros((3, 2))
+        x_cf = x.copy()
+        x_cf[0, :] = 1e-7  # Very small change
+        # With tight tolerance, should be different
+        result_tight = sparsity(x, x_cf, tol=1e-8, return_detailed=True)
+        assert result_tight["timepoints"] < 1.0  # Timepoint 0 is detected as changed
+        # With loose tolerance, should be same
+        result_loose = sparsity(x, x_cf, tol=1e-6, return_detailed=True)
+        assert result_loose["timepoints"] == 1.0  # Timepoint 0 is "unchanged"
+
 
 class TestOOD:
     def test_returns_finite_scalar_for_single(self):

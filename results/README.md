@@ -23,6 +23,15 @@ results/<config>/oracle/         nonlinear configs (smoke_nl / full_nl)       (P
     per_instance.csv
     summary.json
 
+results/<config>/citris/         nonlinear configs only                       (Phase 08)
+    graph_error.json             CITRIS self-graphing: Axis-B recovery
+                                 (SHD/LagAcc/AUC) of the inferred lag-1 graph;
+                                 `oracle_decomposition` (perfect-propagator
+                                 reference, propagation_error == 0); and
+                                 `methods[]` = per-CF-method H3 graph-error /
+                                 propagation-error split of each method's real
+                                 CFs (from Phase 03)
+
 results/tables/
     table_axis_c_cf_faith.csv    accumulated, one row per (benchmark, classifier, method) run
     table_seed_aggregate_<config>_<classifier>.csv

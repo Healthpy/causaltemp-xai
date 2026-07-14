@@ -2,13 +2,17 @@
 
 Renamed from benchmark/ to benchmarks/ to mirror causal_tscf_bench structure.
 Contains:
-  - base.py          : BenchmarkSplit dataclass and BenchmarkDataset ABC
-  - linear_scm_t.py  : LinearSCMT and NlinearSCMT generators (MOVED from benchmark/generator.py)
-  - mechanisms.py    : LinearMechanism, MLPMechanism, lag_window (MOVED from benchmark/mechanisms.py)
-  - structural_cf.py : structural_counterfactual (MOVED from benchmark/structural_cf.py)
+  - generator.py     : LinearSCMT and NlinearSCMT generators (dict-returning generate())
+  - mechanisms.py    : LinearMechanism, MLPMechanism, lag_window
+  - structural_cf.py : structural_counterfactual
 """
 
-from .generator import LinearSCMT, NlinearSCMT
+from .generator import (
+    HMMRegimeSwitchNlinearSCMT,
+    LinearSCMT,
+    NlinearSCMT,
+    RegimeSwitchNlinearSCMT,
+)
 from .mechanisms import (
     LinearMechanism,
     MLPMechanism,
@@ -20,6 +24,8 @@ from .mechanisms import (
 __all__ = [
     "LinearSCMT",
     "NlinearSCMT",
+    "RegimeSwitchNlinearSCMT",
+    "HMMRegimeSwitchNlinearSCMT",
     "LinearMechanism",
     "MLPMechanism",
     "Mechanism",

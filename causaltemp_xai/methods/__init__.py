@@ -4,8 +4,9 @@ The top-level namespace re-exports the most commonly used classes.
 The full method collections are available in the subpackages:
   - causaltemp_xai.methods.counterfactual  (WachterCF, DiCECF, CARLARecourse,
                                              PearlCARLARecourse, cfts_*)
-  - causaltemp_xai.methods.attribution     (integrated_gradients, MCMaskSHAP, FDSaliency, ...)
+  - causaltemp_xai.methods.attribution     (integrated_gradients, TimeSHAP, Dynamask, ...)
   - causaltemp_xai.methods.concept         (CBMT, iVAE)
+  - causaltemp_xai.methods.causal          (CITRIS)
 """
 
 from .base import CFExplainer, AttributionMethod
@@ -22,10 +23,11 @@ from .counterfactual.cfts_methods import (
 )
 from .attribution.integrated_gradients import integrated_gradients
 from .attribution.perturbation_curves import deletion_curve, insertion_curve
-from .attribution.mc_mask_shap import MCMaskSHAP
-from .attribution.fd_saliency import FDSaliency
+from .attribution.timeshap import TimeSHAP
+from .attribution.dynamask import Dynamask
 from .concept.cbm_t import CBMT
 from .concept.ivae import iVAE
+from .causal.citris import CITRIS
 
 # Backward-compat: derive_intervention_t moved to scm.intervention
 from causaltemp_xai.scm.intervention import derive_intervention_t
@@ -46,9 +48,10 @@ __all__ = [
     "integrated_gradients",
     "deletion_curve",
     "insertion_curve",
-    "MCMaskSHAP",
-    "FDSaliency",
+    "TimeSHAP",
+    "Dynamask",
     "CBMT",
     "iVAE",
+    "CITRIS",
     "derive_intervention_t",
 ]

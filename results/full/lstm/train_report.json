@@ -1,0 +1,9 @@
+{
+  "config": "full",
+  "accuracies": {
+    "train": 0.9973333333333333,
+    "val": 0.99,
+    "test": 0.993
+  },
+  "target_acc": 0.9
+}

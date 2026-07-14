@@ -1,6 +1,0 @@
-Metric,Spearman_rho,p_value,n,significant
-Validity,-0.8859,0.0000,16,True
-Proximity,-0.9912,0.0000,16,True
-Sparsity,0.3559,0.1761,16,False
-IVR,-0.4838,0.0576,16,False
-TRSI,-0.7471,0.0009,16,True

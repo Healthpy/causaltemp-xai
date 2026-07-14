@@ -1,0 +1,7 @@
+{
+  "method": "IntegratedGradients",
+  "deletion_auc": 0.7603174834429745,
+  "insertion_auc": 0.019347355667553176,
+  "insertion_minus_deletion": -0.7409701277754213,
+  "n": 100
+}

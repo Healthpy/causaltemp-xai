@@ -254,6 +254,45 @@ def build_oracle_interventions(X_sel: np.ndarray, mechanism, shift: float = 1.5)
     return out
 
 
+def build_masked_mechanism(mechanism, inferred_adj: np.ndarray):
+    """Copy an :class:`MLPMechanism` with its adjacency replaced by ``inferred_adj``.
+
+    Keeps the mechanism's learned weights/decay/gain but swaps in a different
+    ``(k, k, L)`` parent structure. Used by the Axis-B graph-error decomposition
+    (Phase 08): rolling the oracle structural CF through a mechanism that only
+    propagates along the CITRIS-*inferred* edges — instead of the true edges —
+    isolates how much CF-faith is lost to graph-estimation error (vs. the
+    propagation error a real CF method would additionally incur).
+
+    Raises ``TypeError`` for non-MLP mechanisms (the decomposition targets the
+    nonlinear/causal benchmark, where CITRIS operates).
+    """
+    from causaltemp_xai.benchmarks.mechanisms import MLPMechanism
+
+    if not isinstance(mechanism, MLPMechanism):
+        raise TypeError(
+            "graph-error decomposition requires an MLPMechanism (nonlinear "
+            f"config); got {type(mechanism).__name__}"
+        )
+    inferred_adj = np.asarray(inferred_adj, dtype=float)
+    if inferred_adj.shape != mechanism.graph.shape:
+        raise ValueError(
+            f"inferred_adj shape {inferred_adj.shape} != mechanism.graph "
+            f"{mechanism.graph.shape}"
+        )
+    return MLPMechanism(
+        graph=inferred_adj,
+        hidden=mechanism.hidden,
+        decay=mechanism.decay,
+        gain=mechanism.gain,
+        W1=mechanism.W1,
+        b1=mechanism.b1,
+        W2=mechanism.W2,
+        b2=mechanism.b2,
+        activation=mechanism.activation,
+    )
+
+
 def axis_a_for_attribution(attributions: np.ndarray, int_channels, causal_parents_list) -> dict:
     """Axis A (ICC attribution-mass + causal coverage) for one attribution method.
 

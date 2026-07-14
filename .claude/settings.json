@@ -2,7 +2,14 @@
   "permissions": {
     "allow": [
       "Bash(python experiments/03_run_methods.py --benchmark NlinearSCMT_Nonmonotonic --classifier lstm)",
-      "Bash(python experiments/04_evaluate_axes.py --benchmark NlinearSCMT_Nonmonotonic --classifier lstm --all_methods)"
+      "Bash(python experiments/04_evaluate_axes.py --benchmark NlinearSCMT_Nonmonotonic --classifier lstm --all_methods)",
+      "Bash(git rm *)",
+      "Bash(uv run *)",
+      "Bash(uv pip *)",
+      "Bash(uv run --no-sync python -c ' *)",
+      "Bash(git ls-remote *)",
+      "Bash(git submodule *)",
+      "Bash(uv lock *)"
     ]
   }
 }

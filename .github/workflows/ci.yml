@@ -7,6 +7,31 @@ on:
     branches: [main]
 
 jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Set up Python 3.11
+        run: uv python install 3.11
+
+      - name: Install dependencies
+        run: uv sync --extra dev --python 3.11
+
+      - name: Format check with Black
+        run: uv run --python 3.11 black --check causaltemp_xai tests experiments
+
+      - name: Import sorting check with isort
+        run: uv run --python 3.11 isort --check-only causaltemp_xai tests experiments
+
+      - name: Lint with Ruff
+        run: uv run --python 3.11 ruff check causaltemp_xai tests experiments
+
   test:
     runs-on: ubuntu-latest
 
@@ -42,9 +67,12 @@ jobs:
       - name: Run tests
         run: uv run --no-sync --python 3.11 pytest tests/ -q
 
-      - name: Smoke harness (end-to-end pipeline)
+      # Exercises the phased pipeline (experiments/01..06) — the path the README
+      # documents as "recommended", so the tested path matches the documented one.
+      - name: Smoke harness (phased pipeline)
         run: |
-          uv run --no-sync --python 3.11 python -m causaltemp_xai.data_io --config smoke
-          uv run --no-sync --python 3.11 python -m causaltemp_xai.classifiers.lstm --config smoke --train
-          uv run --no-sync --python 3.11 python experiments/run_all.py --config smoke --n-cf 10 --no-dice-ml
-          uv run --no-sync --python 3.11 python experiments/figures.py --results experiments/results.json
+          uv run --no-sync --python 3.11 python experiments/01_generate_benchmarks.py --config smoke
+          uv run --no-sync --python 3.11 python experiments/02_train_classifiers.py --config smoke
+          uv run --no-sync --python 3.11 python experiments/03_run_cf_methods.py --config smoke --n-cf 10
+          uv run --no-sync --python 3.11 python experiments/04_evaluate_axes.py --config smoke
+          uv run --no-sync --python 3.11 python experiments/06_make_figures.py

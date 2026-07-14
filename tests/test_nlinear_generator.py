@@ -20,6 +20,7 @@ import pytest
 from scipy.stats import kstest
 
 from causaltemp_xai.benchmarks.generator import (
+    HMMRegimeSwitchNlinearSCMT,
     LinearSCMT,
     NlinearSCMT,
     RegimeSwitchNlinearSCMT,
@@ -354,6 +355,94 @@ class TestRegimeSwitchNlinearSCMT:
         assert isinstance(gen, RegimeSwitchNlinearSCMT)
         assert gen.mechanism1.gain == SMOKE_REGIME.nonlinear["regime1"]["gain"]
         assert gen.mechanism2.gain == SMOKE_REGIME.nonlinear["regime2"]["gain"]
+
+
+class TestHMMRegimeSwitchNlinearSCMT:
+    def test_output_shapes_and_metadata(self):
+        gen = HMMRegimeSwitchNlinearSCMT(k=4, L=1, T=30, N=50, seed=0, n_regimes=3)
+        data = gen.generate()
+        assert data["X"].shape == (50, 30, 4)
+        assert data["Y"].shape == (50,)
+        assert data["graph"].shape == (4, 4, 1)
+        assert len(data["mechanisms"]) == 3
+        assert data["mechanism"] is gen.mechanisms[0]
+        assert data["transition_matrix"].shape == (3, 3)
+        assert data["regime_path"].shape == (50, 30)
+
+    def test_transition_matrix_is_row_stochastic(self):
+        gen = HMMRegimeSwitchNlinearSCMT(k=3, L=1, T=20, N=10, seed=0, n_regimes=3, p_stay=0.85)
+        P = gen.transition_matrix
+        np.testing.assert_allclose(P.sum(axis=1), 1.0)
+        np.testing.assert_allclose(np.diag(P), 0.85)
+        assert (P >= 0).all()
+
+    def test_regime_path_visits_multiple_regimes(self):
+        """A genuine HMM (not a single deterministic break) should, across a
+        smoke-scale dataset, visit more than one regime and produce multiple
+        change-points somewhere in the corpus."""
+        gen = HMMRegimeSwitchNlinearSCMT(k=4, L=1, T=60, N=100, seed=0, n_regimes=3)
+        path = gen.generate()["regime_path"]
+        assert len(np.unique(path)) >= 2
+        # At least some sequence switches regime mid-trajectory.
+        switches = (np.diff(path, axis=1) != 0).sum()
+        assert switches > 0
+
+    def test_regime0_bit_identical_to_plain_nlinear(self):
+        """Regime 0's mechanism is the first MLPMechanism.random draw after the
+        graph, so it matches a plain NlinearSCMT at the same seed/hidden."""
+        gen_hmm = HMMRegimeSwitchNlinearSCMT(k=5, L=1, T=30, N=10, seed=3, hidden=16)
+        gen_nl = NlinearSCMT(k=5, L=1, T=30, N=10, seed=3, hidden=16)
+        np.testing.assert_array_equal(gen_hmm.mechanisms[0].W1, gen_nl.mechanism.W1)
+        np.testing.assert_array_equal(gen_hmm.mechanisms[0].decay, gen_nl.mechanism.decay)
+
+    def test_reproducibility(self):
+        a = HMMRegimeSwitchNlinearSCMT(k=4, L=1, T=30, N=40, seed=7).generate()
+        b = HMMRegimeSwitchNlinearSCMT(k=4, L=1, T=30, N=40, seed=7).generate()
+        np.testing.assert_array_equal(a["X"], b["X"])
+        np.testing.assert_array_equal(a["Y"], b["Y"])
+        np.testing.assert_array_equal(a["regime_path"], b["regime_path"])
+
+    def test_finite_and_bounded(self):
+        for seed in range(5):
+            gen = HMMRegimeSwitchNlinearSCMT(k=5, L=2, T=100, N=80, seed=seed)
+            X = gen.generate()["X"]
+            assert np.all(np.isfinite(X)), f"non-finite at seed {seed}"
+            assert np.max(np.abs(X)) <= gen.clip, f"unbounded at seed {seed}"
+
+    def test_two_regime_variant(self):
+        gen = HMMRegimeSwitchNlinearSCMT(k=4, L=1, T=30, N=20, seed=0, n_regimes=2)
+        data = gen.generate()
+        assert len(data["mechanisms"]) == 2
+        assert data["transition_matrix"].shape == (2, 2)
+
+    def test_invalid_params_raise(self):
+        with pytest.raises(ValueError):
+            HMMRegimeSwitchNlinearSCMT(k=3, L=1, T=20, N=10, seed=0, n_regimes=4)
+        with pytest.raises(ValueError):
+            HMMRegimeSwitchNlinearSCMT(k=3, L=1, T=20, N=10, seed=0, p_stay=1.0)
+        with pytest.raises(ValueError):
+            HMMRegimeSwitchNlinearSCMT(k=3, L=1, T=20, N=10, seed=0, noise_type="invalid")
+
+    def test_build_generator_dispatch(self):
+        from causaltemp_xai.config import SMOKE_REGIME_HMM
+        gen = build_generator(SMOKE_REGIME_HMM)
+        assert isinstance(gen, HMMRegimeSwitchNlinearSCMT)
+        assert gen.n_regimes == 3
+        assert len(gen.mechanisms) == 3
+        # decay_range coerced from JSON list back to tuple per regime.
+        assert isinstance(gen.regime_hparams[0]["decay_range"], tuple)
+
+    def test_roundtrip_persistence(self, tmp_path):
+        from causaltemp_xai.config import SMOKE_REGIME_HMM
+        from causaltemp_xai.data_io import generate_and_save, load_dataset
+        cfg = SMOKE_REGIME_HMM
+        generate_and_save(cfg, out_dir=tmp_path)
+        loaded = load_dataset(cfg.name, out_dir=tmp_path)
+        assert loaded["transition_matrix"].shape == (3, 3)
+        assert len(loaded["mechanisms"]) == 3
+        # Per-split regime paths align row-for-row with X.
+        assert loaded["regime_path_train"].shape[0] == loaded["X_train"].shape[0]
+        assert loaded["regime_path_train"].shape[1] == cfg.T
 
 
 # ---------------------------------------------------------------------------

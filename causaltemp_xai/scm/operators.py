@@ -46,8 +46,8 @@ class Mechanism:
     NOTE: This is the bench-style Mechanism dataclass (lightweight, per-edge).
     It is distinct from causaltemp_xai.benchmarks.mechanisms.Mechanism
     (which is the LinearMechanism/MLPMechanism class used for VAR generation).
-    Both coexist: this Mechanism is used in the new scm/ package and
-    BenchmarkSplit; the LinearMechanism/MLPMechanism is used in benchmarks/.
+    Both coexist: this Mechanism is used in the new scm/ package; the
+    LinearMechanism/MLPMechanism is used in benchmarks/ for VAR generation.
     """
     channel_from: int
     channel_to: int

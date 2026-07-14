@@ -107,11 +107,17 @@ def sparsity(
     x_original: np.ndarray,
     x_cf: np.ndarray,
     tol: float = 1e-6,
-) -> float:
+    return_detailed: bool = False,
+) -> float | dict[str, float]:
     """Fraction of features that are unchanged between original and CF.
 
     A higher sparsity score (closer to 1) means fewer features were modified,
     which is generally desirable for interpretability.
+
+    For temporal data (shape ``(T, k)``), two complementary sparsity metrics
+    are available:
+    - **channel_sparsity**: Fraction of channels entirely unchanged across time.
+    - **timepoint_sparsity**: Fraction of timepoints entirely unchanged across channels.
 
     Parameters
     ----------
@@ -121,16 +127,42 @@ def sparsity(
         Counterfactual instance, same shape.
     tol:
         Absolute tolerance below which a difference counts as zero.
+    return_detailed:
+        If False (default), return scalar sparsity (all features flattened).
+        If True and input is temporal ``(T, k)``, return dict with
+        ``{"channels": float, "timepoints": float}``.
 
     Returns
     -------
-    float
-        Score in ``[0, 1]``.  1 means no features were changed.
+    float or dict
+        If ``return_detailed=False``: scalar in ``[0, 1]``.
+        If ``return_detailed=True``: dict with "channels" and "timepoints" keys.
     """
-    x_orig = np.asarray(x_original, dtype=float).ravel()
-    x_cf_arr = np.asarray(x_cf, dtype=float).ravel()
-    n_unchanged = int(np.sum(np.abs(x_orig - x_cf_arr) <= tol))
-    return n_unchanged / len(x_orig)
+    x_orig = np.asarray(x_original, dtype=float)
+    x_cf_arr = np.asarray(x_cf, dtype=float)
+
+    if not return_detailed or x_orig.ndim != 2:
+        # Return scalar (flattened sparsity)
+        diff_flat = x_orig.ravel() - x_cf_arr.ravel()
+        n_unchanged = int(np.sum(np.abs(diff_flat) <= tol))
+        return n_unchanged / len(diff_flat)
+
+    # Temporal data: compute channel and timepoint sparsity
+    T, k = x_orig.shape
+    diff = np.abs(x_orig - x_cf_arr)
+
+    # Channel sparsity: fraction of channels entirely unchanged across all timepoints
+    channels_unchanged = np.sum(np.all(diff <= tol, axis=0))  # which channels: all T unchanged?
+    channel_sparsity = channels_unchanged / k
+
+    # Timepoint sparsity: fraction of timepoints entirely unchanged across all channels
+    timepoints_unchanged = np.sum(np.all(diff <= tol, axis=1))  # which timepoints: all k unchanged?
+    timepoint_sparsity = timepoints_unchanged / T
+
+    return {
+        "channels": channel_sparsity,
+        "timepoints": timepoint_sparsity,
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -305,40 +337,6 @@ def ivr(X_cf: np.ndarray, X: np.ndarray, T_int: int, eps: float = INTERVENTION_T
     pre_int_change = np.abs(X_cf_arr[:, :T_int, :] - X_arr[:, :T_int, :]) > eps
     violation_mask = pre_int_change.any(axis=(1, 2))   # (N,)
     return float(violation_mask.mean())
-
-
-def ood_mahalanobis(X_cf: np.ndarray, X_train: np.ndarray) -> float:
-    """Mahalanobis distance OOD score (reference implementation).
-
-    NOTE: O(D^3) -- breaks for high-dimensional inputs. Use ood_plausibility()
-    for production use. This function is provided for reference/comparison.
-
-    Parameters
-    ----------
-    X_cf    : (N, T, k) counterfactuals to score
-    X_train : (N_train, T, k) training distribution
-
-    Returns
-    -------
-    float -- mean Mahalanobis distance
-    """
-    N, T, k = X_cf.shape
-    X_cf_flat = X_cf.reshape(N, -1).astype(np.float64)
-    X_tr_flat = X_train.reshape(X_train.shape[0], -1).astype(np.float64)
-
-    mu = X_tr_flat.mean(axis=0)
-    diff = X_tr_flat - mu
-    cov = diff.T @ diff / max(len(X_tr_flat) - 1, 1) + 1e-6 * np.eye(T * k)
-    try:
-        cov_inv = np.linalg.inv(cov)
-    except np.linalg.LinAlgError:
-        cov_inv = np.linalg.pinv(cov)
-
-    dists = []
-    for x in X_cf_flat:
-        d = x - mu
-        dists.append(float(np.sqrt(d @ cov_inv @ d)))
-    return float(np.mean(dists))
 
 
 def compute_axis_c(X: np.ndarray, X_cf_exp: np.ndarray,

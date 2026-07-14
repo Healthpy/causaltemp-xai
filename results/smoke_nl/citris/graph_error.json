@@ -1,0 +1,102 @@
+{
+  "provenance": {
+    "config": {
+      "k": 5,
+      "L": 1,
+      "sparsity": 0.2,
+      "noise_type": "laplace",
+      "T": 30,
+      "N": 500,
+      "seed": 0,
+      "name": "smoke_nl",
+      "mechanism_type": "mlp",
+      "nonlinear": {
+        "hidden": 16,
+        "gain": 0.8,
+        "decay_range": [
+          0.3,
+          0.8
+        ],
+        "spectral_cap": 0.9,
+        "init_gain": 0.7,
+        "activation": "tanh"
+      }
+    },
+    "method": "CITRIS",
+    "n_cf": 30,
+    "citris": {
+      "epochs": 60,
+      "intervention_prob": 0.3,
+      "identity_encoder": true,
+      "n_train_sequences": 300
+    }
+  },
+  "axis_b": {
+    "SHD": 8.0,
+    "LagAcc": 0.42857142857142855,
+    "AUC": 0.7777777777777778,
+    "cf_faith_gt": 1.0,
+    "cf_faith_inferred": 0.9919486062772251,
+    "graph_error": 0.008051393722774858,
+    "propagation_error": 0.0
+  },
+  "oracle_decomposition": {
+    "cf_faith_gt": 1.0,
+    "cf_faith_inferred": 0.9919486062772251,
+    "graph_error": 0.008051393722774858,
+    "propagation_error": 0.0
+  },
+  "methods": [
+    {
+      "cf_faith_gt": 0.9999999994065225,
+      "cf_faith_inferred": 0.9979944918550441,
+      "graph_error": 0.002005507551478436,
+      "propagation_error": 5.934774893745498e-10,
+      "method": "CARLA"
+    },
+    {
+      "cf_faith_gt": 0.898774105530942,
+      "cf_faith_inferred": 0.8987580164738779,
+      "graph_error": 1.6089057064072598e-05,
+      "propagation_error": 0.10122589446905805,
+      "method": "CftsCels"
+    },
+    {
+      "cf_faith_gt": 0.7976695152804126,
+      "cf_faith_inferred": 0.7985360483393704,
+      "graph_error": -0.0008665330589577858,
+      "propagation_error": 0.20233048471958737,
+      "method": "CftsCOMTE"
+    },
+    {
+      "cf_faith_gt": 0.9340788485824902,
+      "cf_faith_inferred": 0.9340536624701758,
+      "graph_error": 2.5186112314390385e-05,
+      "propagation_error": 0.06592115141750976,
+      "method": "CftsConfeti"
+    },
+    {
+      "cf_faith_gt": 0.989579651031644,
+      "cf_faith_inferred": 0.9895453083993553,
+      "graph_error": 3.43426322887419e-05,
+      "propagation_error": 0.010420348968355975,
+      "method": "CftsCounts"
+    },
+    {
+      "cf_faith_gt": 0.8914172624026625,
+      "cf_faith_inferred": 0.8912516838227142,
+      "graph_error": 0.00016557857994825564,
+      "propagation_error": 0.1085827375973375,
+      "method": "CftsWachter"
+    },
+    {
+      "cf_faith_gt": 0.8883679961746249,
+      "cf_faith_inferred": 0.8883122498776931,
+      "graph_error": 5.574629693183564e-05,
+      "propagation_error": 0.11163200382537508,
+      "method": "PearlCARLA"
+    }
+  ],
+  "inferred_edges": 7,
+  "true_edges": 7
+}

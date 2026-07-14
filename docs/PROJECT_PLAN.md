@@ -37,7 +37,7 @@ No existing public benchmark jointly provides (i) ground-truth causal variables,
 - **Generators:** `LinearSCMT` (VAR(1), non-Gaussian noise) and `NlinearSCMT` (additive-noise per-node MLP, spectral-norm-capped) with ground-truth graph + serializable mechanisms; seeded and persisted (`causaltemp_xai/benchmarks/`, `data_io.py`). Well covered by tests.
 - **Oracle structural CF:** abduction–action–prediction, Pearl (noise-reinjecting) and rollout (noiseless) variants; mechanism-generic; mutual-exclusivity property verified for the oracle construction (`benchmarks/structural_cf.py`, `scm/`).
 - **CF-faith:** two semantics (`noiseless_rollout`, `pearl_delta`), hard + soft, both always reported (`metrics/cf_faith.py`).
-- **Axis C:** validity, proximity (L1/L2/DTW), sparsity, OOD (IsolationForest, Mahalanobis), TRSI, IVR (`metrics/axis_c.py`; tested).
+- **Axis C:** validity, proximity (L1/L2/DTW), sparsity, OOD (IsolationForest), TRSI, IVR (`metrics/axis_c.py`; tested).
 - **CF methods wired (6):** `CARLARecourse` + cfts-backed Wachter/COMTE/CONFETI/CounTS/CELS via the vendored `third_party/cfts_repo` submodule. Native `WachterCF`/`DiCECF` exist but are not in the phased pipeline.
 - **Classifier:** LSTM wrapper with train CLI (92–95% test accuracy on smoke configs).
 - **Phased pipeline `experiments/01–06` + `_common.py`:** clean per-phase artifacts under `results/<config>/<classifier>/…`, honest axis routing (Axis B explicitly labeled tautological without a discovery method; Axis A LD/MCC reported NaN rather than faked).
