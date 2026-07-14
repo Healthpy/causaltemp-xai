@@ -1,62 +1,53 @@
 """CITRIS — Causal Identifiability from Temporal Intervened Sequences.
 
-Reference
----------
+Reference / upstream
+--------------------
 Lippe, Magliacane, Löwe, Asano, Cohen, Gavves (2022).
 "CITRIS: Causal Identifiability from Temporal Intervened Sequences." ICML 2022.
+Official code: https://github.com/phlippe/CITRIS — **vendored** at
+``third_party/citris_repo`` (git submodule).
 
-What CITRIS does
-----------------
-Given temporal sequences in which a *known* random subset of the causal
-variables is intervened at each step (the intervention-target labels
-``I_t^i in {0, 1}`` supplied by
-:mod:`causaltemp_xai.benchmarks.interventional`), CITRIS learns a latent space
-**partitioned into one block per causal variable** and an
-**intervention-conditioned transition prior** ``p(z_t^i | z_{t-1}, I_t^i)``. The identifying signal is that
-intervening on variable ``i`` (``I_t^i = 1``) severs that block's dependence on
-the past — so the block whose prior becomes past-independent exactly when
-target ``i`` fires is the latent slot for causal variable ``i``.
+This module is a thin **adapter**, not a reimplementation: the identifiability-
+critical machinery — the intervention-conditioned transition prior with a
+Gumbel-Softmax latent-to-causal-variable assignment ``psi`` (including the
+``psi(0)`` intervention-independent slot) — is the upstream
+``models.shared.transition_prior.TransitionPrior`` used **unmodified**. The
+adapter only supplies the observation-modality encoder/decoder (an MLP over the
+``k``-dim time-series channels, in place of the repo's image CNNs — the modality
+encoder is legitimately swappable, and the repo itself ships several) and a
+training loop that optimises the CITRIS-VAE ELBO
+(reconstruction + ``TransitionPrior.kl_divergence``).
 
-Adaptation to CausalTemp-XAI (both faithful and deliberate)
------------------------------------------------------------
-* **Identity mixing.** The benchmark's ``k`` observed channels *are* the causal
-  variables (nonlinear mixing ``x = g(z)`` is out of scope, see
-  ``benchmarks/generator.py``), so there are ``k`` causal-variable blocks and
-  block ``i`` is pinned to channel ``i`` by the intervention supervision
-  (block ``i``'s prior is the one severed when ``I_t^i = 1``). This removes the
-  permutation ambiguity CITRIS otherwise resolves up to.
-* **First-order latent Markov / lagged graph.** CITRIS's transition prior
-  conditions on ``z_{t-1}`` only, so the inferred causal graph it exposes is a
-  **lag-1** adjacency — exactly matching the benchmark's ``L = 1`` presets. For
-  ``L > 1`` presets only the lag-1 slice is inferred; the longer-lag slices are
-  reported as absent (a documented first-order-Markov limitation, not a bug).
-* **iCITRIS is not implemented separately.** iCITRIS adds *instantaneous*
-  (lag-0) causal discovery; the benchmark has no instantaneous edges, so
-  iCITRIS ≡ CITRIS here.
+Data
+----
+CITRIS trains on temporal *intervened* sequences with per-step intervention
+targets ``I^{t+1}`` (which causal variable was intervened). Generate them with
+:func:`causaltemp_xai.benchmarks.interventional.generate_interventional_sequences`
+using ``mode="single"`` (at most one intervention per step → one-hot / all-zero
+targets, the standard CITRIS regime).
 
-The inferred lagged adjacency + continuous edge scores this class exposes
-(:meth:`inferred_graph`) are consumed by
-:func:`causaltemp_xai.metrics.axis_b.compute_axis_b` for SHD / LagAcc / AUC and
-the graph-error decomposition.
-
-Identification-quality status (2026-07-14)
-------------------------------------------
-In the default **identity-encoder** mode (see ``identity_encoder``), CITRIS
-recovers the lag-1 causal graph **above chance** at benchmark scale — edge-ranking
-AUC ~0.84 at N=1000 with ~80 training epochs, approaching the ordinary-ridge
-reference (AUC ~0.79 at N=250, ~0.98 at N=2000) that establishes the signal is
-present. This came from recognising that the benchmark guarantees identity
-mixing, so the correct encoder is the identity: the small, near-linear
-cross-edge signal survives directly rather than being scrambled by a nonlinear
-VAE latent. Recovery improves with more data and epochs; the general
-nonlinear-mixing path (``identity_encoder=False``) does **not** yet identify at
-smoke scale and remains a research item (representation regularisation, the
-CITRIS-NF variant, hyperparameter search). Axis-B numbers should be reported
-with the training config (N, epochs) that produced them.
+Adaptation notes (honest scope)
+-------------------------------
+* **Identity mixing.** The benchmark's ``k`` channels *are* the causal
+  variables (nonlinear mixing ``x = g(z)`` is out of scope), so ``num_blocks =
+  k`` and the MLP encoder/decoder are shallow. CITRIS's representation-
+  identifiability result (recovering causal variables under *unknown* nonlinear
+  mixing) is therefore not stress-tested by this benchmark — what is exercised
+  is the genuine transition prior + Gumbel-Softmax target assignment.
+* **Inferred lagged graph.** CITRIS-VAE does not emit a causal graph directly;
+  :meth:`inferred_graph` derives a lag-1 adjacency from the trained transition
+  prior's input-sensitivity, aggregated over causal blocks via the learned
+  ``psi`` assignment (see the method docstring).
+* **iCITRIS** (instantaneous effects) is not wired: the benchmark's SCM is
+  purely time-lagged (no lag-0 edges), so iCITRIS reduces to CITRIS here.
 """
 
 from __future__ import annotations
 
+import importlib.util
+import sys
+import types
+from pathlib import Path
 from typing import Optional
 
 import numpy as np
@@ -64,193 +55,148 @@ import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, TensorDataset
 
+# Repo root -> third_party/citris_repo
+_CITRIS_REPO = (
+    Path(__file__).resolve().parents[3] / "third_party" / "citris_repo"
+)
 
-class _CITRISModel(nn.Module):
-    """Encoder + decoder + intervention-conditioned transition prior.
 
-    Latent layout: ``k`` causal-variable blocks of width ``block_dim``, i.e.
-    ``latent_dim = k * block_dim``. Under identity mixing block ``i`` is pinned
-    to causal variable / channel ``i`` by the per-channel factorised
-    encoder/decoder (block ``i`` is encoded from ``x_i`` alone and is the sole
-    path to reconstruct ``x_i``).
+def _load_upstream_modules():
+    """Import the genuine upstream ``TransitionPrior`` and ``TargetClassifier``.
+
+    The upstream package ``__init__`` files pull in PyTorch-Lightning /
+    torchvision (image-pipeline deps not installed here), so we load the four
+    plain-``torch`` source files we need directly via importlib, registering
+    lightweight stubs for the heavy optional deps and namespace packages so the
+    intra-repo ``from models.shared.X import Y`` imports resolve **without**
+    executing the Lightning-dependent package ``__init__``.
+    """
+    if not _CITRIS_REPO.exists():
+        raise ImportError(
+            f"vendored CITRIS repo not found at {_CITRIS_REPO}. Initialise the "
+            "submodule: `git submodule update --init third_party/citris_repo`"
+        )
+    shared = _CITRIS_REPO / "models" / "shared"
+
+    # Stub heavy optional deps only if genuinely missing (their symbols are not
+    # touched by the transition prior / target classifier / modules / the two
+    # pure-torch util functions we use).
+    for dep in ("torchvision", "seaborn", "matplotlib", "matplotlib.pyplot"):
+        if dep not in sys.modules:
+            try:
+                __import__(dep)
+            except Exception:
+                sys.modules[dep] = types.ModuleType(dep)
+
+    # Namespace packages so `models.shared.X` resolves without running __init__.
+    for name in ("models", "models.shared"):
+        if name not in sys.modules:
+            pkg = types.ModuleType(name)
+            pkg.__path__ = []  # mark as package
+            sys.modules[name] = pkg
+
+    def _load(mod_name: str, path: Path):
+        if mod_name in sys.modules and getattr(sys.modules[mod_name], "__file__", None):
+            return sys.modules[mod_name]
+        spec = importlib.util.spec_from_file_location(mod_name, path)
+        mod = importlib.util.module_from_spec(spec)
+        sys.modules[mod_name] = mod
+        spec.loader.exec_module(mod)
+        return mod
+
+    # Order matters: modules + utils first (transition_prior imports from them).
+    _load("models.shared.modules", shared / "modules.py")
+    _load("models.shared.utils", shared / "utils.py")
+    tp = _load("models.shared.transition_prior", shared / "transition_prior.py")
+    tc = _load("models.shared.target_classifier", shared / "target_classifier.py")
+    return tp.TransitionPrior, tc.TargetClassifier
+
+
+TransitionPrior = None  # lazily loaded on first CITRIS construction
+TargetClassifier = None
+
+
+class _CITRISVAE(nn.Module):
+    """MLP encoder/decoder + the genuine upstream ``TransitionPrior``.
+
+    Latents are grouped into ``num_blocks = k`` causal blocks (plus the prior's
+    internal ``psi(0)`` noise slot); ``num_latents = k * latents_per_block``.
     """
 
-    def __init__(self, k: int, block_dim: int = 4, hidden: int = 64,
-                 identity_encoder: bool = True):
+    def __init__(self, k: int, latents_per_block: int = 2, c_hid: int = 32,
+                 lambda_reg: float = 0.01):
         super().__init__()
         self.k = k
-        self.identity_encoder = identity_encoder
-        if identity_encoder:
-            # The VAE encoder in CITRIS exists to invert unknown nonlinear
-            # mixing g(z) -> x. CausalTemp-XAI *guarantees* identity mixing
-            # (the k channels are the causal variables), so the exact, correct
-            # encoder is the identity: z_i = x_i. block_dim is then 1 and the
-            # model reduces to a directly-trainable sparse, intervention-gated
-            # structural transition over observations — faithful CITRIS
-            # structure with the encoder set to its known-correct value, not a
-            # shortcut. This preserves the (small, linear) cross-edge signal
-            # that a nonlinear latent otherwise destroys.
-            block_dim = 1
-        self.block_dim = block_dim
-        self.latent_dim = k * block_dim  # one block per causal variable/channel
+        self.num_blocks = k
+        self.num_latents = k * latents_per_block
 
-        # Per-CHANNEL factorised encoder/decoder (used only when
-        # identity_encoder is False, i.e. the general nonlinear-mixing case).
-        # Under identity mixing each observed channel *is* one causal variable,
-        # so block i is pinned to channel i by construction: block i is encoded
-        # from x_i alone and is the sole path to reconstruct x_i. This removes
-        # CITRIS's assignment ambiguity using the benchmark's identity-mixing
-        # property and makes the learned lag-1 adjacency *directly* the
-        # channel-level causal graph.
-        if not identity_encoder:
-            self.enc = nn.Sequential(
-                nn.Linear(1, hidden), nn.SiLU(), nn.Linear(hidden, 2 * block_dim)
-            )
-            self.dec = nn.Sequential(
-                nn.Linear(block_dim, hidden), nn.SiLU(), nn.Linear(hidden, 1)
-            )
-
-        # Explicit learned lag-1 adjacency over causal-variable blocks:
-        # ``adj_logits[i, j]`` is the (pre-softplus) strength of edge j -> i.
-        # Reading the graph off this L1-sparsified parameter — rather than
-        # autograd-probing a dense MLP — is what makes the inferred graph
-        # identifiable, and mirrors how latent causal-discovery methods
-        # (NOTEARS-style, iCITRIS's graph learner) expose structure.
-        self.adj_logits = nn.Parameter(torch.full((k, k), -2.0))
-
-        # Additive structural message-passing prior. Block i's prior is
-        #   [mu_i, logvar_i] = base_i + (1 - I_i) * sum_j e[i,j] * msg_i(z_j)
-        # where msg_i is a per-target message MLP applied to each source block
-        # z_j. Crucially the edge weight e[i, j] is the ONLY pathway from
-        # source j to target i: when e[i, j] = 0 the term vanishes and the
-        # head cannot recover it, so L1 on ``e`` genuinely sparsifies (unlike a
-        # dense head, which can internally compensate for the gate). The
-        # (1 - I_i) factor severs block i's dependence on the past when
-        # variable i is intervened — the CITRIS identifying structure.
-        # In identity mode the per-source message is LINEAR (no hidden
-        # nonlinearity): the cross-edge effect is a small, near-linear signal
-        # (an ordinary ridge probe recovers it), so a linear message + L1
-        # adjacency + intervention gating is the faithful, identifiable
-        # structural transition. The general (nonlinear-mixing) path keeps the
-        # 2-layer MLP message.
-        if identity_encoder:
-            self.msg = nn.ModuleList(
-                [nn.Linear(block_dim, 2 * block_dim) for _ in range(k)]
-            )
-        else:
-            self.msg = nn.ModuleList(
-                [
-                    nn.Sequential(
-                        nn.Linear(block_dim, hidden), nn.SiLU(), nn.Linear(hidden, 2 * block_dim)
-                    )
-                    for _ in range(k)
-                ]
-            )
-        # Past-independent base term per block (the intervened-block prior).
-        self.prior_base = nn.Parameter(torch.zeros(k, 2 * block_dim))
-
-    def edge_weights(self) -> torch.Tensor:
-        """Non-negative lag-1 edge weights ``[i, j] = strength(j -> i)``."""
-        return nn.functional.softplus(self.adj_logits)
+        self.enc = nn.Sequential(
+            nn.Linear(k, c_hid), nn.SiLU(),
+            nn.Linear(c_hid, 2 * self.num_latents),
+        )
+        self.dec = nn.Sequential(
+            nn.Linear(self.num_latents, c_hid), nn.SiLU(),
+            nn.Linear(c_hid, k),
+        )
+        self.prior = TransitionPrior(
+            num_latents=self.num_latents,
+            num_blocks=self.num_blocks,
+            c_hid=c_hid,
+            imperfect_interventions=False,
+            autoregressive_model=False,
+            lambda_reg=lambda_reg,
+        )
+        # Genuine upstream target classifier — the auxiliary loss that
+        # specialises the Gumbel-Softmax assignment psi (latents -> causal
+        # variables). Without it, psi stays near-uniform and the recovered
+        # graph is uninformative.
+        self.intv_classifier = TargetClassifier(
+            num_latents=self.num_latents,
+            c_hid=c_hid,
+            num_blocks=self.num_blocks,
+        )
 
     def encode(self, x: torch.Tensor):
-        """Per-channel encode ``x`` ``(B, k)`` -> ``(mu, logvar)`` each
-        ``(B, k*block_dim)``; block i comes from channel i alone. In identity
-        mode the encoder is the identity (``mu = x``, ``logvar = 0``)."""
-        if self.identity_encoder:
-            return x, torch.zeros_like(x)
-        B = x.shape[0]
-        h = self.enc(x.reshape(B * self.k, 1))  # (B*k, 2*block_dim)
-        h = h.view(B, self.k, 2 * self.block_dim)
-        mu = h[:, :, : self.block_dim].reshape(B, self.latent_dim)
-        logvar = h[:, :, self.block_dim :].reshape(B, self.latent_dim)
-        return mu, logvar
+        """``x`` ``(B, k)`` -> ``(mu, logstd)`` each ``(B, num_latents)``."""
+        h = self.enc(x)
+        mu, logstd = h.chunk(2, dim=-1)
+        return mu, logstd
 
     def decode(self, z: torch.Tensor) -> torch.Tensor:
-        """Per-channel decode ``z`` ``(B, k*block_dim)`` -> ``x_hat`` ``(B, k)``;
-        channel i reconstructed from block i alone. Identity in identity mode."""
-        if self.identity_encoder:
-            return z
-        B = z.shape[0]
-        zb = z.view(B * self.k, self.block_dim)
-        return self.dec(zb).view(B, self.k)
+        return self.dec(z)
 
     @staticmethod
-    def _reparam(mu: torch.Tensor, logvar: torch.Tensor) -> torch.Tensor:
-        return mu + (0.5 * logvar).exp() * torch.randn_like(mu)
-
-    def prior(self, z_prev: torch.Tensor, targets: torch.Tensor):
-        """Intervention-conditioned prior over ``z_t`` given ``z_{t-1}``.
-
-        Parameters
-        ----------
-        z_prev : (B, latent_dim)
-        targets : (B, k) intervention-target mask I_t.
-
-        Returns
-        -------
-        (mu, logvar) each (B, latent_dim), one block per causal variable.
-        """
-        B = z_prev.shape[0]
-        mu = z_prev.new_zeros((B, self.latent_dim))
-        logvar = z_prev.new_zeros((B, self.latent_dim))
-        bd = self.block_dim
-        # Causal blocks of z_{t-1}, shaped (B, k, block_dim).
-        z_causal = z_prev.view(B, self.k, bd)
-        e = self.edge_weights()  # (k, k): [i, j] strength j -> i
-        for i in range(self.k):
-            gate = (1.0 - targets[:, i : i + 1])  # (B, 1): 0 when intervened
-            msgs = self.msg[i](z_causal.reshape(B * self.k, bd)).view(B, self.k, 2 * bd)
-            # Additive aggregation over sources, weighted by the edge strength;
-            # e[i, j] is the sole gateway from source j to target i.
-            agg = (e[i].view(1, self.k, 1) * msgs).sum(dim=1)  # (B, 2*bd)
-            out = self.prior_base[i].unsqueeze(0) + gate * agg  # (B, 2*bd)
-            sl = slice(i * bd, (i + 1) * bd)
-            mu[:, sl] = out[:, :bd]
-            logvar[:, sl] = out[:, bd:]
-        return mu, logvar
-
-
-def _kl_diag_gaussians(mu_q, lv_q, mu_p, lv_p):
-    """KL( N(mu_q, e^lv_q) || N(mu_p, e^lv_p) ), summed over latent dim."""
-    return 0.5 * (
-        (lv_p - lv_q) + (lv_q.exp() + (mu_q - mu_p) ** 2) / lv_p.exp() - 1.0
-    ).sum(dim=1)
+    def _reparam(mu, logstd):
+        return mu + torch.randn_like(mu) * logstd.exp()
 
 
 class CITRIS:
-    """Fit CITRIS on intervention-labeled sequences; expose the inferred graph.
+    """Fit genuine CITRIS-VAE on intervention-labeled sequences.
 
     Usage
     -----
     >>> from causaltemp_xai.benchmarks.interventional import (
     ...     generate_interventional_sequences)
-    >>> ds = generate_interventional_sequences(mechanism, k, L, T, N)
-    >>> model = CITRIS(k=k, block_dim=4).fit(ds.X, ds.targets)
-    >>> adj_pred, scores = model.inferred_graph(threshold=0.1)  # (k,k,L) each
+    >>> ds = generate_interventional_sequences(mechanism, k, L, T, N, mode="single")
+    >>> model = CITRIS(k=k).fit(ds.X, ds.targets)
+    >>> adj_pred, scores = model.inferred_graph(max_lag=L)
 
     Parameters
     ----------
     k:
-        Number of causal variables / channels.
-    block_dim:
-        Latent width per causal-variable block.
-    hidden:
-        Hidden width of encoder/decoder/prior MLPs.
+        Number of causal variables / channels (``num_blocks``).
+    latents_per_block:
+        Latent dimensions per causal block; ``num_latents = k * latents_per_block``.
+    c_hid:
+        Hidden width of the encoder/decoder and the transition-prior network.
     beta:
-        KL weight (β-VAE style) — used only when ``identity_encoder=False``.
-    identity_encoder:
-        If True (default), the encoder is the identity (``z = x``), exploiting
-        the benchmark's guaranteed identity mixing. ``block_dim`` is then forced
-        to 1 and the model trains as a sparse, intervention-gated structural
-        transition (predictive MSE + L1 adjacency) — which is what recovers the
-        causal graph at benchmark scale. Set False for the general
-        nonlinear-mixing case (full VAE ELBO with the per-channel MLP
-        encoder/decoder), which does not yet identify at smoke scale.
+        KL weight (β-VAE style) on the transition-prior KL.
+    lambda_reg:
+        Upstream ``TransitionPrior`` regulariser mass on the ``psi(0)`` noise slot.
     lr, max_epochs, batch_size:
         Optimisation hyperparameters.
     seed:
-        RNG seed for weight init + reparameterisation.
+        RNG seed for weight init + reparameterisation + Gumbel sampling.
     device:
         Torch device string; defaults to CPU.
     """
@@ -258,40 +204,47 @@ class CITRIS:
     def __init__(
         self,
         k: int,
-        block_dim: int = 4,
-        hidden: int = 64,
-        beta: float = 0.1,
-        lambda_sparse: float = 0.02,
+        latents_per_block: int = 2,
+        c_hid: int = 32,
+        beta: float = 1.0,
+        beta_classifier: float = 2.0,
+        lambda_reg: float = 0.01,
+        gumbel_max: float = 2.0,
+        gumbel_min: float = 0.5,
         lr: float = 1e-3,
         max_epochs: int = 30,
         batch_size: int = 128,
-        identity_encoder: bool = True,
         seed: int = 0,
         device: str = "cpu",
     ) -> None:
+        global TransitionPrior, TargetClassifier
+        if TransitionPrior is None:
+            TransitionPrior, TargetClassifier = _load_upstream_modules()
         self.k = k
-        self.block_dim = block_dim
-        self.hidden = hidden
-        self.identity_encoder = identity_encoder
+        self.latents_per_block = latents_per_block
+        self.c_hid = c_hid
         self.beta = beta
-        self.lambda_sparse = lambda_sparse
+        self.beta_classifier = beta_classifier
+        self.lambda_reg = lambda_reg
+        self.gumbel_max = gumbel_max
+        self.gumbel_min = gumbel_min
         self.lr = lr
         self.max_epochs = max_epochs
         self.batch_size = batch_size
         self.seed = seed
         self.device = torch.device(device)
-        self.model: Optional[_CITRISModel] = None
+        self.model: Optional[_CITRISVAE] = None
         self.history_: list[float] = []
 
     # ------------------------------------------------------------------
     def fit(self, X: np.ndarray, targets: np.ndarray) -> "CITRIS":
-        """Train on ``X`` ``(N, T, k)`` with intervention targets ``(N, T, k)``.
+        """Train CITRIS-VAE on ``X`` ``(N, T, k)`` with intervention targets
+        ``(N, T, k)`` (one-hot / all-zero per step; use ``mode="single"``).
 
-        Builds ``(x_{t-1}, x_t, I_t)`` transition triplets from every adjacent
-        step pair. In identity-encoder mode (default) it minimises a predictive
-        MSE of ``x_t`` under the intervention-conditioned structural transition
-        plus an L1 adjacency penalty; in the general case it maximises the
-        CITRIS ELBO (reconstruction + KL against the transition prior).
+        Builds ``(x_{t-1}, x_t, I_t)`` transition triplets and maximises the
+        CITRIS-VAE ELBO: per-frame reconstruction + the upstream
+        ``TransitionPrior.kl_divergence`` between the encoder posterior on
+        ``x_t`` and the intervention-conditioned prior ``p(z_t | z_{t-1}, I_t)``.
         """
         torch.manual_seed(self.seed)
         X = np.asarray(X, dtype=np.float32)
@@ -300,55 +253,65 @@ class CITRIS:
         if k != self.k:
             raise ValueError(f"X has {k} channels, expected k={self.k}")
 
-        # Transition triplets: prev x_{t-1}, curr x_t, target I_t (t = 1..T-1).
         x_prev = X[:, :-1, :].reshape(-1, k)
         x_curr = X[:, 1:, :].reshape(-1, k)
-        i_curr = targets[:, 1:, :].reshape(-1, k)
-        ds = TensorDataset(
-            torch.from_numpy(x_prev),
-            torch.from_numpy(x_curr),
-            torch.from_numpy(i_curr),
+        i_curr = targets[:, 1:, :].reshape(-1, k)  # I^t target (B, num_blocks)
+        loader = DataLoader(
+            TensorDataset(
+                torch.from_numpy(x_prev),
+                torch.from_numpy(x_curr),
+                torch.from_numpy(i_curr),
+            ),
+            batch_size=self.batch_size,
+            shuffle=True,
         )
-        loader = DataLoader(ds, batch_size=self.batch_size, shuffle=True)
 
-        self.model = _CITRISModel(
-            self.k, self.block_dim, self.hidden, self.identity_encoder
+        self.model = _CITRISVAE(
+            self.k, self.latents_per_block, self.c_hid, self.lambda_reg
         ).to(self.device)
+        self.model.train()
         opt = torch.optim.Adam(self.model.parameters(), lr=self.lr)
 
         self.history_ = []
-        for _ in range(self.max_epochs):
-            epoch = 0.0
-            nb = 0
+        for ep in range(self.max_epochs):
+            # Gumbel-Softmax temperature annealing (high -> low) so the
+            # latent-to-causal assignment psi hardens over training, as in the
+            # upstream CITRIS training schedule.
+            frac = ep / max(self.max_epochs - 1, 1)
+            tau = self.gumbel_max + (self.gumbel_min - self.gumbel_max) * frac
+            self.model.prior.gumbel_temperature = tau
+            self.model.intv_classifier.gumbel_temperature = tau
+            epoch, nb = 0.0, 0
             for xb_prev, xb_curr, ib in loader:
                 xb_prev = xb_prev.to(self.device)
                 xb_curr = xb_curr.to(self.device)
                 ib = ib.to(self.device)
 
-                # Use the posterior MEAN of z_{t-1} in the transition prior
-                # (not a sample): the cross-edge signal is small, and sampling
-                # noise on the conditioning latent otherwise drowns it.
-                z_prev, _ = self.model.encode(xb_prev)
-                l1 = self.model.edge_weights().sum()
-                if self.model.identity_encoder:
-                    # Identity encoder (z = x): the prior is a direct predictive
-                    # structural transition. Train mu_p to predict x_t with a
-                    # fixed-variance MSE (== ridge-style regression, but with an
-                    # L1 adjacency and intervention severance); the learned
-                    # variance is left out here as it destabilises the small
-                    # cross-edge signal. No reparam/recon needed.
-                    mu_p, _ = self.model.prior(z_prev, ib)
-                    mse = ((xb_curr - mu_p) ** 2).sum(dim=1)
-                    loss = mse.mean() + self.lambda_sparse * l1
-                else:
-                    # General nonlinear-mixing case: full VAE ELBO.
-                    mu_q, lv_q = self.model.encode(xb_curr)
-                    z_curr = self.model._reparam(mu_q, lv_q)
-                    x_hat = self.model.decode(z_curr)
-                    mu_p, lv_p = self.model.prior(z_prev, ib)
-                    recon = ((x_hat - xb_curr) ** 2).sum(dim=1)
-                    kl = _kl_diag_gaussians(mu_q, lv_q, mu_p, lv_p)
-                    loss = (recon + self.beta * kl).mean() + self.lambda_sparse * l1
+                mu_t, ls_t = self.model.encode(xb_prev)
+                z_t = self.model._reparam(mu_t, ls_t)
+                mu_t1, ls_t1 = self.model.encode(xb_curr)
+                z_t1 = self.model._reparam(mu_t1, ls_t1)
+
+                # Per-frame reconstruction.
+                rec = (
+                    ((self.model.decode(z_t1) - xb_curr) ** 2).sum(dim=1)
+                    + ((self.model.decode(z_t) - xb_prev) ** 2).sum(dim=1)
+                )
+                # Genuine CITRIS transition-prior KL (marginalised over psi).
+                kld = self.model.prior.kl_divergence(
+                    z_t=z_t, target=ib,
+                    z_t1_mean=mu_t1, z_t1_logstd=ls_t1, z_t1_sample=z_t1,
+                )
+                loss = (rec + self.beta * kld).mean()
+
+                # Genuine CITRIS target-classifier loss (specialises psi).
+                # z_sample: (B, 2, num_latents); target: (B, 1, num_blocks).
+                z_stack = torch.stack([z_t, z_t1], dim=1)
+                loss_model, loss_z = self.model.intv_classifier(
+                    z_sample=z_stack, target=ib[:, None, :],
+                    transition_prior=self.model.prior, logger=None,
+                )
+                loss = loss + self.beta_classifier * (loss_model + loss_z)
 
                 opt.zero_grad()
                 loss.backward()
@@ -356,58 +319,72 @@ class CITRIS:
                 epoch += float(loss.item())
                 nb += 1
             self.history_.append(epoch / max(nb, 1))
+        self.model.eval()
         return self
 
     # ------------------------------------------------------------------
     def encode(self, X: np.ndarray) -> np.ndarray:
-        """Return posterior-mean latents ``(N, T, latent_dim)`` for ``X``."""
+        """Posterior-mean latents ``(N, T, num_latents)`` for ``X``."""
         self._check_fitted()
         X = np.asarray(X, dtype=np.float32)
         N, T, k = X.shape
         with torch.no_grad():
             flat = torch.from_numpy(X.reshape(-1, k)).to(self.device)
             mu, _ = self.model.encode(flat)
-        return mu.cpu().numpy().reshape(N, T, self.model.latent_dim)
+        return mu.cpu().numpy().reshape(N, T, self.model.num_latents)
 
     # ------------------------------------------------------------------
     def inferred_graph(
         self,
         max_lag: int = 1,
         threshold: float = 0.1,
+        n_probe: int = 512,
     ) -> tuple[np.ndarray, np.ndarray]:
-        """Infer the lag-1 causal adjacency from the learned transition prior.
+        """Infer the lag-1 causal adjacency from the trained transition prior.
 
-        Edge score ``j -> i`` is read directly off the L1-sparsified learned
-        adjacency ``edge_weights()[i, j]`` (softplus of ``adj_logits``). Since
-        block ``i`` is pinned to channel ``i`` by the intervention
-        supervision, block indices map directly to channels.
+        CITRIS-VAE does not output a causal graph directly. We derive one from
+        the prior's input-sensitivity: for random ``z_{t-1}`` probes, the mean
+        absolute Jacobian of each output latent's predicted prior-mean w.r.t.
+        each input latent gives a latent×latent dependence, which we aggregate
+        to causal blocks (channels) using the learned Gumbel-Softmax assignment
+        ``psi`` (``block_sens = psiᵀ · J · psi``). Because block ``i`` is pinned
+        to channel ``i`` by the intervention supervision, block indices map to
+        channels.
 
         Returns
         -------
-        adj_pred : (k, k, max_lag) int — 1 where the (max-normalised) score
-                   exceeds ``threshold`` at lag 1, 0 elsewhere (lags > 1 are
-                   all-zero: first-order latent Markov).
-        scores   : (k, k, max_lag) float — continuous edge scores in [0, 1]
-                   (for AUC); lags > 1 are 0.
-        adj_pred[i, j, l] follows the benchmark convention: variable j causes
-        variable i at lag l+1.
+        adj_pred : (k, k, max_lag) int — 1 where the max-normalised block score
+                   exceeds ``threshold`` at lag 1 (lags > 1 all-zero: the
+                   first-order latent Markov prior).
+        scores   : (k, k, max_lag) float in [0, 1]; ``[i, j, 0]`` = strength of
+                   ``j -> i`` (benchmark convention ``adj[i, j, l]``: j causes i
+                   at lag l+1). Self-loops zeroed (ground-truth excludes them).
         """
         self._check_fitted()
+        m = self.model
+        torch.manual_seed(self.seed + 1)
+        z_prev = torch.randn(n_probe, m.num_latents, device=self.device, requires_grad=True)
+        mu_p, _ = m.prior._get_prior_params(z_prev)  # (n_probe, num_latents)
+
+        # Latent x latent sensitivity: |d mu_p[:, a] / d z_prev[:, b]|.
+        J = np.zeros((m.num_latents, m.num_latents))
+        for a in range(m.num_latents):
+            g = torch.autograd.grad(mu_p[:, a].sum(), z_prev, retain_graph=True)[0]
+            J[a] = g.abs().mean(dim=0).detach().cpu().numpy()
+
+        # Aggregate latents -> causal blocks via the learned psi assignment
+        # (drop the psi(0) noise column). psi: (num_latents, num_blocks+1).
         with torch.no_grad():
-            e = self.model.edge_weights().cpu().numpy()  # (k, k): [i, j] = j -> i
-        # The benchmark's ground-truth graph excludes self-loops by convention
-        # (`_sample_graph`'s no-self-loop-at-lag-1 rule), yet the mechanism's
-        # decay term makes every block self-depend at lag 1; zero the diagonal
-        # so the inferred graph is scored on the same edge set as ground truth.
-        np.fill_diagonal(e, 0.0)
-        smax = e.max()
-        norm = e / smax if smax > 0 else e
+            psi = m.prior.get_target_assignment(hard=False).cpu().numpy()
+        psi_causal = psi[:, : self.k]  # (num_latents, k)
+        block = psi_causal.T @ J @ psi_causal  # (k, k): [i, j] = j -> i
+
+        np.fill_diagonal(block, 0.0)
+        smax = block.max()
+        norm = block / smax if smax > 0 else block
 
         scores = np.zeros((self.k, self.k, max_lag))
         adj = np.zeros((self.k, self.k, max_lag), dtype=int)
-        # Benchmark convention: adj[i, j, l] == 1 iff variable j causes
-        # variable i at lag l+1. sens[i, j] is already the j -> i sensitivity,
-        # so it maps directly onto the [i, j, lag=0] (== lag-1) slice.
         scores[:, :, 0] = norm
         adj[:, :, 0] = (norm > threshold).astype(int)
         return adj, scores

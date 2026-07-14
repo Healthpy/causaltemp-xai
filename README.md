@@ -228,8 +228,11 @@ causaltemp-xai/
 │       │   ├── perturbation_curves.py    # deletion / insertion curves
 │       │   ├── timeshap.py      # TimeSHAP: official feedzai timeshap wrapper (Bento et al., 2021)
 │       │   └── dynamask.py      # Dynamask: official Dynamask submodule wrapper (Crabbe & van der Schaar, 2021)
-│       └── concept/             # CBM-T probe + iVAE (experimental, unwired)
+│       ├── concept/             # CBM-T probe + iVAE (experimental, unwired)
+│       └── causal/              # CITRIS (genuine, via third_party/citris_repo)
 ├── third_party/cfts_repo/       # vendored cfts reference implementations
+├── third_party/dynamask_repo/   # vendored official Dynamask
+├── third_party/citris_repo/     # vendored official CITRIS (github.com/phlippe/CITRIS)
 ├── experiments/
 │   ├── 01_generate_benchmarks.py    # phase 1: generate + persist datasets
 │   ├── 02_train_classifiers.py      # phase 2: train the LSTM classifier

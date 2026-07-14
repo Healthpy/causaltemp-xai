@@ -87,6 +87,7 @@ def generate_interventional_sequences(
     noise_type: str = "laplace",
     intervention_prob: float = 0.3,
     intervention_scale: float = 1.0,
+    mode: str = "independent",
     burn_in: int = 100,
     clip: float = 1e3,
 ) -> InterventionalDataset:
@@ -112,9 +113,18 @@ def generate_interventional_sequences(
     noise_type:
         Innovation distribution — matches the generator families.
     intervention_prob:
-        Per-channel, per-step Bernoulli probability of intervening.
+        Probability of intervening at a step. In ``mode="independent"`` this is
+        the per-channel Bernoulli probability; in ``mode="single"`` it is the
+        probability that the step is intervened at all (on exactly one channel).
     intervention_scale:
         Std-dev of the Normal the ``do`` values are drawn from.
+    mode:
+        ``"independent"`` (default) — each channel is intervened independently
+        with ``intervention_prob`` (targets may be multi-hot). ``"single"`` —
+        at most one channel per step (with prob ``intervention_prob`` a single
+        uniformly-chosen channel is intervened), giving one-hot / all-zero
+        targets. ``"single"`` matches the standard CITRIS training regime (see
+        :class:`causaltemp_xai.methods.causal.CITRIS`).
     burn_in:
         Intervention-free warm-up steps discarded from the returned window.
     clip:
@@ -127,6 +137,8 @@ def generate_interventional_sequences(
     """
     if not (0.0 <= intervention_prob <= 1.0):
         raise ValueError(f"intervention_prob must be in [0, 1], got {intervention_prob!r}")
+    if mode not in ("independent", "single"):
+        raise ValueError(f"mode must be 'independent' or 'single', got {mode!r}")
     rng = np.random.default_rng(seed)
     noise_fn = _default_noise_fn(rng, noise_type)
 
@@ -145,7 +157,13 @@ def generate_interventional_sequences(
         mean = mechanism.forward_numpy(window)  # (N, k)
         x_t = mean + noise[:, t, :]
         if t >= burn_in + 1:  # interventions only in the observed window, t>=1
-            mask = rng.random((N, k)) < intervention_prob  # (N, k) bool
+            if mode == "independent":
+                mask = rng.random((N, k)) < intervention_prob  # (N, k) bool
+            else:  # "single": at most one intervened channel per step
+                do_step = rng.random(N) < intervention_prob  # (N,) which seqs intervene
+                chan = rng.integers(0, k, size=N)  # (N,) chosen channel
+                mask = np.zeros((N, k), dtype=bool)
+                mask[np.arange(N), chan] = do_step
             do_vals = rng.normal(0.0, intervention_scale, size=(N, k))
             x_t = np.where(mask, do_vals, x_t)
             tgt[:, t, :] = mask.astype(np.int8)

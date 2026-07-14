@@ -30,7 +30,11 @@ results/<config>/citris/         nonlinear configs only                       (P
                                  reference, propagation_error == 0); and
                                  `methods[]` = per-CF-method H3 graph-error /
                                  propagation-error split of each method's real
-                                 CFs (from Phase 03)
+                                 CFs (from Phase 03), under BOTH CF-faith
+                                 semantics: `*` = noiseless_rollout,
+                                 `*_pearl` = pearl_delta (so rollout-faithful
+                                 CARLA and pearl-faithful PearlCARLA are each
+                                 scored fairly under their own semantics)
 
 results/tables/
     table_axis_c_cf_faith.csv    accumulated, one row per (benchmark, classifier, method) run

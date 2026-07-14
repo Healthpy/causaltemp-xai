@@ -1,10 +1,11 @@
-"""Tests for CITRIS (B4) — data support + model plumbing.
+"""Tests for CITRIS (B4) — data support + genuine-upstream-model plumbing.
 
 These verify the *interfaces and training mechanics* (intervention-labeled data
-generation, ELBO training, the Axis-B graph interface shapes). They deliberately
-do NOT assert graph-recovery quality: CITRIS graph identification at smoke scale
-is a documented work-in-progress (see the ``CITRIS`` class docstring), so a
-quality assertion would be a known-failing test rather than a guard.
+generation, that the model uses the genuine vendored upstream CITRIS modules,
+CITRIS-VAE ELBO training, the Axis-B graph interface shapes). They deliberately
+do NOT assert graph-recovery quality: CITRIS is a heavy VAE whose disentangle-
+ment needs proper-scale training (see the ``CITRIS`` class docstring), so a
+quality assertion at the tiny scale used here would be flaky rather than a guard.
 """
 
 from __future__ import annotations
@@ -76,23 +77,31 @@ class TestCITRIS:
     @pytest.fixture(scope="class")
     def fitted(self, scm):
         ds = generate_interventional_sequences(
-            scm.mechanism, k=4, L=1, T=20, N=80, seed=1, intervention_prob=0.25
+            scm.mechanism, k=4, L=1, T=20, N=80, seed=1,
+            intervention_prob=0.4, mode="single",
         )
-        model = CITRIS(k=4, hidden=24, max_epochs=8, seed=0).fit(ds.X, ds.targets)
+        model = CITRIS(
+            k=4, latents_per_block=2, c_hid=16, max_epochs=4, seed=0
+        ).fit(ds.X, ds.targets)
         return model, ds
+
+    def test_uses_upstream_transition_prior(self, fitted):
+        """The identifiability-critical prior must be the genuine vendored one."""
+        model, _ = fitted
+        assert type(model.model.prior).__module__ == "models.shared.transition_prior"
+        assert type(model.model.intv_classifier).__module__ == "models.shared.target_classifier"
 
     def test_training_reduces_loss(self, fitted):
         model, _ = fitted
-        assert len(model.history_) == 8
+        assert len(model.history_) == 4
         assert model.history_[-1] < model.history_[0]
 
     def test_encode_shape(self, fitted):
         model, ds = fitted
         z = model.encode(ds.X[:5])
-        assert z.shape == (5, 20, model.model.latent_dim)
-        # Identity encoder (default): one dim per channel, block_dim forced to 1.
-        assert model.model.latent_dim == 4
-        assert model.model.identity_encoder is True
+        # num_latents = k * latents_per_block
+        assert z.shape == (5, 20, model.model.num_latents)
+        assert model.model.num_latents == 4 * 2
 
     def test_inferred_graph_shapes_and_range(self, fitted):
         model, _ = fitted

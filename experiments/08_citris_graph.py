@@ -43,7 +43,7 @@ from causaltemp_xai.benchmarks.structural_cf import structural_counterfactual  #
 from causaltemp_xai.config import CONFIGS, get_config, seeded_variant  # noqa: E402
 from causaltemp_xai.data_io import DEFAULT_OUT_DIR, load_dataset  # noqa: E402
 from causaltemp_xai.methods.causal import CITRIS  # noqa: E402
-from causaltemp_xai.metrics.axis_b import compute_axis_b, graph_error_decomposition  # noqa: E402
+from causaltemp_xai.metrics.axis_b import compute_axis_b  # noqa: E402
 from causaltemp_xai.metrics.cf_faith import CFfaith  # noqa: E402
 from causaltemp_xai.scm.intervention import derive_intervention_t  # noqa: E402
 from experiments._common import (  # noqa: E402
@@ -71,16 +71,26 @@ def _mean_soft_cf_faith(X_sel, cfs, graph, mechanism, scorer) -> float:
     return float(np.mean(vals)) if vals else float("nan")
 
 
-def _per_method_decomposition(cf_dir, graph, true_mech, inferred_adj, inf_mech, scorer):
-    """Graph-error / propagation-error split for every persisted CF method.
+def _per_method_propagation(cf_dir, graph, true_mech, rollout, pearl):
+    """Propagation error of every persisted CF method's *actual* CFs.
 
-    For each ``X_cf_<Method>.npy`` the method's *actual* CFs are scored two
-    ways: against the true SCM (``cf_faith_vs_gt`` -> ``propagation_error``,
-    the method's own failure to respect the true mechanism) and against the
-    CITRIS-inferred-graph SCM (``cf_faith_vs_inferred``); their difference is
-    the ``graph_error`` term. Returns a list of per-method dicts (empty if no
-    CF arrays are present, e.g. the phased CF pipeline was not run for this
-    config).
+    Each ``X_cf_<Method>.npy`` is scored against the **true** SCM; the method's
+    ``propagation_error = 1 − cf_faith_vs_gt`` measures how far its CF fails to
+    respect the true mechanism (its own failure, independent of any inferred
+    graph). Reported under **both** CF-faith semantics — ``noiseless_rollout``
+    and ``pearl_delta`` (``*_pearl`` keys) — because recourse variants target
+    different semantics (``CARLARecourse`` is rollout-faithful by construction,
+    ``PearlCARLARecourse`` pearl-faithful), so a single-semantics column
+    understates whichever targets the other.
+
+    Note: a *per-method* graph-error term is intentionally NOT reported. A
+    graph-error attribution requires varying the graph the **CF is derived
+    from** (as the oracle decomposition does); these methods never use the
+    inferred graph, so scoring their fixed CFs against a swapped mechanism is
+    not a coherent graph-error and was found to be numerical noise (it could go
+    negative). The oracle row is the sound graph-error reference.
+
+    Returns a list of per-method dicts (empty if no CF arrays are present).
     """
     x_sel_path = cf_dir / "X_sel.npy"
     if not x_sel_path.exists():
@@ -90,11 +100,15 @@ def _per_method_decomposition(cf_dir, graph, true_mech, inferred_adj, inf_mech, 
     for cf_path in sorted(cf_dir.glob("X_cf_*.npy")):
         method = cf_path.stem[len("X_cf_"):]
         cfs = np.load(cf_path)
-        vs_gt = _mean_soft_cf_faith(X_sel, cfs, graph, true_mech, scorer)
-        vs_inf = _mean_soft_cf_faith(X_sel, cfs, inferred_adj, inf_mech, scorer)
-        decomp = graph_error_decomposition(vs_gt, vs_inf)
-        decomp["method"] = method
-        rows.append(decomp)
+        r_gt = _mean_soft_cf_faith(X_sel, cfs, graph, true_mech, rollout)
+        p_gt = _mean_soft_cf_faith(X_sel, cfs, graph, true_mech, pearl)
+        rows.append({
+            "method": method,
+            "cf_faith_gt": r_gt,
+            "propagation_error": float(1.0 - r_gt),
+            "cf_faith_pearl_gt": p_gt,
+            "propagation_error_pearl": float(1.0 - p_gt),
+        })
     return rows
 
 
@@ -138,7 +152,7 @@ def run(
     X_all = data["X_train"]
     ds = generate_interventional_sequences(
         mech, k=k, L=L, T=X_all.shape[1], N=X_all.shape[0],
-        seed=cfg.seed, intervention_prob=intervention_prob,
+        seed=cfg.seed, intervention_prob=intervention_prob, mode="single",
     )
     print(
         f"[08] fitting CITRIS on {ds.X.shape[0]} interventional sequences "
@@ -186,13 +200,13 @@ def run(
         cf_faith_inferred=cf_faith_inferred,
     )
 
-    # 4. Per-method decomposition for the existing CF methods (Phase 03 outputs):
-    #    their real CFs carry a genuine propagation_error (they do not respect
-    #    the true SCM even with the true graph), plus the graph_error term.
+    # 4. Per-method propagation error for the existing CF methods (Phase 03
+    #    outputs): their real CFs carry a genuine propagation_error (they do not
+    #    respect the true SCM even given the true graph). No per-method
+    #    graph-error is reported — see _per_method_propagation's docstring.
     res_dir = config_dir(cfg.name, "lstm")
-    method_rows = _per_method_decomposition(
-        res_dir / "cf", graph, mech, adj_pred, inf_mech, rollout
-    )
+    pearl = CFfaith(semantics="pearl_delta")
+    method_rows = _per_method_propagation(res_dir / "cf", graph, mech, rollout, pearl)
 
     out = {
         "provenance": {
@@ -200,9 +214,11 @@ def run(
             "method": "CITRIS",
             "n_cf": int(len(X_sel)),
             "citris": {
+                "source": "third_party/citris_repo (github.com/phlippe/CITRIS)",
                 "epochs": epochs,
                 "intervention_prob": intervention_prob,
-                "identity_encoder": model.identity_encoder,
+                "intervention_mode": "single",
+                "num_latents": int(model.model.num_latents),
                 "n_train_sequences": int(ds.X.shape[0]),
             },
         },
@@ -232,11 +248,15 @@ def run(
     )
     if method_rows:
         print(f"[08] per-method decomposition ({len(method_rows)} CF methods):")
-        print(f"       {'method':<16} {'cf_faith_gt':>11} {'graph_err':>10} {'prop_err':>9}")
+        print(
+            f"       {'method':<16} {'faith_gt':>9} {'prop_err':>9} "
+            f"{'faith_gt(P)':>12} {'prop_err(P)':>12}"
+        )
         for r in method_rows:
             print(
-                f"       {r['method']:<16} {r['cf_faith_gt']:>11.3f} "
-                f"{r['graph_error']:>+10.3f} {r['propagation_error']:>+9.3f}"
+                f"       {r['method']:<16} {r['cf_faith_gt']:>9.3f} "
+                f"{r['propagation_error']:>+9.3f} {r['cf_faith_pearl_gt']:>12.3f} "
+                f"{r['propagation_error_pearl']:>+12.3f}"
             )
     else:
         print("[08] no persisted CF methods found (run experiments/03 first) — "

@@ -34,25 +34,44 @@ The full 13-gap inventory from the audit still lives in this repo's git history 
 
 **Decision**: Option 1 (faithful implementation) chosen by user 2026-07-14.
 
-**Status**: WORKING — data support + faithful architecture landed, and graph identification now recovers the lag-1 causal graph **above chance** (edge-ranking AUC ~0.84–0.85 at N=1000/80 epochs, vs the ridge reference of ~0.79–0.98 that bounds the recoverable signal).
+**Status (revised 2026-07-14 after PI review)**: **GENUINE CITRIS vendored from
+upstream.** An earlier iteration shipped a hand-rolled identity-encoder linear-VAR
+model under the name "CITRIS (faithful)". The PI end-to-end review correctly
+flagged that as the same proxy-naming integrity violation the lab polices
+elsewhere (Standing Decision #3): the identity-VAR collapse meant *none* of
+CITRIS's identifiability machinery was exercised — it merely matched a ridge
+baseline. **That proxy has been replaced** with the genuine upstream
+implementation.
 
-**Breakthrough (2026-07-14)**: the fix was recognising the benchmark *guarantees identity mixing* — the k channels are the causal variables — so the correct CITRIS encoder is the **identity** (`identity_encoder=True`, now the default). The nonlinear per-channel VAE latent was scrambling the small, near-linear cross-edge signal; with the identity encoder the model reduces to a directly-trainable sparse, intervention-gated structural transition (predictive MSE + L1 adjacency + linear per-source messages), and the signal survives. The general nonlinear-mixing path (`identity_encoder=False`, full VAE ELBO) is retained but does not yet identify at smoke scale — a documented research item.
-
-Delivered 2026-07-14:
+Delivered 2026-07-14 (revised):
+- **Upstream vendored**: `third_party/citris_repo` = git submodule of
+  https://github.com/phlippe/CITRIS (alongside `cfts_repo`, `dynamask_repo`).
 - **Data support (complete)**: `causaltemp_xai/benchmarks/interventional.py` —
-  `generate_interventional_sequences()` rolls intervention-target-labeled
-  temporal sequences (the `I_t` supervision CITRIS requires) from a dataset's
-  ground-truth mechanism. Fully tested (`tests/test_citris.py`).
-- **CITRIS model (architecture complete + faithful)**:
-  `causaltemp_xai/methods/causal/citris.py` — per-channel factorised VAE
-  (leverages the benchmark's guaranteed identity mixing to pin latent block
-  `i` to channel `i`), intervention-conditioned severing transition prior,
-  explicit L1-sparse learned lag-1 adjacency, additive non-compensable
-  message-passing, CITRIS ELBO, and the `inferred_graph()` interface Axis B
-  consumes. Trains (recon+KL decrease); wired into `methods/__init__`.
-- **iCITRIS**: not built as a separate model — the benchmark is purely
-  time-lagged, so iCITRIS's instantaneous-effect discovery reduces to CITRIS
-  here (documented in `methods/causal/__init__.py` and the class docstring).
+  `generate_interventional_sequences()` rolls the intervention-target-labeled
+  sequences CITRIS requires. Added `mode="single"` (≤1 intervention per step →
+  one-hot targets, the standard CITRIS regime). Tested.
+- **CITRIS adapter (genuine)**: `causaltemp_xai/methods/causal/citris.py` uses
+  the **unmodified upstream** `models.shared.transition_prior.TransitionPrior`
+  (Gumbel-Softmax latent→causal assignment `psi` + `psi(0)` noise slot +
+  intervention-conditioned prior) and `TargetClassifier` (the auxiliary loss
+  that specialises `psi`), loaded via importlib with light stubs for the repo's
+  image-pipeline deps (torchvision/seaborn) so no Lightning is needed. The
+  adapter supplies only the observation-modality MLP encoder/decoder (the
+  benchmark's channels are low-dim vectors, not images — the modality encoder
+  is legitimately swappable) + the CITRIS-VAE ELBO training loop with
+  Gumbel-temperature annealing. A test asserts the prior/classifier come from
+  the `models.shared.*` upstream modules.
+- **iCITRIS**: not built separately — the benchmark's SCM is purely time-lagged
+  (no lag-0 edges), so iCITRIS reduces to CITRIS here (documented).
+
+**Honest identification status**: genuine CITRIS is a heavy VAE whose
+disentanglement (`psi` specialisation) needs proper-scale training; at
+smoke-scale CPU training `psi` is near-uniform and graph recovery is ~chance —
+an honest property of the real method, *not* a regression. (The removed proxy's
+~0.84 AUC was an artefact of it being a linear model matched to a linear signal,
+i.e. the very thing that made it not-CITRIS.) Full-scale training / GPU is the
+path to a reportable Axis-B number — this aligns with the PI's action #3
+(full-scale runs) and must be reported *with* its training config.
 
 Remaining / follow-ups:
 - **#10 (Axis B graph-error decomposition) — DONE**: `experiments/08_citris_graph.py`

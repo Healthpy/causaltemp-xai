@@ -4,3 +4,6 @@
 [submodule "third_party/dynamask_repo"]
 	path = third_party/dynamask_repo
 	url = https://github.com/JonathanCrabbe/Dynamask.git
+[submodule "third_party/citris_repo"]
+	path = third_party/citris_repo
+	url = https://github.com/phlippe/CITRIS.git
