@@ -24,15 +24,18 @@ All three benchmarks are derived via a unified four-phase generative pipeline gr
 
 ## Phase 1 — Synthetic TSCM Prior Generation
 
-A time-lagged causal DAG $G$ is sampled over $M$ channels with maximum lag $\tau_{\max}$. The structural assignment for each channel $j$ at time $t$ is:
+A time-lagged causal DAG $G$ is sampled over $M$ channels with maximum lag $\tau_{\max}$. Each channel $j$ at time $t$ follows an **additive-noise structural equation** (ANM) over its masked lagged parents:
 
-$$X_t^{(j)} := \sum_{X_{t-\tau}^{(i)} \in pa(X_t^{(j)})} w_{ij} \cdot \phi_{ij}\!\left(X_{t-\tau}^{(i)}\right) + U_t^{(j)} \tag{1}$$
+$$X_t^{(j)} := f_j\!\left(\mathrm{pa}(X_t^{(j)})\right) + U_t^{(j)} \tag{1}$$
 
-The operator $\phi_{ij}$ is sampled uniformly from the **invertible operator dictionary**:
+Additive noise is deliberate: it makes Pearl abduction the *exact* subtraction $U = X - f(\mathrm{pa})$, which is what makes CF-faith and the oracle structural counterfactual exact (§Phase 3). Two mechanism families are implemented (the source of truth is the code — see `docs/spec_code_reconciliation.md` §1):
 
-$$\Phi = \{\text{identity},\ \sin,\ \cos,\ \tanh,\ |\cdot|,\ (\cdot)^2,\ \exp(-|\cdot|)\}$$
+- **LinearSCM-T** — $f_j$ linear (VAR): $X_t^{(j)} = \sum_{X_{t-\tau}^{(i)} \in \mathrm{pa}} w_{ij}\, X_{t-\tau}^{(i)} + U_t^{(j)}$.
+- **NlinearSCM-T** — $f_j$ an additive-noise per-node MLP: $X_t^{(j)} = \mathrm{decay}_j X_{t-1}^{(j)} + \mathrm{gain}\cdot\tanh\!\big(\mathrm{MLP}_j(\text{masked lagged parents})\big) + U_t^{(j)}$, with spectral-norm-capped weights for bounded long-horizon dynamics.
 
-Coefficients are drawn as $w_{ij} \sim \mathcal{N}(0, \sigma^2_w)$. Exogenous noise $U_t^{(j)}$ is sampled from independent **non-Gaussian** distributions (Laplace or uniform) to ensure identifiability of the causal structure under the Darmois--Skitovic theorem and its non-linear extensions. A Gaussian-noise ablation is reserved as a negative control for Hypothesis 5.
+Coefficients/weights are drawn from $\mathcal{N}(0, \sigma^2_w)$. Exogenous noise $U_t^{(j)}$ is sampled from independent **non-Gaussian** distributions (Laplace or uniform) for identifiability under Darmois–Skitovic and its non-linear extensions; a Gaussian-noise ablation is the H5 negative control.
+
+> **Operator dictionary (footnote).** An alternative per-edge parameterisation $\phi_{ij}\in\Phi=\{\text{identity},\sin,\cos,\tanh,|\cdot|,(\cdot)^2,\exp(-|\cdot|)\}$ is implemented in `causaltemp_xai/scm/operators.py` but is a **dormant alternative** (not wired into the benchmark pipeline). The **non-monotonic NlinearSCM-T ablation** draws the non-invertible step function $\mathbb{1}[\cdot>0]$ from this pool (H6). The per-node MLP of NlinearSCM-T subsumes a sum of per-edge operators while keeping additive noise.
 
 For the regime-switching sub-configuration of NlinearSCM-T, a hidden Markov process with $R \in \{2, 3\}$ regimes triggers structural breaks that modify the active weights $w_{ij}$ at random change-points, introducing controlled non-stationarity.
 
@@ -50,9 +53,9 @@ For any instance $X$ and a user-specified intervention $do(X_{\mathcal{T}_{int}}
 
 **Abduction.** Invert Eq. 1 to recover the latent exogenous noise for every channel and time step:
 
-$$U_t^{(j)} = X_t^{(j)} - \sum_{X_{t-\tau}^{(i)} \in pa(X_t^{(j)})} w_{ij} \cdot \phi_{ij}\!\left(X_{t-\tau}^{(i)}\right) \tag{2}$$
+$$U_t^{(j)} = X_t^{(j)} - f_j\!\left(\mathrm{pa}(X_t^{(j)})\right) \tag{2}$$
 
-Because $\Phi$ consists of analytically invertible operators and the model is additive, this inversion is exact --- no approximation or normalizing flow is required.
+Because the model is **additive-noise**, this inversion is an *exact subtraction* for both implemented families — linear $f_j$ and the additive-noise MLP — with no approximation or normalizing flow required. (In `causaltemp_xai/benchmarks/structural_cf.py::abduct_noise`, $f_j$ is the mechanism's deterministic next-step mean.)
 
 **Action.** Apply the do-operator: replace the structural equation of $X_{\mathcal{T}_{int}}^{(i)}$ with the constant $x'_{int}$, severing all incoming causal edges to that node at the intervention time.
 
@@ -72,7 +75,7 @@ The generated datasets are handed to fixed black-box classifiers (TCN, LSTM, Tra
 
 $$\mathrm{ICC}_i = \frac{1}{N} \sum_{n} \mathbb{1}\!\left[ f\!\left(D_{\psi}\!\left(z^{n} + \delta_i e_i\right)\right) \neq f(x^{n}) \right]$$
 
-Under Hyvärinen 2019 / Song 2024 identifiability conditions, high $\mathrm{ICC}$ means causal relevance up to permutation and element-wise reparameterization.
+Under Hyvärinen 2019 / Song 2024 identifiability conditions, high $\mathrm{ICC}$ means causal relevance up to permutation and element-wise reparameterization. This latent-traversal form is implemented as `axis_a.icc_latent` and is the **definitional** ICC; it applies to methods that expose an encoder/decoder $D_\psi$ (concept / representation learners — iVAE, CITRIS, CBM-T). **Attribution methods** (TimeSHAP, Dynamask, IG) have no $D_\psi$, so they are scored with a **decoder-free proxy** (`axis_a.icc`) that measures attribution-mass concentration on the causally-relevant channel. See `docs/spec_code_reconciliation.md` §2; wiring `icc_latent` into a decoder-based experiment is a tracked P1 follow-up.
 
 Other metrics:
 - **Latent Disentanglement / Entropy Penalization** (new) --- measures if latent exogenous noise variables are properly disentangled from endogenous treatment mechanisms (critical for autoencoder-based counterfactuals).
@@ -94,11 +97,11 @@ Other metrics:
 - **Sparsity** --- $L_0$ fraction of altered features.
 - **OOD plausibility** --- Isolation Forest (IF), Local Outlier Factor (LOF).
 - **TRSI** (Temporal Relevance Smoothness Index) --- measures step-wise temporal coherence; penalizes unfeasible discontinuities between consecutive time steps that arise when perturbations are applied independently without causal propagation. Directly operationalizes Normative Principle P2.
-- **CF-faith** (novel) --- normalized DTW distance between the explainer's output and the analytical ground-truth counterfactual:
+- **CF-faith** (novel) --- **mechanism-residual SCM-consistency** of the explainer's counterfactual (the implemented, canonical form — see `docs/spec_code_reconciliation.md` §3). A CF is faithful iff (i) it makes **no retroactive** pre-intervention change and (ii) its post-intervention trajectory is consistent with re-rolling the *known SCM mechanism* forward from the intervention. Let $r(X'_{exp})$ be the mean L1 residual between $X'_{exp}$ and that mechanism rollout. Then:
 
-$$\mathrm{CF\text{-}faith}(X'_{exp}) = 1 - \frac{\mathrm{DTW}(X'_{exp},\ X'_{CF})}{\mathrm{DTW}(X,\ X'_{CF})}$$
+$$\mathrm{CF\text{-}faith}_{\text{soft}} = \exp\!\left(-\,r(X'_{exp})/s\right)\in[0,1], \qquad \mathrm{CF\text{-}faith}_{\text{hard}} = \mathbb{1}\!\left[\text{no retroactive change} \ \wedge\ r(X'_{exp}) < \mathrm{tol}\right]$$
 
-  A score of 1 means the explainer exactly recovers the structural counterfactual; 0 means the explainer's output is no closer to $X'_{CF}$ than the original instance. Hard variant: $\mathbb{1}[\mathrm{DTW}(X'_{exp}, X'_{CF}) < \epsilon]$ for a threshold $\epsilon$ set at the 10th percentile of $\mathrm{DTW}(X, X'_{CF})$ per benchmark.
+  Reported under **two semantics**: *noiseless-rollout* (re-roll with $U=0$; the deterministic skeleton CF) and *pearl-delta* (abduct the factual noise and re-inject it). These are mutually exclusive by construction and expose the rollout-vs-Pearl contrast that is central to the benchmark. *(An alternative — normalized DTW to the analytical oracle CF, $1 - \mathrm{DTW}(X'_{exp},X'_{CF})/\mathrm{DTW}(X,X'_{CF})$ — is cheaply computable since the oracle CF exists, and MAY be added as a complementary secondary metric; it is not the canonical CF-faith.)*
 
 - **Irreversibility-Violation-Rate** (new) --- explicitly penalizes the "Time Traveler Dilemma":
 
@@ -116,10 +119,10 @@ $$\mathrm{IVR} = \frac{1}{N}\sum_{n} \mathbb{1}\!\left[\text{CF sequence alters 
 
 1. **LinearSCM-T** --- VAR($L$) synthetic with additive linear mechanisms ($\phi_{ij} = \text{identity}$). $k \in \{5, 10\}$ channels, $L = 1$ lag, edge density $s / k^{2} \in \{0.1, 0.2\}$, non-Gaussian noise (Laplace, uniform; Gaussian ablation included as negative control), $T \in \{50, 100\}$, $N = 10{,}000$ sequences. Ships with true graph, mixing matrix, analytically derived CF trajectories (via Eqs. 1--2 + causal ladder), and threshold-based class labels.
 
-2. **NlinearSCM-T** --- Identical DAG sampling, but mechanisms drawn from the invertible operator dictionary $\Phi$ (Eq. 1), enabling exact abduction via Eq. 2. Sub-configurations:
-   - **Base**: operators from $\Phi$ excluding step functions.
-   - **Non-monotonic ablation**: adds discrete step functions $\phi_{ij} = \mathbb{1}[\cdot > 0]$ to test conditions where standard flow-based identifiability (e.g., DoFlow) breaks down.
-   - **Regime-switching ablation**: HMM with $R \in \{2, 3\}$ regimes modifies active $w_{ij}$ at structural break-points; used to evaluate Shift-VR under temporal non-stationarity.
+2. **NlinearSCM-T** --- Identical DAG sampling, but additive-noise **per-node MLP** mechanisms (Eq. 1, `MLPMechanism`; spectral-norm-capped), keeping exact abduction via Eq. 2. Sub-configurations (as implemented — see `docs/spec_code_reconciliation.md` §1):
+   - **Base** (`smoke_nl` / `full_nl`): monotone `tanh` hidden activation.
+   - **Non-monotonic ablation** (`smoke_nonmonotonic`, H6): `sin` hidden activation (bounded, 1-Lipschitz, non-monotone) — tests where flow-based identifiability breaks down. *(A true step-function variant $\mathbb{1}[\cdot>0]$ from $\Phi$ is available in `scm/operators.py` but not wired as a preset.)*
+   - **Regime-switching ablation**: a single deterministic T/2 break (`smoke_regime`, `RegimeSwitchNlinearSCMT`) and a genuine **HMM with $R\in\{2,3\}$ regimes** and random change-points (`smoke_regime_hmm`, `HMMRegimeSwitchNlinearSCMT`); used to evaluate Shift-VR under temporal non-stationarity (H7).
 
 3. **SepsisSim** --- Real-data grounded, clinician-validated DAG on MIMIC-IV sepsis cohort. Incorporates time-varying treatments (e.g., dynamic fluid administration) and dynamic confounding to stress-test sequence-to-sequence causal mechanisms. Labels derived from clinically meaningful outcome thresholds (e.g., MAP crossing 65 mmHg). Uses Neural-ODE transitions for continuous-time state evolution within each regime.
 
@@ -163,7 +166,9 @@ H1. Standard temporal XAI methods achieve low CF-faith ($< 0.3$) despite high va
 
 H2. Standard methods fail to differentiate causal from non-causal concepts via $\mathrm{ICC}$.
 
-H3. Causal-recourse and CITRIS-based methods achieve CF-faith $> 0.7$ with moderate validity/proximity degradation.
+H3. *(Split 2026-07-14 — see `docs/hypotheses_assessment.md`; the original conflated a graph-error claim with a recourse-explainer claim, and a graph-discovery method emits no counterfactuals.)*
+- **H3a (graph-error):** given a well-recovered causal graph (e.g. via DYNOTEARS, a self-graphing discovery baseline), the oracle structural CF derived from it retains near-full CF-faith — so standard explainers' CF-faith failures are *propagation* failures, not graph-estimation failures.
+- **H3b (recourse, positive control):** a graph-aware *recourse* method (CARLA / PearlCARLA) achieves CF-faith $> 0.7$ with moderate validity/proximity degradation — reported as a positive control (faithful by construction), not independent evidence.
 
 H4. *(Key finding)* Rankings by traditional metrics don't correlate with rankings by CF-faith or $\mathrm{ICC}$ (Spearman $\rho < 0.5$).
 

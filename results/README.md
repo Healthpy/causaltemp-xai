@@ -23,18 +23,26 @@ results/<config>/oracle/         nonlinear configs (smoke_nl / full_nl)       (P
     per_instance.csv
     summary.json
 
-results/<config>/citris/         nonlinear configs only                       (Phase 08)
-    graph_error.json             CITRIS self-graphing: Axis-B recovery
-                                 (SHD/LagAcc/AUC) of the inferred lag-1 graph;
-                                 `oracle_decomposition` (perfect-propagator
-                                 reference, propagation_error == 0); and
-                                 `methods[]` = per-CF-method H3 graph-error /
-                                 propagation-error split of each method's real
-                                 CFs (from Phase 03), under BOTH CF-faith
-                                 semantics: `*` = noiseless_rollout,
-                                 `*_pearl` = pearl_delta (so rollout-faithful
-                                 CARLA and pearl-faithful PearlCARLA are each
-                                 scored fairly under their own semantics)
+results/<config>/<method>/       nonlinear configs only; method in            (Phase 08)
+                                 {dynotears (default), citris}
+    graph_error.json             self-graphing Axis-B recovery (SHD/LagAcc/AUC)
+                                 of the inferred lag-1 graph; `oracle_decomposition`
+                                 (perfect-propagator reference, propagation_error
+                                 == 0); and `methods[]` = per-CF-method
+                                 propagation-error of each method's real CFs
+                                 (from Phase 03), under BOTH CF-faith semantics:
+                                 `propagation_error` = noiseless_rollout,
+                                 `propagation_error_pearl` = pearl_delta (so
+                                 rollout-faithful CARLA and pearl-faithful
+                                 PearlCARLA are each scored fairly under their
+                                 own semantics). DYNOTEARS (default) recovers the
+                                 graph (AUC ~0.9); CITRIS is the honest secondary
+                                 (~chance at smoke scale).
+                                 With `--sweep`, also `graph_quality_sweep[]` =
+                                 graph_error across a controlled true→random graph
+                                 ladder (+ the method's real graph), showing the
+                                 decomposition rises monotonically as recovery
+                                 degrades (H3a dynamic-range demonstration).
 
 results/tables/
     table_axis_c_cf_faith.csv    accumulated, one row per (benchmark, classifier, method) run

@@ -87,7 +87,7 @@ uv run python experiments/03_run_cf_methods.py --config smoke --n-cf 20
 uv run python experiments/04_evaluate_axes.py --config smoke
 uv run python experiments/05_run_oracle_nonlinear.py --config smoke_nl
 uv run python experiments/06_make_figures.py
-uv run python experiments/08_citris_graph.py --config smoke_nl   # CITRIS self-graphing + H3 graph-error split (nonlinear configs)
+uv run python experiments/08_citris_graph.py --config smoke_nl   # DYNOTEARS self-graphing + H3 graph-error split (nonlinear configs); --method citris for the secondary
 ```
 
 See [`results/README.md`](results/README.md) for the on-disk layout each
@@ -229,10 +229,11 @@ causaltemp-xai/
 │       │   ├── timeshap.py      # TimeSHAP: official feedzai timeshap wrapper (Bento et al., 2021)
 │       │   └── dynamask.py      # Dynamask: official Dynamask submodule wrapper (Crabbe & van der Schaar, 2021)
 │       ├── concept/             # CBM-T probe + iVAE (experimental, unwired)
-│       └── causal/              # CITRIS (genuine, via third_party/citris_repo)
+│       └── causal/              # DYNOTEARS + CITRIS (genuine, vendored)
 ├── third_party/cfts_repo/       # vendored cfts reference implementations
 ├── third_party/dynamask_repo/   # vendored official Dynamask
 ├── third_party/citris_repo/     # vendored official CITRIS (github.com/phlippe/CITRIS)
+├── third_party/causalnex_repo/  # vendored McKinsey CausalNex (DYNOTEARS solver)
 ├── experiments/
 │   ├── 01_generate_benchmarks.py    # phase 1: generate + persist datasets
 │   ├── 02_train_classifiers.py      # phase 2: train the LSTM classifier

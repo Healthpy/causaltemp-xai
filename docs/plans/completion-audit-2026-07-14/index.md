@@ -102,3 +102,47 @@ Remaining / follow-ups:
   not block H3/H7.
 - Report CITRIS Axis-B numbers **with the training config** (N, epochs) that
   produced them; recovery improves with more data/epochs.
+
+## PI re-review response (2026-07-14): DYNOTEARS added as the load-bearing graph-aware method
+
+The PI follow-up review confirmed both P0 fixes and flagged the exposed coverage
+gap: with genuine CITRIS non-identifying at smoke scale, the "causal/graph-aware"
+paradigm cell was empty and Axis B / H3 lacked a genuinely-recovering method
+(PI action #2). **Resolved:**
+
+- **DYNOTEARS vendored + wired**: `third_party/causalnex_repo` (git submodule of
+  McKinsey CausalNex); `causaltemp_xai/methods/causal/dynotears.py` uses the
+  genuine upstream `_learn_dynamic_structure` solver (numpy/scipy augmented
+  Lagrangian) unmodified, with an adapter that reshapes `(N,T,k)` panels into
+  DYNOTEARS `(X, Xlags)` format and maps the inter-slice matrix `A` to the
+  `(k,k,L)` convention. **Observational** (no intervention targets).
+- **It recovers the graph**: mean edge-ranking AUC ~0.91 across seeds; in Phase 08
+  on `smoke_nl`, SHD=2, LagAcc=0.86, AUC=0.917. Tests assert above-chance
+  recovery (`tests/test_dynotears.py`).
+- **Phase 08 now defaults to `--method dynotears`** (the load-bearing graph-aware
+  method); `--method citris` runs the honest secondary. Output goes to
+  `results/<config>/<method>/graph_error.json`. This gives H3 a genuine,
+  non-circular positive method and Axis B a well-recovered graph.
+
+## Full-scale (`full_nl`) run — partial (2026-07-15)
+
+- **Dataset**: `full_nl` (k=10, T=100, N=10000) generated; LSTM classifier
+  trained to **98.95% test accuracy** (8.5 min, one seed).
+- **Graph recovery, multi-seed (5 seeds) — DONE**: DYNOTEARS AUC **0.937 ± 0.020**
+  (range 0.917–0.969), SHD 3.6 ± 0.8
+  (`results/full_nl/dynotears_multiseed_recovery.json`). Reliable at scale.
+- **Graph-error decomposition + sweep — DONE** (seed 42, n_cf=100): DYNOTEARS
+  AUC 0.952; graph_error dynamic range is *smaller* at full scale (≤0.004 even for
+  a random graph) — strengthens H3a (see `docs/hypotheses_assessment.md`).
+- **Per-method propagation table (full scale)**: single-seed Phase 03/04/08 run
+  in progress at time of writing.
+- **Multi-seed CF-method bootstrap CIs — NOT feasible in-session**: the LSTM
+  train (~8.5 min/seed) + 7 CF methods (CARLA 500-step × n_cf=100) × 5 seeds is a
+  multi-hour job. Run detached/overnight (verified `07_aggregate_seeds` handles
+  `mlp` configs): `uv run python experiments/07_aggregate_seeds.py --config full_nl --seeds 0 1 2 3 4 --n-cf 100`.
+
+Still open (PI P1): multi-seed CF-method CIs at full scale (overnight command
+above); a fair CITRIS training budget (GPU); spec↔code reconciliation (R10 —
+**DONE**, see `docs/spec_code_reconciliation.md`); the identity-mixing scope
+decision (add nonlinear-mixing `x=g(z)` variant, or scope representation methods
+out).

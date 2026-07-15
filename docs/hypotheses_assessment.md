@@ -43,11 +43,59 @@ built to expose.
 
 ---
 
-## H3 — Causal recourse (CARLA) is causally faithful
+## H3 — Graph-aware causal faithfulness
+
+**Reframed 2026-07-14 (PI re-review).** The original single H3 ("causal-recourse
+*and* CITRIS-based methods reach CF-faith > 0.7") conflated two distinct claims
+that different methods support, and risked letting a *graph-discovery* method
+(DYNOTEARS, which emits a graph, not counterfactuals) silently inherit a
+"CF-faith > 0.7 explainer" label it cannot earn. H3 is therefore split:
+
+- **H3a — graph-error claim (the strong, non-circular one):** given a
+  *well-recovered* causal graph, the oracle structural CF derived from it
+  retains near-full CF-faith, so standard explainers' CF-faith failures are
+  **propagation** failures, not graph-estimation failures.
+- **H3b — recourse claim (positive controls):** a graph-aware *recourse* method
+  attains CF-faith > 0.7. Supported by CARLA / PearlCARLA, explicitly flagged as
+  **positive controls** (faithful by construction — see the R3 circularity note),
+  not independent evidence.
+
+### H3a — a well-recovered graph incurs near-zero graph-induced CF-faith loss
+
+> **Verdict: CONFIRMED (direction), smoke-scale magnitude small.** Evidence:
+> `experiments/08_citris_graph.py --method dynotears --sweep`
+> (`results/smoke_nl/dynotears/graph_error.json`).
+
+- DYNOTEARS (genuine vendored McKinsey CausalNex solver, **observational**)
+  recovers the lag-1 graph at **AUC 0.917** (SHD 2). The oracle CF derived from
+  that recovered graph loses essentially no CF-faith: **graph_error ≈ 0.000**.
+- **Graph-quality sweep** (the decomposition's dynamic range, the PI's required
+  demonstration): across a controlled true→random graph ladder, graph_error
+  rises **monotonically with degrading recovery** — AUC 1.00 → 0.000, AUC 0.80 →
+  0.006, AUC 0.60 → 0.016, random (AUC 0.31) → 0.016 (saturating). DYNOTEARS's
+  real graph sits at the good-graph end (≈0). So the decomposition **does
+  discriminate** graph quality.
+- **Full-scale confirmation (`full_nl`, k=10, T=100, N=10000, 2026-07-15):**
+  - **Multi-seed recovery** (5 seeds): DYNOTEARS AUC **0.937 ± 0.020** (range
+    0.917–0.969), SHD 3.6 ± 0.8 — reliable, low-variance recovery at scale
+    (`results/full_nl/dynotears_multiseed_recovery.json`).
+  - **graph_error dynamic range is even *smaller* at full scale** — the sweep max
+    is 0.004 (random graph) vs smoke's 0.017. This is the honest opposite of the
+    pre-registered expectation that stronger coupling would amplify it: the
+    contractive, decay-dominated SCM's cross-edge effect *dilutes* over the
+    longer T=100 horizon. **This strengthens, not weakens, H3a:** even a fully
+    random graph induces ≤0.004 CF-faith loss, so essentially **all** of the
+    standard explainers' CF-faith gap is propagation error, not graph error —
+    and that conclusion holds at full scale, not just smoke.
+- This is a **stronger, non-circular** result than the original H3: it does not
+  depend on CARLA's construction, and it isolates graph error from propagation
+  error directly.
+
+### H3b — causal recourse (CARLA) is causally faithful *(positive control)*
 
 > **Pre-registered:** CARLA-causal CF-faith(rollout, hard) > 0.7 with *moderate* validity/proximity degradation → expected *Confirmed*. Report `cf_faith_pearl` too (expected ≈0, off-manifold).
 
-**Verdict: CONFIRMED on causal faithfulness; the validity/proximity degradation is SEVERE, not moderate** (an honest, documented caveat).
+**Verdict: CONFIRMED on causal faithfulness (positive control — faithful by construction); the validity/proximity degradation is SEVERE, not moderate** (an honest, documented caveat).
 
 - CF-faith rollout-hard **1.00** (> 0.7 ✓✓) and soft 1.00 — faithful **by construction** (CARLA emits the noiseless VAR rollout it is scored against).
 - CF-faith **pearl**-hard **0.00** (soft 0.78): exactly the documented rollout-vs-pearl contrast — CARLA's noiseless rollout is off the noisy data manifold, so it satisfies the rollout definition but not Pearl's noise-abducting delta-recursion. An **on-manifold Pearl-CARLA** (re-injecting the original innovations) is deferred to v1.0.
