@@ -1,12 +1,32 @@
-"""Phase 05: Oracle structural-CF positive control on NlinearSCM-T.
+"""Phase 05: Oracle structural-CF **positive control** — any mechanism.
 
-Real CF methods (Wachter/CARLA/cfts-*) are not validated on the nonlinear
-mechanism (collaborator's track — see ``docs/plans/nlinearscm-t/index.md``
-Backlog #2), so this phase scores CF-faith classifier-free on the Stage-4
-oracle structural-counterfactual (abduct -> intervene -> re-roll), which is
-correct by construction. Two mutually-exclusive variants are emitted:
-``OracleCF-Pearl`` (noisy, built to satisfy the pearl_delta semantics) and
-``OracleCF-Rollout`` (noiseless, built to satisfy noiseless_rollout).
+This phase runs **no explainer and no classifier**. It is the oracle
+counterpart to Phase 03/04, not their nonlinear variant: where 03 runs real CF
+methods (Wachter/CARLA/cfts-*) against a trained LSTM and 04 scores what they
+produced, this phase *constructs* counterfactuals analytically via
+:func:`~causaltemp_xai.benchmarks.structural_cf.structural_counterfactual`
+(abduct -> intervene -> re-roll) and scores CF-faith **classifier-free** on
+them.
+
+Its job is the positive control the rest of Axis C leans on: these CFs are
+correct **by construction**, so CF-faith *must* certify them. Without that
+anchor, a low CF-faith across every real method is ambiguous — broken methods
+and a broken metric look identical. Two mutually-exclusive variants are
+emitted, which also pins the rollout-vs-Pearl contrast at experiment scale:
+``OracleCF-Pearl`` (noisy, built to satisfy ``pearl_delta``) and
+``OracleCF-Rollout`` (noiseless, built to satisfy ``noiseless_rollout``).
+
+**Runs on every config, linear and nonlinear** (2026-07-15). It was previously
+named ``05_run_oracle_nonlinear.py`` and hard-rejected linear configs with
+"use 03 + 04 instead" — stale advice from when nonlinear CF methods were
+deferred to a collaborator's track (``docs/plans/nlinearscm-t/index.md``
+Backlog #2; Phase 03 has since supported ``*_nl`` configs). That gate conflated
+*oracle vs explainer* with *linear vs nonlinear*: 03+04 give you explainers on
+linear, never the oracle control, so the linear configs had no experiment-scale
+control at all (only unit-scale, in ``tests/test_metric_adversarial.py``).
+``build_oracle_cfs`` is mechanism-generic — ``structural_counterfactual`` routes
+through ``mechanism.forward_numpy``, which ``LinearMechanism`` and
+``MLPMechanism`` both implement — so the gate protected nothing.
 
 Outputs (under ``results/<config>/oracle/``)::
 
@@ -18,8 +38,9 @@ and appends aggregated rows to ``results/tables/table_axis_c_cf_faith.csv``.
 
 Usage
 -----
-    uv run python experiments/05_run_oracle_nonlinear.py --config smoke_nl
-    uv run python experiments/05_run_oracle_nonlinear.py --config full_nl --n-cf 200
+    uv run python experiments/05_run_oracle_control.py --config smoke
+    uv run python experiments/05_run_oracle_control.py --config smoke_nl
+    uv run python experiments/05_run_oracle_control.py --config full_nl --n-cf 200
 """
 
 from __future__ import annotations
@@ -34,7 +55,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 from causaltemp_xai.benchmarks.structural_cf import structural_counterfactual  # noqa: E402
-from causaltemp_xai.config import get_config  # noqa: E402
+from causaltemp_xai.config import CONFIGS, get_config  # noqa: E402
 from causaltemp_xai.data_io import DEFAULT_OUT_DIR, generate_and_save, load_dataset  # noqa: E402
 from experiments._common import (  # noqa: E402
     TABLES_DIR,
@@ -66,12 +87,6 @@ def build_oracle_cfs(X_sel, mechanism, noiseless, shift=ORACLE_SHIFT) -> np.ndar
 
 def run(config_name: str, n_cf: int, out_dir) -> None:
     cfg = get_config(config_name)
-    if cfg.mechanism_type == "linear":
-        raise SystemExit(
-            f"'{config_name}' is a linear config -- use experiments/03_run_cf_methods.py "
-            "+ experiments/04_evaluate_axes.py instead."
-        )
-
     try:
         data = load_dataset(cfg.name, out_dir=out_dir)
     except FileNotFoundError:
@@ -84,7 +99,7 @@ def run(config_name: str, n_cf: int, out_dir) -> None:
     n = min(n_cf, len(X_test))
     X_sel = X_test[:n]
     print(
-        f"[05] config={cfg.name} (nonlinear MLP) k={cfg.k} T={cfg.T} | "
+        f"[05] config={cfg.name} ({cfg.mechanism_type}) k={cfg.k} T={cfg.T} | "
         f"scoring CF-faith on {len(X_sel)} oracle structural-CFs"
     )
 
@@ -121,8 +136,10 @@ def run(config_name: str, n_cf: int, out_dir) -> None:
 
 
 def main(argv=None) -> int:
-    parser = argparse.ArgumentParser(description="Oracle structural-CF positive control (NlinearSCM-T).")
-    parser.add_argument("--config", required=True, choices=["smoke_nl", "full_nl"])
+    parser = argparse.ArgumentParser(
+        description="Oracle structural-CF positive control (any mechanism; classifier-free)."
+    )
+    parser.add_argument("--config", required=True, choices=sorted(CONFIGS))
     parser.add_argument("--n-cf", type=int, default=None)
     parser.add_argument("--out-dir", default=str(DEFAULT_OUT_DIR))
     args = parser.parse_args(argv)

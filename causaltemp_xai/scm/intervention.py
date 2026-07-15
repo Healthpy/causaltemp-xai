@@ -28,8 +28,8 @@ import numpy as np
 
 #: Single source of truth for "is this element changed?" across the benchmark.
 #:
-#: ``derive_intervention_t`` (which *defines* the intervention timestep t0),
-#: the ``CFfaith`` retroactive gate, and ``axis_c.ivr`` all share this
+#: ``derive_intervention_t`` (which *defines* the intervention timestep t0)
+#: and the ``CFfaith`` retroactive gate share this
 #: per-element threshold (M1 decision, 2026-07-07). Rationale: t0 is defined
 #: as the first timestep whose **per-element max** deviation exceeds this
 #: tolerance, so any downstream retroactive check must use the *same
@@ -57,7 +57,7 @@ def derive_intervention_t(
     tol:
         Per-element threshold below which a timestep is considered unchanged
         (default :data:`INTERVENTION_TOL` — shared with the CF-faith
-        retroactive gate and ``axis_c.ivr``; see the constant's docstring).
+        retroactive gate; see the constant's docstring).
 
     Returns
     -------

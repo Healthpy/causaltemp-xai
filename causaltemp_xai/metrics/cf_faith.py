@@ -21,8 +21,10 @@ import numpy as np
 from causaltemp_xai.benchmarks.mechanisms import lag_window as _window
 
 # Single source of truth for the per-element "is this element changed?"
-# threshold, shared with derive_intervention_t and axis_c.ivr (M1 decision,
-# 2026-07-07) — see the constant's docstring for the full rationale.
+# threshold, shared with derive_intervention_t (M1 decision, 2026-07-07) — see
+# the constant's docstring for the full rationale. The retroactive gate below
+# is now the benchmark's only consumer of it (axis_c.ivr was retired
+# 2026-07-15; see docs/spec_code_reconciliation.md §4.1).
 from causaltemp_xai.scm.intervention import INTERVENTION_TOL
 
 

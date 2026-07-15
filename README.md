@@ -85,9 +85,10 @@ uv run python experiments/01_generate_benchmarks.py --config smoke   # or --all
 uv run python experiments/02_train_classifiers.py --config smoke     # linear configs only
 uv run python experiments/03_run_cf_methods.py --config smoke --n-cf 20
 uv run python experiments/04_evaluate_axes.py --config smoke
-uv run python experiments/05_run_oracle_nonlinear.py --config smoke_nl
+uv run python experiments/05_run_oracle_control.py --config smoke     # oracle positive control; any config, classifier-free
 uv run python experiments/06_make_figures.py
 uv run python experiments/08_citris_graph.py --config smoke_nl   # DYNOTEARS self-graphing + H3 graph-error split (nonlinear configs); --method citris for the secondary
+uv run python experiments/09_axis_a_icc.py --config smoke        # decoder-based Axis-A ICC (iVAE latent traversal) with recon gate + latent->factor alignment
 ```
 
 See [`results/README.md`](results/README.md) for the on-disk layout each
@@ -116,15 +117,17 @@ over unchanged to the nonlinear mechanisms.
 uv run python -m causaltemp_xai.data_io --config smoke_nl
 
 # 2. run the harness on the nonlinear config
-uv run python experiments/05_run_oracle_nonlinear.py --config smoke_nl     # or full_nl
+uv run python experiments/05_run_oracle_control.py --config smoke_nl     # or full_nl
 ```
 
-On nonlinear configs, the pipeline routes to a dedicated **oracle-CF path**: it
-needs no classifier checkpoint and runs no real CF methods, scoring CF-faith on
-the Stage-4 oracle structural counterfactual as a built-in positive control. Two
+Phase 05 is the **oracle-CF positive control** and is orthogonal to the
+mechanism: it needs no classifier checkpoint and runs no real CF methods,
+scoring CF-faith on the Stage-4 oracle structural counterfactual instead. Two
 mutually-exclusive oracle variants are emitted — the Pearl oracle scores
 `pearl_hard=1` and the noiseless (skeleton) oracle scores `rollout_hard=1` by
-construction — demonstrating the rollout-vs-pearl contrast on nonlinear data.
+construction — demonstrating the rollout-vs-pearl contrast. It runs on **any**
+config (`--config smoke` as readily as `smoke_nl`); the split between Phase
+03/04 and Phase 05 is *explainer vs oracle*, **not** *linear vs nonlinear*.
 
 **Scope:** this ships nonlinear *transitions* only. Nonlinear **mixing**
 `x = g(z)` (an invertible observation map over latents) and **non-additive**
@@ -214,7 +217,7 @@ causaltemp-xai/
 │   │   └── counterfactual.py    # abduction-action-prediction machinery
 │   ├── metrics/
 │   │   ├── cf_faith.py          # CFfaith (noiseless_rollout | pearl_delta semantics)
-│   │   ├── axis_c.py            # validity, proximity, sparsity, OOD, TRSI, IVR
+│   │   ├── axis_c.py            # validity, proximity, sparsity, OOD, TRSI
 │   │   └── axis_a|b|d.py        # concept, graph, robustness axis metrics
 │   ├── classifiers/lstm.py      # LSTM + LSTMClassifier wrapper (+ train CLI)
 │   └── methods/
@@ -239,7 +242,7 @@ causaltemp-xai/
 │   ├── 02_train_classifiers.py      # phase 2: train the LSTM classifier
 │   ├── 03_run_cf_methods.py         # phase 3: run CF methods + IG + shift-VR
 │   ├── 04_evaluate_axes.py          # phase 4: Axis-C + CF-faith on persisted CFs
-│   ├── 05_run_oracle_nonlinear.py   # phase 5: oracle structural-CF (NlinearSCM-T)
+│   ├── 05_run_oracle_control.py     # phase 5: oracle structural-CF positive control (any config)
 │   ├── 06_make_figures.py           # phase 6: figures from results/
 │   ├── 07_aggregate_seeds.py        # phase 7: multi-seed pooling + bootstrap CIs (M2)
 │   └── _common.py                   # shared paths/loading for the phased pipeline

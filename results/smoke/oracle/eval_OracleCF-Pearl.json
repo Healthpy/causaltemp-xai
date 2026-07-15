@@ -1,0 +1,17 @@
+{
+  "benchmark": "smoke",
+  "classifier": "oracle",
+  "method": "OracleCF-Pearl",
+  "n": 12,
+  "validity": null,
+  "proximity_l1": 15.78897120479109,
+  "proximity_l2": 4.025433546553633,
+  "sparsity": 0.7194444444444444,
+  "trsi": 0.48648935152762945,
+  "cf_faith_rollout_hard": 0.0,
+  "cf_faith_rollout_soft": 0.75850215887047,
+  "cf_faith_pearl_hard": 1.0,
+  "cf_faith_pearl_soft": 0.9999999905477455,
+  "cf_faith_rollout_hard_valid": null,
+  "cf_faith_pearl_hard_valid": null
+}

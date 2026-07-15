@@ -63,8 +63,8 @@ The workflow follows 6 numbered scripts in `experiments/`:
 04_evaluate_axes.py
   └─ Evaluates on 4-axis framework (validity, proximity, sparsity, etc.)
   
-05_run_oracle_nonlinear.py
-  └─ Runs ground-truth oracle baselines
+05_run_oracle_control.py
+  └─ Oracle structural-CF positive control (any config; no classifier, no explainer)
   
 06_make_figures.py
   └─ Aggregates results and generates publication figures

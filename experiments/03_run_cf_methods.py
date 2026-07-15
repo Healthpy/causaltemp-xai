@@ -218,11 +218,15 @@ def run(config_name: str, n_cf: int, out_dir, methods_filter=None, seed: int | N
     cf_dir.mkdir(parents=True, exist_ok=True)
     np.save(cf_dir / "X_sel.npy", X_sel)
 
+    # Keep the generated arrays: Shift-VR's base half is exactly this work, so
+    # handing them over below saves a full redundant generation pass.
+    generated: dict[str, np.ndarray] = {}
     for name, method in all_methods.items():
         print(f"[03] generating CFs: {name} ...")
         try:
             cfs = generate_cfs(method, X_sel, clf, graph, mech)
             np.save(cf_dir / f"X_cf_{name}.npy", cfs)
+            generated[name] = cfs
             print(f"     -> {cf_dir / f'X_cf_{name}.npy'}")
         except Exception as exc:
             print(f"     {name} FAILED: {exc}")
@@ -241,11 +245,23 @@ def run(config_name: str, n_cf: int, out_dir, methods_filter=None, seed: int | N
     )
     print(f"     -> {out / 'axis_a_attribution.json'}")
 
-    print("[03] shift-VR-lite (all CF methods) ...")
+    # Only methods that actually produced base CFs above: their arrays are
+    # reused as Shift-VR's base half (no regeneration), and a method that
+    # failed here cannot yield a base validity anyway -- previously it was
+    # passed on regardless and raised *uncaught* inside shift_vr, killing the
+    # phase after all the expensive work was already done.
+    shift_methods = {n: m for n, m in all_methods.items() if n in generated}
+    skipped = [n for n in all_methods if n not in generated]
+    print(f"[03] shift-VR-lite ({len(shift_methods)} CF methods; base CFs reused) ...")
+    if skipped:
+        print(f"     skipping (no base CFs generated): {', '.join(skipped)}")
     X_shift_test = load_or_make_shift_test(cfg, out_dir)
     shift_sel = select_flip_candidates(clf, X_shift_test, n_cf)
     X_shift_sel = X_shift_test[shift_sel]
-    shift = shift_vr(clf, all_methods, X_sel, X_shift_sel, graph, mech, TARGET_CLASS)
+    shift = shift_vr(
+        clf, shift_methods, X_sel, X_shift_sel, graph, mech, TARGET_CLASS,
+        cf_base=generated,
+    )
     dump_json(out / "shift_vr.json", shift)
     print(f"     -> {out / 'shift_vr.json'}")
 

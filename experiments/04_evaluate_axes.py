@@ -3,7 +3,7 @@
 Reads ``results/<config>/lstm/cf/X_sel.npy`` and every
 ``results/<config>/lstm/cf/X_cf_<Method>.npy`` written by Phase 03, scores
 each method with :func:`causaltemp_xai.eval.evaluate_method` plus the
-per-instance Axis-C extras (TRSI, IVR -- see ``experiments/_common.py``), and
+per-instance Axis-C extras (TRSI -- see ``experiments/_common.py``), and
 writes:
 
     results/<config>/lstm/eval_<Method>.json    per-method batch-mean metrics (Axis C + CF-faith)
@@ -12,7 +12,7 @@ writes:
     results/tables/table_axis_c_cf_faith.csv    appended, one row per method (cross-run table)
 
 CF-*generating* methods (the ones this phase scores) are evaluated on **Axis
-C** (validity/proximity/sparsity/OOD/TRSI/IVR) and **CF-faith**. Axis A
+C** (validity/proximity/sparsity/OOD/TRSI) and **CF-faith**. Axis A
 (attribution quality) and Axis D's Shift-VR/input-sensitivity are computed in
 Phase 03 for the attribution method / native CF methods respectively -- this
 phase folds their already-written JSON into ``summary.json`` for one combined
@@ -88,8 +88,7 @@ def run(config_name: str, out_dir, seed: int | None = None) -> None:
         all_instance_rows.extend(instance_rows)
         agg_row = aggregate_method_row(cfg.name, "lstm", method_name, instance_rows)
         table_rows.append(agg_row)
-        rec["trsi"] = agg_row["trsi"]  # Axis C extras not covered by evaluate_method
-        rec["ivr"] = agg_row["ivr"]
+        rec["trsi"] = agg_row["trsi"]  # Axis C extra not covered by evaluate_method
         summary.append(rec)
 
         eval_path = res_dir / f"eval_{method_name}.json"

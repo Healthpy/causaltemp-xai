@@ -2,14 +2,16 @@
 
 Contract: every Axis-C metric and CF-faith must (a) **flag** a constructed
 violating CF and (b) **pass** the oracle/compliant CF. A metric that cannot
-tell a violator from an oracle measures nothing.
+tell a violator from an oracle measures nothing. (TRSI is the one exception —
+it is a mechanism-free *descriptor*, so it is only held to ordering edits by
+temporal coherence; certifying causal violations is CF-faith's job.)
 
 Also contains the M1 regression tests:
 
 * **CELS-style false flag** — a CF that reconstructs the full trajectory with
   per-element noise *below* the ``derive_intervention_t`` tolerance must NOT
-  be flagged retroactive by CF-faith or IVR (the pre-M1 summed-1e-4 gate
-  falsely produced ``IVR=1.0`` / ``soft=0.0`` on every CELS instance).
+  be flagged retroactive by CF-faith's retro gate (the pre-M1 summed-1e-4 gate
+  falsely produced ``soft=0.0`` on every CELS instance).
 * **MCC_coverage discrimination** — the redesigned chance-normalized mass
   formulation must be scale-invariant and must NOT sit at a ceiling for dense
   maps (the pre-M1 absolute threshold ``1e-3`` was trivially cleared).
@@ -30,7 +32,6 @@ from causaltemp_xai.benchmarks.mechanisms import LinearMechanism
 from causaltemp_xai.eval import MIN_VALIDITY_BASE_FOR_RATIO, evaluate_method, shift_vr
 from causaltemp_xai.metrics.axis_a import icc, mcc_concept
 from causaltemp_xai.metrics.axis_c import (
-    ivr,
     ood_plausibility,
     proximity,
     sparsity,
@@ -180,7 +181,11 @@ class TestOODAdversarial:
 
 
 # ---------------------------------------------------------------------------
-# Axis C: TRSI (temporal smoothness of the edit)
+# Axis C: TRSI (mechanism-free temporal smoothness of the edit)
+#
+# TRSI is a descriptor, not a faithfulness criterion, so the contract here is
+# only that it ORDERS edits by temporal coherence — it is not asked to flag a
+# causal violator (CF-faith's job) and must not be tested as though it did.
 # ---------------------------------------------------------------------------
 
 
@@ -195,35 +200,6 @@ class TestTRSIAdversarial:
     def test_passes_constant_shift(self):
         x = np.zeros((20, 3))
         assert trsi(x + 1.0, x) == 0.0  # constant delta has zero 2nd difference
-
-
-# ---------------------------------------------------------------------------
-# Axis C: IVR (retroactive-edit rate)
-# ---------------------------------------------------------------------------
-
-
-class TestIVRAdversarial:
-    def test_flags_real_retroactive_edit(self):
-        x = np.zeros((20, 3))
-        cf = x.copy()
-        cf[2, 0] += 1.0  # genuine edit before T_int
-        cf[12, 0] += 1.0
-        assert ivr(cf, x, T_int=10) == 1.0
-
-    def test_passes_clean_prefix(self):
-        x = np.zeros((20, 3))
-        cf = x.copy()
-        cf[12:, :] += 1.0  # edits only at/after T_int
-        assert ivr(cf, x, T_int=10) == 0.0
-
-    def test_sub_tolerance_prefix_noise_not_flagged(self):
-        """Per-element noise below INTERVENTION_TOL is 'unchanged' by the same
-        predicate that defines t0 — IVR must agree (M1 consistency fix)."""
-        rng = np.random.default_rng(3)
-        x = np.zeros((20, 3))
-        cf = x + rng.uniform(-5e-4, 5e-4, size=x.shape)  # all below 1e-3
-        cf[12, 0] += 1.0
-        assert ivr(cf, x, T_int=10) == 0.0
 
 
 # ---------------------------------------------------------------------------
@@ -301,10 +277,6 @@ class TestCelsFalseFlagRegression:
         x, graph, mech, cf, t0 = self._cels_style_cf()
         assert derive_intervention_t(x, cf) == t0
 
-    def test_ivr_not_flagged(self):
-        x, graph, mech, cf, t0 = self._cels_style_cf()
-        assert ivr(cf, x, T_int=t0) == 0.0
-
     def test_cf_faith_rollout_not_false_flagged(self):
         """The reconstruction-noise CF is still a valid noiseless rollout from
         t0 (L=1: the forward simulation never reads the pre-t0 rows), so it
@@ -341,7 +313,6 @@ class TestCelsFalseFlagRegression:
         for sem in CFfaith.SEMANTICS:
             r = CFfaith(semantics=sem).score(x, cf, t0, graph, mech)
             assert r == {"hard": 0.0, "soft": 0.0}
-        assert ivr(cf, x, T_int=t0) == 1.0
 
 
 # ---------------------------------------------------------------------------
@@ -460,6 +431,88 @@ class TestShiftVRGuard:
     def test_sample_sizes_reported(self):
         res = self._run({"m": _FractionMethod(0.5, 0.5)})["m"]
         assert res["n_base"] == 10 and res["n_shift"] == 10
+
+
+# ---------------------------------------------------------------------------
+# Axis D: shift_vr base-CF reuse (2026-07-15)
+#
+# Regenerating the base CFs was both wasted work (Phase 03 already generated
+# and persisted exactly these arrays) and *wrong* for stochastic methods: the
+# throwaway regeneration is a different CF set than the persisted one that
+# Phase 04 scores, so validity_base described counterfactuals nothing else in
+# the pipeline ever saw. `cf_base` pins the denominator to the real arrays.
+# ---------------------------------------------------------------------------
+
+
+class _StochasticMethod:
+    """Mock CF method whose output differs on every call (like CftsCounts)."""
+
+    def __init__(self, fracs):
+        self._fracs = list(fracs)
+        self.calls = 0
+
+    def generate_batch(self, X, model):
+        frac = self._fracs[min(self.calls, len(self._fracs) - 1)]
+        self.calls += 1
+        X = np.asarray(X, dtype=float).copy()
+        X[:, 0, 0] = -1.0
+        X[: int(round(frac * X.shape[0])), 0, 0] = 1.0
+        return X
+
+
+def _batch_with_validity(frac, n=10, T=8, k=3):
+    """A (n, T, k) batch that _SignModel scores at exactly ``frac`` validity."""
+    X = np.zeros((n, T, k))
+    X[:, 0, 0] = -1.0
+    X[: int(round(frac * n)), 0, 0] = 1.0
+    return X
+
+
+class TestShiftVRBaseReuse:
+    X = np.zeros((10, 8, 3))
+
+    def test_reuse_skips_base_generation(self):
+        m = _StochasticMethod([0.4, 0.5])
+        shift_vr(_SignModel(), {"m": m}, self.X, self.X, None, None, 1,
+                 cf_base={"m": _batch_with_validity(0.6)})
+        assert m.calls == 1, "base CFs must not be regenerated when supplied"
+
+    def test_validity_base_comes_from_supplied_array(self):
+        """The correctness fix: for a stochastic method the reported
+        validity_base must describe the *persisted* CFs (0.6), not whatever a
+        fresh regeneration happens to produce. With reuse the only generation
+        left is the shift call, so the mock yields 0.5 there."""
+        m = _StochasticMethod([0.5])
+        res = shift_vr(_SignModel(), {"m": m}, self.X, self.X, None, None, 1,
+                       cf_base={"m": _batch_with_validity(0.6)})["m"]
+        assert res["validity_base"] == pytest.approx(0.6)
+        assert res["validity_shift"] == pytest.approx(0.5)  # numerator still fresh
+        assert res["shift_vr"] == pytest.approx(0.5 / 0.6)
+
+    def test_missing_method_falls_back_to_generating(self):
+        m = _StochasticMethod([0.5, 0.4])
+        res = shift_vr(_SignModel(), {"m": m}, self.X, self.X, None, None, 1,
+                       cf_base={"other": _batch_with_validity(0.6)})["m"]
+        assert m.calls == 2  # base + shift, as before
+        assert res["validity_base"] == pytest.approx(0.5)
+
+    def test_omitting_cf_base_preserves_old_behaviour(self):
+        m = _StochasticMethod([0.5, 0.4])
+        res = shift_vr(_SignModel(), {"m": m}, self.X, self.X, None, None, 1)["m"]
+        assert m.calls == 2
+        assert res["validity_base"] == pytest.approx(0.5)
+        assert res["shift_vr"] == pytest.approx(0.8)
+
+    def test_reuse_is_faithful_for_a_deterministic_method(self):
+        """With a deterministic method, reuse must change nothing at all."""
+        base_cfs = _FractionMethod(0.5, 0.5).generate_batch(self.X, None)
+        without = shift_vr(_SignModel(), {"m": _FractionMethod(0.5, 0.4)},
+                           self.X, self.X, None, None, 1)["m"]
+        with_reuse = shift_vr(_SignModel(), {"m": _StochasticMethod([0.4])},
+                              self.X, self.X, None, None, 1,
+                              cf_base={"m": base_cfs})["m"]
+        assert with_reuse["validity_base"] == pytest.approx(without["validity_base"])
+        assert with_reuse["shift_vr"] == pytest.approx(without["shift_vr"])
 
 
 # ---------------------------------------------------------------------------

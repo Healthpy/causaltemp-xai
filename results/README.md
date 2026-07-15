@@ -14,11 +14,11 @@ results/<config>/<classifier>/
     axis_a_attribution.json      Axis A: causal-relevance of IG saliency
                                   + Axis D input-sensitivity                  (Phase 03)
     shift_vr.json                Axis D: CF-method validity retention         (Phase 03)
-    eval_<Method>.json           Axis-C (+ TRSI/IVR) + CF-faith per method    (Phase 04)
+    eval_<Method>.json           Axis-C (+ TRSI) + CF-faith per method        (Phase 04)
     per_instance.csv             one row per (method, instance)              (Phase 04)
     summary.json                 combined: methods + axis_a + axis_b + attribution + shift_vr
 
-results/<config>/oracle/         nonlinear configs (smoke_nl / full_nl)       (Phase 05)
+results/<config>/oracle/         oracle positive control, any config          (Phase 05)
     eval_<Name>.json
     per_instance.csv
     summary.json
@@ -69,7 +69,7 @@ see the `experiments/_common.py` module docstring for the full rationale:
 
 | Axis | What it measures | Evaluated on | Where |
 |---|---|---|---|
-| **C** | validity, proximity, sparsity, OOD, TRSI, IVR | every selected CF method (CARLA, CftsWachter, CftsCOMTE, CftsConfeti, CftsCounts, CftsCels, OracleCF-\*) | Phase 04 (linear) / 05 (nonlinear) |
+| **C** | validity, proximity, sparsity (flat + `sparsity_channels` / `sparsity_timepoints`), OOD, TRSI (a mechanism-free edit-smoothness *descriptor*, not a faithfulness score) | every selected CF method (CARLA, CftsWachter, CftsCOMTE, CftsConfeti, CftsCounts, CftsCels, OracleCF-\*) | Phase 04 (explainers) / 05 (oracle control) |
 | **CF-faith** | does the CF respect the known SCM mechanisms (rollout / pearl) | same as Axis C | Phase 04 / 05 |
 | **D** (Shift-VR) | validity retention under a noise-distribution shift | every selected CF method | Phase 03 |
 | **D** (input-sensitivity) | stability of a saliency map under small input perturbations | attribution methods (IG) | Phase 03 |
@@ -99,7 +99,7 @@ uv run python experiments/03_run_cf_methods.py --config smoke --n-cf 20
 uv run python experiments/04_evaluate_axes.py --config smoke
 
 # 5. NlinearSCM-T: oracle structural-CF positive control (no classifier needed)
-uv run python experiments/05_run_oracle_nonlinear.py --config smoke_nl
+uv run python experiments/05_run_oracle_control.py --config smoke_nl
 
 # 6. Render figures from everything under results/
 uv run python experiments/06_make_figures.py

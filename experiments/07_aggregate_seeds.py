@@ -26,8 +26,8 @@ Usage
     # Re-aggregate only (seeds' phases 01-04 already ran):
     uv run python experiments/07_aggregate_seeds.py --config smoke --seeds 0 1 2 --skip-runs
 
-Scope note: this phase targets the **linear** classifier+CF-method pipeline
-(phases 01-04). The nonlinear oracle path (phase 05) is classifier-free and
+Scope note: this phase targets the **classifier + CF-method** pipeline
+(phases 01-04). The oracle positive control (phase 05) is classifier-free and
 not wired into this orchestrator -- multi-seed oracle aggregation would reuse
 the same ``aggregate_across_seeds`` machinery against
 ``results/<config>_seed<seed>/oracle/per_instance.csv`` if needed later.

@@ -21,9 +21,11 @@ Axis routing
 The benchmark's four metric axes (``causaltemp_xai/metrics/axis_{a,b,c,d}.py``)
 are evaluated on whichever kind of method they are actually suited to:
 
-* **Axis C** (validity, proximity, sparsity, OOD, TRSI, IVR) + **CF-faith** —
+* **Axis C** (validity, proximity, sparsity, OOD, TRSI) + **CF-faith** —
   every CF-*generating* method (Wachter, CARLA, cfts-*, OracleCF-*). This is
-  "does the counterfactual itself look good and respect the SCM."
+  "does the counterfactual itself look good and respect the SCM." Axis C scores
+  the CF as an artifact; CF-faith scores it against the mechanism (including
+  the retroactive-edit gate).
 * **Axis D** (Shift-VR + attribution input-sensitivity) — Shift-VR applies to
   CF methods (validity retention under a noise-distribution shift, computed
   live in Phase 03); input-sensitivity applies to attribution methods
@@ -74,10 +76,17 @@ def per_instance_records(benchmark, classifier, method_name, X_sel, CFs, graph, 
                           preds=None):
     """One record per (method, instance) with per-CF Axis-C + CF-faith metrics.
 
-    Axis C's ``TRSI`` (temporal smoothness) and ``IVR`` (irreversibility
-    violation) are included alongside validity/proximity/sparsity — the full
+    Axis C's ``TRSI`` (mechanism-free temporal smoothness of the edit — a
+    proxy, not a faithfulness criterion; see :func:`~causaltemp_xai.metrics.
+    axis_c.trsi`) is included alongside validity/proximity/sparsity — the full
     Axis-C suite for a CF-*generating* method, per-instance using its own
     derived intervention timestep.
+
+    Sparsity is reported three ways: the flat ``sparsity`` over all ``T×k``
+    features, plus ``sparsity_channels`` / ``sparsity_timepoints`` — the
+    fraction of channels (resp. timesteps) left *entirely* untouched. The flat
+    score cannot distinguish "one variable, always" from "all variables, one
+    moment"; the structured pair can.
 
     Also includes the **joint faithfulness-validity** columns
     ``cf_faith_{rollout,pearl}_hard_valid`` = hard-faith AND classifier-valid
@@ -87,7 +96,7 @@ def per_instance_records(benchmark, classifier, method_name, X_sel, CFs, graph, 
     None (classifier-free oracle rows in Phase 05).
     """
     from causaltemp_xai.scm.intervention import derive_intervention_t
-    from causaltemp_xai.metrics.axis_c import ivr, proximity, sparsity, trsi
+    from causaltemp_xai.metrics.axis_c import proximity, sparsity, trsi
     from causaltemp_xai.metrics.cf_faith import CFfaith
 
     rollout = CFfaith(semantics="noiseless_rollout")
@@ -97,6 +106,7 @@ def per_instance_records(benchmark, classifier, method_name, X_sel, CFs, graph, 
         t = derive_intervention_t(x, x_cf)
         r = rollout.score(x, x_cf, t, graph, mech)
         p = pearl.score(x, x_cf, t, graph, mech)
+        _spars_detail = sparsity(x, x_cf, return_detailed=True)
         valid_i = int(preds[i] == TARGET_CLASS) if preds is not None else None
         rows.append({
             "benchmark": benchmark,
@@ -107,8 +117,9 @@ def per_instance_records(benchmark, classifier, method_name, X_sel, CFs, graph, 
             "proximity_l1": proximity(x, x_cf, norm="l1"),
             "proximity_l2": proximity(x, x_cf, norm="l2"),
             "sparsity": sparsity(x, x_cf),
+            "sparsity_channels": _spars_detail["channels"],
+            "sparsity_timepoints": _spars_detail["timepoints"],
             "trsi": trsi(x_cf, x),
-            "ivr": ivr(x_cf, x, T_int=t),
             "intervention_t": int(t),
             "cf_faith_rollout_hard": r["hard"],
             "cf_faith_rollout_soft": r["soft"],
@@ -137,22 +148,60 @@ def write_csv(path: Path, rows: list[dict]) -> None:
 def append_table(path: Path, rows: list[dict]) -> None:
     """Append ``rows`` to an accumulating table CSV under ``results/tables/``.
 
-    Writes the header only if the file does not already exist yet. All rows
-    across the pipeline's lifetime share the same schema (``benchmark``,
-    ``classifier``, ``method`` + the metric columns from
-    :func:`per_instance_records`, aggregated to one row per method).
+    Rows accumulate across runs and across the pipeline's lifetime, so the
+    on-disk header may predate the current metric schema. This function
+    **reconciles** the two rather than assuming they match.
+
+    Schema-drift guard (2026-07-15). Previously the header was written only when
+    the file did not exist, and appends trusted that every run produced the same
+    columns forever. When the Axis-C schema changed (``ivr`` removed, then
+    ``sparsity_channels`` / ``sparsity_timepoints`` added) that assumption broke
+    **silently**: rows with 15 fields were appended under a stale 16-field
+    header, so any ``csv``/``pandas`` read shifted every column after ``trsi``
+    left by one — for exactly the rows carrying the newest numbers, while the
+    file still parsed without error. Silent misalignment of a results table is
+    the worst failure mode available here, so on any drift we now migrate the
+    file to the union schema (old rows get ``""`` for new columns) and say so on
+    stdout. Column order follows the incoming rows, with any columns only
+    present on disk appended after.
     """
     path.parent.mkdir(parents=True, exist_ok=True)
     if not rows:
         return
     cols = list(rows[0].keys())
-    is_new = not path.exists()
-    with open(path, "a", newline="") as fh:
-        writer = csv.DictWriter(fh, fieldnames=cols)
-        if is_new:
+
+    if not path.exists():
+        with open(path, "w", newline="") as fh:
+            writer = csv.DictWriter(fh, fieldnames=cols)
             writer.writeheader()
+            writer.writerows(rows)
+        return
+
+    with open(path, newline="") as fh:
+        existing = list(csv.DictReader(fh))
+        old_cols = list(existing[0].keys()) if existing else cols
+
+    if old_cols == cols:
+        with open(path, "a", newline="") as fh:
+            csv.DictWriter(fh, fieldnames=cols).writerows(rows)
+        return
+
+    # Drift: rewrite the whole table under the union schema.
+    union = cols + [c for c in old_cols if c not in cols]
+    dropped = [c for c in old_cols if c not in cols]
+    added = [c for c in cols if c not in old_cols]
+    print(
+        f"[tables] schema drift in {path.name}: "
+        f"+{added or 'none'} -{dropped or 'none'} -- migrating "
+        f"{len(existing)} existing row(s) to the union schema"
+    )
+    with open(path, "w", newline="") as fh:
+        writer = csv.DictWriter(fh, fieldnames=union, restval="")
+        writer.writeheader()
+        for r in existing:
+            writer.writerow({c: r.get(c, "") for c in union})
         for r in rows:
-            writer.writerow(r)
+            writer.writerow({c: r.get(c, "") for c in union})
 
 
 def aggregate_method_row(benchmark, classifier, method_name, instance_rows) -> dict:
@@ -170,8 +219,9 @@ def aggregate_method_row(benchmark, classifier, method_name, instance_rows) -> d
         "proximity_l1": _mean("proximity_l1"),
         "proximity_l2": _mean("proximity_l2"),
         "sparsity": _mean("sparsity"),
+        "sparsity_channels": _mean("sparsity_channels"),
+        "sparsity_timepoints": _mean("sparsity_timepoints"),
         "trsi": _mean("trsi"),
-        "ivr": _mean("ivr"),
         "cf_faith_rollout_hard": _mean("cf_faith_rollout_hard"),
         "cf_faith_rollout_soft": _mean("cf_faith_rollout_soft"),
         "cf_faith_pearl_hard": _mean("cf_faith_pearl_hard"),
@@ -184,7 +234,7 @@ def aggregate_method_row(benchmark, classifier, method_name, instance_rows) -> d
 
 def print_summary_table(rows: list[dict]) -> None:
     hdr = (
-        f"{'Method':<16}{'valid':>7}{'prox_l1':>9}{'spars':>7}"
+        f"{'Method':<16}{'valid':>7}{'prox_l1':>9}{'spars':>7}{'sp_ch':>7}{'sp_tp':>7}"
         f"{'roll_h':>8}{'roll_s':>8}{'pearl_h':>8}{'pearl_s':>8}"
         f"{'joint_r':>9}{'joint_p':>9}"
     )
@@ -200,6 +250,7 @@ def print_summary_table(rows: list[dict]) -> None:
         print(
             f"{r['method']:<16}{_fmt(r['validity'], 7)}{r['proximity_l1']:>9.3f}"
             f"{r['sparsity']:>7.2f}"
+            f"{_fmt(r.get('sparsity_channels'), 7)}{_fmt(r.get('sparsity_timepoints'), 7)}"
             f"{r['cf_faith_rollout_hard']:>8.2f}{r['cf_faith_rollout_soft']:>8.2f}"
             f"{r['cf_faith_pearl_hard']:>8.2f}{r['cf_faith_pearl_soft']:>8.2f}"
             f"{_fmt(joint_r, 9)}{_fmt(joint_p, 9)}"
@@ -231,7 +282,7 @@ def build_oracle_interventions(X_sel: np.ndarray, mechanism, shift: float = 1.5)
     """Ground-truth ``do(x[t0, node] = value)`` skeleton CF per instance.
 
     Cycles ``node = i % k`` across instances (same convention as
-    ``05_run_oracle_nonlinear.py``) so every channel gets exercised. Used to
+    ``05_run_oracle_control.py``) so every channel gets exercised. Used to
     give Axis A a *real* ``int_channel`` / causal-parent ground truth instead
     of a proxy, for any mechanism family (linear or MLP — both implement
     :func:`~causaltemp_xai.benchmarks.structural_cf.structural_counterfactual`).
@@ -349,8 +400,9 @@ SEED_AGGREGATE_METRICS: list[str] = [
     "proximity_l1",
     "proximity_l2",
     "sparsity",
+    "sparsity_channels",
+    "sparsity_timepoints",
     "trsi",
-    "ivr",
     "cf_faith_rollout_hard",
     "cf_faith_rollout_soft",
     "cf_faith_pearl_hard",

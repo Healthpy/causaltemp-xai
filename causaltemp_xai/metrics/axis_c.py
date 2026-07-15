@@ -1,12 +1,21 @@
 """Axis-C counterfactual evaluation metrics.
 
-Implements the four standard axes for evaluating counterfactual quality:
+Implements the standard axes for evaluating counterfactual *quality* — i.e.
+"does the counterfactual itself look good":
 
 * **Validity**        – CF achieves the desired class under the black-box model.
 * **Proximity**       – CF is close to the original instance (L1 or L2).
 * **Sparsity**        – few features differ between the original and the CF.
 * **OOD Plausibility** – CF lies within the training distribution, estimated
                           via sklearn's IsolationForest.
+* **TRSI**            – mechanism-free descriptor of how smoothly the edit
+                          varies over time (see :func:`trsi` for its scope —
+                          it is a proxy, not a faithfulness criterion).
+
+Whether the CF is *causally faithful* — consistent with the data-generating
+mechanism, including the absence of retroactive pre-intervention edits — is a
+separate question answered by
+:class:`~causaltemp_xai.metrics.cf_faith.CFfaith`, not by this module.
 """
 
 from __future__ import annotations
@@ -15,8 +24,6 @@ from typing import Literal
 
 import numpy as np
 from sklearn.ensemble import IsolationForest
-
-from causaltemp_xai.scm.intervention import INTERVENTION_TOL
 
 
 # ---------------------------------------------------------------------------
@@ -228,56 +235,51 @@ def ood_plausibility(
 
 
 # ---------------------------------------------------------------------------
-# Bench-ported additions (Axis C expansion)
+# TRSI — temporal smoothness of the edit (bench-ported, mechanism-free proxy)
 # ---------------------------------------------------------------------------
 
 
-def proximity_dtw(
-    X: np.ndarray,
-    X_cf: np.ndarray,
-    normalize: bool = True,
-) -> float:
-    """Mean DTW distance between factual and CF, optionally normalized by std.
-
-    Ported from causal_tscf_bench/metrics/axis_c.py.
-
-    Parameters
-    ----------
-    X    : (N, T, k) factual instances (batch) or (T, k) single instance
-    X_cf : (N, T, k) CF instances (batch) or (T, k) single instance
-    normalize: if True, divide by std(X)
-
-    Returns
-    -------
-    float -- mean DTW distance
-    """
-    try:
-        from tslearn.metrics import dtw as _dtw
-    except ImportError as exc:
-        raise ImportError("proximity_dtw requires tslearn: pip install tslearn") from exc
-
-    X_arr = np.asarray(X, dtype=float)
-    X_cf_arr = np.asarray(X_cf, dtype=float)
-    if X_arr.ndim == 2:
-        X_arr = X_arr[np.newaxis]
-        X_cf_arr = X_cf_arr[np.newaxis]
-    N = X_arr.shape[0]
-    dists = [_dtw(X_arr[i], X_cf_arr[i]) for i in range(N)]
-    raw = float(np.mean(dists))
-    if normalize:
-        return raw / (float(X_arr.std()) + 1e-8)
-    return raw
-
-
 def trsi(X_cf: np.ndarray, X: np.ndarray) -> float:
-    """Temporal Relevance Smoothness Index (TRSI).
+    """Temporal Relevance Smoothness Index (TRSI) — a *mechanism-free* descriptor
+    of how abruptly a counterfactual's edit varies over time.
 
-    Measures mean L2 norm of the second-order perturbation difference over time.
-    Low TRSI = smooth temporal changes. High TRSI = abrupt discontinuities.
+    .. math::
 
-    TRSI = (1/(T-1)) sum_t ||Delta_{t+1} - Delta_t||_2  where Delta_t = X_cf_t - X_t.
+        \\mathrm{TRSI} = \\frac{1}{T-1} \\sum_t
+            \\lVert \\Delta_{t+1} - \\Delta_t \\rVert_2,
+        \\qquad \\Delta_t = X^{cf}_t - X_t
 
-    The L2 norm is over channels k; then averaged over T-1 steps and N instances.
+    The L2 norm is over channels ``k``, then averaged over ``T-1`` steps and
+    ``N`` instances. Low TRSI ⇒ the edit varies smoothly; high TRSI ⇒ the edit
+    jitters from step to step.
+
+    Scope and interpretation (read before reporting)
+    ------------------------------------------------
+    TRSI measures the smoothness of the **perturbation** ``Δ``, not of the
+    trajectory, and it is *not* a causal-faithfulness metric:
+
+    * **What it adds.** Proximity measures *how much* changed and sparsity *how
+      many* features changed; neither notices that a CF bought a small, sparse
+      edit by injecting temporally incoherent noise. TRSI is the axis that
+      catches that.
+    * **What it is not.** TRSI is a **heuristic proxy**, not a principled
+      criterion, and it carries no ground-truth grounding: it never consults the
+      SCM, so it cannot certify that an edit is one the mechanism could have
+      produced. :class:`~causaltemp_xai.metrics.cf_faith.CFfaith` answers that
+      question directly and strictly better. A mechanism-consistent CF will
+      generally be TRSI-smooth, but the converse does **not** hold — a smooth
+      edit can still be causally impossible.
+    * **Why keep it.** It requires no mechanism, so unlike CF-faith it transfers
+      to real datasets where no SCM is available. Report it as the mechanism-free
+      stand-in for CF-faith and a complementary edit-quality descriptor —
+      never as evidence of causal faithfulness.
+    * **Direction.** Lower is smoother. TRSI is a descriptor with no
+      ground-truth optimum: a *genuinely* abrupt intervention should produce a
+      high TRSI, so it must be read against the other Axis-C columns rather than
+      minimised on its own.
+
+    Ported from ``causal_tscf_bench/metrics/axis_c.py``; the formulation is
+    adopted, not novel to this benchmark.
 
     Parameters
     ----------
@@ -287,6 +289,8 @@ def trsi(X_cf: np.ndarray, X: np.ndarray) -> float:
     Returns
     -------
     float
+        Mean L2 norm of the first difference of ``Δ``. Non-negative; 0 for a
+        constant (perfectly smooth) edit.
     """
     X_cf_arr = np.asarray(X_cf, dtype=float)
     X_arr = np.asarray(X, dtype=float)
@@ -299,51 +303,14 @@ def trsi(X_cf: np.ndarray, X: np.ndarray) -> float:
     return float(l2_per_step.mean())
 
 
-def ivr(X_cf: np.ndarray, X: np.ndarray, T_int: int, eps: float = INTERVENTION_TOL) -> float:
-    """Irreversibility-Violation-Rate (IVR).
-
-    Fraction of CF instances that modify any time step t < T_int.
-    Under causal faithfulness, only t >= T_int should change.
-
-    The per-element threshold ``eps`` defaults to
-    :data:`~causaltemp_xai.scm.intervention.INTERVENTION_TOL` — the same
-    predicate ``derive_intervention_t`` uses to define the intervention
-    timestep (M1 fix, 2026-07-07; previously ``1e-4``, which flagged
-    float-scale reconstruction noise that the t0 definition itself certified
-    as "unchanged" — the CELS IVR=1.0 artifact).
-
-    NOTE: when ``T_int`` is *derived* via ``derive_intervention_t`` with the
-    same tolerance (as the phased pipeline does), IVR is 0 by construction —
-    in that wiring it is a pipeline-consistency canary, not a discriminative
-    score. It is discriminative only for methods that *declare* their own
-    intervention time (e.g. oracle structural CFs).
-
-    Parameters
-    ----------
-    X_cf  : (N, T, k) or (T, k)
-    X     : (N, T, k) or (T, k)
-    T_int : intervention time step (changes before this are violations)
-    eps   : per-element threshold below which changes are considered zero
-
-    Returns
-    -------
-    float in [0, 1]
-    """
-    X_cf_arr = np.asarray(X_cf, dtype=float)
-    X_arr = np.asarray(X, dtype=float)
-    if X_cf_arr.ndim == 2:
-        X_cf_arr = X_cf_arr[np.newaxis]
-        X_arr = X_arr[np.newaxis]
-    pre_int_change = np.abs(X_cf_arr[:, :T_int, :] - X_arr[:, :T_int, :]) > eps
-    violation_mask = pre_int_change.any(axis=(1, 2))   # (N,)
-    return float(violation_mask.mean())
-
-
 def compute_axis_c(X: np.ndarray, X_cf_exp: np.ndarray,
                    X_train: np.ndarray, classifier,
-                   target_class: int,
-                   T_int: int | None = None) -> dict:
+                   target_class: int) -> dict:
     """Compute all Axis C metrics.
+
+    The retroactive-edit check that IVR used to provide lives in
+    :class:`~causaltemp_xai.metrics.cf_faith.CFfaith`, whose retro gate zeroes
+    both scores on any pre-intervention edit — see the CF-faith docstring.
 
     Parameters
     ----------
@@ -352,12 +319,10 @@ def compute_axis_c(X: np.ndarray, X_cf_exp: np.ndarray,
     X_train    : (N_train, T, k) training distribution
     classifier : classifier with .predict()
     target_class : int
-    T_int      : intervention time step for IVR (skipped if None)
 
     Returns
     -------
-    dict with Validity, Proximity_L1, Proximity_L2, Sparsity, OOD, TRSI,
-    and IVR (if T_int provided).
+    dict with Validity, Proximity_L1, Proximity_L2, Sparsity, OOD, TRSI.
     """
     results: dict = {}
     results["Validity"] = validity(X_cf_exp, classifier, target_class)
@@ -374,8 +339,5 @@ def compute_axis_c(X: np.ndarray, X_cf_exp: np.ndarray,
 
     ood_scores = np.atleast_1d(ood_plausibility(X_train, X_cf_exp))
     results["OOD"] = float(np.mean(ood_scores))
-
-    if T_int is not None:
-        results["IVR"] = ivr(X_cf_exp, X, T_int)
 
     return results

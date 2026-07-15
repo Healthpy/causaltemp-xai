@@ -66,7 +66,8 @@ def evaluate_method(
     -------
     dict
         Flat dict of batch-mean metrics: ``validity``, ``proximity_l1``,
-        ``proximity_l2``, ``sparsity``, ``frac_altered``, ``ood``, the four
+        ``proximity_l2``, ``sparsity``, ``frac_altered``,
+        ``sparsity_channels`` / ``sparsity_timepoints`` (see below), ``ood``, the four
         CF-faith keys ``cf_faith_rollout_hard/soft`` and
         ``cf_faith_pearl_hard/soft``, and the two **joint
         faithfulness-validity** keys ``cf_faith_rollout_hard_valid`` /
@@ -78,6 +79,18 @@ def evaluate_method(
         joint credit. No proximity floor is needed — a CF that is tiny *and*
         valid *and* faithful is genuinely good, not gaming.  Also includes
         ``n`` (batch size).
+
+        **Structured sparsity.** ``sparsity`` is a flat count over all ``T×k``
+        features and so is blind to the *shape* of the edit. The two structured
+        scores say which axis it is sparse along: ``sparsity_channels`` is the
+        fraction of channels left entirely untouched across time, and
+        ``sparsity_timepoints`` the fraction of timesteps left entirely
+        untouched across channels. A method editing 1 of 5 channels at every
+        timestep and one editing all 5 channels at a single timestep can post
+        the *same* flat sparsity while being qualitatively different
+        explanations — high ``sparsity_channels`` means "few variables", high
+        ``sparsity_timepoints`` means "few moments". Both are in ``[0, 1]``,
+        higher = sparser.
     """
     X_orig = np.asarray(X_orig, dtype=float)
     CFs = np.asarray(CFs, dtype=float)
@@ -101,12 +114,19 @@ def evaluate_method(
     valid_i = (preds == target_class).astype(float)  # (N,)
 
     prox_l1, prox_l2, spars = [], [], []
+    spars_ch, spars_tp = [], []
     r_hard, r_soft, p_hard, p_soft = [], [], [], []
 
     for x, x_cf in zip(X_orig, CFs):
         prox_l1.append(proximity(x, x_cf, norm="l1"))
         prox_l2.append(proximity(x, x_cf, norm="l2"))
         spars.append(sparsity(x, x_cf))
+        # Structured sparsity: *which axis* the edit is sparse along. The
+        # flat score above cannot tell a few-channels-all-timesteps edit from
+        # a few-timesteps-all-channels one; these two can.
+        detailed = sparsity(x, x_cf, return_detailed=True)
+        spars_ch.append(detailed["channels"])
+        spars_tp.append(detailed["timepoints"])
 
         t = derive_intervention_t(x, x_cf)
         r = rollout.score(x, x_cf, t, graph, mechanism)
@@ -126,6 +146,8 @@ def evaluate_method(
         "proximity_l2": float(np.mean(prox_l2)),
         "sparsity": sparsity_mean,
         "frac_altered": float(1.0 - sparsity_mean),
+        "sparsity_channels": float(np.mean(spars_ch)),
+        "sparsity_timepoints": float(np.mean(spars_tp)),
         "ood": float(np.mean(ood_scores)),
         "cf_faith_rollout_hard": float(np.mean(r_hard)),
         "cf_faith_rollout_soft": float(np.mean(r_soft)),
@@ -168,6 +190,7 @@ def shift_vr(
     graph: np.ndarray,
     mechanism,
     target_class: int = 1,
+    cf_base: dict | None = None,
 ) -> dict:
     """Shift-VR-lite validity-retention metric (Axis D).
 
@@ -193,6 +216,29 @@ def shift_vr(
         The (shared) SCM structure, passed to causal methods.
     target_class:
         Desired output class for validity.
+    cf_base:
+        Optional ``{name: (N, T, k)}`` of **already-generated** CFs for
+        ``X_base_test``. Any method found here skips base regeneration; the
+        rest fall back to generating.
+
+        This is both a large speedup and a **correctness fix** (2026-07-15).
+        Regenerating the base CFs duplicated work the caller had already done
+        — Phase 03 generates exactly these arrays, persists them, and Phase 04
+        scores them — so the phase paid for every method's recourse twice.
+        Worse, for a **stochastic** method the throwaway regeneration is a
+        *different* CF array than the persisted one: ``CftsCounts`` is provably
+        nondeterministic (two regenerations on identical inputs give validity
+        0.40 and 0.30 where the persisted array is 0.60), so ``validity_base``
+        described a counterfactual set that nothing else in the pipeline ever
+        saw and that disagreed with the validity Phase 04 reports for the same
+        method+config. Passing the persisted arrays makes the Shift-VR
+        denominator *the same object* the rest of the pipeline scores.
+
+        Note the ratio's numerator (``validity_shift``) is still a fresh
+        generation by construction — that is the metric's actual signal — so
+        Shift-VR remains noisy for stochastic methods; the
+        ``MIN_VALIDITY_BASE_FOR_RATIO`` guard and multi-seed CIs are what
+        control that, not this parameter.
 
     Returns
     -------
@@ -207,10 +253,19 @@ def shift_vr(
         the previous ``nan`` sentinel).
     """
     results: dict = {}
+    cf_base = cf_base or {}
     for name, method in methods.items():
-        cf_base = _generate_batch(method, X_base_test, model, graph, mechanism)
+        # Reuse caller-supplied base CFs when available. Generating recourse is
+        # by far the dominant cost here, and a caller that already ran this
+        # method on X_base_test (Phase 03 does, then saves the array) would
+        # otherwise pay for the identical computation twice: _generate_batch
+        # is deterministic given (method, X, model, graph, mechanism), so the
+        # regenerated array is the one the caller already holds.
+        base_cfs = cf_base.get(name)
+        if base_cfs is None:
+            base_cfs = _generate_batch(method, X_base_test, model, graph, mechanism)
         cf_shift = _generate_batch(method, X_shift_test, model, graph, mechanism)
-        v_base = validity(cf_base, model, target_class)
+        v_base = validity(base_cfs, model, target_class)
         v_shift = validity(cf_shift, model, target_class)
         if v_base >= MIN_VALIDITY_BASE_FOR_RATIO:
             ratio = v_shift / v_base

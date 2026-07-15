@@ -1,0 +1,17 @@
+{
+  "n": 100,
+  "validity": 0.99,
+  "proximity_l1": 341.03906569513725,
+  "proximity_l2": 15.275374459800823,
+  "sparsity": 0.0032,
+  "frac_altered": 0.9968,
+  "ood": 0.030433030111794372,
+  "cf_faith_rollout_hard": 0.0,
+  "cf_faith_rollout_soft": 0.7790453331918777,
+  "cf_faith_pearl_hard": 0.0,
+  "cf_faith_pearl_soft": 0.7196139640110724,
+  "cf_faith_rollout_hard_valid": 0.0,
+  "cf_faith_pearl_hard_valid": 0.0,
+  "method": "CftsWachter",
+  "trsi": 1.983506597744946
+}

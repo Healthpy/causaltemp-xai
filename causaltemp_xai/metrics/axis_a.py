@@ -110,48 +110,67 @@ def icc_latent(
     decoder: Callable,
     classifier,
     delta: Union[float, np.ndarray] = 1.0,
+    scale_by_std: bool = True,
+    symmetric: bool = True,
 ) -> np.ndarray:
-    """Interventional Concept Consistency (ICC).
+    """Interventional Concept Consistency (ICC) — matched-baseline latent traversal.
 
-    For each latent concept dimension *i* the ICC score measures how
-    often a fixed-magnitude perturbation along that dimension causes the
-    classifier to change its prediction:
+    For each latent dimension *i*, ICC measures how often a traversal along that
+    dimension changes the classifier's prediction **relative to the unperturbed
+    reconstruction** (not the original input):
 
     .. math::
 
         \\mathrm{ICC}_i = \\frac{1}{N} \\sum_{n}
             \\mathbb{1}\\!\\left[
                 f\\!\\left(D_\\psi\\!\\left(z^n + \\delta_i e_i\\right)\\right)
-                \\neq f(x^n)
+                \\neq f\\!\\left(D_\\psi(z^n)\\right)
             \\right]
+
+    **Deliberate deviation from the drafted spec** (which used the original
+    input ``f(x^n)`` as baseline): using the *reconstruction* ``f(D_ψ(z^n))`` as
+    baseline isolates the causal effect of the traversal from the decoder's
+    reconstruction error, which would otherwise flip labels even at ``δ=0`` and
+    inflate every ICC score toward the reconstruction-flip rate (destroying the
+    parent-vs-non-parent contrast). Documented in
+    ``docs/spec_code_reconciliation.md`` §2.
 
     Under identifiability conditions (Hyvärinen 2019; Song 2024) a high
     :math:`\\mathrm{ICC}_i` means concept *i* is causally relevant to the
-    classifier's decision up to permutation and element-wise
-    reparameterisation of the latent space.
+    classifier's decision up to permutation and element-wise reparameterisation.
+    **Latent dimensions are identified only up to permutation**, so a caller
+    comparing "causal-parent vs non-parent" dims MUST first align latents to
+    ground-truth factors (e.g. via :func:`mcc` + Hungarian) — ``icc_scores[i]``
+    is *not* factor *i*.
 
     Parameters
     ----------
     X:
         Input time series, shape ``(N, T, k)``.
     encoder:
-        Callable ``(N, T, k) → (N, d_z)`` — maps time series to latent codes.
+        Callable ``(N, T, k) → (N, d_z)`` — posterior-mean latent codes.
     decoder:
-        Callable ``(N, d_z) → (N, T, k)`` — maps latent codes back to time
-        series space.
+        Callable ``(N, d_z) → (N, T, k)`` — **deterministic** decode (no
+        reparam sampling), else ICC is noisy.
     classifier:
-        Black-box model ``f``.  Must expose a ``predict`` method or be
-        directly callable, accepting ``(N, T, k)`` and returning ``(N,)``
-        integer labels.
+        Black-box ``f`` exposing ``predict`` (or directly callable), accepting
+        ``(N, T, k)`` and returning ``(N,)`` integer labels.
     delta:
-        Perturbation magnitude along each latent axis.  Either a scalar
-        applied to all dimensions or an array of shape ``(d_z,)``.
+        Traversal magnitude. If ``scale_by_std`` (default), this is a unitless
+        factor ``c`` and the per-dimension step is ``δ_i = c · std(Z[:, i])``
+        (so a fixed raw ``δ`` does not confound causal relevance with each
+        latent's heterogeneous scale). If ``scale_by_std=False``, ``delta`` is
+        the raw step (scalar or ``(d_z,)`` array).
+    scale_by_std:
+        Scale the step per dimension by the dataset latent std (recommended).
+    symmetric:
+        Average the flip rate over ``+δ`` and ``−δ`` (recommended — a signed
+        concept can flip in only one direction).
 
     Returns
     -------
-    icc_scores : ndarray of shape ``(d_z,)``
-        One score in ``[0, 1]`` per latent dimension.  Higher means the
-        concept is more causally relevant to the classifier.
+    icc_scores : ndarray of shape ``(d_z,)`` in ``[0, 1]``. Higher ⇒ the concept
+        is more causally relevant to the classifier.
     """
     X_arr = np.asarray(X, dtype=float)
     predict = getattr(classifier, "predict", classifier)
@@ -159,17 +178,27 @@ def icc_latent(
     Z = np.asarray(encoder(X_arr), dtype=float)  # (N, d_z)
     d_z = Z.shape[1]
 
-    delta_arr = np.broadcast_to(np.asarray(delta, dtype=float), (d_z,)).copy()
+    if scale_by_std:
+        std = Z.std(axis=0)
+        std = np.where(std > 0, std, 1.0)  # guard dead dims
+        step = np.asarray(delta, dtype=float) * std
+    else:
+        step = np.broadcast_to(np.asarray(delta, dtype=float), (d_z,)).astype(float)
 
-    f_original = np.asarray(predict(X_arr)).reshape(-1)  # (N,)
+    # Correction 1: matched baseline — prediction on the *unperturbed
+    # reconstruction*, so ICC measures only the traversal, not reconstruction error.
+    f_baseline = np.asarray(predict(np.asarray(decoder(Z), dtype=float))).reshape(-1)
 
-    icc_scores = np.empty(d_z)
+    signs = (1.0, -1.0) if symmetric else (1.0,)
+    icc_scores = np.zeros(d_z)
     for i in range(d_z):
-        Z_perturbed = Z.copy()
-        Z_perturbed[:, i] += delta_arr[i]
-        X_perturbed = np.asarray(decoder(Z_perturbed), dtype=float)
-        f_perturbed = np.asarray(predict(X_perturbed)).reshape(-1)
-        icc_scores[i] = float(np.mean(f_perturbed != f_original))
+        flips = 0.0
+        for s in signs:
+            Z_pert = Z.copy()
+            Z_pert[:, i] += s * step[i]
+            f_pert = np.asarray(predict(np.asarray(decoder(Z_pert), dtype=float))).reshape(-1)
+            flips += float(np.mean(f_pert != f_baseline))
+        icc_scores[i] = flips / len(signs)
 
     return icc_scores
 

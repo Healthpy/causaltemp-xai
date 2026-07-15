@@ -150,8 +150,15 @@ The intervention $do\!\left(X_{\mathcal{T}_{int}}^{(i)} = x'_{int}\right)$ is th
 
 The generated dataset is passed to a target black-box classifier $f(X)$.[11, 44] When a post-hoc explainer generates a counterfactual sequence $X'_{exp}$ to alter the model's prediction to $y^*$, its performance is evaluated across a multi-dimensional metric suite [4, 11, 25]:
 
-- **Causal Faithfulness:** Measured as the Mean Absolute Error or Dynamic Time Warping distance between $X'_{exp}$ and the analytical SCM counterfactual $X'_{CF}$.[25, 26, 38] This quantifies whether the explainer successfully propagates the physical consequences of the intervention downstream.[4, 25]
-- **Temporal Coherence:** Evaluated via the Temporal Relevance Smoothness Index (TRSI) to ensure that the generated changes do not introduce unfeasible, step-to-step discontinuities.[1, 3]
+> **Superseded (2026-07-15).** This section records the *original* design. The
+> implemented protocol is defined in `docs/updated_general_plan.md` §Axis C and
+> reconciled in `docs/spec_code_reconciliation.md` §3–§4. Two changes matter
+> here: the DTW/MAE-to-oracle faithfulness measure below was **discarded** in
+> favour of mechanism-residual CF-faith under two semantics, and TRSI's role was
+> narrowed from a coherence *criterion* to a mechanism-free *descriptor*.
+
+- **Causal Faithfulness:** *(discarded — see the note above.)* Originally measured as the Mean Absolute Error or Dynamic Time Warping distance between $X'_{exp}$ and the analytical SCM counterfactual $X'_{CF}$.[25, 26, 38] This was intended to quantify whether the explainer propagates the physical consequences of the intervention downstream.[4, 25] It was replaced because distance-to-a-single-oracle commits to one privileged trajectory and cannot express the rollout-vs-Pearl distinction; the implemented CF-faith tests consistency with the *mechanism* instead.
+- **Temporal Coherence:** *(reframed — see the note above.)* Evaluated via the Temporal Relevance Smoothness Index (TRSI) to check that generated changes do not introduce unfeasible, step-to-step discontinuities.[1, 3] TRSI is adopted from prior work and is mechanism-free: it is a complementary descriptor of edit smoothness, **not** evidence of causal faithfulness (that is CF-faith's job).
 - **Explanation Stability:** Measured using Rank Correlation under temporal distribution shifts to verify the robustness of the explainer's decision path.[4]
 
 ---

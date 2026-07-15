@@ -20,11 +20,9 @@ from .axis_b import (
 from .axis_c import (
     validity,
     proximity,
-    proximity_dtw,
     sparsity,
     ood_plausibility,
     trsi,
-    ivr,
     compute_axis_c,
 )
 from .axis_d import (
@@ -56,11 +54,9 @@ __all__ = [
     # axis_c
     "validity",
     "proximity",
-    "proximity_dtw",
     "sparsity",
     "ood_plausibility",
     "trsi",
-    "ivr",
     "compute_axis_c",
     # axis_d
     "shift_vr",

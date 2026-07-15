@@ -1,17 +1,17 @@
 {
-  "benchmark": "smoke_nl",
+  "benchmark": "smoke",
   "classifier": "oracle",
   "method": "OracleCF-Rollout",
   "n": 12,
   "validity": null,
-  "proximity_l1": 11.959522020225208,
-  "proximity_l2": 2.356066424995946,
+  "proximity_l1": 29.486452889205754,
+  "proximity_l2": 5.472363867198388,
   "sparsity": 0.5266666666666665,
-  "trsi": 0.23438480958813268,
+  "trsi": 0.806492189820537,
   "cf_faith_rollout_hard": 1.0,
-  "cf_faith_rollout_soft": 0.9999999988591722,
+  "cf_faith_rollout_soft": 0.9999999941809063,
   "cf_faith_pearl_hard": 0.0,
-  "cf_faith_pearl_soft": 0.8879846978009129,
+  "cf_faith_pearl_soft": 0.7585021590339096,
   "cf_faith_rollout_hard_valid": null,
   "cf_faith_pearl_hard_valid": null
 }

@@ -10,7 +10,7 @@ No existing benchmark jointly provides ground-truth causal variables, a ground-t
 
 # Contributions
 
-1. A four-axis evaluation protocol (concept quality, graph quality, counterfactual quality, robustness) with new causal metrics including **ICC**, **CF-faith**, **TRSI**, and **Irreversibility-Violation-Rate**.
+1. A four-axis evaluation protocol (concept quality, graph quality, counterfactual quality, robustness). Its novel causal metric is **CF-faith** — in particular the *noiseless-rollout* vs *pearl-delta* split, which shows that "causally faithful" was never one property. **ICC** contributes a methodological correction (the matched reconstruction baseline) rather than a new construct. **TRSI** is adopted from prior work as a mechanism-free complement, not claimed as novel.
 2. Two synthetic benchmarks with ground-truth SCMs: **LinearSCM-T**, **NlinearSCM-T** (including non-monotonic and regime-switching ablations).
 3. One semi-synthetic clinical benchmark: **SepsisSim** featuring time-varying treatments and dynamic confounding (clinician-validated DAG).
 4. Empirical evaluation of methods spanning all four architectural paradigms of temporal CF explainers, showing systematic failure on causal axes.
@@ -75,7 +75,7 @@ The generated datasets are handed to fixed black-box classifiers (TCN, LSTM, Tra
 
 $$\mathrm{ICC}_i = \frac{1}{N} \sum_{n} \mathbb{1}\!\left[ f\!\left(D_{\psi}\!\left(z^{n} + \delta_i e_i\right)\right) \neq f(x^{n}) \right]$$
 
-Under Hyvärinen 2019 / Song 2024 identifiability conditions, high $\mathrm{ICC}$ means causal relevance up to permutation and element-wise reparameterization. This latent-traversal form is implemented as `axis_a.icc_latent` and is the **definitional** ICC; it applies to methods that expose an encoder/decoder $D_\psi$ (concept / representation learners — iVAE, CITRIS, CBM-T). **Attribution methods** (TimeSHAP, Dynamask, IG) have no $D_\psi$, so they are scored with a **decoder-free proxy** (`axis_a.icc`) that measures attribution-mass concentration on the causally-relevant channel. See `docs/spec_code_reconciliation.md` §2; wiring `icc_latent` into a decoder-based experiment is a tracked P1 follow-up.
+Under Hyvärinen 2019 / Song 2024 identifiability conditions, high $\mathrm{ICC}$ means causal relevance up to permutation and element-wise reparameterization. This latent-traversal form is implemented as `axis_a.icc_latent` and is the **definitional** ICC; it applies to methods that expose an encoder/decoder $D_\psi$ (concept / representation learners — iVAE, CITRIS, CBM-T). **Attribution methods** (TimeSHAP, Dynamask, IG) have no $D_\psi$, so they are scored with a **decoder-free proxy** (`axis_a.icc`) that measures attribution-mass concentration on the causally-relevant channel. See `docs/spec_code_reconciliation.md` §2. `icc_latent` was corrected (matched reconstruction baseline `f(D_ψ(z))` — not `f(x)` — to remove the reconstruction-error confound; std-scaled ±δ) and **wired** into a decoder-based run (`experiments/09_axis_a_icc.py`, iVAE) with a reconstruction-fidelity gate, latent→factor Hungarian alignment, a magnitude ladder, and a permuted null. Smoke-scale finding: the iVAE fails the reconstruction gate, so ICC is not interpretable via iVAE on this benchmark — corroborating the identity-mixing / Axis-A-signal limitation.
 
 Other metrics:
 - **Latent Disentanglement / Entropy Penalization** (new) --- measures if latent exogenous noise variables are properly disentangled from endogenous treatment mechanisms (critical for autoencoder-based counterfactuals).
@@ -94,18 +94,20 @@ Other metrics:
 
 - **Validity** --- $\mathbb{1}[f(X'_{exp}) = y^*]$.
 - **Proximity** --- $L_1 / L_2$ distance $\lVert X'_{exp} - X \rVert_{p}$.
-- **Sparsity** --- $L_0$ fraction of altered features.
+- **Sparsity** --- $L_0$ fraction of altered features, reported three ways. The flat score over all $T \times k$ features is blind to the *shape* of the edit, so two **structured** companions say which axis it is sparse along: $\mathrm{sparsity}_{\text{channels}}$ (fraction of channels left entirely untouched across time) and $\mathrm{sparsity}_{\text{timepoints}}$ (fraction of timesteps left entirely untouched across channels). A CF editing one variable at every timestep and one editing every variable at a single timestep post the **same flat sparsity** while being qualitatively different explanations — high $\mathrm{sparsity}_{\text{channels}}$ means "few variables", high $\mathrm{sparsity}_{\text{timepoints}}$ means "few moments". All in $[0,1]$, higher = sparser.
 - **OOD plausibility** --- Isolation Forest (IF), Local Outlier Factor (LOF).
-- **TRSI** (Temporal Relevance Smoothness Index) --- measures step-wise temporal coherence; penalizes unfeasible discontinuities between consecutive time steps that arise when perturbations are applied independently without causal propagation. Directly operationalizes Normative Principle P2.
+- **TRSI** (Temporal Relevance Smoothness Index) --- *adopted, not novel* (ported from `causal_tscf_bench`). A **mechanism-free descriptor** of how abruptly the *edit* $\Delta_t = X'_{exp,t} - X_t$ varies over time:
+
+$$\mathrm{TRSI} = \frac{1}{T-1}\sum_t \lVert \Delta_{t+1} - \Delta_t \rVert_2$$
+
+  **Scope.** Proximity measures *how much* changed and sparsity *how many* features changed; neither notices that a CF bought a small, sparse edit by injecting temporally incoherent noise. TRSI is the axis that catches that. It is a **heuristic proxy**, not a causal criterion: it never consults the SCM, so it cannot certify that an edit is one the mechanism could have produced — CF-faith answers that directly and strictly better. A mechanism-consistent CF is generally TRSI-smooth, but **the converse does not hold**: a smooth edit can still be causally impossible. Its value is that, needing no mechanism, it transfers to real data where no SCM is available. Reported as the **mechanism-free stand-in for CF-faith** and a complementary edit-quality descriptor — never as evidence of causal faithfulness. It is a descriptor with no ground-truth optimum (a genuinely abrupt intervention *should* score high), so it is read against the other Axis-C columns rather than minimised on its own.
 - **CF-faith** (novel) --- **mechanism-residual SCM-consistency** of the explainer's counterfactual (the implemented, canonical form — see `docs/spec_code_reconciliation.md` §3). A CF is faithful iff (i) it makes **no retroactive** pre-intervention change and (ii) its post-intervention trajectory is consistent with re-rolling the *known SCM mechanism* forward from the intervention. Let $r(X'_{exp})$ be the mean L1 residual between $X'_{exp}$ and that mechanism rollout. Then:
 
 $$\mathrm{CF\text{-}faith}_{\text{soft}} = \exp\!\left(-\,r(X'_{exp})/s\right)\in[0,1], \qquad \mathrm{CF\text{-}faith}_{\text{hard}} = \mathbb{1}\!\left[\text{no retroactive change} \ \wedge\ r(X'_{exp}) < \mathrm{tol}\right]$$
 
-  Reported under **two semantics**: *noiseless-rollout* (re-roll with $U=0$; the deterministic skeleton CF) and *pearl-delta* (abduct the factual noise and re-inject it). These are mutually exclusive by construction and expose the rollout-vs-Pearl contrast that is central to the benchmark. *(An alternative — normalized DTW to the analytical oracle CF, $1 - \mathrm{DTW}(X'_{exp},X'_{CF})/\mathrm{DTW}(X,X'_{CF})$ — is cheaply computable since the oracle CF exists, and MAY be added as a complementary secondary metric; it is not the canonical CF-faith.)*
+  Reported under **two semantics**: *noiseless-rollout* (re-roll with $U=0$; the deterministic skeleton CF) and *pearl-delta* (abduct the factual noise and re-inject it). These are mutually exclusive by construction and expose the rollout-vs-Pearl contrast that is central to the benchmark.
 
-- **Irreversibility-Violation-Rate** (new) --- explicitly penalizes the "Time Traveler Dilemma":
-
-$$\mathrm{IVR} = \frac{1}{N}\sum_{n} \mathbb{1}\!\left[\text{CF sequence alters an irreversible past state or immutable baseline}\right]$$
+  CF-faith's clause (i) — the **retroactive gate** — is what forecloses the "Time Traveler Dilemma": any pre-intervention edit zeroes both scores. It subsumes what a separate irreversibility metric would report, so no such metric is defined (see the removal note below).
 
 ## Axis D — Robustness
 
@@ -152,8 +154,8 @@ Methods are selected to cover all four architectural paradigms of temporal CF ex
 | Principle | What it requires | Measured by |
 | :--- | :--- | :--- |
 | P1: Granularity alignment | Interventions only at valid control points | Tier 1 validity; action-space sparsity |
-| P2: Dynamical propagation | Changes propagate via structural equations (Eq. 1) | CF-faith; TRSI |
-| P3: Constraint preservation | Domain constraints in generative process | OOD plausibility + IVR |
+| P2: Dynamical propagation | Changes propagate via structural equations (Eq. 1) | CF-faith (TRSI only as a mechanism-free proxy) |
+| P3: Constraint preservation | Domain constraints in generative process | OOD plausibility; CF-faith's retroactive gate |
 | P4: Policy-level framing | CF expressed as action sequences, not feature perturbations | Action-decoding success rate on SepsisSim |
 | P5: Uncertainty quantification | CFs include uncertainty bounds | Bootstrap CIs on all metrics; Axis D robustness |
 | P6: Label Visibility | Class label arises from a causal threshold crossing; its effects propagate through all observable channels | Verified by construction; ablation: decorrelated label as null control |

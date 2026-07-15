@@ -72,12 +72,18 @@ class iVAE(AttributionMethod):
     """
 
     def __init__(self, latent_dim: int = 8, n_segments: int = 4,
-                 epochs: int = 20, batch_size: int = 64, device: str = "cpu"):
+                 epochs: int = 20, batch_size: int = 64, device: str = "cpu",
+                 beta: float = 1.0, kl_warmup_frac: float = 0.3):
         self.latent_dim = latent_dim
         self.n_segments = n_segments
         self.epochs = epochs
         self.batch_size = batch_size
         self.device = device
+        self.beta = beta
+        # KL warmup: linearly ramp the KL weight from 0 to ``beta`` over the
+        # first ``kl_warmup_frac`` of training, to avoid posterior collapse
+        # (the decoder otherwise ignores z and outputs the data mean).
+        self.kl_warmup_frac = kl_warmup_frac
         self._model: _iVAEModel | None = None
         self._T: int = 0
         self._k: int = 0
@@ -102,8 +108,10 @@ class iVAE(AttributionMethod):
         loader = DataLoader(TensorDataset(x_flat, u_t),
                             batch_size=self.batch_size, shuffle=True)
 
+        warmup_epochs = max(1, int(self.kl_warmup_frac * self.epochs))
         model.train()
-        for _ in range(self.epochs):
+        for ep in range(self.epochs):
+            kl_weight = self.beta * min(1.0, (ep + 1) / warmup_epochs)
             for xb, ub in loader:
                 xb, ub = xb.to(self.device), ub.to(self.device)
                 x_hat, mu_q, lv_q, mu_p, lv_p, _ = model(xb, ub)
@@ -113,7 +121,7 @@ class iVAE(AttributionMethod):
                     - (mu_q - mu_p).pow(2) / lv_p.exp()
                     - (lv_q - lv_p).exp()
                 ).sum(dim=1).mean()
-                loss = recon + kl
+                loss = recon + kl_weight * kl
                 opt.zero_grad()
                 loss.backward()
                 opt.step()
@@ -134,6 +142,20 @@ class iVAE(AttributionMethod):
             xu = torch.cat([x_flat, u], dim=1)
             mu = self._model.encoder_mu(xu)
         return mu.cpu().numpy()
+
+    def decode(self, Z: np.ndarray) -> np.ndarray:
+        """Deterministically decode latents ``Z`` ``(N, latent_dim)`` back to
+        time series ``(N, T, k)`` (the decoder path only — no reparam sampling).
+
+        Used by :func:`causaltemp_xai.metrics.axis_a.icc_latent` for the
+        latent-traversal ICC.
+        """
+        if self._model is None:
+            raise RuntimeError("Call fit_unsupervised() first.")
+        Z_t = torch.tensor(np.asarray(Z), dtype=torch.float32, device=self.device)
+        with torch.no_grad():
+            x_hat = self._model.decoder(Z_t)
+        return x_hat.cpu().numpy().reshape(-1, self._T, self._k)
 
     def attribute(self, x: np.ndarray, classifier: TSClassifier,
                   target_class: int | None = None) -> np.ndarray:
