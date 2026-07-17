@@ -58,7 +58,6 @@ import numpy as np
 
 from causaltemp_xai.benchmarks.mechanisms import LinearMechanism, MLPMechanism
 
-
 _NOISE_TYPES = ("laplace", "uniform", "gaussian")
 
 #: Std-dev for the Gaussian innovation branch (M4/H5 negative-control
@@ -605,7 +604,7 @@ class RegimeSwitchNlinearSCMT:
         note for how ``"mechanism"`` (regime 1) should be interpreted.
         """
         total_T = self.T + burn_in
-        switch_t_abs = burn_in + int(round(self.switch_frac * self.T))
+        switch_t_abs = burn_in + round(self.switch_frac * self.T)
         X_full = np.zeros((self.N, total_T, self.k))
 
         self._roll(X_full, np.arange(self.N), total_T, switch_t_abs)

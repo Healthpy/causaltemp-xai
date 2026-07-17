@@ -13,8 +13,8 @@ import numpy as np
 
 from causaltemp_xai.benchmarks.generator import LinearSCMT
 from causaltemp_xai.eval import evaluate_method
-from causaltemp_xai.scm.intervention import derive_intervention_t
 from causaltemp_xai.metrics.cf_faith import CFfaith
+from causaltemp_xai.scm.intervention import derive_intervention_t
 
 N_EXAMPLES = 12
 

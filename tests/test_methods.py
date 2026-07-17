@@ -14,7 +14,6 @@ from causaltemp_xai.benchmarks.generator import LinearSCMT
 from causaltemp_xai.classifiers import LSTMClassifier
 from causaltemp_xai.methods import (
     CARLARecourse,
-    DiCECF,
     PearlCARLARecourse,
     WachterCF,
     derive_intervention_t,
@@ -169,41 +168,4 @@ class TestPearlCARLA:
             X, clf, data["graph"], data["mechanism"]
         )
         assert cfs.shape == X.shape
-        assert np.all(np.isfinite(cfs))
-
-
-# ---------------------------------------------------------------------------
-# DiCE
-# ---------------------------------------------------------------------------
-
-
-class TestDiCE:
-    def test_fallback_shape_and_finite(self, trained):
-        clf, data = trained
-        x = data["X"][0]
-        dice = DiCECF(target_class=1, n_cfs=3, n_steps=100, use_dice_ml=False)
-        cfs = dice.generate(x, clf)
-        assert dice.backend_used == "fallback"
-        assert cfs.shape == (3, x.shape[0], x.shape[1])
-        assert np.all(np.isfinite(cfs))
-
-    def test_dice_ml_backend_returns_cfs(self, trained):
-        """The user-selected dice-ml gradient path returns correctly-shaped CFs.
-
-        Gated on the dice-ml extra: without it DiCECF silently uses the
-        fallback backend, which is covered by ``test_fallback_shape_and_finite``
-        — asserting ``backend_used == "dice-ml"`` is only meaningful when the
-        library is importable (it requires Python >= 3.9).
-        """
-        pytest.importorskip("dice_ml", reason="dice-ml not installed")
-        clf, data = trained
-        X = data["X"]
-        bg = X[:40]
-        # Pick an instance the classifier predicts as 0; flip toward 1.
-        preds = clf.predict(X[:30])
-        idx = next((i for i in range(30) if preds[i] == 0), 0)
-        dice = DiCECF(target_class=1, n_cfs=2, background_data=bg, use_dice_ml=True)
-        cfs = dice.generate(X[idx], clf)
-        assert dice.backend_used == "dice-ml"
-        assert cfs.ndim == 3 and cfs.shape[1:] == (X.shape[1], X.shape[2])
         assert np.all(np.isfinite(cfs))

@@ -61,7 +61,7 @@ class Mechanism:
 
 
 def sample_mechanism(
-    dag: "LaggedDAG",  # noqa: F821 – forward ref
+    dag: LaggedDAG,  # noqa: F821 – forward ref
     rng: np.random.Generator,
     sigma_w: float = 1.0,
     operator_pool: dict | None = None,

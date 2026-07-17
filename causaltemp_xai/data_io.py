@@ -78,8 +78,8 @@ def stratified_split(
         idx = np.where(Y == cls)[0]
         rng.shuffle(idx)
         n = len(idx)
-        n_train = int(round(n * fractions[0]))
-        n_val = int(round(n * fractions[1]))
+        n_train = round(n * fractions[0])
+        n_val = round(n * fractions[1])
         train_idx.append(idx[:n_train])
         val_idx.append(idx[n_train : n_train + n_val])
         test_idx.append(idx[n_train + n_val :])
@@ -241,7 +241,7 @@ def generate_and_save(
         "mechanism_type": str(mechanism.state_dict()["__type__"]),
         "nonlinear": config.nonlinear,
         "split_fractions": list(SPLIT_FRACTIONS),
-        "split_sizes": {name: int(len(idx)) for name, idx in splits.items()},
+        "split_sizes": {name: len(idx) for name, idx in splits.items()},
         "class_balance": {
             name: _class_balance(Y[idx]) for name, idx in splits.items()
         },

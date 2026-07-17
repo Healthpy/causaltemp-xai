@@ -38,8 +38,8 @@ from __future__ import annotations
 
 import numpy as np
 
-from ..base import AttributionMethod
 from ...classifiers.base import TSClassifier
+from ..base import AttributionMethod
 
 
 class TimeSHAP(AttributionMethod):

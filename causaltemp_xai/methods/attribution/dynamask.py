@@ -25,8 +25,8 @@ from pathlib import Path
 
 import numpy as np
 
-from ..base import AttributionMethod
 from ...classifiers.base import TSClassifier
+from ..base import AttributionMethod
 
 # The vendored Dynamask modules use repo-root-relative absolute imports
 # (``from attribution.perturbation import ...``, ``from utils.losses import

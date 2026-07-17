@@ -115,7 +115,7 @@ def run(config_name: str, out_dir, seed: int | None = None) -> None:
     axis_b = _load_if_exists(RESULTS_DIR / cfg.name / "axis_b_benchmark.json")
 
     results = {
-        "provenance": {"config": cfg.as_dict(), "seed": cfg.seed, "n_cf": int(len(X_sel))},
+        "provenance": {"config": cfg.as_dict(), "seed": cfg.seed, "n_cf": len(X_sel)},
         "methods": summary,           # Axis C + CF-faith, per CF method
         "attribution": attribution,   # IG deletion/insertion-AUC foil
         "axis_a": axis_a,             # Axis A: attribution causal-relevance (Phase 03)

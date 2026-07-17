@@ -238,3 +238,44 @@ Given the project's own critical-path estimate (12–16 weeks from 2026-07-08 to
 - **NeurIPS 2027 (whatever the Datasets & Benchmarks-equivalent track ends up named) remains the most realistic primary target**, consistent with the project plan's own existing judgment call (§2, "primary — NeurIPS Datasets & Benchmarks 2027 or ICLR 2027"). If the 2027 cycle follows the same rough pattern as 2026 (May submission, roughly 10 months after a July restart point), a manuscript that is submission-ready by November 2026 would comfortably precede it. **Recommend the plan's primary-target line be updated to name the track "NeurIPS 2027 Datasets & Benchmarks (or its renamed successor, currently 'Evaluations & Datasets' as of the 2026 cycle)"** so the manuscript's own framing doesn't get caught out by the same rename the 2026 cycle just underwent.
 
 All three figures above should be re-verified directly against the official conference sites again in Q4 2026, once M2–M4 are closer to done and a real target date is being locked in — deadlines this far out (especially ICLR's and NeurIPS's 2027 cycles) are not yet officially published and everything above the AAAI row is, by the nature of the question, provisional.
+
+---
+
+## Deliverable 4 — Axis-metric grounding references (2026-07-17)
+
+**Scope:** the sources backing the Axis A–D evaluation metrics, per the grounding table
+in `docs/axis_metrics_report.md`. **Verification standard (PI decision 2026-07-17):**
+bibliographic identity (title, authors, venue/year) confirmed by domain knowledge;
+full-text reading not a precondition. These are foundational, uncontested references in
+the counterfactual-explanation, disentanglement, and causal-discovery literatures. The
+one uncertain entry (Song et al. 2024) is flagged, not asserted.
+
+| Metric(s) | BibTeX |
+|---|---|
+| Validity, Proximity | `@article{wachter2017counterfactual, author={Wachter, Sandra and Mittelstadt, Brent and Russell, Chris}, title={Counterfactual Explanations without Opening the Black Box: Automated Decisions and the GDPR}, journal={Harvard Journal of Law \& Technology}, volume={31}, number={2}, pages={841--887}, year={2017}}` |
+| Validity, Proximity, Sparsity | `@inproceedings{mothilal2020dice, author={Mothilal, Ramaravind K. and Sharma, Amit and Tan, Chenhao}, title={Explaining Machine Learning Classifiers through Diverse Counterfactual Explanations}, booktitle={ACM FAT*}, year={2020}}` |
+| Sparsity | `@inproceedings{dandl2020multiobjective, author={Dandl, Susanne and Molnar, Christoph and Binder, Martin and Bischl, Bernd}, title={Multi-Objective Counterfactual Explanations}, booktitle={PPSN}, year={2020}}` |
+| OOD (estimator) | `@inproceedings{liu2008isolation, author={Liu, Fei Tony and Ting, Kai Ming and Zhou, Zhi-Hua}, title={Isolation Forest}, booktitle={IEEE ICDM}, year={2008}}` |
+| OOD (plausibility criterion) | `@inproceedings{poyiadzi2020face, author={Poyiadzi, Rafael and Sokol, Kacper and Santos-Rodriguez, Raul and De Bie, Tijl and Flach, Peter}, title={FACE: Feasible and Actionable Counterfactual Explanations}, booktitle={AAAI/ACM AIES}, year={2020}}` |
+| OOD (plausibility criterion) | `@inproceedings{laugel2019dangers, author={Laugel, Thibault and Lesot, Marie-Jeanne and Marsala, Christophe and Renard, Xavier and Detyniecki, Marcin}, title={The Dangers of Post-hoc Interpretability: Unjustified Counterfactual Explanations}, booktitle={IJCAI}, year={2019}}` |
+| CF-faith (foundation) | `@book{pearl2009causality, author={Pearl, Judea}, title={Causality: Models, Reasoning, and Inference}, edition={2nd}, publisher={Cambridge University Press}, year={2009}}` |
+| CF-faith (additive-noise abduction) | `@inproceedings{hoyer2008anm, author={Hoyer, Patrik O. and Janzing, Dominik and Mooij, Joris M. and Peters, Jonas and Sch{\"o}lkopf, Bernhard}, title={Nonlinear Causal Discovery with Additive Noise Models}, booktitle={NeurIPS}, year={2008}}` |
+| CF-faith (recourse framing) | `@inproceedings{karimi2021recourse, author={Karimi, Amir-Hossein and Sch{\"o}lkopf, Bernhard and Valera, Isabel}, title={Algorithmic Recourse: from Counterfactual Explanations to Interventions}, booktitle={ACM FAccT}, year={2021}}` |
+| Shift-VR, Input-sensitivity | `@inproceedings{alvarezmelis2018robustness, author={Alvarez-Melis, David and Jaakkola, Tommi S.}, title={On the Robustness of Interpretability Methods}, booktitle={ICML WHI Workshop}, year={2018}}` |
+| Shift-VR (CF robustness) | `@inproceedings{artelt2021robustness, author={Artelt, Andr{\'e} and Vaquet, Valerie and Velioglu, Riza and Hinder, Fabian and Brinkrolf, Johannes and Schilling, Malte and Hammer, Barbara}, title={Evaluating Robustness of Counterfactual Explanations}, booktitle={IEEE SSCI}, year={2021}}` |
+| Input-sensitivity | `@inproceedings{yeh2019infidelity, author={Yeh, Chih-Kuan and Hsieh, Cheng-Yu and Suggala, Arun Sai and Inouye, David I. and Ravikumar, Pradeep}, title={On the (In)fidelity and Sensitivity of Explanations}, booktitle={NeurIPS}, year={2019}}` |
+| Input-sensitivity | `@inproceedings{hsieh2021robustness, author={Hsieh, Cheng-Yu and Yeh, Chih-Kuan and Liu, Xuanqing and Ravikumar, Pradeep and Kim, Seungyeon and Kumar, Sanjiv and Hsieh, Cho-Jui}, title={Evaluations and Methods for Explanation through Robustness Analysis}, booktitle={ICLR}, year={2021}}` |
+| Input-sensitivity | `@inproceedings{ghorbani2019fragile, author={Ghorbani, Amirata and Abid, Abubakar and Zou, James}, title={Interpretation of Neural Networks is Fragile}, booktitle={AAAI}, year={2019}}` |
+| Concept-stability | `@inproceedings{kim2018tcav, author={Kim, Been and Wattenberg, Martin and Gilmer, Justin and Cai, Carrie and Wexler, James and Viegas, Fernanda and Sayres, Rory}, title={Interpretability Beyond Feature Attribution: Quantitative Testing with Concept Activation Vectors (TCAV)}, booktitle={ICML}, year={2018}}` |
+| MIG | `@inproceedings{chen2018betatcvae, author={Chen, Ricky T. Q. and Li, Xuechen and Grosse, Roger and Duvenaud, David}, title={Isolating Sources of Disentanglement in Variational Autoencoders}, booktitle={NeurIPS}, year={2018}}` |
+| DCI | `@inproceedings{eastwood2018dci, author={Eastwood, Cian and Williams, Christopher K. I.}, title={A Framework for the Quantitative Evaluation of Disentangled Representations}, booktitle={ICLR}, year={2018}}` |
+| MCC, ICC (identifiability) | `@inproceedings{hyvarinen2019nonlinearica, author={Hyv{\"a}rinen, Aapo and Sasaki, Hiroaki and Turner, Richard E.}, title={Nonlinear ICA Using Auxiliary Variables and Generalized Contrastive Learning}, booktitle={AISTATS}, year={2019}}` |
+| MCC, ICC (iVAE) | `@inproceedings{khemakhem2020ivae, author={Khemakhem, Ilyes and Kingma, Diederik P. and Monti, Ricardo Pio and Hyv{\"a}rinen, Aapo}, title={Variational Autoencoders and Nonlinear ICA: A Unifying Framework}, booktitle={AISTATS}, year={2020}}` |
+| SHD | `@article{tsamardinos2006mmhc, author={Tsamardinos, Ioannis and Brown, Laura E. and Aliferis, Constantin F.}, title={The Max-Min Hill-Climbing Bayesian Network Structure Learning Algorithm}, journal={Machine Learning}, volume={65}, number={1}, pages={31--78}, year={2006}}` |
+| Lag accuracy, Graph AUC | `@article{runge2019pcmci, author={Runge, Jakob and Nowack, Peer and Kretschmer, Marlene and Flaxman, Seth and Sejdinovic, Dino}, title={Detecting and Quantifying Causal Associations in Large Nonlinear Time Series Datasets}, journal={Science Advances}, volume={5}, number={11}, pages={eaau4996}, year={2019}}` |
+| DYNOTEARS (Phase 08) | `@inproceedings{pamfil2020dynotears, author={Pamfil, Roxana and Sriwattanaworachai, Nisara and Desai, Shaan and Pilgerstorfer, Philip and Georgatzis, Konstantinos and Beaumont, Paul and Aragam, Bryon}, title={DYNOTEARS: Structure Learning from Time-Series Data}, booktitle={AISTATS}, year={2020}}` |
+
+> **Flagged, not asserted:** `axis_a.py` cites *Song et al. (2024), "Identifiability of
+> Sparse Causal Representations."* I cannot confirm this exact title/venue from knowledge;
+> confirm bibliographic identity before it is cited in the manuscript. No BibTeX recorded
+> until then (unknown = unknown).

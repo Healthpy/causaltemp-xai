@@ -199,7 +199,7 @@ class CARLARecourse:
             m = np.asarray(self.actionable_mask, dtype=np.float32)
             mask = torch.as_tensor(m[-1] if m.ndim == 2 else m)
 
-        candidates = sorted({max(1, int(round(f * T))) for f in self.t0_fractions})
+        candidates = sorted({max(1, round(f * T)) for f in self.t0_fractions})
         candidates = [t0 for t0 in candidates if 0 < t0 < T - 1] or [T // 2]
 
         best = None  # (flipped, prox, cf_array)
@@ -234,16 +234,6 @@ class CARLARecourse:
 
         return best[2]
 
-    def generate_batch(
-        self, X: np.ndarray, model, graph: np.ndarray, mechanism
-    ) -> np.ndarray:
-        """Generate one CF per instance in ``X`` of shape ``(N, T, k)``."""
-        X = np.asarray(X, dtype=np.float32)
-        return np.stack(
-            [self.generate(x, model, graph, mechanism) for x in X], axis=0
-        )
-
-
     # ------------------------------------------------------------------
     # CFExplainer alias interface + causal-info setter
     # ------------------------------------------------------------------
@@ -257,7 +247,7 @@ class CARLARecourse:
         """No-op — CARLA needs graph/mechanism, set via set_causal_info()."""
         pass
 
-    def explain(self, x, target_class: int, classifier) -> "np.ndarray":
+    def explain(self, x, target_class: int, classifier) -> np.ndarray:
         """Alias for generate(x, classifier, self._graph, self._mechanism)."""
         graph = getattr(self, "_graph", None)
         mechanism = getattr(self, "_mechanism", None)
@@ -267,7 +257,7 @@ class CARLARecourse:
             )
         return self.generate(x, classifier, graph, mechanism)
 
-    def generate_batch(self, X: "np.ndarray", model, graph=None, mechanism=None) -> "np.ndarray":
+    def generate_batch(self, X: np.ndarray, model, graph=None, mechanism=None) -> np.ndarray:
         """Generate one CF per instance in ``X``."""
         X = np.asarray(X, dtype=np.float32)
         if graph is None:
@@ -435,7 +425,7 @@ class PearlCARLARecourse:
             m = np.asarray(self.actionable_mask, dtype=np.float32)
             mask = torch.as_tensor(m[-1] if m.ndim == 2 else m)
 
-        candidates = sorted({max(1, int(round(f * T))) for f in self.t0_fractions})
+        candidates = sorted({max(1, round(f * T)) for f in self.t0_fractions})
         candidates = [t0 for t0 in candidates if 0 < t0 < T - 1] or [T // 2]
 
         best = None  # (flipped, prox, cf_array)
@@ -496,7 +486,7 @@ class PearlCARLARecourse:
         """No-op — PearlCARLARecourse needs graph/mechanism, set via set_causal_info()."""
         pass
 
-    def explain(self, x, target_class: int, classifier) -> "np.ndarray":
+    def explain(self, x, target_class: int, classifier) -> np.ndarray:
         """Alias for generate(x, classifier, self._graph, self._mechanism)."""
         graph = getattr(self, "_graph", None)
         mechanism = getattr(self, "_mechanism", None)

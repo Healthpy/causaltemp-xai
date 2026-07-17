@@ -21,7 +21,6 @@ from dataclasses import dataclass
 
 import numpy as np
 
-
 # ---------------------------------------------------------------------------
 # MOVED from methods/intervention.py — causaltemp_xai original implementation
 # ---------------------------------------------------------------------------
@@ -46,7 +45,7 @@ def derive_intervention_t(
 ) -> int:
     """Return the smallest ``t`` such that ``max_j |x_cf[t,j] - x[t,j]| > tol``.
 
-    This is the benchmark's uniform heuristic: all CF methods (Wachter, DiCE,
+    This is the benchmark's uniform heuristic: all CF methods (Wachter,
     CARLA, cfts) are scored with the same intervention_t derived here so that
     CF-faith scores are comparable across methods.
 
@@ -97,7 +96,7 @@ def apply_intervention(
     X_running: np.ndarray,
     t: int,
     j: int,
-    intervention: "Intervention | None",
+    intervention: Intervention | None,
 ) -> np.ndarray:
     """
     During forward simulation, override X[t, j] if an intervention targets (j, t).

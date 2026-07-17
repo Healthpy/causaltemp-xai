@@ -14,15 +14,15 @@ import numpy as np
 import pytest
 import torch
 
+from causaltemp_xai.benchmarks.generator import LinearSCMT
+from causaltemp_xai.classifiers import LSTMClassifier
 from causaltemp_xai.methods.attribution import (
+    Dynamask,
+    TimeSHAP,
     deletion_curve,
     insertion_curve,
     integrated_gradients,
-    Dynamask,
-    TimeSHAP,
 )
-from causaltemp_xai.benchmarks.generator import LinearSCMT
-from causaltemp_xai.classifiers import LSTMClassifier
 
 
 def _module_available(name: str) -> bool:

@@ -45,7 +45,7 @@ def _curve(
 
     probs = np.empty(n_steps + 1, dtype=float)
     for i in range(n_steps + 1):
-        k_cells = int(round(i * n_cells / n_steps))
+        k_cells = round(i * n_cells / n_steps)
         if mode == "deletion":
             cur = flat_x.copy()
             cur[order[:k_cells]] = flat_b[order[:k_cells]]

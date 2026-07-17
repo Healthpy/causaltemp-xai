@@ -25,7 +25,7 @@ from causaltemp_xai.benchmarks.generator import (
     NlinearSCMT,
     RegimeSwitchNlinearSCMT,
 )
-from causaltemp_xai.benchmarks.mechanisms import MLPMechanism, _ACTIVATIONS_NP
+from causaltemp_xai.benchmarks.mechanisms import _ACTIVATIONS_NP, MLPMechanism
 from causaltemp_xai.config import SMOKE_NL, shifted_config
 from causaltemp_xai.data_io import (
     build_generator,
@@ -33,7 +33,6 @@ from causaltemp_xai.data_io import (
     load_dataset,
     stratified_split,
 )
-
 
 # ---------------------------------------------------------------------------
 # Output shape / structure

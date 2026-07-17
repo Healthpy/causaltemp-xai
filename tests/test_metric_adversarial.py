@@ -41,7 +41,6 @@ from causaltemp_xai.metrics.axis_c import (
 from causaltemp_xai.metrics.cf_faith import CFfaith
 from causaltemp_xai.scm.intervention import INTERVENTION_TOL, derive_intervention_t
 
-
 # ---------------------------------------------------------------------------
 # Shared fixtures / helpers
 # ---------------------------------------------------------------------------
@@ -274,7 +273,7 @@ class TestCelsFalseFlagRegression:
         return x, graph, mech, cf, t0
 
     def test_derived_t0_matches_true_intervention(self):
-        x, graph, mech, cf, t0 = self._cels_style_cf()
+        x, _, _, cf, t0 = self._cels_style_cf()
         assert derive_intervention_t(x, cf) == t0
 
     def test_cf_faith_rollout_not_false_flagged(self):
@@ -334,7 +333,7 @@ class TestICCAdversarial:
 
 class TestMCCCoverageFix:
     K = 4
-    PARENTS = [0, 1]
+    PARENTS = (0, 1)
 
     def test_flags_parent_avoiding_attribution(self):
         att = np.zeros((20, self.K))
@@ -398,7 +397,7 @@ class _FractionMethod:
         frac = self._fracs[self._calls]
         self._calls += 1
         X = np.asarray(X, dtype=float).copy()
-        n_pos = int(round(frac * X.shape[0]))
+        n_pos = round(frac * X.shape[0])
         X[:, 0, 0] = -1.0
         X[:n_pos, 0, 0] = 1.0
         return X
@@ -456,7 +455,7 @@ class _StochasticMethod:
         self.calls += 1
         X = np.asarray(X, dtype=float).copy()
         X[:, 0, 0] = -1.0
-        X[: int(round(frac * X.shape[0])), 0, 0] = 1.0
+        X[: round(frac * X.shape[0]), 0, 0] = 1.0
         return X
 
 
@@ -464,7 +463,7 @@ def _batch_with_validity(frac, n=10, T=8, k=3):
     """A (n, T, k) batch that _SignModel scores at exactly ``frac`` validity."""
     X = np.zeros((n, T, k))
     X[:, 0, 0] = -1.0
-    X[: int(round(frac * n)), 0, 0] = 1.0
+    X[: round(frac * n), 0, 0] = 1.0
     return X
 
 

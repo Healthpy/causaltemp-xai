@@ -95,9 +95,9 @@ def per_instance_records(benchmark, classifier, method_name, X_sel, CFs, graph, 
     joint credit unless it also flips the classifier. Blank when ``preds`` is
     None (classifier-free oracle rows in Phase 05).
     """
-    from causaltemp_xai.scm.intervention import derive_intervention_t
     from causaltemp_xai.metrics.axis_c import proximity, sparsity, trsi
     from causaltemp_xai.metrics.cf_faith import CFfaith
+    from causaltemp_xai.scm.intervention import derive_intervention_t
 
     rollout = CFfaith(semantics="noiseless_rollout")
     pearl = CFfaith(semantics="pearl_delta")

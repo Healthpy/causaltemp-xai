@@ -16,15 +16,15 @@ docs/PROJECT_PLAN.md Standing Decision #3 (risk R4); shipping the real methods
 resolves that concern.
 """
 
+from .dynamask import Dynamask
 from .integrated_gradients import integrated_gradients
 from .perturbation_curves import deletion_curve, insertion_curve
 from .timeshap import TimeSHAP
-from .dynamask import Dynamask
 
 __all__ = [
-    "integrated_gradients",
+    "Dynamask",
+    "TimeSHAP",
     "deletion_curve",
     "insertion_curve",
-    "TimeSHAP",
-    "Dynamask",
+    "integrated_gradients",
 ]

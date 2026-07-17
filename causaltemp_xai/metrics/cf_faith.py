@@ -12,8 +12,6 @@ The ``CFfaith`` class exposes a ``score()`` method that returns both a hard
 
 from __future__ import annotations
 
-from typing import Optional
-
 import numpy as np
 
 # Single source of truth for the lag-window contract (see mechanisms module

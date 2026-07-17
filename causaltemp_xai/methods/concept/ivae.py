@@ -21,8 +21,8 @@ import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, TensorDataset
 
-from ..base import AttributionMethod
 from ...classifiers.base import TSClassifier
+from ..base import AttributionMethod
 
 
 class _iVAEModel(nn.Module):

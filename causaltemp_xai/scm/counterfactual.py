@@ -25,10 +25,10 @@ from __future__ import annotations
 
 import numpy as np
 
-from .dag import LaggedDAG
-from .operators import Mechanism
 from .abduction import abduct
+from .dag import LaggedDAG
 from .intervention import Intervention
+from .operators import Mechanism
 
 
 def compute_gt_counterfactual(

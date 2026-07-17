@@ -15,7 +15,6 @@ from causaltemp_xai.benchmarks.mechanisms import LinearMechanism
 from causaltemp_xai.benchmarks.structural_cf import structural_counterfactual
 from causaltemp_xai.metrics.cf_faith import CFfaith
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -184,7 +183,7 @@ def _noiseless_rollout_cf(x_orig, mechanism, t0, pert):
 
 def _noise_reinjected_cf(x_orig, mechanism, t0, pert):
     """Pearl CF: intervene at t0, propagate while re-injecting original noise."""
-    T, k = x_orig.shape
+    T, _ = x_orig.shape
     e = _abduct(x_orig, mechanism)
     x_cf = x_orig.copy()
     x_cf[t0] = x_orig[t0] + pert

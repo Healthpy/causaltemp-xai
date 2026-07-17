@@ -8,7 +8,7 @@ batch.
 The intervention timestep for each ``(x, x_cf)`` pair is derived uniformly via
 :func:`~causaltemp_xai.methods.intervention.derive_intervention_t` (first
 timestep where ``|x_cf - x| > tol``), so CF-faith is comparable across methods
-that do not declare an intervention point themselves (Wachter, DiCE).
+that do not declare an intervention point themselves (e.g. Wachter).
 
 Both CF-faith metrics are reported per the plan's "keep both CF-faith metrics"
 decision: ``cf_faith_rollout_*`` (noiseless-rollout semantics, which CARLA is
@@ -22,7 +22,6 @@ import inspect
 
 import numpy as np
 
-from causaltemp_xai.scm.intervention import derive_intervention_t
 from causaltemp_xai.metrics.axis_c import (
     ood_plausibility,
     proximity,
@@ -30,6 +29,7 @@ from causaltemp_xai.metrics.axis_c import (
     validity,
 )
 from causaltemp_xai.metrics.cf_faith import CFfaith
+from causaltemp_xai.scm.intervention import derive_intervention_t
 
 
 def evaluate_method(
@@ -140,7 +140,7 @@ def evaluate_method(
     sparsity_mean = float(np.mean(spars))
 
     return {
-        "n": int(len(CFs)),
+        "n": len(CFs),
         "validity": float(np.mean(valid_i)),
         "proximity_l1": float(np.mean(prox_l1)),
         "proximity_l2": float(np.mean(prox_l2)),
@@ -173,7 +173,7 @@ MIN_VALIDITY_BASE_FOR_RATIO = 0.3
 def _generate_batch(method, X, model, graph, mechanism):
     """Call ``method.generate_batch`` with the right signature.
 
-    CARLA-style recourse needs ``graph``/``mechanism``; Wachter/DiCE do not.
+    CARLA-style recourse needs ``graph``/``mechanism``; Wachter/cfts-* do not.
     We inspect the signature rather than special-casing class names.
     """
     params = inspect.signature(method.generate_batch).parameters
@@ -209,7 +209,7 @@ def shift_vr(
         The frozen base classifier (exposing ``predict`` / ``torch_logits``).
     methods:
         Mapping ``{name: cf_method}``; each value exposes ``generate_batch``
-        (Wachter/DiCE: ``(X, model)``; CARLA: ``(X, model, graph, mechanism)``).
+        (Wachter/cfts-*: ``(X, model)``; CARLA: ``(X, model, graph, mechanism)``).
     X_base_test, X_shift_test:
         Test inputs ``(N, T, k)`` from the base and shifted environments.
     graph, mechanism:

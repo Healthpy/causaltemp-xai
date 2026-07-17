@@ -43,7 +43,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from causaltemp_xai.config import CONFIGS, get_config  # noqa: E402
+from causaltemp_xai.config import CONFIGS  # noqa: E402
 from causaltemp_xai.data_io import DEFAULT_OUT_DIR  # noqa: E402
 from experiments._common import (  # noqa: E402
     TABLES_DIR,

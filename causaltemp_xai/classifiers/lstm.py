@@ -19,7 +19,6 @@ from torch.utils.data import DataLoader, TensorDataset
 
 from causaltemp_xai.classifiers.base import TSClassifier
 
-
 # ---------------------------------------------------------------------------
 # Core module
 # ---------------------------------------------------------------------------
@@ -435,7 +434,7 @@ class LSTMClassifier(TSClassifier):
         )
 
     @classmethod
-    def load(cls, path: Path | str, device: Optional[str] = None) -> "LSTMClassifier":
+    def load(cls, path: Path | str, device: Optional[str] = None) -> LSTMClassifier:
         """Reconstruct a classifier from a checkpoint written by :meth:`save`."""
         ckpt = torch.load(path, map_location="cpu", weights_only=False)
         train_cfg = ckpt.get("train_cfg", {})

@@ -61,20 +61,21 @@ from causaltemp_xai.classifiers import LSTMClassifier  # noqa: E402
 from causaltemp_xai.config import CONFIGS, get_config, seeded_variant, shifted_config  # noqa: E402
 from causaltemp_xai.data_io import DEFAULT_OUT_DIR, generate_and_save, load_dataset  # noqa: E402
 from causaltemp_xai.eval import shift_vr  # noqa: E402
-from causaltemp_xai.methods import CARLARecourse, PearlCARLARecourse  # noqa: E402
-from causaltemp_xai.methods import (  # noqa: E402
+from causaltemp_xai.methods import (  # noqa: E402  # noqa: E402
+    CARLARecourse,
     CftsCelsCF,
     CftsCOMTECF,
     CftsConfetiCF,
     CftsCountsCF,
     CftsWachterCF,
+    PearlCARLARecourse,
 )
-from causaltemp_xai.methods.counterfactual.cfts_methods import _DatasetAdapter  # noqa: E402
 from causaltemp_xai.methods.attribution import (  # noqa: E402
     deletion_curve,
     insertion_curve,
     integrated_gradients,
 )
+from causaltemp_xai.methods.counterfactual.cfts_methods import _DatasetAdapter  # noqa: E402
 from causaltemp_xai.metrics.axis_d import input_sensitivity  # noqa: E402
 from experiments._common import (  # noqa: E402
     axis_a_for_attribution,
@@ -146,7 +147,7 @@ def attribution_block(clf, X_sel, ig_steps=64, curve_steps=50):
         "deletion_auc": float(np.mean(del_aucs)),
         "insertion_auc": float(np.mean(ins_aucs)),
         "insertion_minus_deletion": float(np.mean(ins_aucs) - np.mean(del_aucs)),
-        "n": int(len(X_sel)),
+        "n": len(X_sel),
     }
     return summary, np.stack(maps)
 
@@ -165,7 +166,7 @@ def axis_a_block(clf, X_sel, attributions, graph, mech, ig_steps=64) -> dict:
         return integrated_gradients(clf, x, TARGET_CLASS, steps=ig_steps)
 
     axis_a["InputSens"] = input_sensitivity(np.asarray(X_sel), _attribution_fn, n_trials=5)
-    axis_a["n"] = int(len(X_sel))
+    axis_a["n"] = len(X_sel)
     return axis_a
 
 

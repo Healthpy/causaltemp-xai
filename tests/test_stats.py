@@ -13,7 +13,6 @@ import pytest
 
 from causaltemp_xai.stats import bootstrap_ci, hierarchical_bootstrap_ci
 
-
 # ---------------------------------------------------------------------------
 # bootstrap_ci (flat, i.i.d.)
 # ---------------------------------------------------------------------------

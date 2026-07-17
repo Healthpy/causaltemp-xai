@@ -160,7 +160,7 @@ def _corrupt_graph(true_bin: np.ndarray, frac: float, rng: np.random.Generator) 
         for l in range(true_bin.shape[2])
         if i != j and true_bin[i, j, l] == 0
     ]
-    n_swap = int(round(frac * len(edges)))
+    n_swap = round(frac * len(edges))
     if n_swap == 0 or not non_edges:
         return adj
     drop = rng.choice(len(edges), size=min(n_swap, len(edges)), replace=False)
@@ -184,7 +184,7 @@ def _graph_quality_sweep(graph, mech, X_sel, oracle_ints, rollout, cf_faith_gt,
     real-method anchor. Graph quality is reported as SHD-to-true and (for the
     corruption ladder) the corrupted fraction.
     """
-    from causaltemp_xai.metrics.axis_b import shd, graph_auc
+    from causaltemp_xai.metrics.axis_b import graph_auc, shd
 
     true_bin = (graph > 0).astype(int)
     rng = np.random.default_rng(seed)
@@ -331,7 +331,7 @@ def run(
         "provenance": {
             "config": cfg.as_dict(),
             "method": method,
-            "n_cf": int(len(X_sel)),
+            "n_cf": len(X_sel),
             "dynotears": (
                 {"source": "third_party/causalnex_repo (github.com/mckinsey/causalnex)",
                  "lambda_a": model.lambda_a, "lambda_w": model.lambda_w, "p": model.p}

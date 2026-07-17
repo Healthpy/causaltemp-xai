@@ -1,66 +1,66 @@
-from .cf_faith import CFfaith
 from .axis_a import (
+    compute_axis_a,
+    dci,
     icc,
     icc_latent,
-    mig,
-    dci,
+    latent_disentanglement,
     mcc,
     mcc_concept,
-    latent_disentanglement,
-    compute_axis_a,
+    mig,
 )
 from .axis_b import (
-    shd,
-    lag_accuracy,
-    graph_auc,
-    tv_confounding,
-    graph_error_decomposition,
     compute_axis_b,
+    graph_auc,
+    graph_error_decomposition,
+    lag_accuracy,
+    shd,
+    tv_confounding,
 )
 from .axis_c import (
-    validity,
+    compute_axis_c,
+    ood_plausibility,
     proximity,
     sparsity,
-    ood_plausibility,
     trsi,
-    compute_axis_c,
+    validity,
 )
 from .axis_d import (
-    shift_vr,
-    input_sensitivity,
-    concept_stability,
     compute_axis_d,
+    concept_stability,
+    input_sensitivity,
+    shift_vr,
 )
+from .cf_faith import CFfaith
 
 __all__ = [
     # cf_faith
     "CFfaith",
+    "compute_axis_a",
+    "compute_axis_b",
+    "compute_axis_c",
+    "compute_axis_d",
+    "concept_stability",
+    "dci",
+    "graph_auc",
+    "graph_error_decomposition",
     # axis_a
     "icc",
     "icc_latent",
-    "mig",
-    "dci",
+    "input_sensitivity",
+    "lag_accuracy",
+    "latent_disentanglement",
     "mcc",
     "mcc_concept",
-    "latent_disentanglement",
-    "compute_axis_a",
+    "mig",
+    "ood_plausibility",
+    "proximity",
     # axis_b
     "shd",
-    "lag_accuracy",
-    "graph_auc",
-    "tv_confounding",
-    "graph_error_decomposition",
-    "compute_axis_b",
-    # axis_c
-    "validity",
-    "proximity",
-    "sparsity",
-    "ood_plausibility",
-    "trsi",
-    "compute_axis_c",
     # axis_d
     "shift_vr",
-    "input_sensitivity",
-    "concept_stability",
-    "compute_axis_d",
+    "sparsity",
+    "trsi",
+    "tv_confounding",
+    # axis_c
+    "validity",
 ]

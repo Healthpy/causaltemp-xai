@@ -39,8 +39,6 @@ what keeps Pearl abduction an exact subtraction downstream. Nonlinear *mixing*
 
 from __future__ import annotations
 
-from typing import Union
-
 import numpy as np
 
 try:  # torch is a hard dep elsewhere; import lazily-friendly for clarity
@@ -89,7 +87,7 @@ class Mechanism:
         """Deterministic next-step mean from a ``(L, k)`` or ``(N, L, k)`` window."""
         raise NotImplementedError
 
-    def forward_torch(self, history):  # noqa: ANN001 - torch.Tensor
+    def forward_torch(self, history):
         """Differentiable next-step mean from a ``(L, k)`` or ``(N, L, k)`` window."""
         raise NotImplementedError
 
@@ -98,7 +96,7 @@ class Mechanism:
         raise NotImplementedError
 
     @classmethod
-    def from_state_dict(cls, d: dict) -> "Mechanism":
+    def from_state_dict(cls, d: dict) -> Mechanism:
         """Reconstruct a mechanism from :meth:`state_dict` output.
 
         Implementations must coerce non-array scalar/string fields (which
@@ -143,7 +141,7 @@ class LinearMechanism(Mechanism):
             result += history[:, -(l + 1), :] @ A.T
         return result
 
-    def forward_torch(self, history):  # noqa: ANN001
+    def forward_torch(self, history):
         if history.ndim == 2:  # (L, k) -> (k,)
             acc = torch.zeros(self.k, dtype=history.dtype)
             for l in range(self.L):
@@ -168,7 +166,7 @@ class LinearMechanism(Mechanism):
         return d
 
     @classmethod
-    def from_state_dict(cls, d: dict) -> "LinearMechanism":
+    def from_state_dict(cls, d: dict) -> LinearMechanism:
         # Restore lag order by sorting A_<l> keys (mirror data_io.load_dataset).
         a_keys = sorted(
             (key for key in d if str(key).startswith("A_")),
@@ -295,7 +293,7 @@ class MLPMechanism(Mechanism):
         spectral_cap: float = 0.9,
         init_gain: float = 0.7,
         activation: str = "tanh",
-    ) -> "MLPMechanism":
+    ) -> MLPMechanism:
         """Sample + stabilize a random per-node MLP mechanism.
 
         Weights use ``std = init_gain · √(1/fan_in)`` (bias 0) and each per-node
@@ -359,7 +357,7 @@ class MLPMechanism(Mechanism):
         result = self.decay * history[:, -1, :] + self.gain * np.tanh(out)  # (N, k)
         return result[0] if single else result
 
-    def _torch_weights(self, like):  # noqa: ANN001 - torch.Tensor
+    def _torch_weights(self, like):
         key = (like.dtype, like.device)
         cached = self._torch_cache.get(key)
         if cached is None:
@@ -377,7 +375,7 @@ class MLPMechanism(Mechanism):
             self._torch_cache[key] = cached
         return cached
 
-    def forward_torch(self, history):  # noqa: ANN001 - torch.Tensor
+    def forward_torch(self, history):
         single = history.ndim == 2
         if single:
             history = history.unsqueeze(0)  # (1, L, k)
@@ -416,7 +414,7 @@ class MLPMechanism(Mechanism):
         }
 
     @classmethod
-    def from_state_dict(cls, d: dict) -> "MLPMechanism":
+    def from_state_dict(cls, d: dict) -> MLPMechanism:
         # np.load returns scalars/strings as 0-d arrays — coerce them.
         activation = d["activation"]
         if not isinstance(activation, str):

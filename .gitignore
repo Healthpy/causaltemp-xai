@@ -39,7 +39,6 @@ dmypy.json
 # Ruff cache
 .ruff_cache/
 
-causal_tscf_bench/
 .claude/
 
 # OS

@@ -17,7 +17,6 @@ import torch
 from causaltemp_xai.classifiers import LSTMClassifier
 from causaltemp_xai.metrics.cf_faith import CFfaith
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------

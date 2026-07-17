@@ -237,7 +237,7 @@ class CITRIS:
         self.history_: list[float] = []
 
     # ------------------------------------------------------------------
-    def fit(self, X: np.ndarray, targets: np.ndarray) -> "CITRIS":
+    def fit(self, X: np.ndarray, targets: np.ndarray) -> CITRIS:
         """Train CITRIS-VAE on ``X`` ``(N, T, k)`` with intervention targets
         ``(N, T, k)`` (one-hot / all-zero per step; use ``mode="single"``).
 

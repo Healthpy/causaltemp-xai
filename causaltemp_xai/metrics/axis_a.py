@@ -47,7 +47,6 @@ from scipy.optimize import linear_sum_assignment
 from scipy.stats import pearsonr
 from sklearn.ensemble import GradientBoostingRegressor
 
-
 # ---------------------------------------------------------------------------
 # Internal helpers
 # ---------------------------------------------------------------------------
@@ -247,7 +246,7 @@ def mig(
     """
     Z = np.asarray(z_inferred, dtype=float)
     V = np.asarray(z_true, dtype=float)
-    N, d_z = Z.shape
+    _, d_z = Z.shape
     K = V.shape[1]
 
     # MI matrix: (K, d_z)

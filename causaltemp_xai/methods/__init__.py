@@ -2,56 +2,54 @@
 
 The top-level namespace re-exports the most commonly used classes.
 The full method collections are available in the subpackages:
-  - causaltemp_xai.methods.counterfactual  (WachterCF, DiCECF, CARLARecourse,
+  - causaltemp_xai.methods.counterfactual  (WachterCF, CARLARecourse,
                                              PearlCARLARecourse, cfts_*)
   - causaltemp_xai.methods.attribution     (integrated_gradients, TimeSHAP, Dynamask, ...)
   - causaltemp_xai.methods.concept         (CBMT, iVAE)
   - causaltemp_xai.methods.causal          (CITRIS)
 """
 
-from .base import CFExplainer, AttributionMethod
-from .counterfactual.wachter import WachterCF
-from .counterfactual.dice import DiCECF
-from .counterfactual.carla import CARLARecourse, PearlCARLARecourse
-from .counterfactual.cfts_methods import (
-    CftsWachterCF,
-    CftsNativeGuideCF,
-    CftsCOMTECF,
-    CftsConfetiCF,
-    CftsCountsCF,
-    CftsCelsCF,
-)
-from .attribution.integrated_gradients import integrated_gradients
-from .attribution.perturbation_curves import deletion_curve, insertion_curve
-from .attribution.timeshap import TimeSHAP
-from .attribution.dynamask import Dynamask
-from .concept.cbm_t import CBMT
-from .concept.ivae import iVAE
-from .causal.citris import CITRIS
-
 # Backward-compat: derive_intervention_t moved to scm.intervention
 from causaltemp_xai.scm.intervention import derive_intervention_t
 
+from .attribution.dynamask import Dynamask
+from .attribution.integrated_gradients import integrated_gradients
+from .attribution.perturbation_curves import deletion_curve, insertion_curve
+from .attribution.timeshap import TimeSHAP
+from .base import AttributionMethod, CFExplainer
+from .causal.citris import CITRIS
+from .concept.cbm_t import CBMT
+from .concept.ivae import iVAE
+from .counterfactual.carla import CARLARecourse, PearlCARLARecourse
+from .counterfactual.cfts_methods import (
+    CftsCelsCF,
+    CftsCOMTECF,
+    CftsConfetiCF,
+    CftsCountsCF,
+    CftsNativeGuideCF,
+    CftsWachterCF,
+)
+from .counterfactual.wachter import WachterCF
+
 __all__ = [
-    "CFExplainer",
+    "CBMT",
+    "CITRIS",
     "AttributionMethod",
-    "WachterCF",
-    "DiCECF",
     "CARLARecourse",
-    "PearlCARLARecourse",
-    "CftsWachterCF",
-    "CftsNativeGuideCF",
+    "CFExplainer",
     "CftsCOMTECF",
+    "CftsCelsCF",
     "CftsConfetiCF",
     "CftsCountsCF",
-    "CftsCelsCF",
-    "integrated_gradients",
-    "deletion_curve",
-    "insertion_curve",
-    "TimeSHAP",
+    "CftsNativeGuideCF",
+    "CftsWachterCF",
     "Dynamask",
-    "CBMT",
-    "iVAE",
-    "CITRIS",
+    "PearlCARLARecourse",
+    "TimeSHAP",
+    "WachterCF",
+    "deletion_curve",
     "derive_intervention_t",
+    "iVAE",
+    "insertion_curve",
+    "integrated_gradients",
 ]

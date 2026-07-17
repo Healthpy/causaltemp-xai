@@ -136,7 +136,7 @@ class DYNOTEARS:
         sequence boundaries (no lag window crosses from one sequence into
         another). ``Xlags`` columns are ``[lag1 | lag2 | ... | lag p]``."""
         X = np.asarray(X, dtype=float)
-        N, T, k = X.shape
+        N, T, _ = X.shape
         p = self.p
         now_rows, lag_rows = [], []
         for n in range(N):
@@ -145,7 +145,7 @@ class DYNOTEARS:
                 lag_rows.append(np.concatenate([X[n, t - l, :] for l in range(1, p + 1)]))
         return np.asarray(now_rows), np.asarray(lag_rows)
 
-    def fit(self, X: np.ndarray) -> "DYNOTEARS":
+    def fit(self, X: np.ndarray) -> DYNOTEARS:
         """Fit on plain (observational) ``(N, T, k)`` data."""
         X = np.asarray(X, dtype=float)
         if X.shape[2] != self.k:

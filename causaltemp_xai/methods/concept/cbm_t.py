@@ -17,8 +17,8 @@ from __future__ import annotations
 import numpy as np
 from sklearn.linear_model import LogisticRegression
 
-from ..base import AttributionMethod
 from ...classifiers.base import TSClassifier
+from ..base import AttributionMethod
 
 
 class CBMT(AttributionMethod):
@@ -46,7 +46,7 @@ class CBMT(AttributionMethod):
         X_train : (N, T, k)
         concept_labels : (N, k) — binary concept activation per channel (0/1)
         """
-        N, T, k = X_train.shape
+        _, _, k = X_train.shape
         self._n_concepts = k
         self._probes = []
         for m in range(k):

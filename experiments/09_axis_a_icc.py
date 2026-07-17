@@ -50,7 +50,9 @@ RECON_AGREEMENT_GATE = 0.8  # below this, ICC is not interpretable
 def _ancestors_of(node: int, graph: np.ndarray) -> set[int]:
     """Transitive causal ancestors of ``node`` (incl. itself) in the lagged
     graph ``(k, k, L)`` where ``graph[i, j, l]==1`` means j causes i."""
-    parents = lambda i: {j for j in range(graph.shape[1]) if np.any(graph[i, j, :] != 0)}
+    def parents(i):
+        return {j for j in range(graph.shape[1]) if np.any(graph[i, j, :] != 0)}
+
     seen, stack = {node}, [node]
     while stack:
         cur = stack.pop()
@@ -65,7 +67,6 @@ def _align_latents_to_channels(Z: np.ndarray, F: np.ndarray):
     """Hungarian match on |Pearson corr| between latent dims ``Z`` (N, d_z) and
     ground-truth factors ``F`` (N, k). Returns (assign, mcc): ``assign[i]`` =
     channel matched to latent dim ``i``; ``mcc`` = mean matched |corr|."""
-    d_z, k = Z.shape[1], F.shape[1]
     Zc = (Z - Z.mean(0)) / (Z.std(0) + 1e-12)
     Fc = (F - F.mean(0)) / (F.std(0) + 1e-12)
     corr = np.abs(Zc.T @ Fc) / Z.shape[0]  # (d_z, k)

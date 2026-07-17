@@ -25,7 +25,7 @@ from pathlib import Path
 
 warnings.filterwarnings("ignore", message="Mean of empty slice")
 
-import matplotlib
+import matplotlib  # noqa: E402
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
