@@ -47,6 +47,7 @@ from experiments._common import (  # noqa: E402
     dump_json,
     per_instance_records,
     print_summary_table,
+    set_run_context,
     write_csv,
 )
 
@@ -55,6 +56,7 @@ def run(config_name: str, out_dir, seed: int | None = None) -> None:
     cfg = get_config(config_name)
     if seed is not None:
         cfg = seeded_variant(cfg, seed)
+    set_run_context(seed=cfg.seed, config=cfg.name)
     data = load_dataset(cfg.name, out_dir=out_dir)
     graph, mech = data["graph"], data["mechanism"]
 

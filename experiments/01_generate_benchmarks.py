@@ -30,7 +30,12 @@ sys.path.insert(0, str(ROOT))
 
 from causaltemp_xai.config import CONFIGS, get_config, seeded_variant, shifted_config  # noqa: E402
 from causaltemp_xai.data_io import DEFAULT_OUT_DIR, generate_and_save, load_dataset  # noqa: E402
-from experiments._common import RESULTS_DIR, axis_b_benchmark_diagnostic, dump_json  # noqa: E402
+from experiments._common import (  # noqa: E402
+    RESULTS_DIR,
+    axis_b_benchmark_diagnostic,
+    dump_json,
+    set_run_context,
+)
 
 
 def generate_one(config_name: str, out_dir, shift_noise: str | None, seed: int | None = None) -> None:
@@ -39,6 +44,7 @@ def generate_one(config_name: str, out_dir, shift_noise: str | None, seed: int |
         cfg = seeded_variant(cfg, seed)
     if shift_noise is not None:
         cfg = shifted_config(cfg, noise_type=shift_noise)
+    set_run_context(seed=cfg.seed, config=cfg.name)
 
     dest = generate_and_save(cfg, out_dir=out_dir)
     with open(dest / "meta.json") as fh:

@@ -96,6 +96,7 @@ from experiments._common import (  # noqa: E402
     build_oracle_interventions,
     config_dir,
     dump_json,
+    set_run_context,
 )
 
 GRAPH_METHODS = ("dynotears", "citris")
@@ -587,6 +588,7 @@ def run(
     cfg = get_config(config_name)
     if seed is not None:
         cfg = seeded_variant(cfg, seed)
+    set_run_context(seed=cfg.seed, config=cfg.name)
     n_epochs = epochs if epochs is not None else DEFAULT_EPOCHS.get(method, 80)
 
     if method in GRAPH_METHODS:

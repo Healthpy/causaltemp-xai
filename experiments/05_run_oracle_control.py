@@ -65,6 +65,7 @@ from experiments._common import (  # noqa: E402
     dump_json,
     per_instance_records,
     print_summary_table,
+    set_run_context,
     write_csv,
 )
 
@@ -87,6 +88,7 @@ def build_oracle_cfs(X_sel, mechanism, noiseless, shift=ORACLE_SHIFT) -> np.ndar
 
 def run(config_name: str, n_cf: int, out_dir) -> None:
     cfg = get_config(config_name)
+    set_run_context(seed=cfg.seed, config=cfg.name)
     try:
         data = load_dataset(cfg.name, out_dir=out_dir)
     except FileNotFoundError:

@@ -32,7 +32,7 @@ sys.path.insert(0, str(ROOT))
 from causaltemp_xai.classifiers import LSTMClassifier  # noqa: E402
 from causaltemp_xai.config import CONFIGS, get_config, seeded_variant  # noqa: E402
 from causaltemp_xai.data_io import DEFAULT_OUT_DIR, generate_and_save, load_dataset  # noqa: E402
-from experiments._common import config_dir, dump_json  # noqa: E402
+from experiments._common import config_dir, dump_json, set_run_context  # noqa: E402
 
 LINEAR_CONFIGS = ["smoke", "full", "full_sparse"]
 TARGET_ACC = 0.90
@@ -42,6 +42,7 @@ def train_one(config_name: str, out_dir, seed: int | None = None, **hparams) -> 
     cfg = get_config(config_name)
     if seed is not None:
         cfg = seeded_variant(cfg, seed)
+    set_run_context(seed=cfg.seed, config=cfg.name)
     out_dir = Path(out_dir)
     if not (out_dir / cfg.name / "meta.json").exists():
         print(f"[02] dataset for '{cfg.name}' not found -- generating.")

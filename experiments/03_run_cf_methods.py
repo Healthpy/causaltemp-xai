@@ -84,6 +84,7 @@ from experiments._common import (  # noqa: E402
     config_dir,
     dump_json,
     select_flip_candidates,
+    set_run_context,
 )
 
 TARGET_CLASS = 1
@@ -186,6 +187,7 @@ def run(config_name: str, n_cf: int, out_dir, methods_filter=None, seed: int | N
     cfg = get_config(config_name)
     if seed is not None:
         cfg = seeded_variant(cfg, seed)
+    set_run_context(seed=cfg.seed, config=cfg.name)
     if cfg.mechanism_type != "linear":
         print(
             f"[03] NOTE: '{config_name}' is a nonlinear (MLP) config -- CF methods here are "

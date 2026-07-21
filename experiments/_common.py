@@ -43,7 +43,9 @@ are evaluated on whichever kind of method they are actually suited to:
 from __future__ import annotations
 
 import csv
+import functools
 import json
+import subprocess
 from pathlib import Path
 
 import numpy as np
@@ -257,7 +259,81 @@ def print_summary_table(rows: list[dict]) -> None:
         )
 
 
+# ---------------------------------------------------------------------------
+# Run provenance (R7) — seed + commit hash stamped into every result file
+# ---------------------------------------------------------------------------
+#
+# R7 requires a ``seed`` field in every result file, and the M2 DoD additionally
+# requires the commit hash. Both were previously written by hand into the
+# ``provenance`` block of ``summary.json`` only, so 114 of 129 result JSONs
+# carried neither -- a per-call-site convention is something a new phase forgets
+# by default. Stamping inside :func:`dump_json` instead makes the gate hold for
+# every current *and* future phase without anyone remembering to opt in.
+#
+# Deliberately NOT stamped: a wall-clock timestamp. Result JSONs are tracked in
+# git, so a timestamp would make every re-run produce a diff even when the
+# numbers are identical, and "this file changed" would stop meaning "these
+# results changed".
+
+_RUN_CONTEXT: dict = {"seed": None, "config": None}
+
+
+def set_run_context(seed=None, config: str | None = None) -> None:
+    """Declare the seed/config the current phase is running under.
+
+    Every subsequent :func:`dump_json` call in this process stamps them into the
+    file it writes. Phases call this once, right after resolving their config.
+    """
+    if seed is not None:
+        _RUN_CONTEXT["seed"] = int(seed)
+    if config is not None:
+        _RUN_CONTEXT["config"] = str(config)
+
+
+def _git(*args: str) -> str | None:
+    try:
+        out = subprocess.run(
+            ["git", *args], cwd=ROOT, capture_output=True, text=True, timeout=10
+        )
+    except (OSError, subprocess.SubprocessError):
+        return None
+    return out.stdout.strip() if out.returncode == 0 else None
+
+
+@functools.lru_cache(maxsize=1)
+def git_provenance() -> dict:
+    """``{"git_commit": <sha|None>, "git_dirty": <bool|None>}`` for this checkout.
+
+    ``git_dirty`` is load-bearing for reproducibility honesty: a commit hash
+    recorded while the working tree had uncommitted changes does not identify
+    the code that produced the numbers, so the flag says so rather than letting
+    the hash imply a cleanliness it does not have. Cached -- the answer cannot
+    change within a single phase run.
+    """
+    sha = _git("rev-parse", "HEAD")
+    if sha is None:
+        return {"git_commit": None, "git_dirty": None}
+    status = _git("status", "--porcelain")
+    return {"git_commit": sha, "git_dirty": bool(status)}
+
+
+def run_provenance() -> dict:
+    """Seed + config + commit provenance stamped into every result file."""
+    return {
+        "seed": _RUN_CONTEXT["seed"],
+        "config": _RUN_CONTEXT["config"],
+        **git_provenance(),
+    }
+
+
 def dump_json(path: Path, obj) -> None:
+    """Write ``obj`` as JSON, stamping run provenance (R7) into dict payloads.
+
+    Existing keys are never overwritten -- a phase that already wrote its own
+    ``seed``/``config`` keeps them, so this only ever fills gaps.
+    """
+    if isinstance(obj, dict):
+        obj = {**{k: v for k, v in run_provenance().items() if k not in obj}, **obj}
     path.parent.mkdir(parents=True, exist_ok=True)
     with open(path, "w") as fh:
         json.dump(obj, fh, indent=2)
