@@ -74,7 +74,7 @@ path to a reportable Axis-B number — this aligns with the PI's action #3
 (full-scale runs) and must be reported *with* its training config.
 
 Remaining / follow-ups:
-- **#10 (Axis B graph-error decomposition) — DONE**: `experiments/08_citris_graph.py`
+- **#10 (Axis B graph-error decomposition) — DONE**: `experiments/07_auxiliary_methods.py`
   fits CITRIS on intervention-labeled data, reads off the inferred lag-1 graph,
   and writes `results/<config>/citris/graph_error.json` with Axis-B recovery
   (SHD/LagAcc/AUC via density-matched binarisation) **and** the H3 graph-error
@@ -86,7 +86,7 @@ Remaining / follow-ups:
   pipeline. The `soft` CF-faith is used deliberately: the `hard` score is a 0/1
   per-instance indicator that any edge error zeroes, so it can't grade the
   decomposition.
-- **Per-method propagation error — DONE**: Phase 08 also decomposes every
+- **Per-method propagation error — DONE**: Phase 07 also decomposes every
   existing CF method's *actual* CFs (from Phase 03) — scoring each against the
   true SCM (`cf_faith_vs_gt` → `propagation_error = 1 − that`) and the
   CITRIS-inferred-graph SCM (→ the `graph_error` term), written under `methods`
@@ -116,10 +116,10 @@ paradigm cell was empty and Axis B / H3 lacked a genuinely-recovering method
   Lagrangian) unmodified, with an adapter that reshapes `(N,T,k)` panels into
   DYNOTEARS `(X, Xlags)` format and maps the inter-slice matrix `A` to the
   `(k,k,L)` convention. **Observational** (no intervention targets).
-- **It recovers the graph**: mean edge-ranking AUC ~0.91 across seeds; in Phase 08
+- **It recovers the graph**: mean edge-ranking AUC ~0.91 across seeds; in Phase 07
   on `smoke_nl`, SHD=2, LagAcc=0.86, AUC=0.917. Tests assert above-chance
   recovery (`tests/test_dynotears.py`).
-- **Phase 08 now defaults to `--method dynotears`** (the load-bearing graph-aware
+- **Phase 07 now defaults to `--method dynotears`** (the load-bearing graph-aware
   method); `--method citris` runs the honest secondary. Output goes to
   `results/<config>/<method>/graph_error.json`. This gives H3 a genuine,
   non-circular positive method and Axis B a well-recovered graph.
@@ -139,7 +139,7 @@ paradigm cell was empty and Axis B / H3 lacked a genuinely-recovering method
 - **Multi-seed CF-method bootstrap CIs — NOT feasible in-session**: the LSTM
   train (~8.5 min/seed) + 7 CF methods (CARLA 500-step × n_cf=100) × 5 seeds is a
   multi-hour job. Run detached/overnight (verified `07_aggregate_seeds` handles
-  `mlp` configs): `uv run python experiments/07_aggregate_seeds.py --config full_nl --seeds 0 1 2 3 4 --n-cf 100`.
+  `mlp` configs): `uv run python experiments/06_aggregate_and_report.py seeds --config full_nl --seeds 0 1 2 3 4 --n-cf 100`.
 
 Still open (PI P1): multi-seed CF-method CIs at full scale (overnight command
 above); a fair CITRIS training budget (GPU); spec↔code reconciliation (R10 —

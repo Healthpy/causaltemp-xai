@@ -47,7 +47,7 @@ fit, and a different flip-candidate ordering).
    after this change, and a `--seed`-less invocation touches no new code path since the
    `if seed is not None` guard is a no-op).
 
-3. **`experiments/07_aggregate_seeds.py`** (new phase) — orchestrates phases 01→04 once
+3. **`experiments/06_aggregate_and_report.py`** (new phase) — orchestrates phases 01→04 once
    per requested seed (via direct function calls through `importlib.import_module`, not
    subprocess, since numbered-prefix filenames are importable — verified — but not valid
    `import` statement targets), then pools every method's per-instance metrics across
@@ -93,7 +93,7 @@ metric, written to `results/tables/table_seed_aggregate_<config>_lstm.csv`.
 
 ### 1.4 Smoke-scale validation (real pipeline run, not synthetic data)
 
-Ran `experiments/07_aggregate_seeds.py --config smoke --seeds 0 1 2 --n-cf 10 --methods
+Ran `experiments/06_aggregate_and_report.py seeds --config smoke --seeds 0 1 2 --n-cf 10 --methods
 CARLA CftsWachter CftsCOMTE --n-boot 3000` end-to-end (phases 01→04 for each of 3 seeds,
 then aggregation). Scope was deliberately reduced from a full 6-method run: a timing
 probe (`n_cf=3`, 3 methods) measured ~108s, dominated by Shift-VR's CF regeneration; the

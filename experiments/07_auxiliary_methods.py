@@ -1,35 +1,69 @@
-"""Phase 08: self-graphing + Axis-B graph-error decomposition (H3).
+"""Phase 07: auxiliary causal-method families outside the main 01-05 pipeline.
 
-Fits a *self-graphing* method on a *nonlinear* (MLP-mechanism) benchmark's data,
-reads off its inferred lag-1 causal graph, and reports
-``results/<config>/<method>/graph_error.json`` with:
+Phases 01-05 evaluate *counterfactual-generating* methods against a trained
+LSTM. This phase covers the two method families that do not fit that shape --
+they learn causal structure or a causal representation rather than producing a
+counterfactual -- and scores each on the axis its output actually addresses.
+Neither family is wired into the multi-seed orchestrator (Phase 06 ``seeds``),
+and both are config-restricted; that is why they live here rather than in the
+main pipeline.
 
-(a) Axis-B graph-recovery of the inferred graph vs. ground truth (SHD/LagAcc/AUC);
-(b) the **graph-error decomposition** the general plan calls for: how much
-    CF-faith the oracle structural counterfactual loses when it is derived from
-    the method's *inferred* graph instead of the true graph (``graph_error``),
-    versus propagation error (``propagation_error``, ≡0 for the oracle); and
-(c) per-CF-method **propagation error** — each existing CF method's real CFs
-    scored against the true SCM, under both CF-faith semantics.
+Selected with ``--method``; each writes its own distinct report:
 
-Methods (``--method``):
-- ``dynotears`` (default) — DYNOTEARS (Pamfil et al., 2020, vendored McKinsey
+* ``dynotears`` / ``citris`` -> ``results/<config>/<method>/graph_error.json``
+  **Self-graphing + Axis-B graph-error decomposition (H3).** Fits a
+  self-graphing method on a *nonlinear* (MLP-mechanism) benchmark, reads off
+  its inferred lag-1 causal graph, and reports:
+
+  (a) Axis-B graph-recovery of the inferred graph vs. ground truth
+      (SHD/LagAcc/LagF1/AUC);
+  (b) the **graph-error decomposition** the general plan calls for: how much
+      CF-faith the oracle structural counterfactual loses when it is derived
+      from the method's *inferred* graph instead of the true graph
+      (``graph_error``), versus propagation error (``propagation_error``, ==0
+      for the oracle); and
+  (c) per-CF-method **propagation error** -- each existing CF method's real CFs
+      scored against the true SCM, under both CF-faith semantics.
+
+  ``dynotears`` (default) is DYNOTEARS (Pamfil et al., 2020, vendored McKinsey
   CausalNex): a classical temporal causal-discovery baseline that recovers the
   benchmark's near-linear lag-1 structure from **observational** data (AUC
   ~0.9). This is the load-bearing graph-aware method that gives the Axis-B
   decomposition real dynamic range and H3 a genuine, non-circular positive.
-- ``citris`` — genuine vendored CITRIS (representation learning; needs
-  intervention-labeled data). An honest *secondary* method: it does not
+  ``citris`` is genuine vendored CITRIS (representation learning; needs
+  intervention-labeled data) -- an honest *secondary* method: it does not
   identify at smoke scale (see ``methods/causal/citris.py``).
 
-Only nonlinear presets (``mechanism_type == "mlp"``, e.g. ``smoke_nl`` /
-``full_nl``) are supported — the graph-error decomposition needs an
-:class:`MLPMechanism` to build the inferred-graph rollout.
+  Only nonlinear presets (``mechanism_type == "mlp"``, e.g. ``smoke_nl`` /
+  ``full_nl``) are supported -- the decomposition needs an
+  :class:`MLPMechanism` to build the inferred-graph rollout.
+
+* ``ivae`` -> ``results/<config>/ivae/icc.json``
+  **Decoder-based Axis-A ICC** (latent-traversal Interventional Concept
+  Consistency), the definitional ICC for representation methods. Trains an
+  **iVAE** (a method that exposes an encoder + decoder) on a config's
+  observational data, then scores each latent dimension with
+  :func:`causaltemp_xai.metrics.axis_a.icc_latent` (matched-baseline, +/-delta,
+  std-scaled) against the frozen LSTM. Because iVAE identifies factors only up
+  to permutation, latent dims are first **aligned to ground-truth channels**
+  via a Hungarian match on the |correlation| matrix; the causally-relevant
+  concepts are the label channel (channel 0, since ``Y = 1[X_T^0 > theta]``)
+  and its graph ancestors. ICC is then contrasted between
+  causal-relevant-aligned and non-relevant-aligned latent dims.
+
+  Per the PI metric review, this run reports the **sanity gates first** -- if
+  the iVAE reconstruction does not preserve the classifier's decision
+  (``recon_label_agreement`` low), ICC is *not interpretable* and that is
+  reported honestly rather than forced. Magnitudes ``c in {1,2,3}`` are swept
+  (pre-registered; no delta-hacking), and a permuted-assignment null is
+  reported.
 
 Usage
 -----
-    uv run python experiments/08_citris_graph.py --config smoke_nl
-    uv run python experiments/08_citris_graph.py --config smoke_nl --method citris
+    uv run python experiments/07_auxiliary_methods.py --config smoke_nl --method dynotears
+    uv run python experiments/07_auxiliary_methods.py --config smoke_nl --method citris
+    uv run python experiments/07_auxiliary_methods.py --config smoke --method ivae --epochs 60
+
 """
 
 from __future__ import annotations
@@ -39,6 +73,7 @@ import sys
 from pathlib import Path
 
 import numpy as np
+from scipy.optimize import linear_sum_assignment
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
@@ -47,9 +82,12 @@ from causaltemp_xai.benchmarks.interventional import (  # noqa: E402
     generate_interventional_sequences,
 )
 from causaltemp_xai.benchmarks.structural_cf import structural_counterfactual  # noqa: E402
+from causaltemp_xai.classifiers import LSTMClassifier  # noqa: E402
 from causaltemp_xai.config import CONFIGS, get_config, seeded_variant  # noqa: E402
 from causaltemp_xai.data_io import DEFAULT_OUT_DIR, load_dataset  # noqa: E402
 from causaltemp_xai.methods.causal import CITRIS, DYNOTEARS  # noqa: E402
+from causaltemp_xai.methods.concept import iVAE  # noqa: E402
+from causaltemp_xai.metrics.axis_a import icc_latent  # noqa: E402
 from causaltemp_xai.metrics.axis_b import compute_axis_b  # noqa: E402
 from causaltemp_xai.metrics.cf_faith import CFfaith  # noqa: E402
 from causaltemp_xai.scm.intervention import derive_intervention_t  # noqa: E402
@@ -60,7 +98,20 @@ from experiments._common import (  # noqa: E402
     dump_json,
 )
 
+GRAPH_METHODS = ("dynotears", "citris")
 ORACLE_SHIFT = 1.5  # must match build_oracle_interventions' default
+RECON_AGREEMENT_GATE = 0.7  # below this, ICC is not interpretable
+
+#: Per-method training-epoch defaults. The two families were separate phases
+#: with separate ``--epochs`` defaults (CITRIS 80, iVAE 50); merging them under
+#: one flag must not silently retune either, so ``--epochs`` defaults to None
+#: and resolves here.
+DEFAULT_EPOCHS = {"citris": 80, "ivae": 50}
+
+
+# ---------------------------------------------------------------------------
+# Report 1: self-graphing + Axis-B graph-error decomposition (dynotears/citris)
+# ---------------------------------------------------------------------------
 
 
 def _mean_soft_cf_faith(X_sel, cfs, graph, mechanism, scorer) -> float:
@@ -82,10 +133,10 @@ def _per_method_propagation(cf_dir, graph, true_mech, rollout, pearl):
     """Propagation error of every persisted CF method's *actual* CFs.
 
     Each ``X_cf_<Method>.npy`` is scored against the **true** SCM; the method's
-    ``propagation_error = 1 − cf_faith_vs_gt`` measures how far its CF fails to
+    ``propagation_error = 1 - cf_faith_vs_gt`` measures how far its CF fails to
     respect the true mechanism (its own failure, independent of any inferred
-    graph). Reported under **both** CF-faith semantics — ``noiseless_rollout``
-    and ``pearl_delta`` (``*_pearl`` keys) — because recourse variants target
+    graph). Reported under **both** CF-faith semantics -- ``noiseless_rollout``
+    and ``pearl_delta`` (``*_pearl`` keys) -- because recourse variants target
     different semantics (``CARLARecourse`` is rollout-faithful by construction,
     ``PearlCARLARecourse`` pearl-faithful), so a single-semantics column
     understates whichever targets the other.
@@ -136,7 +187,7 @@ def _density_matched_adjacency(scores: np.ndarray, n_true: int) -> np.ndarray:
 def _inferred_cf_faith(graph, mech, adj_pred, X_sel, oracle_ints, rollout) -> float:
     """Mean soft rollout CF-faith of the oracle CF *derived from* ``adj_pred``
     (a masked mechanism restricted to the inferred edges), scored against the
-    true mechanism. Lower ⇒ more graph-induced divergence."""
+    true mechanism. Lower => more graph-induced divergence."""
     inf_mech = build_masked_mechanism(mech, adj_pred)
     vals = []
     for (t0, node, _true_cf), x in zip(oracle_ints, X_sel):
@@ -150,7 +201,7 @@ def _corrupt_graph(true_bin: np.ndarray, frac: float, rng: np.random.Generator) 
     """Density-matched corruption of ``true_bin`` ``(k, k, L)``: replace a
     ``frac`` fraction of true edges with randomly chosen off-diagonal non-edges.
     ``frac=0`` returns the true graph; ``frac=1`` a random graph of the same
-    density (recovery ≈ chance). Used to build the graph-quality ladder."""
+    density (recovery ~ chance). Used to build the graph-quality ladder."""
     adj = true_bin.copy().astype(int)
     edges = list(zip(*np.nonzero(true_bin)))
     non_edges = [
@@ -177,12 +228,12 @@ def _graph_quality_sweep(graph, mech, X_sel, oracle_ints, rollout, cf_faith_gt,
     """Graph-error across a controlled graph-quality ladder.
 
     Demonstrates the Axis-B decomposition *discriminates*: ``graph_error``
-    (``cf_faith_gt − cf_faith_inferred``) must span ~0 for a good graph up to
+    (``cf_faith_gt - cf_faith_inferred``) must span ~0 for a good graph up to
     large for a random graph. Points: the true graph (0 by construction),
     progressively corrupted graphs (``frac`` of edges rewired), a fully random
-    graph (high-error endpoint), and DYNOTEARS's *actual* recovered graph as the
-    real-method anchor. Graph quality is reported as SHD-to-true and (for the
-    corruption ladder) the corrupted fraction.
+    graph (high-error endpoint), and the method's *actual* recovered graph as
+    the real-method anchor. Graph quality is reported as SHD-to-true and (for
+    the corruption ladder) the corrupted fraction.
     """
     from causaltemp_xai.metrics.axis_b import graph_auc, shd
 
@@ -210,22 +261,19 @@ def _graph_quality_sweep(graph, mech, X_sel, oracle_ints, rollout, cf_faith_gt,
     return rows
 
 
-def run(
-    config_name: str,
+def run_graph_method(
+    cfg,
     out_dir,
-    method: str = "dynotears",
+    method: str,
     n_cf: int = 40,
     epochs: int = 80,
     intervention_prob: float = 0.3,
     sweep: bool = False,
-    seed: int | None = None,
 ) -> None:
-    cfg = get_config(config_name)
-    if seed is not None:
-        cfg = seeded_variant(cfg, seed)
+    """Self-graphing + Axis-B graph-error decomposition for ``dynotears``/``citris``."""
     if cfg.mechanism_type != "mlp":
         raise SystemExit(
-            f"[08] self-graphing graph-error needs a nonlinear (mlp) config; "
+            f"[07] self-graphing graph-error needs a nonlinear (mlp) config; "
             f"{cfg.name!r} is mechanism_type={cfg.mechanism_type!r}. "
             "Try --config smoke_nl."
         )
@@ -237,23 +285,23 @@ def run(
     # 1. Fit the self-graphing method and read off its inferred lag-1 graph.
     #    DYNOTEARS (default) is a classical temporal causal-discovery baseline
     #    that recovers the benchmark's near-linear structure from OBSERVATIONAL
-    #    data — the load-bearing graph-aware method for Axis B / H3. CITRIS is
+    #    data -- the load-bearing graph-aware method for Axis B / H3. CITRIS is
     #    an honest secondary (representation-learning) method that needs
     #    intervention-labeled data and does not identify at smoke scale (see
     #    methods/causal/citris.py).
     X_all = data["X_train"]
     citris_meta = None
     if method == "dynotears":
-        print(f"[08] fitting DYNOTEARS on {X_all.shape[0]} sequences (k={k}, p={L}) ...")
+        print(f"[07] fitting DYNOTEARS on {X_all.shape[0]} sequences (k={k}, p={L}) ...")
         model = DYNOTEARS(k=k, p=L).fit(X_all)
         _, scores = model.inferred_graph(max_lag=L)
-    elif method == "citris":
+    else:  # citris -- the only other member of GRAPH_METHODS
         ds = generate_interventional_sequences(
             mech, k=k, L=L, T=X_all.shape[1], N=X_all.shape[0],
             seed=cfg.seed, intervention_prob=intervention_prob, mode="single",
         )
         print(
-            f"[08] fitting CITRIS on {ds.X.shape[0]} interventional sequences "
+            f"[07] fitting CITRIS on {ds.X.shape[0]} interventional sequences "
             f"(k={k}, epochs={epochs}) ..."
         )
         model = CITRIS(k=k, max_epochs=epochs, seed=0).fit(ds.X, ds.targets)
@@ -265,11 +313,9 @@ def run(
             "num_latents": int(model.model.num_latents),
             "n_train_sequences": int(ds.X.shape[0]),
         }
-    else:
-        raise SystemExit(f"[08] unknown --method {method!r}; use 'dynotears' or 'citris'")
 
     # Density-matched binarisation: keep the top-|E_true| off-diagonal edges by
-    # score (standard fair graph-recovery practice — a fixed score threshold is
+    # score (standard fair graph-recovery practice -- a fixed score threshold is
     # arbitrary and tends to over-densify). This gives an interpretable SHD and
     # a non-degenerate graph-error decomposition.
     n_true = int((graph > 0).sum())
@@ -278,8 +324,8 @@ def run(
     # 2. Graph-error decomposition: oracle CF via true graph vs inferred graph.
     #    The true-graph oracle CF is noiseless_rollout-faithful by construction
     #    (cf_faith_gt ~ 1); routing the same interventions through a mechanism
-    #    restricted to CITRIS's inferred edges degrades faithfulness by exactly
-    #    the graph error.
+    #    restricted to the inferred edges degrades faithfulness by exactly the
+    #    graph error.
     X_sel = np.asarray(data["X_test"][:n_cf], dtype=float)
     inf_mech = build_masked_mechanism(mech, adj_pred)
     rollout = CFfaith(semantics="noiseless_rollout")
@@ -311,7 +357,7 @@ def run(
     # 4. Per-method propagation error for the existing CF methods (Phase 03
     #    outputs): their real CFs carry a genuine propagation_error (they do not
     #    respect the true SCM even given the true graph). No per-method
-    #    graph-error is reported — see _per_method_propagation's docstring.
+    #    graph-error is reported -- see _per_method_propagation's docstring.
     res_dir = config_dir(cfg.name, "lstm")
     pearl = CFfaith(semantics="pearl_delta")
     method_rows = _per_method_propagation(res_dir / "cf", graph, mech, rollout, pearl)
@@ -357,15 +403,15 @@ def run(
     dump_json(out_dir_res / "graph_error.json", out)
 
     print(
-        f"[08] {method} Axis B: SHD={axis_b['SHD']:.0f} LagAcc={axis_b['LagAcc']:.2f} "
+        f"[07] {method} Axis B: SHD={axis_b['SHD']:.0f} LagAcc={axis_b['LagAcc']:.2f} "
         f"AUC={axis_b.get('AUC', float('nan')):.3f}"
     )
     print(
-        f"[08] oracle (perfect propagator): graph_error={axis_b['graph_error']:+.3f} "
+        f"[07] oracle (perfect propagator): graph_error={axis_b['graph_error']:+.3f} "
         f"propagation_error={axis_b['propagation_error']:+.3f}"
     )
     if method_rows:
-        print(f"[08] per-method decomposition ({len(method_rows)} CF methods):")
+        print(f"[07] per-method decomposition ({len(method_rows)} CF methods):")
         print(
             f"       {'method':<16} {'faith_gt':>9} {'prop_err':>9} "
             f"{'faith_gt(P)':>12} {'prop_err(P)':>12}"
@@ -377,10 +423,10 @@ def run(
                 f"{r['propagation_error_pearl']:>+12.3f}"
             )
     else:
-        print("[08] no persisted CF methods found (run experiments/03 first) — "
+        print("[07] no persisted CF methods found (run experiments/03 first) -- "
               "per-method decomposition skipped")
     if sweep_rows:
-        print("[08] graph-quality sweep (graph_error vs graph quality):")
+        print("[07] graph-quality sweep (graph_error vs graph quality):")
         print(f"       {'graph':<18} {'AUC':>6} {'SHD':>5} {'graph_error':>12}")
         for r in sweep_rows:
             auc = "  n/a" if r["graph_auc"] is None else f"{r['graph_auc']:.2f}"
@@ -388,29 +434,201 @@ def run(
                 f"       {r['label']:<18} {auc:>6} {r['shd']:>5.0f} "
                 f"{r['graph_error']:>+12.3f}"
             )
-    print(f"[08] wrote {out_dir_res / 'graph_error.json'}")
+    print(f"[07] wrote {out_dir_res / 'graph_error.json'}")
+
+
+# ---------------------------------------------------------------------------
+# Report 2: decoder-based Axis-A ICC (ivae)
+# ---------------------------------------------------------------------------
+
+
+def _ancestors_of(node: int, graph: np.ndarray) -> set[int]:
+    """Transitive causal ancestors of ``node`` (incl. itself) in the lagged
+    graph ``(k, k, L)`` where ``graph[i, j, l]==1`` means j causes i."""
+    def parents(i):
+        return {j for j in range(graph.shape[1]) if np.any(graph[i, j, :] != 0)}
+
+    seen, stack = {node}, [node]
+    while stack:
+        cur = stack.pop()
+        for p in parents(cur):
+            if p not in seen:
+                seen.add(p)
+                stack.append(p)
+    return seen
+
+
+def _align_latents_to_channels(Z: np.ndarray, F: np.ndarray):
+    """Hungarian match on |Pearson corr| between latent dims ``Z`` (N, d_z) and
+    ground-truth factors ``F`` (N, k). Returns (assign, mcc): ``assign[i]`` =
+    channel matched to latent dim ``i``; ``mcc`` = mean matched |corr|."""
+    Zc = (Z - Z.mean(0)) / (Z.std(0) + 1e-12)
+    Fc = (F - F.mean(0)) / (F.std(0) + 1e-12)
+    corr = np.abs(Zc.T @ Fc) / Z.shape[0]  # (d_z, k)
+    rows, cols = linear_sum_assignment(-corr)
+    assign = {int(r): int(c) for r, c in zip(rows, cols)}
+    mcc = float(corr[rows, cols].mean())
+    return assign, mcc
+
+
+def run_ivae(cfg, out_dir, epochs: int = 50) -> None:
+    """Decoder-based Axis-A ICC via iVAE latent traversal against the frozen LSTM."""
+    data = load_dataset(cfg.name, out_dir=out_dir)
+    graph = data["graph"]
+    k = graph.shape[0]
+    X_train, X_test = data["X_train"], data["X_test"]
+
+    ckpt = Path(out_dir) / cfg.name / "lstm.pt"
+    if not ckpt.exists():
+        raise SystemExit(
+            f"[07] no classifier at {ckpt}; run experiments/02_train_classifiers.py "
+            f"--config {cfg.name} first."
+        )
+    clf = LSTMClassifier.load(ckpt)
+
+    # Train iVAE with latent_dim = k so dims align one-to-one with channels.
+    print(f"[07] training iVAE (latent_dim={k}, epochs={epochs}) on {X_train.shape[0]} seqs ...")
+    ae = iVAE(latent_dim=k, n_segments=min(4, k), epochs=epochs,
+              beta=0.3, kl_warmup_frac=0.3)
+    ae.fit_unsupervised(X_train)
+
+    # --- Sanity gates (report FIRST) ---
+    Z = ae.encode(X_test)                         # (N, k)
+    X_recon = ae.decode(Z)                         # (N, T, k)
+    recon_mse = float(np.mean((X_recon - X_test) ** 2))
+    f_x = np.asarray(clf.predict(X_test)).reshape(-1)
+    f_recon = np.asarray(clf.predict(X_recon)).reshape(-1)
+    recon_label_agreement = float(np.mean(f_recon == f_x))
+
+    # Ground-truth factors = per-channel final values (the label-driving repr).
+    F = X_test[:, -1, :]                           # (N, k)
+    assign, mcc_val = _align_latents_to_channels(Z, F)
+
+    relevant_channels = _ancestors_of(0, graph)    # label channel 0 + ancestors
+    parent_dims = [i for i in range(k) if assign.get(i) in relevant_channels]
+    nonparent_dims = [i for i in range(k) if assign.get(i) not in relevant_channels]
+
+    interpretable = recon_label_agreement >= RECON_AGREEMENT_GATE
+    print(f"[07] GATES: recon_mse={recon_mse:.4f}  recon_label_agreement={recon_label_agreement:.2f} "
+          f"(gate>={RECON_AGREEMENT_GATE})  MCC(latent,channel)={mcc_val:.2f}")
+    print(f"[07] label-relevant channels (anc. of 0): {sorted(relevant_channels)}; "
+          f"latent->channel assign: {assign}")
+    if not interpretable:
+        print("[07] recon_label_agreement below gate -> ICC is NOT interpretable on this "
+              "run (iVAE reconstruction does not preserve the classifier's decision). "
+              "Reporting gates only; this is itself an honest Axis-A finding.")
+
+    # --- ICC magnitude ladder (pre-registered c in {1,2,3}) ---
+    rng = np.random.default_rng(cfg.seed)
+    ladder = []
+    for c in (1.0, 2.0, 3.0):
+        icc = icc_latent(X_test, ae.encode, ae.decode, clf, delta=c,
+                         scale_by_std=True, symmetric=True)  # (k,)
+        parent_mean = float(np.mean([icc[i] for i in parent_dims])) if parent_dims else float("nan")
+        nonparent_mean = float(np.mean([icc[i] for i in nonparent_dims])) if nonparent_dims else float("nan")
+        # Permuted-assignment null: random partition of the same size as parent_dims.
+        perm = rng.permutation(k)
+        null_parent = perm[:len(parent_dims)]
+        null_mean = float(np.mean([icc[i] for i in null_parent])) if len(null_parent) else float("nan")
+        ladder.append({
+            "c": c,
+            "icc_per_dim": [float(v) for v in icc],
+            "parent_aligned_mean": parent_mean,
+            "nonparent_aligned_mean": nonparent_mean,
+            "contrast": (parent_mean - nonparent_mean),
+            "permuted_null_mean": null_mean,
+        })
+        print(f"[07] c={c:g}: ICC parent-aligned={parent_mean:.3f}  non-parent={nonparent_mean:.3f}  "
+              f"contrast={parent_mean - nonparent_mean:+.3f}  (null={null_mean:.3f})")
+
+    out = {
+        "provenance": {
+            "config": cfg.as_dict(), "method": "iVAE", "metric": "icc_latent",
+            "n_eval": int(X_test.shape[0]), "latent_dim": k, "epochs": epochs,
+            "note": "matched-baseline f(D(z)); +/-delta; delta_i=c*std(z_i); "
+                    "latents aligned to channels via Hungarian on |corr|.",
+        },
+        "gates": {
+            "recon_mse": recon_mse,
+            "recon_label_agreement": recon_label_agreement,
+            "interpretable": interpretable,
+            "mcc_latent_channel": mcc_val,
+        },
+        "alignment": {
+            "latent_to_channel": assign,
+            "label_relevant_channels": sorted(int(c) for c in relevant_channels),
+            "parent_aligned_dims": parent_dims,
+            "nonparent_aligned_dims": nonparent_dims,
+        },
+        "icc_ladder": ladder,
+    }
+    res_dir = config_dir(cfg.name, "ivae")
+    res_dir.mkdir(parents=True, exist_ok=True)
+    dump_json(res_dir / "icc.json", out)
+    print(f"[07] wrote {res_dir / 'icc.json'}")
+
+
+# ---------------------------------------------------------------------------
+# CLI
+# ---------------------------------------------------------------------------
+
+
+def run(
+    config_name: str,
+    out_dir,
+    method: str = "dynotears",
+    n_cf: int = 40,
+    epochs: int | None = None,
+    intervention_prob: float = 0.3,
+    sweep: bool = False,
+    seed: int | None = None,
+) -> None:
+    """Dispatch to the auxiliary-method family selected by ``method``."""
+    cfg = get_config(config_name)
+    if seed is not None:
+        cfg = seeded_variant(cfg, seed)
+    n_epochs = epochs if epochs is not None else DEFAULT_EPOCHS.get(method, 80)
+
+    if method in GRAPH_METHODS:
+        run_graph_method(
+            cfg, out_dir, method=method, n_cf=n_cf, epochs=n_epochs,
+            intervention_prob=intervention_prob, sweep=sweep,
+        )
+    elif method == "ivae":
+        run_ivae(cfg, out_dir, epochs=n_epochs)
+    else:
+        raise SystemExit(
+            f"[07] unknown --method {method!r}; use one of "
+            f"{', '.join((*GRAPH_METHODS, 'ivae'))}"
+        )
 
 
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(
-        description="Self-graphing (DYNOTEARS / CITRIS) + Axis-B graph-error "
-                    "decomposition (H3)."
+        description="Phase 07: auxiliary causal methods -- self-graphing (DYNOTEARS / "
+                    "CITRIS) with the Axis-B graph-error decomposition (H3), or "
+                    "decoder-based Axis-A ICC (iVAE).",
     )
     parser.add_argument("--config", required=True, choices=sorted(CONFIGS))
     parser.add_argument("--out-dir", default=str(DEFAULT_OUT_DIR))
     parser.add_argument(
-        "--method", default="dynotears", choices=("dynotears", "citris"),
-        help="self-graphing method (default: dynotears — the load-bearing "
-             "graph-aware baseline; citris is the honest secondary).",
+        "--method", default="dynotears", choices=(*GRAPH_METHODS, "ivae"),
+        help="dynotears (default) -- the load-bearing graph-aware baseline; "
+             "citris -- the honest secondary self-graphing method; "
+             "ivae -- decoder-based Axis-A ICC.",
     )
-    parser.add_argument("--n-cf", type=int, default=40, help="instances for the decomposition")
-    parser.add_argument("--epochs", type=int, default=80, help="CITRIS training epochs (citris only)")
-    parser.add_argument("--intervention-prob", type=float, default=0.3)
+    parser.add_argument("--n-cf", type=int, default=40,
+                        help="instances for the decomposition (graph methods only)")
+    parser.add_argument("--epochs", type=int, default=None,
+                        help="training epochs; defaults per method (citris 80, "
+                             "ivae 50). Unused by dynotears.")
+    parser.add_argument("--intervention-prob", type=float, default=0.3,
+                        help="interventional-sequence rate (citris only)")
     parser.add_argument(
         "--sweep", action="store_true",
         help="also compute the graph-quality sweep (graph_error across a "
-             "controlled true→random graph ladder + the method's real graph), "
-             "demonstrating the decomposition's dynamic range.",
+             "controlled true->random graph ladder + the method's real graph), "
+             "demonstrating the decomposition's dynamic range (graph methods only).",
     )
     parser.add_argument(
         "--seed", type=int, default=None,

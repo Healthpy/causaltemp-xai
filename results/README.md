@@ -23,7 +23,7 @@ results/<config>/oracle/         oracle positive control, any config          (P
     per_instance.csv
     summary.json
 
-results/<config>/<method>/       nonlinear configs only; method in            (Phase 08)
+results/<config>/<method>/       nonlinear configs only; method in            (Phase 07)
                                  {dynotears (default), citris}
     graph_error.json             self-graphing Axis-B recovery (SHD/LagAcc/AUC)
                                  of the inferred lag-1 graph; `oracle_decomposition`
@@ -44,10 +44,24 @@ results/<config>/<method>/       nonlinear configs only; method in            (P
                                  decomposition rises monotonically as recovery
                                  degrades (H3a dynamic-range demonstration).
 
+results/<config>/ivae/           any config with a trained classifier          (Phase 07)
+    icc.json                     decoder-based Axis-A ICC (iVAE latent
+                                 traversal): `gates` FIRST (recon_mse,
+                                 recon_label_agreement vs the 0.7 gate,
+                                 `interpretable`) -- if the reconstruction does
+                                 not preserve the classifier's decision, ICC is
+                                 not interpretable and that is reported rather
+                                 than forced; `alignment` (latent->channel
+                                 Hungarian match, since iVAE identifies factors
+                                 only up to permutation); and `icc_ladder[]` =
+                                 the pre-registered c in {1,2,3} magnitude sweep
+                                 with parent- vs non-parent-aligned means and a
+                                 permuted-assignment null.
+
 results/tables/
     table_axis_c_cf_faith.csv    accumulated, one row per (benchmark, classifier, method) run
     table_seed_aggregate_<config>_<classifier>.csv
-                                  multi-seed pooled means + bootstrap 95% CIs (Phase 07)
+                                  multi-seed pooled means + bootstrap 95% CIs (Phase 06)
 
 results/<config>_seed<N>/        one seed replicate of <config> (M2 multi-seed protocol)
     ...                          same layout as results/<config>/ above -- each seed
@@ -102,13 +116,13 @@ uv run python experiments/04_evaluate_axes.py --config smoke
 uv run python experiments/05_run_oracle_control.py --config smoke_nl
 
 # 6. Render figures from everything under results/
-uv run python experiments/06_make_figures.py
+uv run python experiments/06_aggregate_and_report.py figures
 
 # 7. Multi-seed replication (M2): run phases 01-04 once per seed, then pool
 #    with bootstrap 95% CIs. Each seed writes to results/<config>_seed<N>/ --
 #    the un-suffixed results/<config>/ from a single-seed run above is never
 #    touched.
-uv run python experiments/07_aggregate_seeds.py --config smoke --seeds 0 1 2 3 4 --n-cf 20
+uv run python experiments/06_aggregate_and_report.py seeds --config smoke --seeds 0 1 2 3 4 --n-cf 20
 ```
 
 See `docs/plans/mvp-v0.1-completion/` and `docs/plans/nlinearscm-t/` for the

@@ -1,7 +1,7 @@
-"""Shared helpers for the numbered experiment-phase scripts (01-06).
+"""Shared helpers for the numbered experiment-phase scripts (01-07).
 
 Every phase script writes under a single ``results/`` tree so later phases
-(and ``06_make_figures.py``) can discover what earlier phases produced purely
+(and ``06_aggregate_and_report.py``) can discover what earlier phases produced purely
 by path convention::
 
     results/<config_name>/<classifier>/cf/X_sel.npy
@@ -310,7 +310,7 @@ def build_masked_mechanism(mechanism, inferred_adj: np.ndarray):
 
     Keeps the mechanism's learned weights/decay/gain but swaps in a different
     ``(k, k, L)`` parent structure. Used by the Axis-B graph-error decomposition
-    (Phase 08): rolling the oracle structural CF through a mechanism that only
+    (Phase 07): rolling the oracle structural CF through a mechanism that only
     propagates along the CITRIS-*inferred* edges — instead of the true edges —
     isolates how much CF-faith is lost to graph-estimation error (vs. the
     propagation error a real CF method would additionally incur).
@@ -423,7 +423,7 @@ def _read_per_instance_csv(path: Path) -> list[dict]:
     if not path.exists():
         raise FileNotFoundError(
             f"no {path}; run phases 01-04 for this seed first (see "
-            "experiments/07_aggregate_seeds.py)"
+            "experiments/06_aggregate_and_report.py seeds)"
         )
     with open(path, newline="") as fh:
         return list(csv.DictReader(fh))
@@ -445,7 +445,7 @@ def aggregate_across_seeds(
     Reads ``results/<base_config>_seed<seed>/<classifier>/per_instance.csv``
     for every ``seed`` in ``seeds`` (written by Phase 04, one file per seed
     replicate produced via ``causaltemp_xai.config.seeded_variant`` -- see
-    ``experiments/07_aggregate_seeds.py``), groups by ``method``, and for each
+    ``experiments/06_aggregate_and_report.py seeds``), groups by ``method``, and for each
     metric in ``metrics`` runs :func:`causaltemp_xai.stats.hierarchical_bootstrap_ci`
     over the seed-grouped per-instance values. The hierarchical (not flat)
     bootstrap is required here specifically because each seed's instances

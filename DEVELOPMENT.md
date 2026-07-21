@@ -66,7 +66,7 @@ The workflow follows 6 numbered scripts in `experiments/`:
 05_run_oracle_control.py
   └─ Oracle structural-CF positive control (any config; no classifier, no explainer)
   
-06_make_figures.py
+06_aggregate_and_report.py
   └─ Aggregates results and generates publication figures
 ```
 

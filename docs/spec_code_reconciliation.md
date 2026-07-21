@@ -76,7 +76,7 @@ methodologically wrong:
   `δ` confounds causal relevance with each latent's scale), **±δ averaging**,
   and a deterministic decode. Unit-tested in `tests/test_icc_latent.py`
   (high ICC for the causal dim, ~0 for others, baseline absorbs recon noise).
-- **Wired**: `experiments/09_axis_a_icc.py` runs it on the decoder-based iVAE,
+- **Wired**: `experiments/07_auxiliary_methods.py` runs it on the decoder-based iVAE,
   with the PI-mandated guards — a **reconstruction-fidelity gate**
   (`recon_label_agreement ≥ 0.8`), **latent→factor Hungarian alignment** (MCC)
   before the parent-vs-non-parent contrast, a pre-registered magnitude ladder
@@ -249,7 +249,7 @@ edit each method paradigm produces.
 | Divergence | Source of truth | Action on code | Action on spec |
 |---|---|---|---|
 | Eq. 1 mechanism | LIVE additive-noise ANM (linear + MLP) | none (dormant `scm/operators.py` kept, flagged) | rewrite Eq. 1 to the ANM + instantiations; `Φ` → footnote |
-| ICC | latent-traversal (definitional) + attribution proxy | corrected (matched baseline, ±δ, std-scaling) + wired in Phase 09 | keep formula; document the baseline deviation + attribution proxy |
+| ICC | latent-traversal (definitional) + attribution proxy | corrected (matched baseline, ±δ, std-scaling) + wired in Phase 07 | keep formula; document the baseline deviation + attribution proxy |
 | CF-faith | residual SCM-consistency, two semantics | none | replace DTW definition with residual definition |
 | DTW (§3 update) | — (discarded) | remove `axis_c.proximity_dtw` (unwired) | remove the DTW CF-faith definition and the "complementary metric" offer |
 | IVR (§4.1) | — (retired) | remove `axis_c.ivr` + all wiring/tests/schema | remove the metric; P3 → CF-faith retro gate |
@@ -261,5 +261,5 @@ DTW and IVR are **deleted** (neither ever produced a reported number that
 survives, and IVR was 0-by-construction in the live wiring), and TRSI's *claim*
 is corrected without touching its computation. The earlier "optionally add
 DTW-to-oracle" P1 is **withdrawn**, not deferred; the "wire `icc_latent`" P1 is
-**done** (Phase 09). Spec and code now tell one consistent story, clearing the
+**done** (Phase 07). Spec and code now tell one consistent story, clearing the
 methods-section gate.

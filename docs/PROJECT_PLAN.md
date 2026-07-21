@@ -583,7 +583,7 @@ and hard constraints — summarized here):**
 
 1. **Methodology & Coding — pipeline-gap closure (P0 item 0, top priority).** Wire
    `PearlCARLARecourse` into `build_methods()`; run Phases 01→04 on `smoke_nl` for the first time
-   through the current pipeline; re-run Phase 07 on `smoke` with the full 7-method roster
+   through the current pipeline; re-run Phase 06 `seeds` on `smoke` with the full 7-method roster
    (3 seeds, n_cf=10, matching the existing validation's scale); add a regression test so this
    specific method-missing-from-registry class of gap cannot silently recur; regenerate the 3
    figures if the added methods change them. Explicitly required to make an *documented*, not

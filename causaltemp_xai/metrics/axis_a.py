@@ -195,8 +195,8 @@ def icc_latent(
     else:
         step = np.broadcast_to(np.asarray(delta, dtype=float), (d_z,)).astype(float)
 
-    # Correction 1: matched baseline — prediction on the *unperturbed
-    # reconstruction*, so ICC measures only the traversal, not reconstruction error.
+    # Matched baseline: prediction on the *unperturbed reconstruction*, so ICC
+    # measures only the traversal, not reconstruction error.
     f_baseline = np.asarray(predict(np.asarray(decoder(Z), dtype=float))).reshape(-1)
 
     signs = (1.0, -1.0) if symmetric else (1.0,)
@@ -423,7 +423,7 @@ def mcc(
     Returns
     -------
     float
-        Mean absolute Pearson correlation of optimally matched pairs, in
+        Mean absolute Spearman correlation of optimally matched pairs, in
         ``[0, 1]``.  1 means perfect recovery.
     """
     Z = np.asarray(z_inferred, dtype=float)
@@ -431,7 +431,7 @@ def mcc(
     d_z = Z.shape[1]
     K = V.shape[1]
 
-    # Absolute correlation matrix C[j, k] = |corr(Z[:, j], V[:, k])|
+    # Absolute correlation matrix corr_mat[j, k] = |corr(Z[:, j], V[:, k])|
     corr_mat = np.zeros((d_z, K))
     for j in range(d_z):
         for k in range(K):

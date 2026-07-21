@@ -1,6 +1,6 @@
 """Regression test: every implemented, unit-tested CF method must actually be
 wired into ``experiments/03_run_cf_methods.py::build_methods()`` -- the one
-registry every phase-03/04/07 run reads from.
+registry every phase-03/04/06 run reads from.
 
 This guards against exactly the gap found during the M2 pipeline-wiring
 review (see ``docs/m2_multiseed_and_pearl_carla.md``, S3): ``PearlCARLARecourse``
@@ -12,7 +12,7 @@ correct and tested and still never actually run -- this test exists so that
 gap cannot recur silently for *any* of the seven currently-registered methods.
 
 Phase 03 is a numbered-prefix module (not a valid ``import`` target), so it is
-loaded the same way ``experiments/07_aggregate_seeds.py`` already does:
+loaded the same way ``experiments/06_aggregate_and_report.py`` already does:
 ``importlib.import_module("experiments.03_run_cf_methods")``.
 """
 

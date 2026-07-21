@@ -63,7 +63,7 @@ that different methods support, and risked letting a *graph-discovery* method
 ### H3a — a well-recovered graph incurs near-zero graph-induced CF-faith loss
 
 > **Verdict: CONFIRMED (direction), smoke-scale magnitude small.** Evidence:
-> `experiments/08_citris_graph.py --method dynotears --sweep`
+> `experiments/07_auxiliary_methods.py --method dynotears --sweep`
 > (`results/smoke_nl/dynotears/graph_error.json`).
 
 - DYNOTEARS (genuine vendored McKinsey CausalNex solver, **observational**)

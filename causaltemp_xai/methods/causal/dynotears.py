@@ -28,7 +28,7 @@ dynamic range and provides H3 a genuine, non-circular graph-aware method. It is
 
 The class exposes the same ``inferred_graph(max_lag, threshold)`` interface as
 :class:`causaltemp_xai.methods.causal.CITRIS`, so the Axis-B pipeline
-(``experiments/08_citris_graph.py``) can consume either interchangeably.
+(``experiments/07_auxiliary_methods.py``) can consume either interchangeably.
 """
 
 from __future__ import annotations
