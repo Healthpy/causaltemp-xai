@@ -13,12 +13,14 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
+from causaltemp_xai.benchmarks.mechanisms import LinearMechanism
 from causaltemp_xai.metrics.axis_b import (
     graph_auc,
     graph_error_decomposition,
     lag_accuracy,
+    lagged_edge_f1,
+    residual_dependence,
     shd,
-    tv_confounding,
 )
 
 
@@ -110,40 +112,86 @@ class TestGraphAUCAdversarial:
 
 
 # ---------------------------------------------------------------------------
-# TV-Confounding — marginal divergence of non-adjacent channel pairs
+# Residual dependence — unexplained association between non-adjacent channels
+# (replaces tv_confounding, metric-quality fix #1 2026-07-18)
 # ---------------------------------------------------------------------------
 
 
-class TestTVConfoundingAdversarial:
-    def test_low_for_matching_marginals(self):
-        # Two non-adjacent channels drawn from the same distribution: a
-        # confounding score should be near zero.
+class TestResidualDependenceAdversarial:
+    def test_low_for_independent_channels(self):
+        # Two independent non-adjacent channels: no unexplained association.
         rng = np.random.default_rng(0)
-        X = rng.normal(size=(400, 10, 2))
+        X = rng.normal(size=(200, 10, 2))
         adj = np.zeros((2, 2))
-        assert tv_confounding(X, adj) < 0.2
+        assert residual_dependence(X, adj) < 0.1
 
-    def test_high_for_divergent_marginals(self):
-        # Same non-adjacent pair, but the marginals are pushed far apart: the
-        # unexplained (non-edge) association must register as large TV.
+    def test_marginal_shift_is_not_confounding(self):
+        # The retired TV formulation's false positive: a mean shift changes
+        # the marginals but creates no dependence — must stay low.
         rng = np.random.default_rng(0)
-        X = rng.normal(size=(400, 10, 2))
+        X = rng.normal(size=(200, 10, 2))
         X[:, :, 1] += 100.0
         adj = np.zeros((2, 2))
-        assert tv_confounding(X, adj) > 0.8
+        assert residual_dependence(X, adj) < 0.1
 
-    def test_divergent_exceeds_matching(self):
+    def test_flags_shared_latent_confounder(self):
+        # A genuine confounder: a shared latent added to both non-adjacent
+        # channels induces dependence and must score high.
         rng = np.random.default_rng(1)
-        base = rng.normal(size=(400, 10, 2))
-        shifted = base.copy()
-        shifted[:, :, 1] += 100.0
+        X = rng.normal(size=(200, 10, 2))
+        latent = rng.normal(size=(200, 10))
+        X[:, :, 0] += 2.0 * latent
+        X[:, :, 1] += 2.0 * latent
         adj = np.zeros((2, 2))
-        assert tv_confounding(shifted, adj) > tv_confounding(base, adj)
+        assert residual_dependence(X, adj) > 0.5
+
+    def test_mechanism_mode_confounder_free_scm_is_low(self):
+        # On a confounder-free VAR the abducted residuals of non-adjacent
+        # channels are independent noise — the diagnostic must read ~0
+        # (the retired TV score read ~0.6 here, the motivating defect).
+        rng = np.random.default_rng(2)
+        A = np.array([[0.5, 0.0], [0.0, 0.5]])  # two disconnected channels
+        mech = LinearMechanism([A])
+        N, T, k = 60, 30, 2
+        X = np.zeros((N, T, k))
+        noise = rng.laplace(0, 0.1, (N, T, k))
+        for t in range(1, T):
+            X[:, t] = X[:, t - 1] @ A.T + noise[:, t]
+        adj = np.zeros((2, 2))
+        assert residual_dependence(X, adj, mechanism=mech) < 0.1
 
     def test_fully_connected_has_no_pairs(self):
         X = np.zeros((5, 10, 2))
         adj = np.ones((2, 2))  # no non-adjacent pair exists
-        assert tv_confounding(X, adj) == 0.0
+        assert residual_dependence(X, adj) == 0.0
+
+
+# ---------------------------------------------------------------------------
+# Lagged-edge F1 — precision-aware companion to recall-only lag_accuracy
+# (metric-quality fix #7 2026-07-18)
+# ---------------------------------------------------------------------------
+
+
+class TestLaggedEdgeF1Adversarial:
+    def test_complete_graph_does_not_score_one(self):
+        # The exploit lag_accuracy cannot catch: predicting every edge at
+        # every lag gives LagAcc = 1.0 but must not give F1 = 1.0.
+        g = _true_lagged_graph()
+        complete = np.ones_like(g)
+        assert lag_accuracy(g, complete) == 1.0  # the documented gap
+        assert lagged_edge_f1(g, complete) < 1.0
+
+    def test_perfect_graph_scores_one(self):
+        g = _true_lagged_graph()
+        assert lagged_edge_f1(g, g) == 1.0
+
+    def test_empty_prediction_scores_zero(self):
+        g = _true_lagged_graph()
+        assert lagged_edge_f1(g, np.zeros_like(g)) == 0.0
+
+    def test_no_true_edges_is_nan(self):
+        empty = np.zeros((3, 3, 2), dtype=int)
+        assert np.isnan(lagged_edge_f1(empty, empty))
 
 
 # ---------------------------------------------------------------------------

@@ -25,6 +25,13 @@ from typing import Literal
 import numpy as np
 from sklearn.ensemble import IsolationForest
 
+# Single source of truth for "is this element changed?" across the benchmark
+# (shared with derive_intervention_t and CFfaith's retro gate) — sparsity uses
+# the same predicate so one benchmark has one definition of "changed"
+# (metric-quality fix #4, 2026-07-18; previously an absolute 1e-6 that pinned
+# gradient methods at sparsity 0.00).
+from causaltemp_xai.scm.intervention import INTERVENTION_TOL
+
 # ---------------------------------------------------------------------------
 # Validity
 # ---------------------------------------------------------------------------
@@ -112,7 +119,7 @@ def proximity(
 def sparsity(
     x_original: np.ndarray,
     x_cf: np.ndarray,
-    tol: float = 1e-6,
+    tol: float = INTERVENTION_TOL,
     return_detailed: bool = False,
 ) -> float | dict[str, float]:
     """Fraction of features that are unchanged between original and CF.
@@ -132,7 +139,12 @@ def sparsity(
     x_cf:
         Counterfactual instance, same shape.
     tol:
-        Absolute tolerance below which a difference counts as zero.
+        Per-element threshold below which a difference counts as unchanged.
+        Defaults to :data:`~causaltemp_xai.scm.intervention.INTERVENTION_TOL`
+        — the benchmark's single definition of "changed", shared with
+        ``derive_intervention_t`` and CF-faith's retroactive gate (fix #4,
+        2026-07-18). The old absolute ``1e-6`` counted float-scale gradient
+        perturbations as edits, pinning gradient methods at 0.00.
     return_detailed:
         If False (default), return scalar sparsity (all features flattened).
         If True and input is temporal ``(T, k)``, return dict with
@@ -234,6 +246,75 @@ def ood_plausibility(
 
 
 # ---------------------------------------------------------------------------
+# SCM-noise plausibility — ground-truth-exact plausibility (fix #8, 2026-07-18)
+# ---------------------------------------------------------------------------
+
+
+def scm_noise_plausibility(
+    x_cf: np.ndarray,
+    mechanism,
+    noise_scale: float,
+    t_start: int | None = None,
+) -> float:
+    """Ground-truth plausibility: is the CF's implied noise calibrated to the SCM's?
+
+    The benchmark owns the data-generating process, so plausibility need not
+    be estimated (IsolationForest on flattened trajectories — see
+    :func:`ood_plausibility`, now the mechanism-free stand-in): abduct the
+    noise the CF *implies* under the true mechanism,
+    ``eps_hat[t] = x_cf[t] - f(window_t)`` (exact under additive noise), and
+    compare its empirical scale to the SCM's true noise scale ``b``
+    (for Laplace(0, b) noise, ``E|eps| = b``):
+
+    .. math::
+
+        \\mathrm{plaus} = \\exp\\big(-\\,\\big|\\ln(\\hat{s}/b)\\big|\\big),
+        \\qquad \\hat{s} = \\mathrm{mean}\\,|\\hat{\\varepsilon}|
+
+    * ``1.0`` — the CF's innovations are exactly noise-calibrated
+      (an on-manifold trajectory, e.g. the Pearl oracle).
+    * ``→ 0`` as the implied noise is far too **large** (arbitrary edits the
+      mechanism cannot absorb) or far too **small** (a noiseless skeleton:
+      ``eps ≡ 0`` post-``t0`` is maximally *likely* pointwise but maximally
+      implausible as a draw from the noise law — the log-ratio catches what a
+      naive likelihood would reward).
+
+    Dimension-free, calibrated, temporal by construction — no estimator, no
+    contamination hyperparameter. Residuals at ``t < L`` are excluded (they
+    absorb initial conditions; see ``abduct_noise``).
+
+    Parameters
+    ----------
+    x_cf:
+        Counterfactual, shape ``(T, k)`` or batch ``(N, T, k)``.
+    mechanism:
+        The true :class:`~causaltemp_xai.benchmarks.mechanisms.Mechanism`.
+    noise_scale:
+        The SCM's true noise scale ``b`` (``BenchmarkConfig.noise_scale``).
+    t_start:
+        First timestep whose residual is scored. Defaults to ``mechanism.L``.
+        Pass the intervention step to score only the post-intervention region.
+
+    Returns
+    -------
+    float in (0, 1] — mean over the batch for batched input.
+    """
+    from causaltemp_xai.benchmarks.structural_cf import abduct_noise
+
+    x = np.asarray(x_cf, dtype=float)
+    if x.ndim == 2:
+        x = x[np.newaxis]
+    lo = mechanism.L if t_start is None else int(t_start)
+    scores = []
+    for inst in x:
+        eps_hat = abduct_noise(inst, mechanism)[lo:]
+        s_hat = float(np.abs(eps_hat).mean())
+        ratio = (s_hat + 1e-12) / float(noise_scale)
+        scores.append(float(np.exp(-abs(np.log(ratio)))))
+    return float(np.mean(scores))
+
+
+# ---------------------------------------------------------------------------
 # TRSI — temporal smoothness of the edit (bench-ported, mechanism-free proxy)
 # ---------------------------------------------------------------------------
 
@@ -280,6 +361,25 @@ def trsi(X_cf: np.ndarray, X: np.ndarray) -> float:
     Ported from ``causal_tscf_bench/metrics/axis_c.py``; the formulation is
     adopted, not novel to this benchmark.
 
+    Normalization (metric-quality fix #5, 2026-07-18)
+    -------------------------------------------------
+    TRSI is reported as **relative jitter**: the mean step-to-step change of
+    the edit divided by the edit's own mean magnitude,
+
+    .. math::
+
+        \\mathrm{TRSI} = \\frac{\\tfrac{1}{T-1}\\sum_t
+            \\lVert \\Delta_{t+1} - \\Delta_t \\rVert_2}
+            {\\tfrac{1}{T}\\sum_t \\lVert \\Delta_t \\rVert_2 + \\epsilon}.
+
+    The unnormalized form scaled with the edit's magnitude, partially
+    re-measuring proximity rather than temporal coherence. The ratio is
+    dimensionless and scale-invariant: doubling the edit leaves it unchanged.
+    Caveat retained from the original: a genuine step intervention at ``t0``
+    contributes one legitimate large first-difference (the onset), so TRSI
+    must still be read against the other Axis-C columns, never minimised
+    on its own.
+
     Parameters
     ----------
     X_cf : (N, T, k) or (T, k) -- counterfactuals
@@ -288,8 +388,8 @@ def trsi(X_cf: np.ndarray, X: np.ndarray) -> float:
     Returns
     -------
     float
-        Mean L2 norm of the first difference of ``Δ``. Non-negative; 0 for a
-        constant (perfectly smooth) edit.
+        Relative jitter of ``Δ``. Non-negative; 0 for a constant (perfectly
+        smooth) edit; 0 for an identical CF (zero edit) by convention.
     """
     X_cf_arr = np.asarray(X_cf, dtype=float)
     X_arr = np.asarray(X, dtype=float)
@@ -299,12 +399,17 @@ def trsi(X_cf: np.ndarray, X: np.ndarray) -> float:
     delta = X_cf_arr - X_arr                             # (N, T, k)
     d_delta = np.diff(delta, axis=1)                     # (N, T-1, k) -- first difference
     l2_per_step = np.sqrt((d_delta ** 2).sum(axis=-1))   # (N, T-1)
-    return float(l2_per_step.mean())
+    l2_delta = np.sqrt((delta ** 2).sum(axis=-1))        # (N, T) -- edit magnitude
+    denom = float(l2_delta.mean())
+    if denom < 1e-12:
+        return 0.0  # zero edit: nothing to be jittery about
+    return float(l2_per_step.mean() / denom)
 
 
 def compute_axis_c(X: np.ndarray, X_cf_exp: np.ndarray,
                    X_train: np.ndarray, classifier,
-                   target_class: int) -> dict:
+                   target_class: int,
+                   mechanism=None, noise_scale: float | None = None) -> dict:
     """Compute all Axis C metrics.
 
     The retroactive-edit check that IVR used to provide lives in
@@ -318,10 +423,14 @@ def compute_axis_c(X: np.ndarray, X_cf_exp: np.ndarray,
     X_train    : (N_train, T, k) training distribution
     classifier : classifier with .predict()
     target_class : int
+    mechanism  : optional Mechanism — with ``noise_scale``, adds the
+                 ground-truth ``SCM_Plausibility`` column (fix #8)
+    noise_scale : optional float — the SCM's true noise scale
 
     Returns
     -------
-    dict with Validity, Proximity_L1, Proximity_L2, Sparsity, OOD, TRSI.
+    dict with Validity, Proximity_L1, Proximity_L2, Sparsity, OOD, TRSI,
+    and (when mechanism + noise_scale are given) SCM_Plausibility.
     """
     results: dict = {}
     results["Validity"] = validity(X_cf_exp, classifier, target_class)
@@ -338,5 +447,10 @@ def compute_axis_c(X: np.ndarray, X_cf_exp: np.ndarray,
 
     ood_scores = np.atleast_1d(ood_plausibility(X_train, X_cf_exp))
     results["OOD"] = float(np.mean(ood_scores))
+
+    if mechanism is not None and noise_scale is not None:
+        results["SCM_Plausibility"] = scm_noise_plausibility(
+            X_cf_exp, mechanism, noise_scale
+        )
 
     return results

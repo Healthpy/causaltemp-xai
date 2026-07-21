@@ -158,9 +158,12 @@ def axis_a_block(clf, X_sel, attributions, graph, mech, ig_steps=64) -> dict:
     so ``int_channel`` / ``causal_parents`` are real, not proxies."""
     interventions = build_oracle_interventions(X_sel, mech)
     int_channels = [node for (_, node, _) in interventions]
+    t0s = [t0 for (t0, _, _) in interventions]
     causal_parents_list = [causal_parents(graph, node) for node in int_channels]
 
-    axis_a = axis_a_for_attribution(attributions, int_channels, causal_parents_list)
+    axis_a = axis_a_for_attribution(
+        attributions, int_channels, causal_parents_list, t0s=t0s
+    )
 
     def _attribution_fn(x):
         return integrated_gradients(clf, x, TARGET_CLASS, steps=ig_steps)

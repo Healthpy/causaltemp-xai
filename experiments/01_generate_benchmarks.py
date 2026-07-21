@@ -48,12 +48,14 @@ def generate_one(config_name: str, out_dir, shift_noise: str | None, seed: int |
     print(f"     class balance: {meta['class_balance']}")
 
     data = load_dataset(cfg.name, out_dir=out_dir)
-    axis_b = axis_b_benchmark_diagnostic(data["graph"], data["X_test"])
+    axis_b = axis_b_benchmark_diagnostic(
+        data["graph"], data["X_test"], mechanism=data.get("mechanism")
+    )
     axis_b_path = RESULTS_DIR / cfg.name / "axis_b_benchmark.json"
     dump_json(axis_b_path, axis_b)
     print(
         f"     axis B (graph diagnostic): SHD={axis_b['SHD']:.0f} "
-        f"LagAcc={axis_b['LagAcc']:.2f} TV_Confounding={axis_b.get('TV_Confounding', float('nan')):.3f}"
+        f"LagAcc={axis_b['LagAcc']:.2f} ResidualDep={axis_b.get('ResidualDep', float('nan')):.3f}"
     )
     print(f"     -> {axis_b_path}")
 

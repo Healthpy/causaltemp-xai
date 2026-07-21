@@ -3,7 +3,6 @@
 Full port from causal_tscf_bench/metrics/axis_d.py.
 
 Metrics:
-  Shift_VR   : Validity Retention under distribution shift (Gaussian noise injection)
   InputSens  : Mean sensitivity of explanation to small input perturbations
   ConceptStab: Variance of concept activations across semantically equivalent instances
 
@@ -11,11 +10,12 @@ Reference:
   Alvarez-Melis & Jaakkola (2018), On the Robustness of Interpretability Methods.
   Hsieh et al. (2021), Evaluations and Methods for Explanation through Robustness Analysis.
 
-NOTE: The top-level eval.py also has a shift_vr() function (Axis D, validity-retention
-under environment shift). That function operates at the method-comparison level
-(no noise injection, uses separate base/shift datasets). This module's shift_vr()
-adds Gaussian noise to a single dataset, which is a different protocol.
-Both are kept; eval.shift_vr is the benchmark-level protocol.
+NOTE: Shift-VR (validity retention under environment shift) lives in the
+top-level ``eval.py`` — the guarded, adversarially tested, base-CF-reusing
+protocol the pipeline uses. This module previously carried a second, unused
+``shift_vr`` (Gaussian noise-injection variant) under the same name; it was
+removed 2026-07-18 (metric-quality fix #3): an untested duplicate that also
+silently counted explainer crashes as invalidity (``except: pass``).
 """
 
 from __future__ import annotations
@@ -23,62 +23,6 @@ from __future__ import annotations
 from typing import Callable
 
 import numpy as np
-
-
-def shift_vr(X_test: np.ndarray, classifier, cf_explainer,
-             target_class: int, sigma: float = 0.1,
-             n_trials: int = 5, rng: np.random.Generator | None = None) -> float:
-    """Shift Validity Retention (noise-injection variant).
-
-    Inject Gaussian noise (sigma * std(X_test)) into test instances and
-    re-run the CF explainer. Measure fraction of shifted instances where
-    the CF still achieves target_class.
-
-    Parameters
-    ----------
-    X_test       : (N, T, k)
-    classifier   : classifier with .predict()
-    cf_explainer : CFExplainer with .explain() or object with .generate()
-    target_class : int
-    sigma        : noise scale (relative to std(X_test))
-    n_trials     : number of noise injections per instance
-    rng          : numpy RNG
-
-    Returns
-    -------
-    float in [0, 1]
-    """
-    if rng is None:
-        rng = np.random.default_rng()
-
-    N = X_test.shape[0]
-    noise_std = X_test.std() * sigma
-    valid_count = 0
-    total = 0
-
-    # Support both CFExplainer.explain() and generate() interfaces
-    if hasattr(cf_explainer, "explain"):
-        def _get_cf(x):
-            return cf_explainer.explain(x, target_class, classifier)
-    else:
-        def _get_cf(x):
-            return cf_explainer.generate(x, classifier)
-
-    for i in range(N):
-        for _ in range(n_trials):
-            x_noisy = X_test[i] + rng.normal(0, noise_std, X_test[i].shape)
-            try:
-                x_cf = _get_cf(x_noisy)
-                pred = classifier.predict(x_cf[np.newaxis])
-                if hasattr(pred, "__len__"):
-                    pred = pred[0]
-                if int(pred) == target_class:
-                    valid_count += 1
-            except Exception:
-                pass
-            total += 1
-
-    return float(valid_count / max(total, 1))
 
 
 def input_sensitivity(X_test: np.ndarray, attribution_fn: Callable,
@@ -146,43 +90,32 @@ def concept_stability(concept_fn: Callable, X_group: np.ndarray) -> float:
     return float(activations.var(axis=0).mean())
 
 
-def compute_axis_d(X_test: np.ndarray, classifier,
-                   cf_explainer=None,
+def compute_axis_d(X_test: np.ndarray, classifier=None,
                    attribution_fn: Callable | None = None,
                    concept_fn: Callable | None = None,
-                   target_class: int = 1,
-                   sigma: float = 0.1,
-                   n_trials: int = 5,
                    rng: np.random.Generator | None = None) -> dict:
     """Aggregate Axis D metrics.
 
-    All metrics are optional; pass None to skip.
+    All metrics are optional; pass None to skip. Shift-VR for CF methods is
+    the ``eval.shift_vr`` benchmark-level protocol, not part of this module
+    (see module docstring).
 
     Parameters
     ----------
     X_test       : (N, T, k)
-    classifier   : classifier with .predict()
-    cf_explainer : CFExplainer or None
+    classifier   : kept for API compatibility; unused
     attribution_fn : callable or None
     concept_fn   : callable or None
-    target_class : int
-    sigma        : noise scale for Shift_VR
-    n_trials     : noise trials per instance
     rng          : numpy RNG
 
     Returns
     -------
-    dict with subset of: Shift_VR, InputSens, ConceptStab
+    dict with subset of: InputSens, ConceptStab
     """
     if rng is None:
         rng = np.random.default_rng()
 
     results: dict = {}
-
-    if cf_explainer is not None:
-        results["Shift_VR"] = shift_vr(
-            X_test, classifier, cf_explainer, target_class, sigma, n_trials, rng
-        )
 
     if attribution_fn is not None:
         results["InputSens"] = input_sensitivity(X_test, attribution_fn, rng=rng)

@@ -4,9 +4,11 @@ Full port from causal_tscf_bench/metrics/axis_b.py.
 
 Metrics:
   SHD        : Structural Hamming Distance between inferred and ground-truth adjacency
-  LagAcc     : Fraction of edges where the correct lag is identified
+  LagAcc     : Fraction of true edges recovered at the correct lag (recall-only)
+  LagF1      : F1 over lagged edges (precision-aware companion to LagAcc)
   AUC-ROC    : Edge-level AUC over binary edge presence across the graph
-  TV-Conf    : Total-Variation confounding score (unused confounders)
+  ResidualDep: |Pearson r| of mechanism residuals between non-adjacent channels
+               (replaces the retired TV-confounding score, fix #1 2026-07-18)
   GraphErrDecomp: CF-faith against ground-truth graph vs. inferred graph
 
 Reference:
@@ -77,46 +79,103 @@ def graph_auc(adj_true: np.ndarray, score_matrix: np.ndarray) -> float:
     return float(roc_auc_score(y_true, y_score))
 
 
-def tv_confounding(X: np.ndarray, adj_true: np.ndarray) -> float:
-    """Total-Variation Confounding Score.
+def residual_dependence(X: np.ndarray, adj_true: np.ndarray,
+                        mechanism=None) -> float:
+    """Residual-Dependence Score — unexplained association between non-adjacent channels.
 
-    For each pair of channels (i, j) with no direct edge in adj_true,
-    measure the TV-distance of their marginal distributions.
+    Replaces ``tv_confounding`` (metric-quality fix #1, 2026-07-18).
+    Confounding / unmodeled structure manifests as **dependence** between
+    channels the graph says are not directly connected — not as dissimilarity
+    of their marginal distributions, which is what the retired TV formulation
+    measured (two independent channels with different scales scored high TV,
+    and a confounder-free SCM read ~0.6).
+
+    When ``mechanism`` is given, dependence is measured on the **abducted
+    mechanism residuals** ``eps[t] = x[t] - f(window_t)`` (exact under the
+    benchmark's additive-noise SCMs): after the graph explains what it can,
+    any remaining correlation between non-adjacent channels' innovations is
+    genuine unmodeled association. Residuals at ``t < L`` are excluded (they
+    absorb initial conditions — see ``abduct_noise``). Without a mechanism the
+    raw channel values are used (weaker: parent-mediated association is then
+    not removed and can inflate the score).
 
     Parameters
     ----------
-    X        : (N, T, k)
-    adj_true : (k, k) lag-aggregated binary adjacency
+    X         : (N, T, k)
+    adj_true  : (k, k) lag-aggregated binary adjacency
+    mechanism : optional Mechanism — enables residual (recommended) mode
 
     Returns
     -------
-    float -- mean TV over non-adjacent pairs; 0.0 if fully connected
+    float -- mean |Pearson r| over non-adjacent channel pairs, in [0, 1];
+    ~0 for a well-specified confounder-free SCM. 0.0 if fully connected.
     """
+    X = np.asarray(X, dtype=float)
     k = adj_true.shape[0]
-    tv_scores = []
-    ch_means = X.mean(axis=1)  # (N, k) time-average per channel
 
+    if mechanism is not None:
+        from causaltemp_xai.benchmarks.structural_cf import abduct_noise
+
+        L = mechanism.L
+        R = np.stack([abduct_noise(x, mechanism)[L:] for x in X])  # (N, T-L, k)
+    else:
+        R = X
+    flat = R.reshape(-1, k)  # pool instances and time
+
+    scores = []
     for i in range(k):
         for j in range(i + 1, k):
             if adj_true[i, j] == 0 and adj_true[j, i] == 0:
-                x_i = ch_means[:, i]
-                x_j = ch_means[:, j]
-                bins = np.linspace(
-                    min(x_i.min(), x_j.min()),
-                    max(x_i.max(), x_j.max()) + 1e-6, 31
-                )
-                h_i, _ = np.histogram(x_i, bins=bins, density=True)
-                h_j, _ = np.histogram(x_j, bins=bins, density=True)
-                dx = bins[1] - bins[0]
-                tv = 0.5 * np.sum(np.abs(h_i - h_j)) * dx
-                tv_scores.append(tv)
+                a, b = flat[:, i], flat[:, j]
+                sa, sb = a.std(), b.std()
+                if sa < 1e-12 or sb < 1e-12:
+                    scores.append(0.0)
+                    continue
+                r = float(np.corrcoef(a, b)[0, 1])
+                scores.append(abs(r) if np.isfinite(r) else 0.0)
 
-    return float(np.mean(tv_scores)) if tv_scores else 0.0
+    return float(np.mean(scores)) if scores else 0.0
+
+
+def lagged_edge_f1(adj_true: np.ndarray, adj_pred: np.ndarray) -> float:
+    """F1 over lagged edges — the precision-aware companion to ``lag_accuracy``.
+
+    ``lag_accuracy`` is recall-only: a predicted **complete** graph (every
+    edge at every lag) scores 1.0 (metric-quality fix #7, 2026-07-18). F1
+    keeps the lag-resolved recall but charges for spurious edges.
+
+    Parameters
+    ----------
+    adj_true : (k, k, max_lag) binary
+    adj_pred : (k, k, max_lag) binary
+
+    Returns
+    -------
+    float in [0, 1]; nan if the true graph has no edges.
+    """
+    t = np.asarray(adj_true).astype(bool)
+    p = np.asarray(adj_pred).astype(bool)
+    n_true = int(t.sum())
+    if n_true == 0:
+        return float("nan")
+    tp = int((t & p).sum())
+    n_pred = int(p.sum())
+    if n_pred == 0 or tp == 0:
+        return 0.0
+    precision = tp / n_pred
+    recall = tp / n_true
+    return float(2 * precision * recall / (precision + recall))
 
 
 def graph_error_decomposition(cf_faith_vs_gt: float,
                                cf_faith_vs_inferred: float) -> dict:
     """Decompose CF-faith drop into graph-estimation error vs. propagation failure.
+
+    Sign convention (metric-quality fix #10, 2026-07-18): this is bookkeeping,
+    not a decomposition into non-negative parts. ``graph_error =
+    cf_faith_gt - cf_faith_inferred`` **can be negative** — an inferred graph
+    can outscore the ground truth by chance on a finite CF sample. Report the
+    signed value; do not clip.
 
     Parameters
     ----------
@@ -125,7 +184,8 @@ def graph_error_decomposition(cf_faith_vs_gt: float,
 
     Returns
     -------
-    dict with: cf_faith_gt, cf_faith_inferred, graph_error, propagation_error
+    dict with: cf_faith_gt, cf_faith_inferred, graph_error (signed),
+    propagation_error
     """
     graph_err = cf_faith_vs_gt - cf_faith_vs_inferred
     return {
@@ -141,7 +201,8 @@ def compute_axis_b(adj_true_lagged: np.ndarray,
                    score_matrix: np.ndarray | None = None,
                    X: np.ndarray | None = None,
                    cf_faith_gt: float | None = None,
-                   cf_faith_inferred: float | None = None) -> dict:
+                   cf_faith_inferred: float | None = None,
+                   mechanism=None) -> dict:
     """Aggregate Axis B metrics.
 
     Parameters
@@ -149,13 +210,15 @@ def compute_axis_b(adj_true_lagged: np.ndarray,
     adj_true_lagged : (k, k, max_lag) ground-truth lagged adjacency
     adj_pred_lagged : (k, k, max_lag) predicted lagged adjacency
     score_matrix    : (k, k, max_lag) optional continuous edge scores for AUC
-    X               : (N, T, k) optional for TV-Confounding
+    X               : (N, T, k) optional for the residual-dependence diagnostic
     cf_faith_gt     : optional for graph-error decomposition
     cf_faith_inferred : optional for graph-error decomposition
+    mechanism       : optional Mechanism — residual (recommended) mode for
+                      the dependence diagnostic
 
     Returns
     -------
-    dict with keys: SHD, LagAcc, (AUC), (TV_Confounding), (cf_faith_gt, ...)
+    dict with keys: SHD, LagAcc, LagF1, (AUC), (ResidualDep), (cf_faith_gt, ...)
     """
     adj_true_bin = (adj_true_lagged > 0).astype(int)
     adj_pred_bin = (adj_pred_lagged > 0).astype(int)
@@ -163,6 +226,7 @@ def compute_axis_b(adj_true_lagged: np.ndarray,
     results: dict = {
         "SHD": float(shd(adj_true_bin, adj_pred_bin)),
         "LagAcc": lag_accuracy(adj_true_lagged, adj_pred_lagged),
+        "LagF1": lagged_edge_f1(adj_true_bin, adj_pred_bin),
     }
 
     if score_matrix is not None:
@@ -170,7 +234,7 @@ def compute_axis_b(adj_true_lagged: np.ndarray,
 
     if X is not None:
         adj_agg = adj_true_bin.any(axis=-1).astype(int)  # (k, k)
-        results["TV_Confounding"] = tv_confounding(X, adj_agg)
+        results["ResidualDep"] = residual_dependence(X, adj_agg, mechanism=mechanism)
 
     if cf_faith_gt is not None and cf_faith_inferred is not None:
         decomp = graph_error_decomposition(cf_faith_gt, cf_faith_inferred)

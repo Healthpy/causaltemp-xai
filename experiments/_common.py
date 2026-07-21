@@ -344,12 +344,14 @@ def build_masked_mechanism(mechanism, inferred_adj: np.ndarray):
     )
 
 
-def axis_a_for_attribution(attributions: np.ndarray, int_channels, causal_parents_list) -> dict:
+def axis_a_for_attribution(attributions: np.ndarray, int_channels,
+                           causal_parents_list, t0s=None) -> dict:
     """Axis A (ICC attribution-mass + causal coverage) for one attribution method.
 
     Thin wrapper around :func:`causaltemp_xai.metrics.axis_a.compute_axis_a`
-    (``LD``/``MCC_disent`` are skipped — no encoder/latent factors in this
-    pipeline, only the raw saliency maps).
+    (``MCC_disent`` is skipped — no encoder/latent factors in this pipeline,
+    only the raw saliency maps). ``t0s`` windows ICC to the post-intervention
+    region (fix #6, 2026-07-18).
     """
     from causaltemp_xai.metrics.axis_a import compute_axis_a
 
@@ -357,6 +359,7 @@ def axis_a_for_attribution(attributions: np.ndarray, int_channels, causal_parent
         attributions=np.asarray(attributions, dtype=float),
         int_channels=np.asarray(int_channels),
         causal_parents_list=causal_parents_list,
+        t0s=None if t0s is None else np.asarray(t0s),
     )
 
 
@@ -365,24 +368,28 @@ def axis_a_for_attribution(attributions: np.ndarray, int_channels, causal_parent
 # ---------------------------------------------------------------------------
 
 
-def axis_b_benchmark_diagnostic(graph: np.ndarray, X: np.ndarray) -> dict:
+def axis_b_benchmark_diagnostic(graph: np.ndarray, X: np.ndarray,
+                                mechanism=None) -> dict:
     """Structural diagnostic of the benchmark's own ground-truth graph.
 
     No graph-*discovery* method is wired into this pipeline, so there is no
     "inferred" adjacency to compare against — Axis B's SHD/LagAcc against the
     ground truth graph itself are trivially perfect (0 / 1) by construction.
-    What *is* informative here is ``TV_Confounding``: the total-variation
-    distance between marginals of channel pairs the graph says are **not**
-    directly connected, i.e. how much residual (unexplained) association the
-    benchmark's own SCM leaves on the table. Report once per dataset.
+    What *is* informative here is ``ResidualDep`` (metric-quality fix #1,
+    2026-07-18, replacing the retired TV-confounding score): the mean |Pearson
+    r| between the **mechanism residuals** of channel pairs the graph says are
+    not directly connected — genuine unexplained association, ~0 for the
+    benchmark's confounder-free SCMs. Pass ``mechanism`` to enable the
+    residual (recommended) mode. Report once per dataset.
     """
     from causaltemp_xai.metrics.axis_b import compute_axis_b
 
     adj = (np.asarray(graph) != 0).astype(int)
-    result = compute_axis_b(adj, adj, X=np.asarray(X, dtype=float))
+    result = compute_axis_b(adj, adj, X=np.asarray(X, dtype=float),
+                            mechanism=mechanism)
     result["note"] = (
         "SHD/LagAcc computed against the graph itself (no graph-discovery "
-        "method in this pipeline) -- trivially perfect; TV_Confounding is "
+        "method in this pipeline) -- trivially perfect; ResidualDep is "
         "the informative benchmark-structural diagnostic here."
     )
     return result

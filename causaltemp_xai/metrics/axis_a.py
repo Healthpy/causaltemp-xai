@@ -44,7 +44,7 @@ from typing import Callable, Optional, Union
 
 import numpy as np
 from scipy.optimize import linear_sum_assignment
-from scipy.stats import pearsonr
+from scipy.stats import spearmanr
 from sklearn.ensemble import GradientBoostingRegressor
 
 # ---------------------------------------------------------------------------
@@ -92,8 +92,19 @@ def _mi_binned(x: np.ndarray, y: np.ndarray, n_bins: int = 20) -> float:
 
 
 def _marginal_entropy_binned(x: np.ndarray, n_bins: int = 20) -> float:
-    """Marginal entropy (nats) of a continuous variable via histogram."""
-    counts, _ = np.histogram(x, bins=n_bins)
+    """Marginal entropy (nats) via the *same* discretization as ``_mi_binned``.
+
+    Fix #9 (2026-07-18): previously used ``np.histogram``'s own binning while
+    ``_mi_binned`` used ``linspace``+``searchsorted`` edges — two different
+    discretizations of the same variable, so ``I(z; v) <= H(v)`` was not
+    guaranteed and the MIG ratio could exceed its documented ``[0, 1]`` range.
+    Sharing the edge construction restores ``I <= H`` by the data-processing
+    inequality on the *common* discrete variable.
+    """
+    x = np.asarray(x, dtype=float)
+    edges = np.linspace(x.min(), x.max() + 1e-10, n_bins + 1)
+    disc = np.searchsorted(edges[1:-1], x)
+    counts = np.bincount(disc, minlength=n_bins).astype(float)
     p = counts / counts.sum()
     return _entropy(p)
 
@@ -332,24 +343,45 @@ def dci(
         reg.fit(Z, V[:, k])
         R[k] = reg.feature_importances_
 
+    # Fix #9 (2026-07-18) — two corrections to the original port:
+    #
+    # 1. Normalizers were *crossed*: D_j's entropy runs over a column of
+    #    length K (factors) but was normalised by ln(d_z), and C_k's over a
+    #    row of length d_z but by ln(K). For d_z != K this pushed scores
+    #    outside the documented [0, 1] (measured D = -0.499 at d_z=2, K=4).
+    #    Each entropy is now normalised by the log of its own support size.
+    # 2. Dead latents scored D_j = 1.0: an all-zero column normalises to the
+    #    zero vector, whose entropy is 0, so a latent carrying *no*
+    #    information counted as perfectly disentangled and was averaged in
+    #    unweighted (a 75%-dead representation measured D = 0.837). Per
+    #    Eastwood & Williams (2018), D is now importance-weighted:
+    #    rho_j = column mass / total mass, so dead latents get weight 0.
+
     # Disentanglement: entropy of column-normalised R, per latent j
     R_col = _normalise_cols(R)
-    log2_dz = np.log(d_z) if d_z > 1 else 1.0
+    log_K = np.log(K) if K > 1 else 1.0
     D = np.array([
-        1.0 - _entropy(R_col[:, j]) / log2_dz
+        1.0 - _entropy(R_col[:, j]) / log_K
         for j in range(d_z)
     ])
+    col_mass = R.sum(axis=0)  # (d_z,)
+    total_mass = float(col_mass.sum())
+    if total_mass > 0:
+        rho = col_mass / total_mass
+        d_score = float(np.sum(rho * D))
+    else:
+        d_score = 0.0  # no latent carries any importance
 
     # Completeness: entropy of row-normalised R, per factor k
     R_row = _normalise_rows(R)
-    log2_K = np.log(K) if K > 1 else 1.0
+    log_dz = np.log(d_z) if d_z > 1 else 1.0
     C = np.array([
-        1.0 - _entropy(R_row[k]) / log2_K
+        1.0 - _entropy(R_row[k]) / log_dz
         for k in range(K)
     ])
 
     return {
-        "disentanglement": float(np.mean(D)),
+        "disentanglement": d_score,
         "completeness": float(np.mean(C)),
         "R": R,
     }
@@ -366,15 +398,18 @@ def mcc(
 ) -> float:
     """Mean Correlation Coefficient (MCC).
 
-    Computes the absolute Pearson correlation matrix between every pair of
-    inferred and true latent dimensions, then solves the optimal linear
-    assignment (Hungarian algorithm) to maximally match dimensions.  The
-    mean absolute correlation of matched pairs is returned.
+    Computes the absolute **Spearman** (rank) correlation matrix between every
+    pair of inferred and true latent dimensions, then solves the optimal
+    linear assignment (Hungarian algorithm) to maximally match dimensions.
+    The mean absolute correlation of matched pairs is returned.
 
     This is the standard identifiability metric used in nonlinear-ICA
     literature (Hyvärinen 2019; Khemakhem et al. 2020) to verify that
-    inferred latents recover true factors up to permutation and monotone
-    reparameterisation.
+    inferred latents recover true factors up to permutation and **monotone**
+    reparameterisation — which is why the correlation must be rank-based:
+    |Pearson| is not invariant to monotone reparameterisation (fix #9,
+    2026-07-18; e.g. ``exp``-transforming a perfectly recovered latent
+    lowered |Pearson| but leaves |Spearman| at exactly 1).
 
     Parameters
     ----------
@@ -400,7 +435,7 @@ def mcc(
     corr_mat = np.zeros((d_z, K))
     for j in range(d_z):
         for k in range(K):
-            r, _ = pearsonr(Z[:, j], V[:, k])
+            r, _ = spearmanr(Z[:, j], V[:, k])
             corr_mat[j, k] = abs(r) if np.isfinite(r) else 0.0
 
     # Optimal assignment: maximise sum of correlations = minimise negative
@@ -414,26 +449,41 @@ def mcc(
 # ---------------------------------------------------------------------------
 
 
-def icc(attribution: np.ndarray, int_channel: int) -> float:
-    """Intervention-Channel Consistency (attribution-mass variant).
+def icc(attribution: np.ndarray, int_channel: int, t0: int | None = None) -> float:
+    """Intervention-Channel Consistency (chance-normalized attribution mass).
 
-    Fraction of total attribution mass that falls on the ground-truth
-    intervened channel. Ported from causal_tscf_bench/metrics/axis_a.py.
+    Share of total attribution mass on the ground-truth intervened channel,
+    divided by the share a uniform map would place there (``1/k``) — the same
+    chance normalization as :func:`mcc_concept`, so ``1.0`` = chance-level,
+    ``> 1`` = concentration on the intervened channel, maximum ``k``
+    (metric-quality fix #6, 2026-07-18; the raw fraction read "0.204" at
+    ``k=5`` — exactly chance — without saying so).
+
+    When ``t0`` is given, only attribution at ``t >= t0`` is scored: mass on
+    the intervened channel *before* the intervention is causally wrong and
+    earns no credit (an intervention at ``t0`` cannot explain earlier
+    behaviour).
 
     Parameters
     ----------
     attribution : (T, k)
     int_channel : ground-truth intervened channel index
+    t0          : optional intervention timestep; restricts scoring to
+                  ``t >= t0``
 
     Returns
     -------
-    float in [0, 1]
+    float in [0, k]; 1.0 = chance. 0.0 for a (numerically) zero-mass map.
     """
-    total_mass = np.abs(attribution).sum()
+    att = np.abs(np.asarray(attribution, dtype=float))
+    if t0 is not None:
+        att = att[t0:]
+    k = att.shape[1]
+    total_mass = att.sum()
     if total_mass < 1e-12:
         return 0.0
-    channel_mass = np.abs(attribution[:, int_channel]).sum()
-    return float(channel_mass / total_mass)
+    channel_share = float(att[:, int_channel].sum()) / float(total_mass)
+    return float(channel_share * k)  # / (1/k) chance share
 
 
 def mcc_concept(
@@ -490,7 +540,14 @@ def mcc_concept(
 
 
 def latent_disentanglement(Z: np.ndarray, X_channels: np.ndarray) -> float:
-    """Latent Disentanglement (LD) via linear R².
+    """Best-single-latent linear R² per channel — **not a disentanglement metric**.
+
+    .. deprecated:: 2026-07-18
+        Dropped from ``compute_axis_a`` (metric-quality fix #2): a single
+        entangled latent that encodes *all* channels scores high on every
+        channel, so this measures linear predictability, not disentanglement.
+        Use :func:`dci` (DCI-D) instead. Kept importable for exploratory use;
+        do not report it as disentanglement.
 
     For each causal channel m, fit a linear regression from the best-aligned
     latent dimension to X_channels[:, m] and record R². LD = mean R² over k.
@@ -531,34 +588,41 @@ def compute_axis_a(
     Z: np.ndarray = None,
     X_channels: np.ndarray = None,
     Z_true: np.ndarray = None,
+    t0s: np.ndarray = None,
 ) -> dict:
     """Aggregate Axis A metrics over N instances.
+
+    ``LD`` (``latent_disentanglement``) was dropped from the output
+    (metric-quality fix #2, 2026-07-18): best-single-latent R² scores an
+    entangled latent highly on every channel — it measures linear
+    predictability, not disentanglement; ``DCI-D`` is the correct quantity.
+    The function remains importable for exploratory use only.
 
     Parameters
     ----------
     attributions        : (N, T, k)
     int_channels        : (N,) ground-truth intervened channel per instance
     causal_parents_list : list of length N, each a list of causal parent indices
-    Z                   : (N, latent_dim) optional; encoder outputs for LD/MCC
-    X_channels          : (N, k) optional; ground-truth channel means for LD
+    Z                   : (N, latent_dim) optional; encoder outputs for MCC
+    X_channels          : (N, k) optional; retained for API compatibility
     Z_true              : (N, K) optional; ground-truth latent factors for MCC
+    t0s                 : (N,) optional intervention timesteps — windows ICC to
+                          ``t >= t0`` per instance (fix #6)
 
     Returns
     -------
-    dict with keys: ICC, MCC_coverage, LD, MCC_disent
+    dict with keys: ICC (chance-normalized; 1.0 = chance), MCC_coverage,
+    MCC_disent
     """
     N = attributions.shape[0]
     icc_vals, mcc_vals = [], []
 
     for i in range(N):
-        icc_vals.append(icc(attributions[i], int(int_channels[i])))
+        t0_i = int(t0s[i]) if t0s is not None else None
+        icc_vals.append(icc(attributions[i], int(int_channels[i]), t0=t0_i))
         mc = mcc_concept(attributions[i], causal_parents_list[i])
         if not np.isnan(mc):
             mcc_vals.append(mc)
-
-    ld = float("nan")
-    if Z is not None and X_channels is not None:
-        ld = latent_disentanglement(Z, X_channels)
 
     mcc_disent = float("nan")
     if Z_true is not None and Z is not None and Z_true.shape == Z.shape:
@@ -567,6 +631,5 @@ def compute_axis_a(
     return {
         "ICC": float(np.mean(icc_vals)),
         "MCC_coverage": float(np.mean(mcc_vals)) if mcc_vals else float("nan"),
-        "LD": ld,
         "MCC_disent": mcc_disent,
     }

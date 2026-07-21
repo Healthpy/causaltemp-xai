@@ -320,6 +320,9 @@ class TestCelsFalseFlagRegression:
 
 
 class TestICCAdversarial:
+    """ICC is chance-normalized (fix #6, 2026-07-18): 1.0 = chance,
+    max = k — the same convention as mcc_concept."""
+
     def test_flags_wrong_channel_attribution(self):
         att = np.zeros((20, 4))
         att[:, 2] = 1.0
@@ -328,7 +331,22 @@ class TestICCAdversarial:
     def test_passes_correct_channel_attribution(self):
         att = np.zeros((20, 4))
         att[:, 0] = 1.0
-        assert icc(att, int_channel=0) == 1.0
+        assert icc(att, int_channel=0) == pytest.approx(4.0)  # k / (1/k * k)
+
+    def test_uniform_map_scores_chance_level(self):
+        att = np.ones((20, 4))
+        assert icc(att, int_channel=0) == pytest.approx(1.0)
+
+    def test_pre_t0_mass_earns_no_credit(self):
+        """Windowing (fix #6): attribution on the intervened channel *before*
+        the intervention is causally wrong — with t0 passed, only t >= t0
+        mass counts."""
+        att = np.zeros((20, 4))
+        att[:10, 0] = 1.0  # all mass on the right channel, wrong time
+        att[10:, 2] = 1.0  # post-t0 mass on a wrong channel
+        assert icc(att, int_channel=0, t0=10) == 0.0
+        # Without the window the pre-t0 mass is (wrongly) credited.
+        assert icc(att, int_channel=0) == pytest.approx(2.0)
 
 
 class TestMCCCoverageFix:
@@ -604,3 +622,55 @@ class TestJointFaithValidCriterion:
         )
         # The tiny-edit half contributes faithfulness but no joint credit.
         assert result["cf_faith_rollout_hard_valid"] < result["cf_faith_rollout_hard"]
+
+
+# ---------------------------------------------------------------------------
+# Axis C: SCM-noise plausibility (metric-quality fix #8, 2026-07-18)
+#
+# Ground-truth plausibility: the CF's abducted innovations must be calibrated
+# to the SCM's true noise scale. Pearl-oracle CFs (factual noise reused) score
+# ~1; a noiseless skeleton (eps ~ 0) and arbitrary large edits both score low
+# — the log-ratio form catches "too little" noise as well as "too much",
+# which a naive pointwise likelihood would reward.
+# ---------------------------------------------------------------------------
+
+from causaltemp_xai.metrics.axis_c import scm_noise_plausibility  # noqa: E402
+
+NOISE_SCALE = 0.05  # matches _make_scm's default laplace scale
+
+
+class TestSCMNoisePlausibilityAdversarial:
+    def test_factual_trajectory_is_plausible(self):
+        x, _, mech = _make_scm(seed=21, noise_scale=NOISE_SCALE)
+        assert scm_noise_plausibility(x, mech, NOISE_SCALE) > 0.8
+
+    def test_pearl_oracle_cf_is_plausible(self):
+        x, _, mech = _make_scm(seed=22, noise_scale=NOISE_SCALE)
+        cf = _pearl_cf(x, mech, t0=10, pert=np.full(4, 0.4))
+        assert scm_noise_plausibility(cf, mech, NOISE_SCALE) > 0.8
+
+    def test_flags_noiseless_skeleton(self):
+        """eps ~ 0 post-t0 is maximally *likely* pointwise but maximally
+        implausible as a draw from the noise law; scored from t0 the
+        skeleton must be flagged."""
+        x, _, mech = _make_scm(seed=23, noise_scale=NOISE_SCALE)
+        t0 = 5
+        cf = _noiseless_cf(x, mech, t0, np.full(4, 0.4))
+        s = scm_noise_plausibility(cf, mech, NOISE_SCALE, t_start=t0 + 1)
+        assert s < 0.1
+
+    def test_flags_arbitrary_large_edits(self):
+        x, _, mech = _make_scm(seed=24, noise_scale=NOISE_SCALE)
+        rng = np.random.default_rng(0)
+        cf = x + rng.normal(scale=2.0, size=x.shape)  # mechanism-ignorant
+        assert scm_noise_plausibility(cf, mech, NOISE_SCALE) < 0.1
+
+    def test_orders_oracle_above_violators(self):
+        x, _, mech = _make_scm(seed=25, noise_scale=NOISE_SCALE)
+        t0 = 10
+        pearl = _pearl_cf(x, mech, t0, np.full(4, 0.4))
+        rng = np.random.default_rng(1)
+        junk = x + rng.normal(scale=2.0, size=x.shape)
+        s_pearl = scm_noise_plausibility(pearl, mech, NOISE_SCALE)
+        s_junk = scm_noise_plausibility(junk, mech, NOISE_SCALE)
+        assert s_pearl > s_junk

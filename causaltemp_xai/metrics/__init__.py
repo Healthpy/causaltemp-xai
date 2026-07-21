@@ -3,7 +3,6 @@ from .axis_a import (
     dci,
     icc,
     icc_latent,
-    latent_disentanglement,
     mcc,
     mcc_concept,
     mig,
@@ -13,13 +12,15 @@ from .axis_b import (
     graph_auc,
     graph_error_decomposition,
     lag_accuracy,
+    lagged_edge_f1,
+    residual_dependence,
     shd,
-    tv_confounding,
 )
 from .axis_c import (
     compute_axis_c,
     ood_plausibility,
     proximity,
+    scm_noise_plausibility,
     sparsity,
     trsi,
     validity,
@@ -28,7 +29,6 @@ from .axis_d import (
     compute_axis_d,
     concept_stability,
     input_sensitivity,
-    shift_vr,
 )
 from .cf_faith import CFfaith
 
@@ -48,19 +48,18 @@ __all__ = [
     "icc_latent",
     "input_sensitivity",
     "lag_accuracy",
-    "latent_disentanglement",
+    "lagged_edge_f1",
     "mcc",
     "mcc_concept",
     "mig",
     "ood_plausibility",
     "proximity",
+    "residual_dependence",
+    "scm_noise_plausibility",
     # axis_b
     "shd",
-    # axis_d
-    "shift_vr",
     "sparsity",
     "trsi",
-    "tv_confounding",
     # axis_c
     "validity",
 ]
