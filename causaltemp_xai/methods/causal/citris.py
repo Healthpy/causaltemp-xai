@@ -56,9 +56,7 @@ import torch.nn as nn
 from torch.utils.data import DataLoader, TensorDataset
 
 # Repo root -> third_party/citris_repo
-_CITRIS_REPO = (
-    Path(__file__).resolve().parents[3] / "third_party" / "citris_repo"
-)
+_CITRIS_REPO = Path(__file__).resolve().parents[3] / "third_party" / "citris_repo"
 
 
 def _load_upstream_modules():
@@ -123,19 +121,22 @@ class _CITRISVAE(nn.Module):
     internal ``psi(0)`` noise slot); ``num_latents = k * latents_per_block``.
     """
 
-    def __init__(self, k: int, latents_per_block: int = 2, c_hid: int = 32,
-                 lambda_reg: float = 0.01):
+    def __init__(
+        self, k: int, latents_per_block: int = 2, c_hid: int = 32, lambda_reg: float = 0.01
+    ):
         super().__init__()
         self.k = k
         self.num_blocks = k
         self.num_latents = k * latents_per_block
 
         self.enc = nn.Sequential(
-            nn.Linear(k, c_hid), nn.SiLU(),
+            nn.Linear(k, c_hid),
+            nn.SiLU(),
             nn.Linear(c_hid, 2 * self.num_latents),
         )
         self.dec = nn.Sequential(
-            nn.Linear(self.num_latents, c_hid), nn.SiLU(),
+            nn.Linear(self.num_latents, c_hid),
+            nn.SiLU(),
             nn.Linear(c_hid, k),
         )
         self.prior = TransitionPrior(
@@ -266,9 +267,9 @@ class CITRIS:
             shuffle=True,
         )
 
-        self.model = _CITRISVAE(
-            self.k, self.latents_per_block, self.c_hid, self.lambda_reg
-        ).to(self.device)
+        self.model = _CITRISVAE(self.k, self.latents_per_block, self.c_hid, self.lambda_reg).to(
+            self.device
+        )
         self.model.train()
         opt = torch.optim.Adam(self.model.parameters(), lr=self.lr)
 
@@ -293,14 +294,16 @@ class CITRIS:
                 z_t1 = self.model._reparam(mu_t1, ls_t1)
 
                 # Per-frame reconstruction.
-                rec = (
-                    ((self.model.decode(z_t1) - xb_curr) ** 2).sum(dim=1)
-                    + ((self.model.decode(z_t) - xb_prev) ** 2).sum(dim=1)
-                )
+                rec = ((self.model.decode(z_t1) - xb_curr) ** 2).sum(dim=1) + (
+                    (self.model.decode(z_t) - xb_prev) ** 2
+                ).sum(dim=1)
                 # Genuine CITRIS transition-prior KL (marginalised over psi).
                 kld = self.model.prior.kl_divergence(
-                    z_t=z_t, target=ib,
-                    z_t1_mean=mu_t1, z_t1_logstd=ls_t1, z_t1_sample=z_t1,
+                    z_t=z_t,
+                    target=ib,
+                    z_t1_mean=mu_t1,
+                    z_t1_logstd=ls_t1,
+                    z_t1_sample=z_t1,
                 )
                 loss = (rec + self.beta * kld).mean()
 
@@ -308,8 +311,10 @@ class CITRIS:
                 # z_sample: (B, 2, num_latents); target: (B, 1, num_blocks).
                 z_stack = torch.stack([z_t, z_t1], dim=1)
                 loss_model, loss_z = self.model.intv_classifier(
-                    z_sample=z_stack, target=ib[:, None, :],
-                    transition_prior=self.model.prior, logger=None,
+                    z_sample=z_stack,
+                    target=ib[:, None, :],
+                    transition_prior=self.model.prior,
+                    logger=None,
                 )
                 loss = loss + self.beta_classifier * (loss_model + loss_z)
 

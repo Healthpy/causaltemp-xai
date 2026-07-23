@@ -38,7 +38,9 @@ from experiments._common import (  # noqa: E402
 )
 
 
-def generate_one(config_name: str, out_dir, shift_noise: str | None, seed: int | None = None) -> None:
+def generate_one(
+    config_name: str, out_dir, shift_noise: str | None, seed: int | None = None
+) -> None:
     cfg = get_config(config_name)
     if seed is not None:
         cfg = seeded_variant(cfg, seed)
@@ -71,12 +73,16 @@ def main(argv=None) -> int:
     parser.add_argument("--config", choices=sorted(CONFIGS), default=None)
     parser.add_argument("--all", action="store_true", help="Generate every registered config.")
     parser.add_argument(
-        "--shift-noise", choices=("laplace", "uniform"), default=None,
+        "--shift-noise",
+        choices=("laplace", "uniform"),
+        default=None,
         help="Also/instead generate the Shift-VR environment for --config (same SCM, different noise).",
     )
     parser.add_argument("--out-dir", default=str(DEFAULT_OUT_DIR))
     parser.add_argument(
-        "--seed", type=int, default=None,
+        "--seed",
+        type=int,
+        default=None,
         help=(
             "Multi-seed replicate (M2): override --config's registered seed "
             "via causaltemp_xai.config.seeded_variant, writing under "
@@ -91,7 +97,9 @@ def main(argv=None) -> int:
     names = sorted(CONFIGS) if args.all else [args.config]
     for name in names:
         generate_one(
-            name, args.out_dir, args.shift_noise if not args.all else None,
+            name,
+            args.out_dir,
+            args.shift_noise if not args.all else None,
             seed=args.seed if not args.all else None,
         )
     return 0

@@ -71,9 +71,7 @@ class TestOraclePositiveControl:
         value = x_orig[t0, node] + 0.5
         x_cf = structural_counterfactual(x_orig, mechanism, t0, node, value)
 
-        r = CFfaith(tol=1e-4, semantics="pearl_delta").score(
-            x_orig, x_cf, t0, graph, mechanism
-        )
+        r = CFfaith(tol=1e-4, semantics="pearl_delta").score(x_orig, x_cf, t0, graph, mechanism)
         assert r["hard"] == 1.0, f"pearl oracle should be faithful, got {r}"
 
     def test_noiseless_oracle_is_rollout_faithful(self):
@@ -81,9 +79,7 @@ class TestOraclePositiveControl:
         x_orig, graph, mechanism = _make_nlinear()
         t0, node = 6, 1
         value = x_orig[t0, node] + 0.5
-        x_cf = structural_counterfactual(
-            x_orig, mechanism, t0, node, value, noiseless=True
-        )
+        x_cf = structural_counterfactual(x_orig, mechanism, t0, node, value, noiseless=True)
 
         r = CFfaith(tol=1e-4, semantics="noiseless_rollout").score(
             x_orig, x_cf, t0, graph, mechanism
@@ -104,9 +100,7 @@ class TestMutualExclusivity:
         value = x_orig[t0, node] + 0.5
         x_cf = structural_counterfactual(x_orig, mechanism, t0, node, value)
 
-        pearl = CFfaith(tol=1e-4, semantics="pearl_delta").score(
-            x_orig, x_cf, t0, graph, mechanism
-        )
+        pearl = CFfaith(tol=1e-4, semantics="pearl_delta").score(x_orig, x_cf, t0, graph, mechanism)
         rollout = CFfaith(tol=1e-4, semantics="noiseless_rollout").score(
             x_orig, x_cf, t0, graph, mechanism
         )
@@ -118,16 +112,12 @@ class TestMutualExclusivity:
         x_orig, graph, mechanism = _make_nlinear()
         t0, node = 6, 1
         value = x_orig[t0, node] + 0.5
-        x_cf = structural_counterfactual(
-            x_orig, mechanism, t0, node, value, noiseless=True
-        )
+        x_cf = structural_counterfactual(x_orig, mechanism, t0, node, value, noiseless=True)
 
         rollout = CFfaith(tol=1e-4, semantics="noiseless_rollout").score(
             x_orig, x_cf, t0, graph, mechanism
         )
-        pearl = CFfaith(tol=1e-4, semantics="pearl_delta").score(
-            x_orig, x_cf, t0, graph, mechanism
-        )
+        pearl = CFfaith(tol=1e-4, semantics="pearl_delta").score(x_orig, x_cf, t0, graph, mechanism)
         assert rollout["hard"] == 1.0
         assert pearl["hard"] == 0.0, f"noiseless oracle must not be pearl-faithful, {pearl}"
 
@@ -147,9 +137,7 @@ class TestNegativeControls:
         x_cf[t0 - 3, 0] += 5.0  # retroactive change before t0
 
         for sem in CFfaith.SEMANTICS:
-            r = CFfaith(tol=1e-4, semantics=sem).score(
-                x_orig, x_cf, t0, graph, mechanism
-            )
+            r = CFfaith(tol=1e-4, semantics=sem).score(x_orig, x_cf, t0, graph, mechanism)
             assert r["hard"] == 0.0, f"{sem} should reject retroactive, got {r}"
 
     def test_random_perturbation_cf_unfaithful(self):
@@ -161,8 +149,6 @@ class TestNegativeControls:
         x_cf[t0:] += rng.uniform(-0.5, 0.5, x_orig[t0:].shape)
 
         for sem in CFfaith.SEMANTICS:
-            r = CFfaith(tol=1e-4, semantics=sem).score(
-                x_orig, x_cf, t0, graph, mechanism
-            )
+            r = CFfaith(tol=1e-4, semantics=sem).score(x_orig, x_cf, t0, graph, mechanism)
             assert r["hard"] == 0.0, f"{sem} random CF should be hard=0, got {r}"
             assert r["soft"] < 1.0, f"{sem} random CF should be soft<1, got {r}"

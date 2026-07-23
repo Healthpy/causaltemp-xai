@@ -77,12 +77,18 @@ class TestCITRIS:
     @pytest.fixture(scope="class")
     def fitted(self, scm):
         ds = generate_interventional_sequences(
-            scm.mechanism, k=4, L=1, T=20, N=80, seed=1,
-            intervention_prob=0.4, mode="single",
+            scm.mechanism,
+            k=4,
+            L=1,
+            T=20,
+            N=80,
+            seed=1,
+            intervention_prob=0.4,
+            mode="single",
         )
-        model = CITRIS(
-            k=4, latents_per_block=2, c_hid=16, max_epochs=4, seed=0
-        ).fit(ds.X, ds.targets)
+        model = CITRIS(k=4, latents_per_block=2, c_hid=16, max_epochs=4, seed=0).fit(
+            ds.X, ds.targets
+        )
         return model, ds
 
     def test_uses_upstream_transition_prior(self, fitted):

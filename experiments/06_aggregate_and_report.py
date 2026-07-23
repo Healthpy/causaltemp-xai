@@ -117,8 +117,9 @@ COLORS = {
 # ---------------------------------------------------------------------------
 
 
-def run_seed(config_name: str, seed: int, n_cf: int, out_dir, hparams: dict,
-             methods_filter=None) -> None:
+def run_seed(
+    config_name: str, seed: int, n_cf: int, out_dir, hparams: dict, methods_filter=None
+) -> None:
     """Run phases 01->04 for one seed replicate of ``config_name``."""
     print(f"\n=== [06] seed={seed}: phase 01 (generate) ===")
     _phase01.generate_one(config_name, out_dir, shift_noise=None, seed=seed)
@@ -137,22 +138,23 @@ def run_seeds_report(args) -> None:
     """Replicate across seeds (unless ``--skip-runs``) and write the CI table."""
     n_cf = args.n_cf or (20 if args.config.startswith("smoke") else 100)
     hparams = dict(
-        hidden_size=args.hidden_size, num_layers=args.num_layers, dropout=args.dropout,
-        lr=args.lr, batch_size=args.batch_size, max_epochs=args.max_epochs,
+        hidden_size=args.hidden_size,
+        num_layers=args.num_layers,
+        dropout=args.dropout,
+        lr=args.lr,
+        batch_size=args.batch_size,
+        max_epochs=args.max_epochs,
         patience=args.patience,
     )
 
     if not args.skip_runs:
         for seed in args.seeds:
-            run_seed(args.config, seed, n_cf, args.out_dir, hparams,
-                     methods_filter=args.methods)
+            run_seed(args.config, seed, n_cf, args.out_dir, hparams, methods_filter=args.methods)
     else:
         print("[06] --skip-runs: aggregating already-produced per-seed results only.")
 
     print(f"\n=== [06] aggregating {len(args.seeds)} seeds for '{args.config}' ===")
-    rows = aggregate_across_seeds(
-        args.config, args.seeds, classifier="lstm", n_boot=args.n_boot
-    )
+    rows = aggregate_across_seeds(args.config, args.seeds, classifier="lstm", n_boot=args.n_boot)
     out_path = TABLES_DIR / f"table_seed_aggregate_{args.config}_lstm.csv"
     write_csv(out_path, rows)
     print(f"[06] wrote {out_path}")
@@ -171,9 +173,7 @@ def _load_all_per_instance(results_dir: Path) -> dict:
         with open(fpath, newline="") as fh:
             rows.extend(csv.DictReader(fh))
     if not rows:
-        raise SystemExit(
-            f"no per_instance.csv found under {results_dir} -- run Phase 04/05 first"
-        )
+        raise SystemExit(f"no per_instance.csv found under {results_dir} -- run Phase 04/05 first")
     cols = rows[0].keys()
     out = {}
     for c in cols:
@@ -206,8 +206,14 @@ def fig1_scatter(data, methods, out_path):
         color = COLORS.get(m)
         ax.scatter(x, y, alpha=0.5, s=35, color=color, label=m, edgecolors="none")
         ax.scatter(
-            np.nanmean(valid), np.nanmean(y), marker="D", s=140, color=color,
-            edgecolors="black", linewidths=1.5, zorder=5,
+            np.nanmean(valid),
+            np.nanmean(y),
+            marker="D",
+            s=140,
+            color=color,
+            edgecolors="black",
+            linewidths=1.5,
+            zorder=5,
         )
     ax.set_xlabel("Validity (per instance, jittered)")
     ax.set_ylabel("CF-faith (rollout, soft)")
@@ -225,7 +231,8 @@ def fig1_scatter(data, methods, out_path):
 def fig2_distributions(data, methods, out_path):
     fig, axes = plt.subplots(1, 2, figsize=(11, 5), sharey=True)
     for ax, (semantics, key) in zip(
-        axes, [("rollout", "cf_faith_rollout_soft"), ("pearl", "cf_faith_pearl_soft")],
+        axes,
+        [("rollout", "cf_faith_rollout_soft"), ("pearl", "cf_faith_pearl_soft")],
     ):
         series = [data[key][data["method"] == m] for m in methods]
         positions = np.arange(1, len(methods) + 1)
@@ -248,7 +255,9 @@ def fig2_distributions(data, methods, out_path):
 
 def fig3_rank_correlation(data, methods, out_path):
     trad = ["validity", "proximity_l1", "sparsity"]
-    faith = np.array([np.nanmean(data["cf_faith_rollout_hard"][data["method"] == m]) for m in methods])
+    faith = np.array(
+        [np.nanmean(data["cf_faith_rollout_hard"][data["method"] == m]) for m in methods]
+    )
     rhos = []
     for t in trad:
         vec = np.array([np.nanmean(data[t][data["method"] == m]) for m in methods])
@@ -305,24 +314,34 @@ def run_figures_report(args) -> None:
 def _add_seeds_args(p) -> None:
     p.add_argument("--config", required=True, choices=sorted(CONFIGS))
     p.add_argument(
-        "--seeds", type=int, nargs="+", required=True,
+        "--seeds",
+        type=int,
+        nargs="+",
+        required=True,
         help="Seed values to replicate (M2 target: >=5 for a reported table; "
-             "2-3 is a fast correctness-only smoke check).",
+        "2-3 is a fast correctness-only smoke check).",
     )
     p.add_argument("--n-cf", type=int, default=None)
-    p.add_argument("--methods", nargs="+", default=None,
-                   help="Subset of CF method names to run (all 7 if omitted).")
+    p.add_argument(
+        "--methods",
+        nargs="+",
+        default=None,
+        help="Subset of CF method names to run (all 7 if omitted).",
+    )
     p.add_argument("--out-dir", default=str(DEFAULT_OUT_DIR))
     p.add_argument(
-        "--n-boot", type=int, default=2000,
+        "--n-boot",
+        type=int,
+        default=2000,
         help="Bootstrap resamples for the aggregated CI table (default 2000 "
-             "for fast iteration; use >=10000 for a final reported table).",
+        "for fast iteration; use >=10000 for a final reported table).",
     )
     p.add_argument(
-        "--skip-runs", action="store_true",
+        "--skip-runs",
+        action="store_true",
         help="Skip phases 01-04 and only (re-)aggregate already-produced "
-             "per-seed results (e.g. to re-run the CI table with a different "
-             "--n-boot without regenerating data).",
+        "per-seed results (e.g. to re-run the CI table with a different "
+        "--n-boot without regenerating data).",
     )
     # Classifier hyperparameters (mirrors 02_train_classifiers.py's CLI).
     p.add_argument("--hidden-size", type=int, default=64)
@@ -336,14 +355,17 @@ def _add_seeds_args(p) -> None:
 
 def _add_figures_args(p) -> None:
     p.add_argument("--results-dir", default=str(RESULTS_DIR))
-    p.add_argument("--out-dir-figures", default=str(FIGURES_DIR),
-                   help="Figure output directory (default: results/figures).")
+    p.add_argument(
+        "--out-dir-figures",
+        default=str(FIGURES_DIR),
+        help="Figure output directory (default: results/figures).",
+    )
 
 
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(
         description="Phase 06: post-hoc aggregation (multi-seed bootstrap CI tables) "
-                    "and publication figures.",
+        "and publication figures.",
     )
     sub = parser.add_subparsers(dest="report", required=True)
 
@@ -354,9 +376,7 @@ def main(argv=None) -> int:
     )
     _add_seeds_args(p_seeds)
 
-    p_figs = sub.add_parser(
-        "figures", help="render figures from results/*/*/per_instance.csv"
-    )
+    p_figs = sub.add_parser("figures", help="render figures from results/*/*/per_instance.csv")
     _add_figures_args(p_figs)
 
     p_all = sub.add_parser("all", help="run 'seeds' then 'figures'")

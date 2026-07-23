@@ -87,9 +87,7 @@ def _sample_lag_mask(
     return mask
 
 
-def _sample_graph(
-    k: int, L: int, sparsity: float, rng: np.random.Generator
-) -> np.ndarray:
+def _sample_graph(k: int, L: int, sparsity: float, rng: np.random.Generator) -> np.ndarray:
     """Sample a lagged adjacency tensor ``(k, k, L)`` from ``rng``.
 
     Draws one Bernoulli mask per lag via :func:`_sample_lag_mask` (no self-loop at
@@ -188,9 +186,7 @@ class LinearSCMT:
             X_full[:, lag, :] = self._sample_noise(self.N, self.k) * 0.1
 
         # Simulate VAR(L) forward
-        noise = self._sample_noise(self.N * total_T * self.k).reshape(
-            self.N, total_T, self.k
-        )
+        noise = self._sample_noise(self.N * total_T * self.k).reshape(self.N, total_T, self.k)
         for t in range(self.L, total_T):
             # Lag window ordered oldest→newest: (N, L, k). t >= L always holds
             # here, so the window is full (no zero-pad needed).

@@ -162,9 +162,7 @@ def build_generator(config: BenchmarkConfig):
         regimes = nl.get("regimes")
         if regimes is not None:
             regimes = [
-                {**r, "decay_range": tuple(r["decay_range"])}
-                if "decay_range" in r
-                else dict(r)
+                {**r, "decay_range": tuple(r["decay_range"])} if "decay_range" in r else dict(r)
                 for r in regimes
             ]
         return HMMRegimeSwitchNlinearSCMT(
@@ -242,9 +240,7 @@ def generate_and_save(
         "nonlinear": config.nonlinear,
         "split_fractions": list(SPLIT_FRACTIONS),
         "split_sizes": {name: len(idx) for name, idx in splits.items()},
-        "class_balance": {
-            name: _class_balance(Y[idx]) for name, idx in splits.items()
-        },
+        "class_balance": {name: _class_balance(Y[idx]) for name, idx in splits.items()},
         "shapes": {
             "X_train": list(X[train_idx].shape),
             "graph": list(graph.shape),

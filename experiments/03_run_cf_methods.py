@@ -162,9 +162,7 @@ def axis_a_block(clf, X_sel, attributions, graph, mech, ig_steps=64) -> dict:
     t0s = [t0 for (t0, _, _) in interventions]
     causal_parents_list = [causal_parents(graph, node) for node in int_channels]
 
-    axis_a = axis_a_for_attribution(
-        attributions, int_channels, causal_parents_list, t0s=t0s
-    )
+    axis_a = axis_a_for_attribution(attributions, int_channels, causal_parents_list, t0s=t0s)
 
     def _attribution_fn(x):
         return integrated_gradients(clf, x, TARGET_CLASS, steps=ig_steps)
@@ -265,7 +263,13 @@ def run(config_name: str, n_cf: int, out_dir, methods_filter=None, seed: int | N
     shift_sel = select_flip_candidates(clf, X_shift_test, n_cf)
     X_shift_sel = X_shift_test[shift_sel]
     shift = shift_vr(
-        clf, shift_methods, X_sel, X_shift_sel, graph, mech, TARGET_CLASS,
+        clf,
+        shift_methods,
+        X_sel,
+        X_shift_sel,
+        graph,
+        mech,
+        TARGET_CLASS,
         cf_base=generated,
     )
     dump_json(out / "shift_vr.json", shift)
@@ -281,7 +285,9 @@ def main(argv=None) -> int:
     parser.add_argument("--methods", nargs="+", default=None, help="Subset of method names to run.")
     parser.add_argument("--out-dir", default=str(DEFAULT_OUT_DIR))
     parser.add_argument(
-        "--seed", type=int, default=None,
+        "--seed",
+        type=int,
+        default=None,
         help=(
             "Multi-seed replicate (M2): override --config's registered seed "
             "via causaltemp_xai.config.seeded_variant, reading the seeded "

@@ -48,8 +48,8 @@ class BootstrapResult:
     mean: float
     ci_lo: float
     ci_hi: float
-    n: int          #: total number of underlying (non-NaN) observations
-    n_boot: int     #: number of bootstrap resamples used
+    n: int  #: total number of underlying (non-NaN) observations
+    n_boot: int  #: number of bootstrap resamples used
 
     def as_dict(self, prefix: str = "") -> dict:
         """Flat ``{prefix + 'mean': ..., prefix + 'ci_lo': ..., ...}`` dict —

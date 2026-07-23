@@ -25,10 +25,13 @@ from typing import Callable
 import numpy as np
 
 
-def input_sensitivity(X_test: np.ndarray, attribution_fn: Callable,
-                      eps: float = 0.01,
-                      n_trials: int = 10,
-                      rng: np.random.Generator | None = None) -> float:
+def input_sensitivity(
+    X_test: np.ndarray,
+    attribution_fn: Callable,
+    eps: float = 0.01,
+    n_trials: int = 10,
+    rng: np.random.Generator | None = None,
+) -> float:
     """Input Sensitivity of Attribution.
 
     For each instance, compute L2 distance between attribution under
@@ -86,14 +89,17 @@ def concept_stability(concept_fn: Callable, X_group: np.ndarray) -> float:
     for i in range(N):
         act = concept_fn(X_group[i])
         activations.append(np.asarray(act).flatten())
-    activations = np.array(activations)   # (N, k)
+    activations = np.array(activations)  # (N, k)
     return float(activations.var(axis=0).mean())
 
 
-def compute_axis_d(X_test: np.ndarray, classifier=None,
-                   attribution_fn: Callable | None = None,
-                   concept_fn: Callable | None = None,
-                   rng: np.random.Generator | None = None) -> dict:
+def compute_axis_d(
+    X_test: np.ndarray,
+    classifier=None,
+    attribution_fn: Callable | None = None,
+    concept_fn: Callable | None = None,
+    rng: np.random.Generator | None = None,
+) -> dict:
     """Aggregate Axis D metrics.
 
     All metrics are optional; pass None to skip. Shift-VR for CF methods is

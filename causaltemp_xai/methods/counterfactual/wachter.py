@@ -128,7 +128,6 @@ class WachterCF:
         X = np.asarray(X, dtype=np.float32)
         return np.stack([self.generate(x, model) for x in X], axis=0)
 
-
     # ------------------------------------------------------------------
     # CFExplainer alias interface
     # ------------------------------------------------------------------

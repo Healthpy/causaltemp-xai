@@ -79,8 +79,7 @@ def graph_auc(adj_true: np.ndarray, score_matrix: np.ndarray) -> float:
     return float(roc_auc_score(y_true, y_score))
 
 
-def residual_dependence(X: np.ndarray, adj_true: np.ndarray,
-                        mechanism=None) -> float:
+def residual_dependence(X: np.ndarray, adj_true: np.ndarray, mechanism=None) -> float:
     """Residual-Dependence Score — unexplained association between non-adjacent channels.
 
     Replaces ``tv_confounding`` (metric-quality fix #1, 2026-07-18).
@@ -167,8 +166,7 @@ def lagged_edge_f1(adj_true: np.ndarray, adj_pred: np.ndarray) -> float:
     return float(2 * precision * recall / (precision + recall))
 
 
-def graph_error_decomposition(cf_faith_vs_gt: float,
-                               cf_faith_vs_inferred: float) -> dict:
+def graph_error_decomposition(cf_faith_vs_gt: float, cf_faith_vs_inferred: float) -> dict:
     """Decompose CF-faith drop into graph-estimation error vs. propagation failure.
 
     Sign convention (metric-quality fix #10, 2026-07-18): this is bookkeeping,
@@ -196,13 +194,15 @@ def graph_error_decomposition(cf_faith_vs_gt: float,
     }
 
 
-def compute_axis_b(adj_true_lagged: np.ndarray,
-                   adj_pred_lagged: np.ndarray,
-                   score_matrix: np.ndarray | None = None,
-                   X: np.ndarray | None = None,
-                   cf_faith_gt: float | None = None,
-                   cf_faith_inferred: float | None = None,
-                   mechanism=None) -> dict:
+def compute_axis_b(
+    adj_true_lagged: np.ndarray,
+    adj_pred_lagged: np.ndarray,
+    score_matrix: np.ndarray | None = None,
+    X: np.ndarray | None = None,
+    cf_faith_gt: float | None = None,
+    cf_faith_inferred: float | None = None,
+    mechanism=None,
+) -> dict:
     """Aggregate Axis B metrics.
 
     Parameters

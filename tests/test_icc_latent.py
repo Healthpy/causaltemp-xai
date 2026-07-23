@@ -51,8 +51,7 @@ class _World:
 
 def test_icc_high_for_causal_dim_low_for_others():
     w = _World(seed=1)
-    icc = icc_latent(w.X, w.encode, w.decode, w, delta=2.0,
-                     scale_by_std=True, symmetric=True)
+    icc = icc_latent(w.X, w.encode, w.decode, w, delta=2.0, scale_by_std=True, symmetric=True)
     assert icc.shape == (w.d,)
     # Dim 0 controls the label -> high ICC; others -> ~0.
     assert icc[0] > 0.25

@@ -44,7 +44,7 @@ def abduct(
     """
     single = X.ndim == 2
     if single:
-        X = X[np.newaxis]   # (1, T, k)
+        X = X[np.newaxis]  # (1, T, k)
 
     N, T, k = X.shape
     U = X.copy().astype(np.float64)
@@ -56,7 +56,7 @@ def abduct(
     for t in range(dag.max_lag, T):
         for j in range(k):
             parent_sum = np.zeros(N, dtype=np.float64)
-            for (i, lag) in dag.parents_of(j):
+            for i, lag in dag.parents_of(j):
                 mech = mech_index.get((j, i, lag))
                 if mech is None:
                     continue

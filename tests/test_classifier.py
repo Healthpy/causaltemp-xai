@@ -110,9 +110,7 @@ class TestPersistence:
 
         reloaded = LSTMClassifier.load(path)
         np.testing.assert_array_equal(clf.predict(X), reloaded.predict(X))
-        np.testing.assert_allclose(
-            clf.predict_proba(X), reloaded.predict_proba(X), atol=1e-6
-        )
+        np.testing.assert_allclose(clf.predict_proba(X), reloaded.predict_proba(X), atol=1e-6)
 
 
 # ---------------------------------------------------------------------------

@@ -119,9 +119,9 @@ class TestGraphSparsity:
         gen = NlinearSCMT(k=8, L=2, sparsity=sparsity, T=10, N=10, seed=0)
         data = gen.generate()
         actual = data["graph"].mean()
-        assert abs(actual - sparsity) < 0.15, (
-            f"sparsity={sparsity}: actual={actual:.3f} out of tolerance"
-        )
+        assert (
+            abs(actual - sparsity) < 0.15
+        ), f"sparsity={sparsity}: actual={actual:.3f} out of tolerance"
 
 
 # ---------------------------------------------------------------------------
@@ -164,9 +164,9 @@ class TestNonlinearity:
         r_lin = _var_fit_residual(lin, L)
         r_nlin = _var_fit_residual(nlin, L)
         # Loose margin to avoid flakiness: nonlinear residual is clearly larger.
-        assert r_nlin > r_lin * 1.2, (
-            f"residual not clearly larger: linear={r_lin:.3f} nonlinear={r_nlin:.3f}"
-        )
+        assert (
+            r_nlin > r_lin * 1.2
+        ), f"residual not clearly larger: linear={r_lin:.3f} nonlinear={r_nlin:.3f}"
 
 
 # ---------------------------------------------------------------------------
@@ -350,6 +350,7 @@ class TestRegimeSwitchNlinearSCMT:
 
     def test_build_generator_dispatch(self):
         from causaltemp_xai.config import SMOKE_REGIME
+
         gen = build_generator(SMOKE_REGIME)
         assert isinstance(gen, RegimeSwitchNlinearSCMT)
         assert gen.mechanism1.gain == SMOKE_REGIME.nonlinear["regime1"]["gain"]
@@ -424,6 +425,7 @@ class TestHMMRegimeSwitchNlinearSCMT:
 
     def test_build_generator_dispatch(self):
         from causaltemp_xai.config import SMOKE_REGIME_HMM
+
         gen = build_generator(SMOKE_REGIME_HMM)
         assert isinstance(gen, HMMRegimeSwitchNlinearSCMT)
         assert gen.n_regimes == 3
@@ -434,6 +436,7 @@ class TestHMMRegimeSwitchNlinearSCMT:
     def test_roundtrip_persistence(self, tmp_path):
         from causaltemp_xai.config import SMOKE_REGIME_HMM
         from causaltemp_xai.data_io import generate_and_save, load_dataset
+
         cfg = SMOKE_REGIME_HMM
         generate_and_save(cfg, out_dir=tmp_path)
         loaded = load_dataset(cfg.name, out_dir=tmp_path)
@@ -471,9 +474,7 @@ class TestConfigDispatch:
         assert np.array_equal(base.graph, shift.graph)
         # Mechanism weights are seed-built before any noise is drawn.
         for name in ("W1", "b1", "W2", "b2", "decay"):
-            assert np.array_equal(
-                getattr(base.mechanism, name), getattr(shift.mechanism, name)
-            )
+            assert np.array_equal(getattr(base.mechanism, name), getattr(shift.mechanism, name))
         # Same deterministic forward map on a probe window.
         rng = np.random.default_rng(7)
         window = rng.normal(size=(4, SMOKE_NL.L, SMOKE_NL.k))
@@ -514,9 +515,7 @@ class TestNonlinearPersistence:
         original = build_generator(SMOKE_NL).mechanism
         rng = np.random.default_rng(11)
         window = rng.normal(size=(8, SMOKE_NL.L, SMOKE_NL.k))
-        assert np.array_equal(
-            mech.forward_numpy(window), original.forward_numpy(window)
-        )
+        assert np.array_equal(mech.forward_numpy(window), original.forward_numpy(window))
 
     def test_round_trip_matches_in_memory_generation(self, tmp_path):
         generate_and_save(SMOKE_NL, out_dir=tmp_path)

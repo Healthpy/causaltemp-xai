@@ -31,6 +31,7 @@ class TestDYNOTEARS:
     def test_uses_upstream_solver(self):
         """The solver must be the genuine vendored CausalNex function."""
         from causaltemp_xai.methods.causal.dynotears import _load_upstream_dynotears
+
         mod = _load_upstream_dynotears()
         assert hasattr(mod, "_learn_dynamic_structure")
 

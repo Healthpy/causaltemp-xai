@@ -105,8 +105,8 @@ def _forward_simulate_with_intervention(
     X_cf_padded[:, :pad, :] = X_factual[:, :pad, :]
 
     for t_rel in range(T):
-        t_abs = t_rel + pad   # index into padded array
-        t_orig = t_rel        # index into X_factual / U
+        t_abs = t_rel + pad  # index into padded array
+        t_orig = t_rel  # index into X_factual / U
 
         for j in range(k):
             # Intervention override at the designated time step and channel
@@ -116,7 +116,7 @@ def _forward_simulate_with_intervention(
 
             # Structural equation: Eq. 1 with abduced noise
             parent_sum = np.zeros(N, dtype=np.float64)
-            for (i, lag) in dag.parents_of(j):
+            for i, lag in dag.parents_of(j):
                 mech = mech_index.get((j, i, lag))
                 if mech is None:
                     continue

@@ -106,7 +106,7 @@ def proximity(
     if norm == "l1":
         return float(np.sum(np.abs(diff)))
     elif norm == "l2":
-        return float(np.sqrt(np.sum(diff ** 2)))
+        return float(np.sqrt(np.sum(diff**2)))
     else:
         raise ValueError(f"norm must be 'l1' or 'l2', got {norm!r}")
 
@@ -396,20 +396,25 @@ def trsi(X_cf: np.ndarray, X: np.ndarray) -> float:
     if X_cf_arr.ndim == 2:
         X_cf_arr = X_cf_arr[np.newaxis]
         X_arr = X_arr[np.newaxis]
-    delta = X_cf_arr - X_arr                             # (N, T, k)
-    d_delta = np.diff(delta, axis=1)                     # (N, T-1, k) -- first difference
-    l2_per_step = np.sqrt((d_delta ** 2).sum(axis=-1))   # (N, T-1)
-    l2_delta = np.sqrt((delta ** 2).sum(axis=-1))        # (N, T) -- edit magnitude
+    delta = X_cf_arr - X_arr  # (N, T, k)
+    d_delta = np.diff(delta, axis=1)  # (N, T-1, k) -- first difference
+    l2_per_step = np.sqrt((d_delta**2).sum(axis=-1))  # (N, T-1)
+    l2_delta = np.sqrt((delta**2).sum(axis=-1))  # (N, T) -- edit magnitude
     denom = float(l2_delta.mean())
     if denom < 1e-12:
         return 0.0  # zero edit: nothing to be jittery about
     return float(l2_per_step.mean() / denom)
 
 
-def compute_axis_c(X: np.ndarray, X_cf_exp: np.ndarray,
-                   X_train: np.ndarray, classifier,
-                   target_class: int,
-                   mechanism=None, noise_scale: float | None = None) -> dict:
+def compute_axis_c(
+    X: np.ndarray,
+    X_cf_exp: np.ndarray,
+    X_train: np.ndarray,
+    classifier,
+    target_class: int,
+    mechanism=None,
+    noise_scale: float | None = None,
+) -> dict:
     """Compute all Axis C metrics.
 
     The retroactive-edit check that IVR used to provide lives in
@@ -434,23 +439,19 @@ def compute_axis_c(X: np.ndarray, X_cf_exp: np.ndarray,
     """
     results: dict = {}
     results["Validity"] = validity(X_cf_exp, classifier, target_class)
-    results["Proximity_L1"] = float(np.mean([
-        proximity(X[i], X_cf_exp[i], norm="l1") for i in range(len(X))
-    ]))
-    results["Proximity_L2"] = float(np.mean([
-        proximity(X[i], X_cf_exp[i], norm="l2") for i in range(len(X))
-    ]))
-    results["Sparsity"] = float(np.mean([
-        sparsity(X[i], X_cf_exp[i]) for i in range(len(X))
-    ]))
+    results["Proximity_L1"] = float(
+        np.mean([proximity(X[i], X_cf_exp[i], norm="l1") for i in range(len(X))])
+    )
+    results["Proximity_L2"] = float(
+        np.mean([proximity(X[i], X_cf_exp[i], norm="l2") for i in range(len(X))])
+    )
+    results["Sparsity"] = float(np.mean([sparsity(X[i], X_cf_exp[i]) for i in range(len(X))]))
     results["TRSI"] = trsi(X_cf_exp, X)
 
     ood_scores = np.atleast_1d(ood_plausibility(X_train, X_cf_exp))
     results["OOD"] = float(np.mean(ood_scores))
 
     if mechanism is not None and noise_scale is not None:
-        results["SCM_Plausibility"] = scm_noise_plausibility(
-            X_cf_exp, mechanism, noise_scale
-        )
+        results["SCM_Plausibility"] = scm_noise_plausibility(X_cf_exp, mechanism, noise_scale)
 
     return results

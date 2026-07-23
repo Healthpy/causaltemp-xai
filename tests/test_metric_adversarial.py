@@ -384,8 +384,7 @@ class TestMCCCoverageFix:
         scores (discriminative power restored)."""
         rng = np.random.default_rng(1)
         scores = [
-            mcc_concept(np.abs(rng.normal(size=(20, self.K))), self.PARENTS)
-            for _ in range(5)
+            mcc_concept(np.abs(rng.normal(size=(20, self.K))), self.PARENTS) for _ in range(5)
         ]
         ceiling = self.K / len(self.PARENTS)
         assert all(s < ceiling for s in scores)
@@ -424,8 +423,7 @@ class _FractionMethod:
 class TestShiftVRGuard:
     def _run(self, methods):
         X = np.zeros((10, 8, 3))
-        return shift_vr(_SignModel(), methods, X, X, graph=None, mechanism=None,
-                        target_class=1)
+        return shift_vr(_SignModel(), methods, X, X, graph=None, mechanism=None, target_class=1)
 
     def test_ratio_suppressed_below_floor_pair_still_reported(self):
         res = self._run({"unstable": _FractionMethod(0.2, 0.8)})["unstable"]
@@ -490,8 +488,16 @@ class TestShiftVRBaseReuse:
 
     def test_reuse_skips_base_generation(self):
         m = _StochasticMethod([0.4, 0.5])
-        shift_vr(_SignModel(), {"m": m}, self.X, self.X, None, None, 1,
-                 cf_base={"m": _batch_with_validity(0.6)})
+        shift_vr(
+            _SignModel(),
+            {"m": m},
+            self.X,
+            self.X,
+            None,
+            None,
+            1,
+            cf_base={"m": _batch_with_validity(0.6)},
+        )
         assert m.calls == 1, "base CFs must not be regenerated when supplied"
 
     def test_validity_base_comes_from_supplied_array(self):
@@ -500,16 +506,32 @@ class TestShiftVRBaseReuse:
         fresh regeneration happens to produce. With reuse the only generation
         left is the shift call, so the mock yields 0.5 there."""
         m = _StochasticMethod([0.5])
-        res = shift_vr(_SignModel(), {"m": m}, self.X, self.X, None, None, 1,
-                       cf_base={"m": _batch_with_validity(0.6)})["m"]
+        res = shift_vr(
+            _SignModel(),
+            {"m": m},
+            self.X,
+            self.X,
+            None,
+            None,
+            1,
+            cf_base={"m": _batch_with_validity(0.6)},
+        )["m"]
         assert res["validity_base"] == pytest.approx(0.6)
         assert res["validity_shift"] == pytest.approx(0.5)  # numerator still fresh
         assert res["shift_vr"] == pytest.approx(0.5 / 0.6)
 
     def test_missing_method_falls_back_to_generating(self):
         m = _StochasticMethod([0.5, 0.4])
-        res = shift_vr(_SignModel(), {"m": m}, self.X, self.X, None, None, 1,
-                       cf_base={"other": _batch_with_validity(0.6)})["m"]
+        res = shift_vr(
+            _SignModel(),
+            {"m": m},
+            self.X,
+            self.X,
+            None,
+            None,
+            1,
+            cf_base={"other": _batch_with_validity(0.6)},
+        )["m"]
         assert m.calls == 2  # base + shift, as before
         assert res["validity_base"] == pytest.approx(0.5)
 
@@ -523,11 +545,19 @@ class TestShiftVRBaseReuse:
     def test_reuse_is_faithful_for_a_deterministic_method(self):
         """With a deterministic method, reuse must change nothing at all."""
         base_cfs = _FractionMethod(0.5, 0.5).generate_batch(self.X, None)
-        without = shift_vr(_SignModel(), {"m": _FractionMethod(0.5, 0.4)},
-                           self.X, self.X, None, None, 1)["m"]
-        with_reuse = shift_vr(_SignModel(), {"m": _StochasticMethod([0.4])},
-                              self.X, self.X, None, None, 1,
-                              cf_base={"m": base_cfs})["m"]
+        without = shift_vr(
+            _SignModel(), {"m": _FractionMethod(0.5, 0.4)}, self.X, self.X, None, None, 1
+        )["m"]
+        with_reuse = shift_vr(
+            _SignModel(),
+            {"m": _StochasticMethod([0.4])},
+            self.X,
+            self.X,
+            None,
+            None,
+            1,
+            cf_base={"m": base_cfs},
+        )["m"]
         assert with_reuse["validity_base"] == pytest.approx(without["validity_base"])
         assert with_reuse["shift_vr"] == pytest.approx(without["shift_vr"])
 
@@ -575,29 +605,23 @@ class TestJointFaithValidCriterion:
         # Tiny edit: hard-faithful rollout, above INTERVENTION_TOL (so it IS
         # the derived intervention) but far too small to flip the model ->
         # the gameability case.
-        tiny = np.stack([
-            _noiseless_cf(x, mech, T0_JOINT, np.full(3, 2e-3)) for x in X
-        ])
+        tiny = np.stack([_noiseless_cf(x, mech, T0_JOINT, np.full(3, 2e-3)) for x in X])
         # Large edit: hard-faithful rollout that also flips the model.
-        big = np.stack([
-            _noiseless_cf(x, mech, T0_JOINT, np.full(3, 3.0)) for x in X
-        ])
+        big = np.stack([_noiseless_cf(x, mech, T0_JOINT, np.full(3, 3.0)) for x in X])
         return X, graph, mech, tiny, big
 
     def test_tiny_edit_gets_no_joint_credit(self):
         """Hard-faithful but non-flipping CFs: faithfulness alone is at 1.0,
         joint credit is zero — the loophole is closed."""
         X, graph, mech, tiny, _ = self._batches()
-        result = evaluate_method(_StepValueModel(), X, tiny, X, graph, mech,
-                                 target_class=1)
+        result = evaluate_method(_StepValueModel(), X, tiny, X, graph, mech, target_class=1)
         assert result["cf_faith_rollout_hard"] == 1.0  # gameably 'faithful'
-        assert result["validity"] == 0.0               # ...but flips nothing
+        assert result["validity"] == 0.0  # ...but flips nothing
         assert result["cf_faith_rollout_hard_valid"] == 0.0  # no joint credit
 
     def test_faithful_and_valid_cf_gets_full_joint_credit(self):
         X, graph, mech, _, big = self._batches()
-        result = evaluate_method(_StepValueModel(), X, big, X, graph, mech,
-                                 target_class=1)
+        result = evaluate_method(_StepValueModel(), X, big, X, graph, mech, target_class=1)
         assert result["validity"] == 1.0
         assert result["cf_faith_rollout_hard"] == 1.0
         assert result["cf_faith_rollout_hard_valid"] == 1.0
@@ -608,8 +632,7 @@ class TestJointFaithValidCriterion:
         X, graph, mech, tiny, big = self._batches()
         X2 = np.concatenate([X, X])
         CFs = np.concatenate([tiny, big])
-        result = evaluate_method(_StepValueModel(), X2, CFs, X, graph, mech,
-                                 target_class=1)
+        result = evaluate_method(_StepValueModel(), X2, CFs, X, graph, mech, target_class=1)
         preds = _StepValueModel().predict(CFs)
         rollout = CFfaith(semantics="noiseless_rollout")
         manual = []
@@ -617,9 +640,7 @@ class TestJointFaithValidCriterion:
             t = derive_intervention_t(X2[i], CFs[i])
             hard = rollout.score(X2[i], CFs[i], t, graph, mech)["hard"]
             manual.append(hard * float(preds[i] == 1))
-        assert result["cf_faith_rollout_hard_valid"] == pytest.approx(
-            float(np.mean(manual))
-        )
+        assert result["cf_faith_rollout_hard_valid"] == pytest.approx(float(np.mean(manual)))
         # The tiny-edit half contributes faithfulness but no joint credit.
         assert result["cf_faith_rollout_hard_valid"] < result["cf_faith_rollout_hard"]
 

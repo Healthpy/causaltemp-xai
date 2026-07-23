@@ -90,9 +90,9 @@ class TestGraphSparsity:
         gen = LinearSCMT(k=8, L=2, sparsity=sparsity, T=10, N=10, seed=0)
         data = gen.generate()
         actual = data["graph"].mean()
-        assert abs(actual - sparsity) < 0.15, (
-            f"sparsity={sparsity}: actual={actual:.3f} out of tolerance"
-        )
+        assert (
+            abs(actual - sparsity) < 0.15
+        ), f"sparsity={sparsity}: actual={actual:.3f} out of tolerance"
 
 
 # ---------------------------------------------------------------------------
@@ -281,4 +281,3 @@ class TestPersistenceRoundTrip:
             assert np.array_equal(loaded[f"X_{split}"], data["X"][idx])
             assert np.array_equal(loaded[f"Y_{split}"], data["Y"][idx])
         assert np.array_equal(loaded["graph"], data["graph"])
-

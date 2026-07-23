@@ -198,9 +198,7 @@ class TestMLPSerialization:
         assert isinstance(restored, MLPMechanism)
         rng = np.random.default_rng(32)
         history = rng.normal(size=(mech.L, mech.k))
-        np.testing.assert_array_equal(
-            mech.forward_numpy(history), restored.forward_numpy(history)
-        )
+        np.testing.assert_array_equal(mech.forward_numpy(history), restored.forward_numpy(history))
 
     def test_npz_round_trip_coerces_scalars(self, tmp_path):
         """Through np.savez/np.load, scalars/strings come back as 0-d arrays;
@@ -291,12 +289,14 @@ class TestMLPNonmonotonicActivation:
         """Structural check on the function itself: sin has a local max in
         [0, pi] (unlike tanh, which is strictly increasing everywhere)."""
         from causaltemp_xai.benchmarks.mechanisms import _ACTIVATIONS_NP
+
         f = _ACTIVATIONS_NP["nonmonotonic"]
         y0, y1, y2 = f(0.0), f(np.pi / 2), f(np.pi)
         assert y0 < y1 and y1 > y2
 
     def test_activation_is_bounded_like_tanh(self):
         from causaltemp_xai.benchmarks.mechanisms import _ACTIVATIONS_NP
+
         f = _ACTIVATIONS_NP["nonmonotonic"]
         x = np.linspace(-50, 50, 5000)
         assert np.all(np.abs(f(x)) <= 1.0 + 1e-9)
@@ -311,6 +311,4 @@ class TestMLPNonmonotonicActivation:
         assert restored.activation == "nonmonotonic"
         rng = np.random.default_rng(49)
         history = rng.normal(size=(mech.L, mech.k))
-        np.testing.assert_array_equal(
-            mech.forward_numpy(history), restored.forward_numpy(history)
-        )
+        np.testing.assert_array_equal(mech.forward_numpy(history), restored.forward_numpy(history))

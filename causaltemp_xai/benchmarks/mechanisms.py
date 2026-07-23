@@ -438,9 +438,11 @@ def mechanism_from_state_dict(d: dict) -> Mechanism:
     Coerces the discriminator with ``str(...)`` because ``np.load`` returns it as
     a 0-d array.
     """
-    mech_type = str(np.asarray(d["__type__"]).item()) if not isinstance(
-        d["__type__"], str
-    ) else d["__type__"]
+    mech_type = (
+        str(np.asarray(d["__type__"]).item())
+        if not isinstance(d["__type__"], str)
+        else d["__type__"]
+    )
     if mech_type == "linear":
         return LinearMechanism.from_state_dict(d)
     if mech_type == "mlp":

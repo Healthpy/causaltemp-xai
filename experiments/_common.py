@@ -74,8 +74,7 @@ def select_flip_candidates(clf, X_test, n_cf, target_class=TARGET_CLASS):
     return np.asarray(src[:n_cf], dtype=int)
 
 
-def per_instance_records(benchmark, classifier, method_name, X_sel, CFs, graph, mech,
-                          preds=None):
+def per_instance_records(benchmark, classifier, method_name, X_sel, CFs, graph, mech, preds=None):
     """One record per (method, instance) with per-CF Axis-C + CF-faith metrics.
 
     Axis C's ``TRSI`` (mechanism-free temporal smoothness of the edit — a
@@ -110,27 +109,29 @@ def per_instance_records(benchmark, classifier, method_name, X_sel, CFs, graph, 
         p = pearl.score(x, x_cf, t, graph, mech)
         _spars_detail = sparsity(x, x_cf, return_detailed=True)
         valid_i = int(preds[i] == TARGET_CLASS) if preds is not None else None
-        rows.append({
-            "benchmark": benchmark,
-            "classifier": classifier,
-            "method": method_name,
-            "instance": int(i),
-            "validity": (valid_i if valid_i is not None else ""),
-            "proximity_l1": proximity(x, x_cf, norm="l1"),
-            "proximity_l2": proximity(x, x_cf, norm="l2"),
-            "sparsity": sparsity(x, x_cf),
-            "sparsity_channels": _spars_detail["channels"],
-            "sparsity_timepoints": _spars_detail["timepoints"],
-            "trsi": trsi(x_cf, x),
-            "intervention_t": int(t),
-            "cf_faith_rollout_hard": r["hard"],
-            "cf_faith_rollout_soft": r["soft"],
-            "cf_faith_pearl_hard": p["hard"],
-            "cf_faith_pearl_soft": p["soft"],
-            # Joint faithfulness-validity (anti-gameability, M1 2026-07-07).
-            "cf_faith_rollout_hard_valid": (r["hard"] * valid_i if valid_i is not None else ""),
-            "cf_faith_pearl_hard_valid": (p["hard"] * valid_i if valid_i is not None else ""),
-        })
+        rows.append(
+            {
+                "benchmark": benchmark,
+                "classifier": classifier,
+                "method": method_name,
+                "instance": int(i),
+                "validity": (valid_i if valid_i is not None else ""),
+                "proximity_l1": proximity(x, x_cf, norm="l1"),
+                "proximity_l2": proximity(x, x_cf, norm="l2"),
+                "sparsity": sparsity(x, x_cf),
+                "sparsity_channels": _spars_detail["channels"],
+                "sparsity_timepoints": _spars_detail["timepoints"],
+                "trsi": trsi(x_cf, x),
+                "intervention_t": int(t),
+                "cf_faith_rollout_hard": r["hard"],
+                "cf_faith_rollout_soft": r["soft"],
+                "cf_faith_pearl_hard": p["hard"],
+                "cf_faith_pearl_soft": p["soft"],
+                # Joint faithfulness-validity (anti-gameability, M1 2026-07-07).
+                "cf_faith_rollout_hard_valid": (r["hard"] * valid_i if valid_i is not None else ""),
+                "cf_faith_pearl_hard_valid": (p["hard"] * valid_i if valid_i is not None else ""),
+            }
+        )
     return rows
 
 
@@ -208,6 +209,7 @@ def append_table(path: Path, rows: list[dict]) -> None:
 
 def aggregate_method_row(benchmark, classifier, method_name, instance_rows) -> dict:
     """Collapse per-instance rows for one method into a single mean-summary row."""
+
     def _mean(key):
         vals = [r[key] for r in instance_rows if r[key] not in (None, "")]
         return float(np.mean(vals)) if vals else None
@@ -292,9 +294,7 @@ def set_run_context(seed=None, config: str | None = None) -> None:
 
 def _git(*args: str) -> str | None:
     try:
-        out = subprocess.run(
-            ["git", *args], cwd=ROOT, capture_output=True, text=True, timeout=10
-        )
+        out = subprocess.run(["git", *args], cwd=ROOT, capture_output=True, text=True, timeout=10)
     except (OSError, subprocess.SubprocessError):
         return None
     return out.stdout.strip() if out.returncode == 0 else None
@@ -420,8 +420,9 @@ def build_masked_mechanism(mechanism, inferred_adj: np.ndarray):
     )
 
 
-def axis_a_for_attribution(attributions: np.ndarray, int_channels,
-                           causal_parents_list, t0s=None) -> dict:
+def axis_a_for_attribution(
+    attributions: np.ndarray, int_channels, causal_parents_list, t0s=None
+) -> dict:
     """Axis A (ICC attribution-mass + causal coverage) for one attribution method.
 
     Thin wrapper around :func:`causaltemp_xai.metrics.axis_a.compute_axis_a`
@@ -444,8 +445,7 @@ def axis_a_for_attribution(attributions: np.ndarray, int_channels,
 # ---------------------------------------------------------------------------
 
 
-def axis_b_benchmark_diagnostic(graph: np.ndarray, X: np.ndarray,
-                                mechanism=None) -> dict:
+def axis_b_benchmark_diagnostic(graph: np.ndarray, X: np.ndarray, mechanism=None) -> dict:
     """Structural diagnostic of the benchmark's own ground-truth graph.
 
     No graph-*discovery* method is wired into this pipeline, so there is no
@@ -461,8 +461,7 @@ def axis_b_benchmark_diagnostic(graph: np.ndarray, X: np.ndarray,
     from causaltemp_xai.metrics.axis_b import compute_axis_b
 
     adj = (np.asarray(graph) != 0).astype(int)
-    result = compute_axis_b(adj, adj, X=np.asarray(X, dtype=float),
-                            mechanism=mechanism)
+    result = compute_axis_b(adj, adj, X=np.asarray(X, dtype=float), mechanism=mechanism)
     result["note"] = (
         "SHD/LagAcc computed against the graph itself (no graph-discovery "
         "method in this pipeline) -- trivially perfect; ResidualDep is "
@@ -593,9 +592,7 @@ def aggregate_across_seeds(
                     if r["method"] == method and r.get(metric, "") not in (None, "")
                 ]
                 groups.append(np.asarray(vals, dtype=float))
-            result = hierarchical_bootstrap_ci(
-                groups, n_boot=n_boot, ci=ci, seed=boot_seed
-            )
+            result = hierarchical_bootstrap_ci(groups, n_boot=n_boot, ci=ci, seed=boot_seed)
             row.update(result.as_dict(prefix=f"{metric}_"))
         out_rows.append(row)
     return out_rows

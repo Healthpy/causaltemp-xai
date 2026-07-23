@@ -99,9 +99,7 @@ def evaluate_method(
     if CFs.ndim == 2:
         CFs = CFs[np.newaxis]
     if len(X_orig) != len(CFs):
-        raise ValueError(
-            f"X_orig ({len(X_orig)}) and CFs ({len(CFs)}) batch sizes differ"
-        )
+        raise ValueError(f"X_orig ({len(X_orig)}) and CFs ({len(CFs)}) batch sizes differ")
 
     # Instantiate the two scorers once (outside the loop).
     rollout = CFfaith(semantics="noiseless_rollout")

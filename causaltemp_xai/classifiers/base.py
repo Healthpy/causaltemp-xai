@@ -48,10 +48,13 @@ class TSClassifier(ABC):
     def save(self, path: str | Path) -> None:
         if self.model is None:
             raise RuntimeError("Model not trained yet.")
-        torch.save({
-            "state_dict": self.model.state_dict(),
-            "init_params": getattr(self, "_init_params", {}),
-        }, Path(path) / "model.pt")
+        torch.save(
+            {
+                "state_dict": self.model.state_dict(),
+                "init_params": getattr(self, "_init_params", {}),
+            },
+            Path(path) / "model.pt",
+        )
 
     def load(self, path: str | Path) -> None:
         ckpt = torch.load(Path(path) / "model.pt", map_location=self.device)
@@ -69,11 +72,12 @@ class TSClassifier(ABC):
     def _run_inference(self, X: np.ndarray, batch_size: int = 256) -> np.ndarray:
         """Batch inference returning softmax probabilities."""
         import torch.nn.functional as F
+
         self.model.eval()
         all_probs = []
         with torch.no_grad():
             for i in range(0, len(X), batch_size):
-                x_batch = self._to_tensor(X[i:i + batch_size])
+                x_batch = self._to_tensor(X[i : i + batch_size])
                 logits = self.model(x_batch)
                 probs = F.softmax(logits, dim=-1).cpu().numpy()
                 all_probs.append(probs)

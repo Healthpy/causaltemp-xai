@@ -334,9 +334,7 @@ def shifted_config(
     family too (the MLP weights are seed-built before any noise is drawn).
     """
     if noise_type not in ("laplace", "uniform"):
-        raise ValueError(
-            f"noise_type must be 'laplace' or 'uniform', got {noise_type!r}"
-        )
+        raise ValueError(f"noise_type must be 'laplace' or 'uniform', got {noise_type!r}")
     return BenchmarkConfig(
         k=base.k,
         L=base.L,
@@ -420,7 +418,5 @@ def get_config(name: str) -> BenchmarkConfig:
         If ``name`` is not a registered config.
     """
     if name not in CONFIGS:
-        raise KeyError(
-            f"unknown config {name!r}; choose one of {sorted(CONFIGS)}"
-        )
+        raise KeyError(f"unknown config {name!r}; choose one of {sorted(CONFIGS)}")
     return CONFIGS[name]

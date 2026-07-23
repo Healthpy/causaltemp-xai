@@ -114,9 +114,7 @@ class CFfaith:
             "Decisions" (keep both CF-faith metrics).
         """
         if semantics not in self.SEMANTICS:
-            raise ValueError(
-                f"semantics must be one of {self.SEMANTICS}, got {semantics!r}"
-            )
+            raise ValueError(f"semantics must be one of {self.SEMANTICS}, got {semantics!r}")
         self.tol = tol
         self.scale = scale
         self.semantics = semantics
@@ -159,8 +157,8 @@ class CFfaith:
         ``"soft"``
             Continuous score in ``[0, 1]``; 0.0 when retroactive changes exist.
         """
-        x_orig = np.asarray(x_original, dtype=float)   # (T, k)
-        x_cf_arr = np.asarray(x_cf, dtype=float)        # (T, k)
+        x_orig = np.asarray(x_original, dtype=float)  # (T, k)
+        x_cf_arr = np.asarray(x_cf, dtype=float)  # (T, k)
         T, k = x_orig.shape
         L = mechanism.L
 

@@ -24,7 +24,7 @@ OPERATORS: dict[str, Callable[[np.ndarray], np.ndarray]] = {
     "cos": np.cos,
     "tanh": np.tanh,
     "abs": np.abs,
-    "square": lambda x: x ** 2,
+    "square": lambda x: x**2,
     "exp_neg_abs": lambda x: np.exp(-np.abs(x)),
     # Non-invertible: only used in non-monotonic ablation
     "step": lambda x: (x > 0).astype(float),
@@ -49,6 +49,7 @@ class Mechanism:
     Both coexist: this Mechanism is used in the new scm/ package; the
     LinearMechanism/MLPMechanism is used in benchmarks/ for VAR generation.
     """
+
     channel_from: int
     channel_to: int
     lag: int
@@ -93,12 +94,14 @@ def sample_mechanism(
         for i, lag in dag.parents_of(j):
             weight = rng.normal(0.0, sigma_w)
             op_key = rng.choice(keys)
-            mechanisms.append(Mechanism(
-                channel_from=i,
-                channel_to=j,
-                lag=lag,
-                weight=weight,
-                operator_key=op_key,
-            ))
+            mechanisms.append(
+                Mechanism(
+                    channel_from=i,
+                    channel_to=j,
+                    lag=lag,
+                    weight=weight,
+                    operator_key=op_key,
+                )
+            )
 
     return mechanisms

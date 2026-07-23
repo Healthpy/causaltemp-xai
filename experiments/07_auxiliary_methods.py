@@ -157,17 +157,19 @@ def _per_method_propagation(cf_dir, graph, true_mech, rollout, pearl):
     X_sel = np.load(x_sel_path)
     rows = []
     for cf_path in sorted(cf_dir.glob("X_cf_*.npy")):
-        method = cf_path.stem[len("X_cf_"):]
+        method = cf_path.stem[len("X_cf_") :]
         cfs = np.load(cf_path)
         r_gt = _mean_soft_cf_faith(X_sel, cfs, graph, true_mech, rollout)
         p_gt = _mean_soft_cf_faith(X_sel, cfs, graph, true_mech, pearl)
-        rows.append({
-            "method": method,
-            "cf_faith_gt": r_gt,
-            "propagation_error": float(1.0 - r_gt),
-            "cf_faith_pearl_gt": p_gt,
-            "propagation_error_pearl": float(1.0 - p_gt),
-        })
+        rows.append(
+            {
+                "method": method,
+                "cf_faith_gt": r_gt,
+                "propagation_error": float(1.0 - r_gt),
+                "cf_faith_pearl_gt": p_gt,
+                "propagation_error_pearl": float(1.0 - p_gt),
+            }
+        )
     return rows
 
 
@@ -224,8 +226,18 @@ def _corrupt_graph(true_bin: np.ndarray, frac: float, rng: np.random.Generator) 
     return adj
 
 
-def _graph_quality_sweep(graph, mech, X_sel, oracle_ints, rollout, cf_faith_gt,
-                         method_adj, method_auc, method_label, seed=0) -> list[dict]:
+def _graph_quality_sweep(
+    graph,
+    mech,
+    X_sel,
+    oracle_ints,
+    rollout,
+    cf_faith_gt,
+    method_adj,
+    method_auc,
+    method_label,
+    seed=0,
+) -> list[dict]:
     """Graph-error across a controlled graph-quality ladder.
 
     Demonstrates the Axis-B decomposition *discriminates*: ``graph_error``
@@ -244,13 +256,15 @@ def _graph_quality_sweep(graph, mech, X_sel, oracle_ints, rollout, cf_faith_gt,
 
     def _point(label, adj, auc):
         cf_inf = _inferred_cf_faith(graph, mech, adj, X_sel, oracle_ints, rollout)
-        rows.append({
-            "label": label,
-            "graph_auc": (None if auc is None else float(auc)),
-            "shd": float(shd(true_bin, adj)),
-            "cf_faith_inferred": cf_inf,
-            "graph_error": float(cf_faith_gt - cf_inf),
-        })
+        rows.append(
+            {
+                "label": label,
+                "graph_auc": (None if auc is None else float(auc)),
+                "shd": float(shd(true_bin, adj)),
+                "cf_faith_inferred": cf_inf,
+                "graph_error": float(cf_faith_gt - cf_inf),
+            }
+        )
 
     # Controlled ladder: true -> increasingly corrupted -> random.
     for frac in (0.0, 0.25, 0.5, 0.75, 1.0):
@@ -298,8 +312,14 @@ def run_graph_method(
         _, scores = model.inferred_graph(max_lag=L)
     else:  # citris -- the only other member of GRAPH_METHODS
         ds = generate_interventional_sequences(
-            mech, k=k, L=L, T=X_all.shape[1], N=X_all.shape[0],
-            seed=cfg.seed, intervention_prob=intervention_prob, mode="single",
+            mech,
+            k=k,
+            L=L,
+            T=X_all.shape[1],
+            N=X_all.shape[0],
+            seed=cfg.seed,
+            intervention_prob=intervention_prob,
+            mode="single",
         )
         print(
             f"[07] fitting CITRIS on {ds.X.shape[0]} interventional sequences "
@@ -309,7 +329,8 @@ def run_graph_method(
         _, scores = model.inferred_graph(max_lag=L)
         citris_meta = {
             "source": "third_party/citris_repo (github.com/phlippe/CITRIS)",
-            "epochs": epochs, "intervention_prob": intervention_prob,
+            "epochs": epochs,
+            "intervention_prob": intervention_prob,
             "intervention_mode": "single",
             "num_latents": int(model.model.num_latents),
             "n_train_sequences": int(ds.X.shape[0]),
@@ -369,9 +390,16 @@ def run_graph_method(
     sweep_rows = None
     if sweep:
         sweep_rows = _graph_quality_sweep(
-            graph, mech, X_sel, oracle_ints, rollout, cf_faith_gt,
-            method_adj=adj_pred, method_auc=axis_b.get("AUC"),
-            method_label=method, seed=cfg.seed,
+            graph,
+            mech,
+            X_sel,
+            oracle_ints,
+            rollout,
+            cf_faith_gt,
+            method_adj=adj_pred,
+            method_auc=axis_b.get("AUC"),
+            method_label=method,
+            seed=cfg.seed,
         )
 
     out = {
@@ -380,9 +408,14 @@ def run_graph_method(
             "method": method,
             "n_cf": len(X_sel),
             "dynotears": (
-                {"source": "third_party/causalnex_repo (github.com/mckinsey/causalnex)",
-                 "lambda_a": model.lambda_a, "lambda_w": model.lambda_w, "p": model.p}
-                if method == "dynotears" else None
+                {
+                    "source": "third_party/causalnex_repo (github.com/mckinsey/causalnex)",
+                    "lambda_a": model.lambda_a,
+                    "lambda_w": model.lambda_w,
+                    "p": model.p,
+                }
+                if method == "dynotears"
+                else None
             ),
             "citris": citris_meta,
         },
@@ -424,16 +457,17 @@ def run_graph_method(
                 f"{r['propagation_error_pearl']:>+12.3f}"
             )
     else:
-        print("[07] no persisted CF methods found (run experiments/03 first) -- "
-              "per-method decomposition skipped")
+        print(
+            "[07] no persisted CF methods found (run experiments/03 first) -- "
+            "per-method decomposition skipped"
+        )
     if sweep_rows:
         print("[07] graph-quality sweep (graph_error vs graph quality):")
         print(f"       {'graph':<18} {'AUC':>6} {'SHD':>5} {'graph_error':>12}")
         for r in sweep_rows:
             auc = "  n/a" if r["graph_auc"] is None else f"{r['graph_auc']:.2f}"
             print(
-                f"       {r['label']:<18} {auc:>6} {r['shd']:>5.0f} "
-                f"{r['graph_error']:>+12.3f}"
+                f"       {r['label']:<18} {auc:>6} {r['shd']:>5.0f} " f"{r['graph_error']:>+12.3f}"
             )
     print(f"[07] wrote {out_dir_res / 'graph_error.json'}")
 
@@ -446,6 +480,7 @@ def run_graph_method(
 def _ancestors_of(node: int, graph: np.ndarray) -> set[int]:
     """Transitive causal ancestors of ``node`` (incl. itself) in the lagged
     graph ``(k, k, L)`` where ``graph[i, j, l]==1`` means j causes i."""
+
     def parents(i):
         return {j for j in range(graph.shape[1]) if np.any(graph[i, j, :] != 0)}
 
@@ -489,65 +524,83 @@ def run_ivae(cfg, out_dir, epochs: int = 50) -> None:
 
     # Train iVAE with latent_dim = k so dims align one-to-one with channels.
     print(f"[07] training iVAE (latent_dim={k}, epochs={epochs}) on {X_train.shape[0]} seqs ...")
-    ae = iVAE(latent_dim=k, n_segments=min(4, k), epochs=epochs,
-              beta=0.3, kl_warmup_frac=0.3)
+    ae = iVAE(latent_dim=k, n_segments=min(4, k), epochs=epochs, beta=0.3, kl_warmup_frac=0.3)
     ae.fit_unsupervised(X_train)
 
     # --- Sanity gates (report FIRST) ---
-    Z = ae.encode(X_test)                         # (N, k)
-    X_recon = ae.decode(Z)                         # (N, T, k)
+    Z = ae.encode(X_test)  # (N, k)
+    X_recon = ae.decode(Z)  # (N, T, k)
     recon_mse = float(np.mean((X_recon - X_test) ** 2))
     f_x = np.asarray(clf.predict(X_test)).reshape(-1)
     f_recon = np.asarray(clf.predict(X_recon)).reshape(-1)
     recon_label_agreement = float(np.mean(f_recon == f_x))
 
     # Ground-truth factors = per-channel final values (the label-driving repr).
-    F = X_test[:, -1, :]                           # (N, k)
+    F = X_test[:, -1, :]  # (N, k)
     assign, mcc_val = _align_latents_to_channels(Z, F)
 
-    relevant_channels = _ancestors_of(0, graph)    # label channel 0 + ancestors
+    relevant_channels = _ancestors_of(0, graph)  # label channel 0 + ancestors
     parent_dims = [i for i in range(k) if assign.get(i) in relevant_channels]
     nonparent_dims = [i for i in range(k) if assign.get(i) not in relevant_channels]
 
     interpretable = recon_label_agreement >= RECON_AGREEMENT_GATE
-    print(f"[07] GATES: recon_mse={recon_mse:.4f}  recon_label_agreement={recon_label_agreement:.2f} "
-          f"(gate>={RECON_AGREEMENT_GATE})  MCC(latent,channel)={mcc_val:.2f}")
-    print(f"[07] label-relevant channels (anc. of 0): {sorted(relevant_channels)}; "
-          f"latent->channel assign: {assign}")
+    print(
+        f"[07] GATES: recon_mse={recon_mse:.4f}  recon_label_agreement={recon_label_agreement:.2f} "
+        f"(gate>={RECON_AGREEMENT_GATE})  MCC(latent,channel)={mcc_val:.2f}"
+    )
+    print(
+        f"[07] label-relevant channels (anc. of 0): {sorted(relevant_channels)}; "
+        f"latent->channel assign: {assign}"
+    )
     if not interpretable:
-        print("[07] recon_label_agreement below gate -> ICC is NOT interpretable on this "
-              "run (iVAE reconstruction does not preserve the classifier's decision). "
-              "Reporting gates only; this is itself an honest Axis-A finding.")
+        print(
+            "[07] recon_label_agreement below gate -> ICC is NOT interpretable on this "
+            "run (iVAE reconstruction does not preserve the classifier's decision). "
+            "Reporting gates only; this is itself an honest Axis-A finding."
+        )
 
     # --- ICC magnitude ladder (pre-registered c in {1,2,3}) ---
     rng = np.random.default_rng(cfg.seed)
     ladder = []
     for c in (1.0, 2.0, 3.0):
-        icc = icc_latent(X_test, ae.encode, ae.decode, clf, delta=c,
-                         scale_by_std=True, symmetric=True)  # (k,)
+        icc = icc_latent(
+            X_test, ae.encode, ae.decode, clf, delta=c, scale_by_std=True, symmetric=True
+        )  # (k,)
         parent_mean = float(np.mean([icc[i] for i in parent_dims])) if parent_dims else float("nan")
-        nonparent_mean = float(np.mean([icc[i] for i in nonparent_dims])) if nonparent_dims else float("nan")
+        nonparent_mean = (
+            float(np.mean([icc[i] for i in nonparent_dims])) if nonparent_dims else float("nan")
+        )
         # Permuted-assignment null: random partition of the same size as parent_dims.
         perm = rng.permutation(k)
-        null_parent = perm[:len(parent_dims)]
-        null_mean = float(np.mean([icc[i] for i in null_parent])) if len(null_parent) else float("nan")
-        ladder.append({
-            "c": c,
-            "icc_per_dim": [float(v) for v in icc],
-            "parent_aligned_mean": parent_mean,
-            "nonparent_aligned_mean": nonparent_mean,
-            "contrast": (parent_mean - nonparent_mean),
-            "permuted_null_mean": null_mean,
-        })
-        print(f"[07] c={c:g}: ICC parent-aligned={parent_mean:.3f}  non-parent={nonparent_mean:.3f}  "
-              f"contrast={parent_mean - nonparent_mean:+.3f}  (null={null_mean:.3f})")
+        null_parent = perm[: len(parent_dims)]
+        null_mean = (
+            float(np.mean([icc[i] for i in null_parent])) if len(null_parent) else float("nan")
+        )
+        ladder.append(
+            {
+                "c": c,
+                "icc_per_dim": [float(v) for v in icc],
+                "parent_aligned_mean": parent_mean,
+                "nonparent_aligned_mean": nonparent_mean,
+                "contrast": (parent_mean - nonparent_mean),
+                "permuted_null_mean": null_mean,
+            }
+        )
+        print(
+            f"[07] c={c:g}: ICC parent-aligned={parent_mean:.3f}  non-parent={nonparent_mean:.3f}  "
+            f"contrast={parent_mean - nonparent_mean:+.3f}  (null={null_mean:.3f})"
+        )
 
     out = {
         "provenance": {
-            "config": cfg.as_dict(), "method": "iVAE", "metric": "icc_latent",
-            "n_eval": int(X_test.shape[0]), "latent_dim": k, "epochs": epochs,
+            "config": cfg.as_dict(),
+            "method": "iVAE",
+            "metric": "icc_latent",
+            "n_eval": int(X_test.shape[0]),
+            "latent_dim": k,
+            "epochs": epochs,
             "note": "matched-baseline f(D(z)); +/-delta; delta_i=c*std(z_i); "
-                    "latents aligned to channels via Hungarian on |corr|.",
+            "latents aligned to channels via Hungarian on |corr|.",
         },
         "gates": {
             "recon_mse": recon_mse,
@@ -593,8 +646,13 @@ def run(
 
     if method in GRAPH_METHODS:
         run_graph_method(
-            cfg, out_dir, method=method, n_cf=n_cf, epochs=n_epochs,
-            intervention_prob=intervention_prob, sweep=sweep,
+            cfg,
+            out_dir,
+            method=method,
+            n_cf=n_cf,
+            epochs=n_epochs,
+            intervention_prob=intervention_prob,
+            sweep=sweep,
         )
     elif method == "ivae":
         run_ivae(cfg, out_dir, epochs=n_epochs)
@@ -608,39 +666,57 @@ def run(
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(
         description="Phase 07: auxiliary causal methods -- self-graphing (DYNOTEARS / "
-                    "CITRIS) with the Axis-B graph-error decomposition (H3), or "
-                    "decoder-based Axis-A ICC (iVAE).",
+        "CITRIS) with the Axis-B graph-error decomposition (H3), or "
+        "decoder-based Axis-A ICC (iVAE).",
     )
     parser.add_argument("--config", required=True, choices=sorted(CONFIGS))
     parser.add_argument("--out-dir", default=str(DEFAULT_OUT_DIR))
     parser.add_argument(
-        "--method", default="dynotears", choices=(*GRAPH_METHODS, "ivae"),
+        "--method",
+        default="dynotears",
+        choices=(*GRAPH_METHODS, "ivae"),
         help="dynotears (default) -- the load-bearing graph-aware baseline; "
-             "citris -- the honest secondary self-graphing method; "
-             "ivae -- decoder-based Axis-A ICC.",
+        "citris -- the honest secondary self-graphing method; "
+        "ivae -- decoder-based Axis-A ICC.",
     )
-    parser.add_argument("--n-cf", type=int, default=40,
-                        help="instances for the decomposition (graph methods only)")
-    parser.add_argument("--epochs", type=int, default=None,
-                        help="training epochs; defaults per method (citris 80, "
-                             "ivae 50). Unused by dynotears.")
-    parser.add_argument("--intervention-prob", type=float, default=0.3,
-                        help="interventional-sequence rate (citris only)")
     parser.add_argument(
-        "--sweep", action="store_true",
+        "--n-cf", type=int, default=40, help="instances for the decomposition (graph methods only)"
+    )
+    parser.add_argument(
+        "--epochs",
+        type=int,
+        default=None,
+        help="training epochs; defaults per method (citris 80, " "ivae 50). Unused by dynotears.",
+    )
+    parser.add_argument(
+        "--intervention-prob",
+        type=float,
+        default=0.3,
+        help="interventional-sequence rate (citris only)",
+    )
+    parser.add_argument(
+        "--sweep",
+        action="store_true",
         help="also compute the graph-quality sweep (graph_error across a "
-             "controlled true->random graph ladder + the method's real graph), "
-             "demonstrating the decomposition's dynamic range (graph methods only).",
+        "controlled true->random graph ladder + the method's real graph), "
+        "demonstrating the decomposition's dynamic range (graph methods only).",
     )
     parser.add_argument(
-        "--seed", type=int, default=None,
+        "--seed",
+        type=int,
+        default=None,
         help="Multi-seed replicate (M2): override the config seed via seeded_variant.",
     )
     args = parser.parse_args(argv)
     run(
-        args.config, args.out_dir, method=args.method, n_cf=args.n_cf,
-        epochs=args.epochs, intervention_prob=args.intervention_prob,
-        sweep=args.sweep, seed=args.seed,
+        args.config,
+        args.out_dir,
+        method=args.method,
+        n_cf=args.n_cf,
+        epochs=args.epochs,
+        intervention_prob=args.intervention_prob,
+        sweep=args.sweep,
+        seed=args.seed,
     )
     return 0
 

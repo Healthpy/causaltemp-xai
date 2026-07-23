@@ -40,9 +40,7 @@ import numpy as np
 INTERVENTION_TOL = 1e-3
 
 
-def derive_intervention_t(
-    x: np.ndarray, x_cf: np.ndarray, tol: float = INTERVENTION_TOL
-) -> int:
+def derive_intervention_t(x: np.ndarray, x_cf: np.ndarray, tol: float = INTERVENTION_TOL) -> int:
     """Return the smallest ``t`` such that ``max_j |x_cf[t,j] - x[t,j]| > tol``.
 
     This is the benchmark's uniform heuristic: all CF methods (Wachter,
@@ -83,9 +81,10 @@ def derive_intervention_t(
 @dataclass
 class Intervention:
     """Specification of a single do-operator intervention."""
-    channel: int       # i — the intervened channel
-    time: int          # T_int — the time step of intervention
-    value: float       # x'_int — the constant value imposed
+
+    channel: int  # i — the intervened channel
+    time: int  # T_int — the time step of intervention
+    value: float  # x'_int — the constant value imposed
 
     def affects_time(self, t: int) -> bool:
         """True if time t is at or after the intervention time."""

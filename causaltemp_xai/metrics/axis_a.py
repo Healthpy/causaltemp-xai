@@ -360,10 +360,7 @@ def dci(
     # Disentanglement: entropy of column-normalised R, per latent j
     R_col = _normalise_cols(R)
     log_K = np.log(K) if K > 1 else 1.0
-    D = np.array([
-        1.0 - _entropy(R_col[:, j]) / log_K
-        for j in range(d_z)
-    ])
+    D = np.array([1.0 - _entropy(R_col[:, j]) / log_K for j in range(d_z)])
     col_mass = R.sum(axis=0)  # (d_z,)
     total_mass = float(col_mass.sum())
     if total_mass > 0:
@@ -375,10 +372,7 @@ def dci(
     # Completeness: entropy of row-normalised R, per factor k
     R_row = _normalise_rows(R)
     log_dz = np.log(d_z) if d_z > 1 else 1.0
-    C = np.array([
-        1.0 - _entropy(R_row[k]) / log_dz
-        for k in range(K)
-    ])
+    C = np.array([1.0 - _entropy(R_row[k]) / log_dz for k in range(K)])
 
     return {
         "disentanglement": d_score,

@@ -64,11 +64,11 @@ def simulate_tscm(
         noise_t = noise_seq[:, t - dag.max_lag, :]  # (N, k)
         X_t = noise_t.copy()
         for j in range(k):
-            for (i, lag) in dag.parents_of(j):
+            for i, lag in dag.parents_of(j):
                 mech = mech_index.get((j, i, lag))
                 if mech is None:
                     continue
-                x_lagged = X[:, t - lag, i]   # (N,)
+                x_lagged = X[:, t - lag, i]  # (N,)
                 contrib = mech.apply(x_lagged)
                 contrib = np.nan_to_num(contrib, nan=0.0, posinf=50.0, neginf=-50.0)
                 X_t[:, j] += contrib
@@ -77,7 +77,7 @@ def simulate_tscm(
         X[:, t, :] = X_t
 
     # Discard max_lag padding and burn_in
-    result = X[:, dag.max_lag + burn_in:, :]
+    result = X[:, dag.max_lag + burn_in :, :]
     assert result.shape == (N, T, k), f"Shape mismatch: {result.shape}"
     return result
 

@@ -41,9 +41,7 @@ from typing import Optional
 
 import numpy as np
 
-_CAUSALNEX_REPO = (
-    Path(__file__).resolve().parents[3] / "third_party" / "causalnex_repo"
-)
+_CAUSALNEX_REPO = Path(__file__).resolve().parents[3] / "third_party" / "causalnex_repo"
 
 
 def _load_upstream_dynotears():
@@ -162,10 +160,7 @@ class DYNOTEARS:
         d = self.k
         # Box constraints exactly as upstream from_numpy_dynamic builds them:
         # ban W self-loops; W/A weights split into non-negative plus/minus.
-        bnds_w = 2 * [
-            (0, 0) if i == j else (0, None)
-            for i in range(d) for j in range(d)
-        ]
+        bnds_w = 2 * [(0, 0) if i == j else (0, None) for i in range(d) for j in range(d)]
         bnds_a = []
         for _ in range(self.p):
             bnds_a.extend(2 * [(0, None) for _ in range(d) for _ in range(d)])
@@ -176,8 +171,8 @@ class DYNOTEARS:
         )
         w_est[np.abs(w_est) < self.w_threshold] = 0
         a_est[np.abs(a_est) < self.w_threshold] = 0
-        self.w_est_ = w_est          # (d, d) intra-slice (≈0 for lag-only SCM)
-        self.a_est_ = a_est          # (p*d, d) inter-slice: [lag*d + from, to]
+        self.w_est_ = w_est  # (d, d) intra-slice (≈0 for lag-only SCM)
+        self.a_est_ = a_est  # (p*d, d) inter-slice: [lag*d + from, to]
         return self
 
     # ------------------------------------------------------------------

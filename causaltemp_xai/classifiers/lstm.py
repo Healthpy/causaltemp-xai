@@ -263,9 +263,7 @@ class LSTMClassifier(TSClassifier):
         self.patience = patience
         self.target_acc = target_acc
         self.seed = seed
-        self.device = torch.device(
-            device or ("cuda" if torch.cuda.is_available() else "cpu")
-        )
+        self.device = torch.device(device or ("cuda" if torch.cuda.is_available() else "cpu"))
         torch.manual_seed(seed)
         self.model = LSTM(**self.hparams).to(self.device)
 
@@ -296,9 +294,7 @@ class LSTMClassifier(TSClassifier):
         torch.manual_seed(self.seed)
         Xtr = torch.as_tensor(np.asarray(X_train), dtype=torch.float32)
         ytr = torch.as_tensor(np.asarray(y_train), dtype=torch.long)
-        loader = DataLoader(
-            TensorDataset(Xtr, ytr), batch_size=self.batch_size, shuffle=True
-        )
+        loader = DataLoader(TensorDataset(Xtr, ytr), batch_size=self.batch_size, shuffle=True)
         optimiser = torch.optim.Adam(self.model.parameters(), lr=self.lr)
 
         has_val = X_val is not None and y_val is not None
@@ -489,9 +485,7 @@ def _train_cli(argv: list[str] | None = None) -> None:
         max_epochs=args.max_epochs,
         patience=args.patience,
     )
-    clf.fit(
-        data["X_train"], data["Y_train"], data["X_val"], data["Y_val"], verbose=args.verbose
-    )
+    clf.fit(data["X_train"], data["Y_train"], data["X_val"], data["Y_val"], verbose=args.verbose)
 
     train_acc = clf.score(data["X_train"], data["Y_train"])
     val_acc = clf.score(data["X_val"], data["Y_val"])

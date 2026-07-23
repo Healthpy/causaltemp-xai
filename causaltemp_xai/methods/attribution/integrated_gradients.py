@@ -57,9 +57,7 @@ def integrated_gradients(
         baseline = np.zeros_like(x_arr)
     base_arr = np.asarray(baseline, dtype=np.float32)
     if base_arr.shape != x_arr.shape:
-        raise ValueError(
-            f"baseline shape {base_arr.shape} != x shape {x_arr.shape}"
-        )
+        raise ValueError(f"baseline shape {base_arr.shape} != x shape {x_arr.shape}")
 
     x_t = torch.as_tensor(x_arr)
     base_t = torch.as_tensor(base_arr)

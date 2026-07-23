@@ -1,4 +1,4 @@
-﻿"""CARLA-style causal recourse â€” stub.
+"""CARLA-style causal recourse â€” stub.
 
 Reference
 ---------
@@ -141,9 +141,9 @@ class CARLARecourse:
         rows: list[torch.Tensor] = []
         for t in range(T):
             if t < t0:
-                rows.append(x_t[t])          # fixed original (zero retroactive change)
+                rows.append(x_t[t])  # fixed original (zero retroactive change)
             elif t == t0:
-                rows.append(x_t0)            # free / intervened values
+                rows.append(x_t0)  # free / intervened values
             else:
                 # Feed exactly L rows (oldestâ†’newest), zero-padding rows that
                 # reach before t=0 (replicates the original ``if lag >= 0`` guard).
@@ -153,7 +153,7 @@ class CARLARecourse:
                     window_rows.append(rows[src] if src >= 0 else torch.zeros_like(x_t0))
                 window = torch.stack(window_rows, dim=0)  # (L, k)
                 rows.append(mechanism.forward_torch(window))
-        return torch.stack(rows, dim=0)      # (T, k)
+        return torch.stack(rows, dim=0)  # (T, k)
 
     def generate(
         self,
@@ -252,9 +252,7 @@ class CARLARecourse:
         graph = getattr(self, "_graph", None)
         mechanism = getattr(self, "_mechanism", None)
         if graph is None or mechanism is None:
-            raise RuntimeError(
-                "Call set_causal_info(graph, mechanism) before explain()."
-            )
+            raise RuntimeError("Call set_causal_info(graph, mechanism) before explain().")
         return self.generate(x, classifier, graph, mechanism)
 
     def generate_batch(self, X: np.ndarray, model, graph=None, mechanism=None) -> np.ndarray:
@@ -264,9 +262,7 @@ class CARLARecourse:
             graph = getattr(self, "_graph", None)
         if mechanism is None:
             mechanism = getattr(self, "_mechanism", None)
-        return np.stack(
-            [self.generate(x, model, graph, mechanism) for x in X], axis=0
-        )
+        return np.stack([self.generate(x, model, graph, mechanism) for x in X], axis=0)
 
 
 # =============================================================================
@@ -385,9 +381,9 @@ class PearlCARLARecourse:
         rows: list[torch.Tensor] = []
         for t in range(T):
             if t < t0:
-                rows.append(x_t[t])          # fixed original (zero retroactive change)
+                rows.append(x_t[t])  # fixed original (zero retroactive change)
             elif t == t0:
-                rows.append(x_t0)            # free / intervened values
+                rows.append(x_t0)  # free / intervened values
             else:
                 window_rows = []
                 for j in range(L):
@@ -395,7 +391,7 @@ class PearlCARLARecourse:
                     window_rows.append(rows[src] if src >= 0 else torch.zeros_like(x_t0))
                 window = torch.stack(window_rows, dim=0)  # (L, k)
                 rows.append(mechanism.forward_torch(window) + eps[t])
-        return torch.stack(rows, dim=0)      # (T, k)
+        return torch.stack(rows, dim=0)  # (T, k)
 
     def generate(
         self,
@@ -469,9 +465,7 @@ class PearlCARLARecourse:
             graph = getattr(self, "_graph", None)
         if mechanism is None:
             mechanism = getattr(self, "_mechanism", None)
-        return np.stack(
-            [self.generate(x, model, graph, mechanism) for x in X], axis=0
-        )
+        return np.stack([self.generate(x, model, graph, mechanism) for x in X], axis=0)
 
     # ------------------------------------------------------------------
     # CFExplainer alias interface + causal-info setter (parity with CARLARecourse)
@@ -491,7 +485,5 @@ class PearlCARLARecourse:
         graph = getattr(self, "_graph", None)
         mechanism = getattr(self, "_mechanism", None)
         if graph is None or mechanism is None:
-            raise RuntimeError(
-                "Call set_causal_info(graph, mechanism) before explain()."
-            )
+            raise RuntimeError("Call set_causal_info(graph, mechanism) before explain().")
         return self.generate(x, classifier, graph, mechanism)

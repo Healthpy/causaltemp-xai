@@ -45,7 +45,7 @@ class LaggedDAG:
 
     @property
     def edge_density(self) -> float:
-        max_possible = self.n_channels ** 2 * self.max_lag
+        max_possible = self.n_channels**2 * self.max_lag
         return self.n_edges / max_possible if max_possible > 0 else 0.0
 
 

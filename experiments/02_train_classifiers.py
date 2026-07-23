@@ -75,7 +75,9 @@ def train_one(config_name: str, out_dir, seed: int | None = None, **hparams) -> 
 
 
 def main(argv=None) -> int:
-    parser = argparse.ArgumentParser(description="Train the LSTM classifier for an SCM-T benchmark.")
+    parser = argparse.ArgumentParser(
+        description="Train the LSTM classifier for an SCM-T benchmark."
+    )
     parser.add_argument("--config", choices=sorted(CONFIGS), default=None)
     parser.add_argument("--all", action="store_true", help="Train on every linear config.")
     parser.add_argument("--out-dir", default=str(DEFAULT_OUT_DIR))
@@ -87,7 +89,9 @@ def main(argv=None) -> int:
     parser.add_argument("--max-epochs", type=int, default=100)
     parser.add_argument("--patience", type=int, default=10)
     parser.add_argument(
-        "--seed", type=int, default=None,
+        "--seed",
+        type=int,
+        default=None,
         help=(
             "Multi-seed replicate (M2): override --config's registered seed "
             "via causaltemp_xai.config.seeded_variant (dataset + classifier "
@@ -101,8 +105,13 @@ def main(argv=None) -> int:
         parser.error("pass --config <name> or --all")
 
     hparams = dict(
-        hidden_size=args.hidden_size, num_layers=args.num_layers, dropout=args.dropout,
-        lr=args.lr, batch_size=args.batch_size, max_epochs=args.max_epochs, patience=args.patience,
+        hidden_size=args.hidden_size,
+        num_layers=args.num_layers,
+        dropout=args.dropout,
+        lr=args.lr,
+        batch_size=args.batch_size,
+        max_epochs=args.max_epochs,
+        patience=args.patience,
     )
     names = LINEAR_CONFIGS if args.all else [args.config]
     for name in names:

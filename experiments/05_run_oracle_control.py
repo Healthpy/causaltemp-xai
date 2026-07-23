@@ -124,7 +124,9 @@ def run(config_name: str, n_cf: int, out_dir) -> None:
 
     results = {
         "provenance": {
-            "config": cfg.as_dict(), "seed": cfg.seed, "n_cf": len(X_sel),
+            "config": cfg.as_dict(),
+            "seed": cfg.seed,
+            "n_cf": len(X_sel),
             "mechanism_type": cfg.mechanism_type,
         },
         "methods": summary,

@@ -75,18 +75,21 @@ def run(config_name: str, out_dir, seed: int | None = None) -> None:
         raise SystemExit(f"no X_cf_*.npy found under {cf_dir}")
 
     from causaltemp_xai.classifiers import LSTMClassifier
+
     ckpt = Path(out_dir) / cfg.name / "lstm.pt"
     clf = LSTMClassifier.load(ckpt)
 
     summary, all_instance_rows, table_rows = [], [], []
     for cf_path in cf_paths:
-        method_name = cf_path.stem[len("X_cf_"):]
+        method_name = cf_path.stem[len("X_cf_") :]
         cfs = np.load(cf_path)
         rec = evaluate_method(clf, X_sel, cfs, data["X_train"], graph, mech, target_class=1)
         rec["method"] = method_name
 
         preds = np.asarray(clf.predict(cfs)).reshape(-1)
-        instance_rows = per_instance_records(cfg.name, "lstm", method_name, X_sel, cfs, graph, mech, preds)
+        instance_rows = per_instance_records(
+            cfg.name, "lstm", method_name, X_sel, cfs, graph, mech, preds
+        )
         all_instance_rows.extend(instance_rows)
         agg_row = aggregate_method_row(cfg.name, "lstm", method_name, instance_rows)
         table_rows.append(agg_row)
@@ -118,11 +121,11 @@ def run(config_name: str, out_dir, seed: int | None = None) -> None:
 
     results = {
         "provenance": {"config": cfg.as_dict(), "seed": cfg.seed, "n_cf": len(X_sel)},
-        "methods": summary,           # Axis C + CF-faith, per CF method
-        "attribution": attribution,   # IG deletion/insertion-AUC foil
-        "axis_a": axis_a,             # Axis A: attribution causal-relevance (Phase 03)
-        "axis_b": axis_b,             # Axis B: dataset graph diagnostic (Phase 01)
-        "shift_vr": shift,            # Axis D: CF-method validity retention (Phase 03)
+        "methods": summary,  # Axis C + CF-faith, per CF method
+        "attribution": attribution,  # IG deletion/insertion-AUC foil
+        "axis_a": axis_a,  # Axis A: attribution causal-relevance (Phase 03)
+        "axis_b": axis_b,  # Axis B: dataset graph diagnostic (Phase 01)
+        "shift_vr": shift,  # Axis D: CF-method validity retention (Phase 03)
     }
     dump_json(res_dir / "summary.json", results)
 
@@ -134,11 +137,15 @@ def run(config_name: str, out_dir, seed: int | None = None) -> None:
 
 
 def main(argv=None) -> int:
-    parser = argparse.ArgumentParser(description="Evaluate Axis-C + CF-faith on persisted CF arrays.")
+    parser = argparse.ArgumentParser(
+        description="Evaluate Axis-C + CF-faith on persisted CF arrays."
+    )
     parser.add_argument("--config", required=True, choices=sorted(CONFIGS))
     parser.add_argument("--out-dir", default=str(DEFAULT_OUT_DIR))
     parser.add_argument(
-        "--seed", type=int, default=None,
+        "--seed",
+        type=int,
+        default=None,
         help=(
             "Multi-seed replicate (M2): override --config's registered seed "
             "via causaltemp_xai.config.seeded_variant, reading/writing under "

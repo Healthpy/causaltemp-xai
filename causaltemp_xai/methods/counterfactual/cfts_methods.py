@@ -91,7 +91,7 @@ class _DatasetAdapter:
 
     def __init__(self, X: np.ndarray, y: np.ndarray) -> None:
         self.X = np.asarray(X, dtype=np.float32)  # (N, T, k)
-        self.y = np.asarray(y, dtype=int)          # (N,)
+        self.y = np.asarray(y, dtype=int)  # (N,)
 
     def __len__(self) -> int:
         return len(self.X)
@@ -150,8 +150,10 @@ class CftsWachterCF:
         from cfts.cf_wachter.wachter import wachter_gradient_cf
 
         adapter = _ChannelFirstAdapter(model)
-        ds = self.dataset if self.dataset is not None else _DatasetAdapter(
-            x[np.newaxis], np.array([0])
+        ds = (
+            self.dataset
+            if self.dataset is not None
+            else _DatasetAdapter(x[np.newaxis], np.array([0]))
         )
         cf, _ = wachter_gradient_cf(
             x,
@@ -161,7 +163,9 @@ class CftsWachterCF:
             max_cfs=self.max_cfs,
             distance=self.distance,
         )
-        return np.asarray(cf, dtype=np.float32) if cf is not None else np.asarray(x, dtype=np.float32)
+        return (
+            np.asarray(cf, dtype=np.float32) if cf is not None else np.asarray(x, dtype=np.float32)
+        )
 
     def generate_batch(self, X: np.ndarray, model) -> np.ndarray:
         """Generate one CF per instance in ``X`` of shape ``(N, T, k)``."""
@@ -300,7 +304,9 @@ class CftsCOMTECF:
         )
         adapter = _ChannelFirstAdapter(model)
         cf, _ = comte_cf(x, ds, adapter, target_class=self.target_class)
-        return np.asarray(cf, dtype=np.float32) if cf is not None else np.asarray(x, dtype=np.float32)
+        return (
+            np.asarray(cf, dtype=np.float32) if cf is not None else np.asarray(x, dtype=np.float32)
+        )
 
     def generate_batch(self, X: np.ndarray, model) -> np.ndarray:
         """Generate one CF per instance in ``X`` of shape ``(N, T, k)``."""
@@ -346,7 +352,11 @@ class CftsConfetiCF:
 
         if self.dataset is None:
             raise ValueError("CftsConfetiCF requires a reference dataset.")
-        ds = self.dataset if isinstance(self.dataset, _DatasetAdapter) else _DatasetAdapter(*self.dataset)
+        ds = (
+            self.dataset
+            if isinstance(self.dataset, _DatasetAdapter)
+            else _DatasetAdapter(*self.dataset)
+        )
 
         # confetti expects reference_data as (N, C, L); our data is (N, T, k) — transpose
         ref = np.stack([ds[i][0] for i in range(len(ds))], axis=0)  # (N, T, k)
@@ -362,7 +372,9 @@ class CftsConfetiCF:
             population_size=self.population_size,
             mutation_rate=self.mutation_rate,
         )
-        return np.asarray(cf, dtype=np.float32) if cf is not None else np.asarray(x, dtype=np.float32)
+        return (
+            np.asarray(cf, dtype=np.float32) if cf is not None else np.asarray(x, dtype=np.float32)
+        )
 
     def generate_batch(self, X: np.ndarray, model) -> np.ndarray:
         return np.stack([self.generate(x, model) for x in X], axis=0)
@@ -410,7 +422,11 @@ class CftsCountsCF:
 
         if self.dataset is None:
             raise ValueError("CftsCountsCF requires a reference dataset.")
-        ds = self.dataset if isinstance(self.dataset, _DatasetAdapter) else _DatasetAdapter(*self.dataset)
+        ds = (
+            self.dataset
+            if isinstance(self.dataset, _DatasetAdapter)
+            else _DatasetAdapter(*self.dataset)
+        )
         # CounTS passes the sample directly in time-first format to the classifier and also
         # uses x_tensor in its actionability loss — so we must NOT transpose here.  We wrap
         # with _TimeFirstAdapter so the LSTM receives (N, T, k) without any transposing.
@@ -474,15 +490,21 @@ class CftsCelsCF:
 
         if self.dataset is None:
             raise ValueError("CftsCelsCF requires a reference dataset.")
-        ds = self.dataset if isinstance(self.dataset, _DatasetAdapter) else _DatasetAdapter(*self.dataset)
+        ds = (
+            self.dataset
+            if isinstance(self.dataset, _DatasetAdapter)
+            else _DatasetAdapter(*self.dataset)
+        )
         # M-CELS expects channel-first (k, T) samples and (N, k, T) X_train so the nearest
         # unlike neighbor (NUN) shape matches the sample for mask interpolation.
-        X_train = np.stack([ds[i][0] for i in range(len(ds))], axis=0).transpose(0, 2, 1)  # (N, k, T)
+        X_train = np.stack([ds[i][0] for i in range(len(ds))], axis=0).transpose(
+            0, 2, 1
+        )  # (N, k, T)
         y_train = np.array([ds[i][1] for i in range(len(ds))])
 
         adapter = _ChannelFirstAdapter(model)
         cf, _ = cels_auto(
-            x.T,          # (k, T) channel-first
+            x.T,  # (k, T) channel-first
             adapter,
             X_train,
             y_train,
