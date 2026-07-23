@@ -1,8 +1,11 @@
 {
-  "ICC": 0.17692786333638863,
-  "MCC_coverage": 0.48029864396088134,
-  "LD": NaN,
+  "seed": 1,
+  "config": "smoke_seed1",
+  "git_commit": "f33fbd0e6f60da35217ca4252ead90866ebe4541",
+  "git_dirty": true,
+  "ICC": 1.019493823237482,
+  "MCC_coverage": 0.49416654420186085,
   "MCC_disent": NaN,
-  "InputSens": 0.09866529748375355,
-  "n": 10
+  "InputSens": 0.0994719502427075,
+  "n": 20
 }

@@ -1,0 +1,11 @@
+{
+  "seed": 3,
+  "config": "smoke_seed3",
+  "git_commit": "f33fbd0e6f60da35217ca4252ead90866ebe4541",
+  "git_dirty": true,
+  "ICC": 0.8700034011260513,
+  "MCC_coverage": 1.4784206382570646,
+  "MCC_disent": NaN,
+  "InputSens": 0.071788051591703,
+  "n": 20
+}

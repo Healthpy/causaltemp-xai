@@ -1,0 +1,23 @@
+{
+  "seed": 1,
+  "config": "smoke_seed1",
+  "git_commit": "f33fbd0e6f60da35217ca4252ead90866ebe4541",
+  "git_dirty": true,
+  "n": 20,
+  "validity": 1.0,
+  "proximity_l1": 15.406546629018129,
+  "proximity_l2": 1.742577545202569,
+  "sparsity": 0.008666666666666666,
+  "frac_altered": 0.9913333333333333,
+  "sparsity_channels": 0.0,
+  "sparsity_timepoints": 0.0,
+  "ood": 0.09002780872226271,
+  "cf_faith_rollout_hard": 0.0,
+  "cf_faith_rollout_soft": 0.9943668535762663,
+  "cf_faith_pearl_hard": 0.0,
+  "cf_faith_pearl_soft": 0.9058379462289622,
+  "cf_faith_rollout_hard_valid": 0.0,
+  "cf_faith_pearl_hard_valid": 0.0,
+  "method": "CftsCounts",
+  "trsi": 1.4241460581178536
+}

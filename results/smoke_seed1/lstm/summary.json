@@ -1,4 +1,8 @@
 {
+  "seed": 1,
+  "config": "smoke_seed1",
+  "git_commit": "f33fbd0e6f60da35217ca4252ead90866ebe4541",
+  "git_dirty": true,
   "provenance": {
     "config": {
       "k": 5,
@@ -13,106 +17,229 @@
       "nonlinear": null
     },
     "seed": 1,
-    "n_cf": 10
+    "n_cf": 20
   },
   "methods": [
     {
-      "n": 10,
+      "n": 20,
       "validity": 1.0,
-      "proximity_l1": 11.142276924865678,
-      "proximity_l2": 1.459526245611585,
-      "sparsity": 0.26666666666666666,
-      "frac_altered": 0.7333333333333334,
-      "ood": 0.07163808361077832,
+      "proximity_l1": 9.250468378031247,
+      "proximity_l2": 1.3395463464082904,
+      "sparsity": 0.4003333333333334,
+      "frac_altered": 0.5996666666666666,
+      "sparsity_channels": 0.0,
+      "sparsity_timepoints": 0.39499999999999996,
+      "ood": 0.06316965612701128,
       "cf_faith_rollout_hard": 1.0,
-      "cf_faith_rollout_soft": 0.9999999999793928,
+      "cf_faith_rollout_soft": 0.9999999999680134,
       "cf_faith_pearl_hard": 0.0,
-      "cf_faith_pearl_soft": 0.905779963137558,
+      "cf_faith_pearl_soft": 0.9069558257149455,
       "cf_faith_rollout_hard_valid": 1.0,
       "cf_faith_pearl_hard_valid": 0.0,
       "method": "CARLA",
-      "trsi": 0.30038597680543433,
-      "ivr": 0.0
+      "trsi": 1.426566832026833
     },
     {
-      "n": 10,
+      "n": 20,
+      "validity": 0.95,
+      "proximity_l1": 0.5732752983027825,
+      "proximity_l2": 0.2115103767026722,
+      "sparsity": 0.6976666666666668,
+      "frac_altered": 0.30233333333333323,
+      "sparsity_channels": 0.04,
+      "sparsity_timepoints": 0.33666666666666667,
+      "ood": 0.026697371544352127,
+      "cf_faith_rollout_hard": 0.0,
+      "cf_faith_rollout_soft": 0.907131235230519,
+      "cf_faith_pearl_hard": 0.05,
+      "cf_faith_pearl_soft": 0.9956818951961859,
+      "cf_faith_rollout_hard_valid": 0.0,
+      "cf_faith_pearl_hard_valid": 0.0,
+      "method": "CftsCels",
+      "trsi": 1.2195731658990936
+    },
+    {
+      "n": 20,
       "validity": 1.0,
-      "proximity_l1": 30.377101445447074,
-      "proximity_l2": 2.503234739308587,
+      "proximity_l1": 31.019290721628103,
+      "proximity_l2": 2.568878186167587,
       "sparsity": 0.0,
       "frac_altered": 1.0,
-      "ood": -0.08758576501622137,
+      "sparsity_channels": 0.0,
+      "sparsity_timepoints": 0.0,
+      "ood": -0.09249314796334043,
       "cf_faith_rollout_hard": 0.0,
-      "cf_faith_rollout_soft": 0.8089208960799565,
+      "cf_faith_rollout_soft": 0.8103475504736906,
       "cf_faith_pearl_hard": 0.0,
-      "cf_faith_pearl_soft": 0.8232457117017006,
+      "cf_faith_pearl_soft": 0.819815807421701,
       "cf_faith_rollout_hard_valid": 0.0,
       "cf_faith_pearl_hard_valid": 0.0,
       "method": "CftsCOMTE",
-      "trsi": 0.23331593633107808,
-      "ivr": 0.0
+      "trsi": 0.5121273768262624
     },
     {
-      "n": 10,
+      "n": 20,
+      "validity": 0.7,
+      "proximity_l1": 6.702677396913389,
+      "proximity_l2": 0.99163312087019,
+      "sparsity": 0.6466666666666667,
+      "frac_altered": 0.3533333333333333,
+      "sparsity_channels": 0.3,
+      "sparsity_timepoints": 0.31833333333333336,
+      "ood": 0.031162117723759403,
+      "cf_faith_rollout_hard": 0.3,
+      "cf_faith_rollout_soft": 0.9401585547169911,
+      "cf_faith_pearl_hard": 0.3,
+      "cf_faith_pearl_soft": 0.9586140322053905,
+      "cf_faith_rollout_hard_valid": 0.0,
+      "cf_faith_pearl_hard_valid": 0.0,
+      "method": "CftsConfeti",
+      "trsi": 1.4686387689921248
+    },
+    {
+      "n": 20,
       "validity": 1.0,
-      "proximity_l1": 21.509308976229597,
-      "proximity_l2": 2.3070562490285784,
-      "sparsity": 0.0,
-      "frac_altered": 1.0,
-      "ood": 0.017605012684948775,
+      "proximity_l1": 15.406546629018129,
+      "proximity_l2": 1.742577545202569,
+      "sparsity": 0.008666666666666666,
+      "frac_altered": 0.9913333333333333,
+      "sparsity_channels": 0.0,
+      "sparsity_timepoints": 0.0,
+      "ood": 0.09002780872226271,
       "cf_faith_rollout_hard": 0.0,
-      "cf_faith_rollout_soft": 0.9010767945792383,
+      "cf_faith_rollout_soft": 0.9943668535762663,
       "cf_faith_pearl_hard": 0.0,
-      "cf_faith_pearl_soft": 0.869749899385712,
+      "cf_faith_pearl_soft": 0.9058379462289622,
+      "cf_faith_rollout_hard_valid": 0.0,
+      "cf_faith_pearl_hard_valid": 0.0,
+      "method": "CftsCounts",
+      "trsi": 1.4241460581178536
+    },
+    {
+      "n": 20,
+      "validity": 1.0,
+      "proximity_l1": 21.721299088528607,
+      "proximity_l2": 2.3619391359966038,
+      "sparsity": 0.010333333333333332,
+      "frac_altered": 0.9896666666666667,
+      "sparsity_channels": 0.0,
+      "sparsity_timepoints": 0.0,
+      "ood": 0.023827560446266147,
+      "cf_faith_rollout_hard": 0.0,
+      "cf_faith_rollout_soft": 0.9058730485661854,
+      "cf_faith_pearl_hard": 0.0,
+      "cf_faith_pearl_soft": 0.8691349454423578,
       "cf_faith_rollout_hard_valid": 0.0,
       "cf_faith_pearl_hard_valid": 0.0,
       "method": "CftsWachter",
-      "trsi": 0.5330866006092491,
-      "ivr": 0.0
+      "trsi": 1.3996645554347065
+    },
+    {
+      "n": 20,
+      "validity": 0.1,
+      "proximity_l1": 1.723902229075615,
+      "proximity_l2": 0.837448895604413,
+      "sparsity": 0.9416666666666668,
+      "frac_altered": 0.05833333333333324,
+      "sparsity_channels": 0.01,
+      "sparsity_timepoints": 0.9049999999999999,
+      "ood": 0.019358378478518193,
+      "cf_faith_rollout_hard": 0.0,
+      "cf_faith_rollout_soft": 0.9064901868375553,
+      "cf_faith_pearl_hard": 1.0,
+      "cf_faith_pearl_soft": 0.9999999973171192,
+      "cf_faith_rollout_hard_valid": 0.0,
+      "cf_faith_pearl_hard_valid": 0.1,
+      "method": "PearlCARLA",
+      "trsi": 1.9386961148057307
     }
   ],
   "attribution": {
+    "seed": 1,
+    "config": "smoke_seed1",
+    "git_commit": "f33fbd0e6f60da35217ca4252ead90866ebe4541",
+    "git_dirty": true,
     "method": "IntegratedGradients",
-    "deletion_auc": 0.6032015410728861,
-    "insertion_auc": 0.06678789948791114,
-    "insertion_minus_deletion": -0.536413641584975,
-    "n": 10
+    "deletion_auc": 0.7128137022330354,
+    "insertion_auc": 0.09449816493977473,
+    "insertion_minus_deletion": -0.6183155372932607,
+    "n": 20
   },
   "axis_a": {
-    "ICC": 0.17692786333638863,
-    "MCC_coverage": 0.48029864396088134,
-    "LD": NaN,
+    "seed": 1,
+    "config": "smoke_seed1",
+    "git_commit": "f33fbd0e6f60da35217ca4252ead90866ebe4541",
+    "git_dirty": true,
+    "ICC": 1.019493823237482,
+    "MCC_coverage": 0.49416654420186085,
     "MCC_disent": NaN,
-    "InputSens": 0.09866529748375355,
-    "n": 10
+    "InputSens": 0.0994719502427075,
+    "n": 20
   },
   "axis_b": {
+    "seed": 1,
+    "config": "smoke_seed1",
+    "git_commit": "f33fbd0e6f60da35217ca4252ead90866ebe4541",
+    "git_dirty": true,
     "SHD": 0.0,
     "LagAcc": 1.0,
-    "TV_Confounding": 0.2771428571428572,
-    "note": "SHD/LagAcc computed against the graph itself (no graph-discovery method in this pipeline) -- trivially perfect; TV_Confounding is the informative benchmark-structural diagnostic here."
+    "LagF1": 1.0,
+    "ResidualDep": 0.014598725810827913,
+    "note": "SHD/LagAcc computed against the graph itself (no graph-discovery method in this pipeline) -- trivially perfect; ResidualDep is the informative benchmark-structural diagnostic here."
   },
   "shift_vr": {
+    "seed": 1,
+    "config": "smoke_seed1",
+    "git_commit": "f33fbd0e6f60da35217ca4252ead90866ebe4541",
+    "git_dirty": true,
     "CARLA": {
       "validity_base": 1.0,
       "validity_shift": 1.0,
       "shift_vr": 1.0,
-      "n_base": 10,
-      "n_shift": 10
+      "n_base": 20,
+      "n_shift": 20
+    },
+    "PearlCARLA": {
+      "validity_base": 0.1,
+      "validity_shift": 0.1,
+      "shift_vr": null,
+      "n_base": 20,
+      "n_shift": 20
     },
     "CftsWachter": {
       "validity_base": 1.0,
       "validity_shift": 1.0,
       "shift_vr": 1.0,
-      "n_base": 10,
-      "n_shift": 10
+      "n_base": 20,
+      "n_shift": 20
     },
     "CftsCOMTE": {
       "validity_base": 1.0,
       "validity_shift": 1.0,
       "shift_vr": 1.0,
-      "n_base": 10,
-      "n_shift": 10
+      "n_base": 20,
+      "n_shift": 20
+    },
+    "CftsConfeti": {
+      "validity_base": 0.7,
+      "validity_shift": 0.85,
+      "shift_vr": 1.2142857142857144,
+      "n_base": 20,
+      "n_shift": 20
+    },
+    "CftsCounts": {
+      "validity_base": 1.0,
+      "validity_shift": 1.0,
+      "shift_vr": 1.0,
+      "n_base": 20,
+      "n_shift": 20
+    },
+    "CftsCels": {
+      "validity_base": 0.95,
+      "validity_shift": 1.0,
+      "shift_vr": 1.0526315789473684,
+      "n_base": 20,
+      "n_shift": 20
     }
   }
 }

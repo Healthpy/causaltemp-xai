@@ -1,51 +1,55 @@
 {
+  "seed": 0,
+  "config": "smoke_gaussian",
+  "git_commit": "f33fbd0e6f60da35217ca4252ead90866ebe4541",
+  "git_dirty": true,
   "CARLA": {
     "validity_base": 1.0,
     "validity_shift": 1.0,
     "shift_vr": 1.0,
-    "n_base": 10,
-    "n_shift": 10
+    "n_base": 20,
+    "n_shift": 20
   },
   "PearlCARLA": {
     "validity_base": 1.0,
     "validity_shift": 1.0,
     "shift_vr": 1.0,
-    "n_base": 10,
-    "n_shift": 10
+    "n_base": 20,
+    "n_shift": 20
   },
   "CftsWachter": {
     "validity_base": 1.0,
     "validity_shift": 1.0,
     "shift_vr": 1.0,
-    "n_base": 10,
-    "n_shift": 10
+    "n_base": 20,
+    "n_shift": 20
   },
   "CftsCOMTE": {
     "validity_base": 1.0,
     "validity_shift": 1.0,
     "shift_vr": 1.0,
-    "n_base": 10,
-    "n_shift": 10
+    "n_base": 20,
+    "n_shift": 20
   },
   "CftsConfeti": {
-    "validity_base": 0.9,
-    "validity_shift": 0.9,
-    "shift_vr": 1.0,
-    "n_base": 10,
-    "n_shift": 10
+    "validity_base": 0.8,
+    "validity_shift": 0.95,
+    "shift_vr": 1.1874999999999998,
+    "n_base": 20,
+    "n_shift": 20
   },
   "CftsCounts": {
     "validity_base": 0.3,
-    "validity_shift": 0.3,
-    "shift_vr": 1.0,
-    "n_base": 10,
-    "n_shift": 10
+    "validity_shift": 0.5,
+    "shift_vr": 1.6666666666666667,
+    "n_base": 20,
+    "n_shift": 20
   },
   "CftsCels": {
     "validity_base": 1.0,
     "validity_shift": 1.0,
     "shift_vr": 1.0,
-    "n_base": 10,
-    "n_shift": 10
+    "n_base": 20,
+    "n_shift": 20
   }
 }

@@ -1,4 +1,8 @@
 {
+  "seed": 0,
+  "config": "smoke",
+  "git_commit": "f33fbd0e6f60da35217ca4252ead90866ebe4541",
+  "git_dirty": true,
   "provenance": {
     "config": {
       "k": 5,
@@ -16,22 +20,22 @@
     "metric": "icc_latent",
     "n_eval": 100,
     "latent_dim": 5,
-    "epochs": 400,
+    "epochs": 50,
     "note": "matched-baseline f(D(z)); +/-delta; delta_i=c*std(z_i); latents aligned to channels via Hungarian on |corr|."
   },
   "gates": {
-    "recon_mse": 0.2268115742081004,
+    "recon_mse": 0.22625003463586568,
     "recon_label_agreement": 0.5,
     "interpretable": false,
-    "mcc_latent_channel": 0.1887973371019384
+    "mcc_latent_channel": 0.18012843367239406
   },
   "alignment": {
     "latent_to_channel": {
       "0": 0,
-      "1": 3,
+      "1": 4,
       "2": 2,
       "3": 1,
-      "4": 4
+      "4": 3
     },
     "label_relevant_channels": [
       0,
@@ -41,12 +45,12 @@
     ],
     "parent_aligned_dims": [
       0,
-      1,
       2,
-      3
+      3,
+      4
     ],
     "nonparent_aligned_dims": [
-      4
+      1
     ]
   },
   "icc_ladder": [
@@ -82,14 +86,14 @@
       "c": 3.0,
       "icc_per_dim": [
         0.0,
-        0.005,
+        0.0,
         0.0,
         0.0,
         0.0
       ],
-      "parent_aligned_mean": 0.00125,
+      "parent_aligned_mean": 0.0,
       "nonparent_aligned_mean": 0.0,
-      "contrast": 0.00125,
+      "contrast": 0.0,
       "permuted_null_mean": 0.0
     }
   ]
