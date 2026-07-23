@@ -248,7 +248,8 @@ in `docs/axis_metrics_report.md`. **Verification standard (PI decision 2026-07-1
 bibliographic identity (title, authors, venue/year) confirmed by domain knowledge;
 full-text reading not a precondition. These are foundational, uncontested references in
 the counterfactual-explanation, disentanglement, and causal-discovery literatures. The
-one uncertain entry (Song et al. 2024) is flagged, not asserted.
+one previously-uncertain entry (Song et al. 2024) was re-verified 2026-07-23 via web
+search (arXiv + NeurIPS proceedings + OpenReview); see note below the table.
 
 | Metric(s) | BibTeX |
 |---|---|
@@ -274,8 +275,39 @@ one uncertain entry (Song et al. 2024) is flagged, not asserted.
 | SHD | `@article{tsamardinos2006mmhc, author={Tsamardinos, Ioannis and Brown, Laura E. and Aliferis, Constantin F.}, title={The Max-Min Hill-Climbing Bayesian Network Structure Learning Algorithm}, journal={Machine Learning}, volume={65}, number={1}, pages={31--78}, year={2006}}` |
 | Lag accuracy, Graph AUC | `@article{runge2019pcmci, author={Runge, Jakob and Nowack, Peer and Kretschmer, Marlene and Flaxman, Seth and Sejdinovic, Dino}, title={Detecting and Quantifying Causal Associations in Large Nonlinear Time Series Datasets}, journal={Science Advances}, volume={5}, number={11}, pages={eaau4996}, year={2019}}` |
 | DYNOTEARS (Phase 07) | `@inproceedings{pamfil2020dynotears, author={Pamfil, Roxana and Sriwattanaworachai, Nisara and Desai, Shaan and Pilgerstorfer, Philip and Georgatzis, Konstantinos and Beaumont, Paul and Aragam, Bryon}, title={DYNOTEARS: Structure Learning from Time-Series Data}, booktitle={AISTATS}, year={2020}}` |
+| MCC, ICC (Song 2024, sparse-transition identifiability) | `@inproceedings{song2024ctrlns, author={Song, Xiangchen and Li, Zijian and Chen, Guangyi and Zheng, Yujia and Fan, Yewen and Dong, Xinshuai and Zhang, Kun}, title={Causal Temporal Representation Learning with Nonstationary Sparse Transition}, booktitle={Advances in Neural Information Processing Systems (NeurIPS)}, volume={37}, year={2024}}` |
 
-> **Flagged, not asserted:** `axis_a.py` cites *Song et al. (2024), "Identifiability of
-> Sparse Causal Representations."* I cannot confirm this exact title/venue from knowledge;
-> confirm bibliographic identity before it is cited in the manuscript. No BibTeX recorded
-> until then (unknown = unknown).
+> **Resolved 2026-07-23 (was "Flagged, not asserted").** `axis_a.py` line 37 cites
+> *"Song et al. (2024). 'Identifiability of Sparse Causal Representations.' NeurIPS."* —
+> **VERIFIED with a caveat**, not a verbatim match.
+>
+> **What was found (High confidence on paper identity, Medium confidence this is the
+> paper the author meant):** Xiangchen Song, Zijian Li, Guangyi Chen, Yujia Zheng, Yewen
+> Fan, Xinshuai Dong, Kun Zhang, **"Causal Temporal Representation Learning with
+> Nonstationary Sparse Transition,"** NeurIPS 2024 (preprint: arXiv:2409.03142;
+> proceedings: `proceedings.neurips.cc/paper_files/paper/2024/.../8cef4e4bcb85f7d4a1005a9db018d6b6-Paper-Conference.pdf`;
+> OpenReview: `openreview.net/forum?id=J709rtAUD1`). Confirmed via web search cross-checking
+> arXiv, the NeurIPS 2024 proceedings site, and OpenReview — all three agree on title,
+> author list, and venue/year.
+>
+> **The gap:** the docstring's title — *"Identifiability of Sparse Causal
+> Representations"* — is **not** this paper's actual title. No paper by any Song with
+> that exact title was found on arXiv, Semantic Scholar-indexed search, or NeurIPS 2024
+> proceedings. The CtrlNS paper is the only Song-et-al.-2024 causal-representation paper
+> that matches the surrounding claim in `axis_a.py` (nonlinear-ICA-style identifiability
+> of latent factors under a **sparsity** assumption, building on Hyvärinen & Morioka
+> 2019) — first author Song, 2024, NeurIPS, sparse + causal + representation +
+> identifiability all present. This is very likely what was meant, but the docstring
+> title itself is either a paraphrase/misremembering or refers to a different, unfound
+> paper.
+>
+> **Recommendation (code-level, NOT made here per R3 — flag for PI/Methodology review):**
+> update the `axis_a.py` docstring (line 37, and the ICC comment on lines 9–12 if it
+> still reads "Song (2024)") to cite the CtrlNS paper above by its real title, or attach
+> an explicit note if the author intended a different, still-unidentified paper. This is
+> a one-line docstring string change with no code-behavior impact, but touches method
+> provenance (R3) so is left for PI sign-off rather than edited directly by this review.
+>
+> Confidence: Medium (paper exists and is real — High; it is *the* paper the docstring
+> meant — Medium, since the title itself doesn't match and no closer alternative was
+> found).

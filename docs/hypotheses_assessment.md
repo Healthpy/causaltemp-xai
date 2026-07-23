@@ -1,5 +1,22 @@
 # CausalTemp-XAI v0.1 — Hypothesis Assessment
 
+> **⚠ PROVISIONAL / STALE (PI note, 2026-07-23):** Every verdict and number
+> below was computed on 2026-06-13 using metric code that predates the ten
+> construct-validity fixes landed in commit `99a2e9f` (2026-07-18/21) — see
+> `docs/axis_metrics_report.md` § Critical review. `results/smoke_nl/dynotears/graph_error.json`
+> is independently confirmed stale relative to current metric code. **None of
+> the GO/CONFIRMED verdicts in this document (H1, H3, H4, or the v0.1
+> freeze decision) may be treated as final, cited in a manuscript, or relied
+> on for a go/no-go call until the full pipeline is re-run on current code
+> and this document is regenerated from that re-run.** A re-run is in
+> progress (owned by another agent, not the PI). This banner is a status
+> flag only — the PI has not recomputed any number below; do not read the
+> verdict edits further down as new evidence, only as corrected labeling of
+> what the original numbers actually support. See `PROGRESS_DASHBOARD.md`
+> and `DECISIONS.md` (2026-07-23).
+
+---
+
 **Date:** 2026-06-13
 **Config:** `full` (locked paper config — k=10, L=1, sparsity=0.2, Laplace noise, T=100, N=10 000, seed=42)
 **Classifier:** frozen TCN, test accuracy **0.787** (train 0.831 / val 0.784) — avg-pool vs endpoint-label cap, documented in the plan Issues; CF-faith is classifier-agnostic.
@@ -34,10 +51,10 @@ built to expose.
 
 > **Pre-registered:** Wachter/DiCE validity > 0.9 **AND** CF-faith(rollout, hard) < 0.3 → expected *Confirmed*.
 
-**Verdict: CONFIRMED.**
+**Verdict: PARTIALLY CONFIRMED (validity 0.81 vs pre-registered 0.9 threshold — see note below; provisional pending re-run, see banner above).**
 
 - **DiCE**: validity **1.00** (> 0.9 ✓), CF-faith rollout-hard **0.00** (< 0.3 ✓) — meets both bars exactly.
-- **Wachter**: CF-faith rollout-hard **0.00** (< 0.3 ✓); validity **0.81**, just below the pre-registered 0.9 bar. The shortfall is attributable to the moderate (~0.79) classifier — Wachter still flips 81 % of cases while remaining completely unfaithful (rollout-hard = 0). The qualitative claim (high validity, ~zero causal faithfulness) holds.
+- **Wachter**: CF-faith rollout-hard **0.00** (< 0.3 ✓); validity **0.81**, **below the pre-registered 0.9 bar — this is a real miss against the pre-registered success criterion, not a rounding difference, and the verdict label must not read "CONFIRMED" as if both methods cleared both bars.** The shortfall is attributable to the moderate (~0.79) classifier — Wachter still flips 81 % of cases while remaining completely unfaithful (rollout-hard = 0). The qualitative direction of the claim (high validity, ~zero causal faithfulness) holds for DiCE unconditionally and for Wachter only if the 0.9 validity bar is relaxed post hoc — which is an overclaim unless the pre-registration is formally amended. Treat H1 as confirmed for DiCE, directionally supported but threshold-missing for Wachter, until re-run.
 - The derived `intervention_t` for both methods clusters at **t = 0** (they edit the whole trajectory), so the `cf_faith.py` final-timestep edge case is **not** silently inflating faithfulness.
 - Pearl semantics is also ≈0 hard for both (soft 0.97–0.99): standard CFs satisfy *neither* causal definition at the hard level.
 
@@ -108,7 +125,7 @@ that different methods support, and risked letting a *graph-discovery* method
 
 > **Pre-registered:** Spearman ρ(traditional, CF-faith) < 0.5 across 3–4 methods → report as *preliminary/underpowered*, do **not** claim confirmed.
 
-**Verdict: DIRECTIONALLY SUPPORTED, reported as PRELIMINARY (underpowered).**
+**Verdict: DIRECTIONALLY SUPPORTED, reported as PRELIMINARY (underpowered) — NOT CONCLUSIVE at n=3 methods with tied CF-faith ranks; must not be cited as an established correlation until the method count reaches the ROADMAP M3 target and the pipeline is re-run on current metric code.**
 
 Spearman ρ between each traditional metric and CF-faith(rollout, hard), computed
 across the 3 methods (per-method means):
