@@ -1,15 +1,24 @@
-"""
-CBM-T — Temporal Concept Bottleneck Model wrapper.
+"""ChannelConceptProbe — per-channel logistic concept probe.
 
-Concepts are learned as linear probes over intermediate classifier representations,
-one concept per causal variable. Concept activation vectors (CAVs) are computed
-per time step, enabling temporal attribution via Axis A (ICC, MCC).
+**Naming note (R3 remediation, see docs/method_provenance.md):** this class was
+previously named ``CBMT`` ("Temporal Concept Bottleneck Model") with a
+docstring citing Koh et al. (2020), *Concept Bottleneck Models*, ICML. It does
+not implement that architecture: a real CBM inserts a bottleneck of concept
+activations *between* a shared feature extractor and the task predictor, and
+trains the concept probes and the downstream classifier jointly (or
+sequentially) so the concepts are causally load-bearing for the prediction.
+This class does neither — it fits one independent logistic-regression probe
+per causal channel directly on two hand-picked summary statistics (per-channel
+mean and std over the whole window), with no coupling to the classifier being
+explained at all (the ``classifier`` argument to :meth:`attribute` is accepted
+for interface compatibility and unused), and it returns a *time-uniform* map
+(same value repeated across all ``T`` steps), discarding temporal structure
+entirely. Calling that "CBM-T" claimed fidelity to a published method it does
+not implement. Renamed to describe what it actually is: an independent
+per-channel concept probe over simple summary statistics.
 
-Reference:
+Reference (for the concept-probe idea in general, not implemented here):
   Koh et al. (2020), Concept Bottleneck Models. ICML.
-  Temporal extension: aligns concept axes with DAG channels.
-
-Ported from causal_tscf_bench/methods/concept/cbm_t.py.
 """
 
 from __future__ import annotations
@@ -21,15 +30,22 @@ from ...classifiers.base import TSClassifier
 from ..base import AttributionMethod
 
 
-class CBMT(AttributionMethod):
-    """
-    Temporal CBM: trains one logistic-regression concept probe per causal channel
-    using the channel's time series as the supervision signal.
+class ChannelConceptProbe(AttributionMethod):
+    """Per-channel logistic concept probe (not a concept bottleneck model).
+
+    Trains one independent logistic-regression probe per causal channel using
+    that channel's own (mean, std) summary statistics as features and a
+    user-supplied binary concept label as supervision. At attribution time,
+    each channel's map is filled uniformly across time with
+    ``P(concept_m = 1 | x)`` — a time-uniform, per-channel concept-activation
+    strength. There is no bottleneck layer and no coupling with a downstream
+    classifier's representations or predictions.
 
     Usage
     -----
-    1. Call fit_concepts(X_train, concept_labels) with binary concept labels (N, k).
-    2. Call attribute(x, classifier) to get (T, k) concept activation map.
+    1. Call ``fit_concepts(X_train, concept_labels)`` with binary concept
+       labels ``(N, k)``.
+    2. Call ``attribute(x, classifier)`` to get a ``(T, k)`` concept map.
     """
 
     def __init__(self, C: float = 1.0, max_iter: int = 200):
@@ -50,20 +66,27 @@ class CBMT(AttributionMethod):
         self._n_concepts = k
         self._probes = []
         for m in range(k):
-            feats = np.stack([
-                X_train[:, :, m].mean(axis=1),
-                X_train[:, :, m].std(axis=1),
-            ], axis=1)  # (N, 2)
+            feats = np.stack(
+                [
+                    X_train[:, :, m].mean(axis=1),
+                    X_train[:, :, m].std(axis=1),
+                ],
+                axis=1,
+            )  # (N, 2)
             clf = LogisticRegression(C=self.C, max_iter=self.max_iter)
             clf.fit(feats, concept_labels[:, m].astype(int))
             self._probes.append(clf)
 
-    def attribute(self, x: np.ndarray, classifier: TSClassifier,
-                  target_class: int | None = None) -> np.ndarray:
+    def attribute(
+        self, x: np.ndarray, classifier: TSClassifier, target_class: int | None = None
+    ) -> np.ndarray:
         """Return (T, k) concept attribution — uniform over time per concept.
 
         Each column m is filled with P(concept_m = 1 | x), giving a
-        time-uniform activation strength per causal channel.
+        time-uniform activation strength per causal channel. ``classifier``
+        and ``target_class`` are accepted for interface compatibility with
+        :class:`~causaltemp_xai.methods.base.AttributionMethod` and are not
+        used — this probe is fit independently of any classifier.
         """
         T, k = x.shape
         phi = np.zeros((T, k), dtype=np.float64)

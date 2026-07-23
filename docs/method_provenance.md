@@ -50,9 +50,32 @@ implementations**. No attribution method in this package is a proxy any more.
 - **Replaces:** the former `FDSaliency` proxy (a per-coordinate
   finite-difference numerical gradient), now removed.
 
-## Explicitly out of scope here
+## `ChannelConceptProbe` (`causaltemp_xai/methods/concept/channel_concept_probe.py`)
 
-`causaltemp_xai/methods/concept/cbm_t.py` (`CBMT`) has a related but
-lower-severity naming concern (a real, if minimal, concept-bottleneck-model
-architecture, not an unrelated numerical trick under another paper's name).
-Not covered by this note; the PI will scope its provenance separately.
+- **Formerly named:** `CBMT` ("Temporal Concept Bottleneck Model"), with a
+  module docstring citing Koh et al. (2020), *Concept Bottleneck Models*
+  (ICML), plus an unreferenced "temporal extension."
+- **R3 finding:** the implementation is not a concept bottleneck model. A CBM
+  inserts a concept bottleneck *between* a shared feature extractor and the
+  task predictor and trains the concepts jointly (or sequentially) with that
+  predictor, so the concepts are load-bearing for the classifier's decision.
+  `CBMT` fit one independent logistic-regression probe per causal channel on
+  two hand-picked summary statistics (per-channel mean and std over the whole
+  window), with **no coupling at all** to the classifier being explained —
+  the `classifier` argument to `attribute()` was accepted but unused — and
+  returned a **time-uniform** map (the same value repeated across every time
+  step), discarding temporal structure entirely. That is a simple per-channel
+  probe, not Koh et al.'s architecture; naming it "CBM-T" claimed fidelity to
+  a published method it did not implement.
+- **Remediation:** renamed the class to `ChannelConceptProbe` and rewrote the
+  module docstring to describe the probe honestly, with no implied fidelity
+  to Koh et al. (2020). The implementation (per-channel logistic probes on
+  mean/std features, time-uniform output) is unchanged — this is a naming and
+  disclosure fix, not a behavioural change.
+- **R9 note:** at the time of the finding, `CBMT`/`ChannelConceptProbe` was a
+  public export (`causaltemp_xai.methods.__all__`) with no test and no
+  experiment wiring anywhere in `tests/` or `experiments/`. Added
+  `tests/test_channel_concept_probe.py` so the export now carries a wired
+  test per R9; it is not yet wired into an `experiments/` phase; a follow-up
+  should either wire it into Phase 07 (auxiliary methods) alongside `iVAE` or
+  drop the public export if no experiment will use it.
