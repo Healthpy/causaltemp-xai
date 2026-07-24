@@ -191,7 +191,7 @@ class CARLARecourse:
         x_arr = np.asarray(x, dtype=np.float32)
         T, k = x_arr.shape
         x_t = torch.as_tensor(x_arr)
-        target = torch.tensor([self.target_class], dtype=torch.long)
+        target = torch.tensor([self.target_class], dtype=torch.long, device=model.device)
 
         if self.actionable_mask is None:
             mask = torch.ones(k, dtype=torch.float32)
@@ -410,7 +410,7 @@ class PearlCARLARecourse:
         x_arr = np.asarray(x, dtype=np.float32)
         T, k = x_arr.shape
         x_t = torch.as_tensor(x_arr)
-        target = torch.tensor([self.target_class], dtype=torch.long)
+        target = torch.tensor([self.target_class], dtype=torch.long, device=model.device)
 
         eps_np = self._abduct_noise(x_arr, mechanism)
         eps = torch.as_tensor(eps_np)

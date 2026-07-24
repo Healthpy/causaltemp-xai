@@ -433,16 +433,21 @@ class CftsCountsCF:
         # CounTS's shape-matching heuristic then returns (k, T) because shape[0]=T > shape[1]=k;
         # we transpose that back to (T, k).
         adapter = _TimeFirstAdapter(model)
-        cf, _ = counts_cf_with_pretrained_model(
-            x,
-            ds,
-            adapter,
-            target=self.target_class,
-            latent_dim=self.latent_dim,
-            hidden_dim=self.hidden_dim,
-            train_epochs=self.train_epochs,
-            max_iter=self.max_iter,
-        )
+        # CounTS trains its own internal VAE (vendored cfts/cf_counts/counts.py,
+        # not our LSTM) whose encoder/decoder also hits cuDNN's eval-mode RNN
+        # backward restriction on GPU. That VAE is vendored code we don't
+        # touch (adapter boundary only), so the guard goes around this call.
+        with torch.backends.cudnn.flags(enabled=False):
+            cf, _ = counts_cf_with_pretrained_model(
+                x,
+                ds,
+                adapter,
+                target=self.target_class,
+                latent_dim=self.latent_dim,
+                hidden_dim=self.hidden_dim,
+                train_epochs=self.train_epochs,
+                max_iter=self.max_iter,
+            )
         if cf is None:
             return np.asarray(x, dtype=np.float32)
         cf_arr = np.asarray(cf, dtype=np.float32)

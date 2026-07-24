@@ -16,6 +16,17 @@
 # FULL_NL; causaltemp_xai/config.py) and the locked n-cf=100 (README.md,
 # matches the row count of the previous results/full/lstm/per_instance.csv).
 #
+# GPU partition -- this account's compute budget is GPU-hours only (a CPU
+# partition submission is rejected outright: "No compute budget was found
+# for the partition rome"). Job 24833327 originally failed on this same
+# partition after ~10min: CARLA/PearlCARLA hit a device-placement bug and
+# every gradient-based Cfts method plus integrated_gradients hit "cudnn RNN
+# backward can only be called in training mode" (computing gradients through
+# the LSTM in .eval() mode under cuDNN). Both are now fixed in
+# causaltemp_xai/methods/counterfactual/carla.py and
+# causaltemp_xai/methods/attribution/integrated_gradients.py /
+# causaltemp_xai/methods/counterfactual/cfts_methods.py -- see those diffs.
+#
 # Submit with: sbatch slurm/full_pipeline_rerun.sbatch
 # Monitor with: squeue -u $USER ; tail -f slurm/logs/ctxai-full-rerun-<jobid>.out
 
