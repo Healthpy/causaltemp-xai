@@ -1,6 +1,11 @@
 {
+  "seed": 42,
+  "config": "full_nl",
+  "git_commit": "b413b43da98435f2b181dd9adaedc1239a521fdf",
+  "git_dirty": true,
   "SHD": 0.0,
   "LagAcc": 1.0,
-  "TV_Confounding": 0.21338,
-  "note": "SHD/LagAcc computed against the graph itself (no graph-discovery method in this pipeline) -- trivially perfect; TV_Confounding is the informative benchmark-structural diagnostic here."
+  "LagF1": 1.0,
+  "ResidualDep": 0.001975530626035243,
+  "note": "SHD/LagAcc computed against the graph itself (no graph-discovery method in this pipeline) -- trivially perfect; ResidualDep is the informative benchmark-structural diagnostic here."
 }

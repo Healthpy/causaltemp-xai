@@ -89,8 +89,20 @@ class LSTM(nn.Module):
         # RNN kernel, which supports eval-mode backward; a no-op on CPU, where
         # cuDNN never applied. Every result committed before this fix was
         # produced on CPU, so this changes no prior number.
-        with torch.backends.cudnn.flags(enabled=False):
-            # out: (N, T, D*hidden_size); hn: (D*num_layers, N, hidden_size)
+        #
+        # Scoped to torch.is_grad_enabled(): the vast majority of calls here
+        # are plain inference under torch.no_grad() (predict_proba, scoring,
+        # non-gradient CF methods) where the eval-mode-backward restriction
+        # never triggers, so cuDNN's fast kernel is safe and should not be
+        # paid for. Suspected (not yet isolated) as the dominant cause of a
+        # full-scale GPU phase-03 run (n_cf=100, 7 CF methods) blowing past
+        # its 12h budget -- see slurm/logs/ctxai-full-rerun-24839349.{out,err}
+        # (TIMEOUT). That run predates this fix.
+        if torch.is_grad_enabled():
+            with torch.backends.cudnn.flags(enabled=False):
+                # out: (N, T, D*hidden_size); hn: (D*num_layers, N, hidden_size)
+                _, (hn, _) = self.lstm(x)
+        else:
             _, (hn, _) = self.lstm(x)
         # hn[-1] is the last layer's forward hidden state;
         # for bidirectional, concatenate the last forward and backward states.
