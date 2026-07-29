@@ -6,8 +6,8 @@ representation produced by a concept-based XAI method (TCAV-T, CBM-T, iVAE,
 
 * **icc_latent** (model-based latent intervention) — Interventional Concept Consistency.
   Perturbs each latent dimension independently and counts how often the
-  classifier changes its prediction.  Under Hyvärinen (2019) / Song (2024)
-  nonlinear-ICA identifiability, a high ICC_i implies that concept i is
+  classifier changes its prediction.  Under Hyvärinen, Sasaki & Turner (2019) /
+  Song et al. (2024) nonlinear-ICA identifiability, a high ICC_i implies that concept i is
   causally relevant to the classifier's decision up to permutation and
   element-wise reparameterisation.
 
@@ -32,10 +32,10 @@ References
 Chen et al. (2018). "Isolating Sources of Disentanglement in VAEs." NeurIPS.
 Eastwood & Williams (2018). "A Framework for the Quantitative Evaluation
     of Disentangled Representations." ICLR.
-Hyvärinen & Morioka (2019). "Nonlinear ICA Using Auxiliary Variables."
-    AISTATS.
-Song et al. (2024). "Identifiability of Sparse Causal Representations."
-    NeurIPS.
+Hyvärinen, Sasaki & Turner (2019). "Nonlinear ICA Using Auxiliary Variables
+    and Generalized Contrastive Learning." AISTATS.
+Song et al. (2024). "Causal Temporal Representation Learning with
+    Nonstationary Sparse Transition." NeurIPS 37. arXiv:2409.03142.
 """
 
 from __future__ import annotations
