@@ -174,10 +174,15 @@ def _load_all_per_instance(results_dir: Path) -> dict:
             rows.extend(csv.DictReader(fh))
     if not rows:
         raise SystemExit(f"no per_instance.csv found under {results_dir} -- run Phase 04/05 first")
-    cols = rows[0].keys()
+    # Union, not rows[0].keys(): older per_instance.csv files can predate a
+    # column added by a later metric fix (e.g. sparsity_channels/timepoints,
+    # 2026-07-18) -- missing entries become NaN rather than a KeyError.
+    cols: set = set()
+    for r in rows:
+        cols.update(r.keys())
     out = {}
     for c in cols:
-        vals = [r[c] for r in rows]
+        vals = [r.get(c, "") for r in rows]
         if c in ("method", "benchmark", "classifier"):
             out[c] = np.array(vals)
         else:
