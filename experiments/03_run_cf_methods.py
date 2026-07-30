@@ -90,9 +90,14 @@ from experiments._common import (  # noqa: E402
 TARGET_CLASS = 1
 
 
-def build_methods(X_train, y_train) -> dict:
+def build_methods(X_train, y_train, target_class: int = TARGET_CLASS) -> dict:
     """The full set of selected CF methods -- every axis below runs on all of
     them. ``CftsWachter`` (cfts-backed) replaces the native ``WachterCF``.
+
+    ``target_class`` defaults to the pipeline-wide ``TARGET_CLASS`` and is
+    parameterised only so Phase 07's necessity direction can build the same
+    method set aimed the *other* way (target -> non-target). Nothing in phases
+    01-05 passes it; the main pipeline's behaviour is unchanged.
 
     ``n_steps`` decision for ``PearlCARLA`` (M2 gap-closure, see
     ``docs/m2_multiseed_and_pearl_carla.md`` S3 "Wiring PearlCARLA into the
@@ -111,14 +116,15 @@ def build_methods(X_train, y_train) -> dict:
     same doc section's note on `lam_prox` needing to shrink further there).
     """
     ds = _DatasetAdapter(X_train, y_train)
+    tc = target_class
     return {
-        "CARLA": CARLARecourse(target_class=TARGET_CLASS, n_steps=300, t0_fractions=(0.25, 0.5)),
-        "PearlCARLA": PearlCARLARecourse(target_class=TARGET_CLASS, t0_fractions=(0.25, 0.5)),
-        "CftsWachter": CftsWachterCF(target_class=TARGET_CLASS, dataset=ds, max_cfs=500),
-        "CftsCOMTE": CftsCOMTECF(target_class=TARGET_CLASS, dataset=ds),
-        "CftsConfeti": CftsConfetiCF(target_class=TARGET_CLASS, dataset=ds),
-        "CftsCounts": CftsCountsCF(target_class=TARGET_CLASS, dataset=ds),
-        "CftsCels": CftsCelsCF(target_class=TARGET_CLASS, dataset=ds),
+        "CARLA": CARLARecourse(target_class=tc, n_steps=300, t0_fractions=(0.25, 0.5)),
+        "PearlCARLA": PearlCARLARecourse(target_class=tc, t0_fractions=(0.25, 0.5)),
+        "CftsWachter": CftsWachterCF(target_class=tc, dataset=ds, max_cfs=500),
+        "CftsCOMTE": CftsCOMTECF(target_class=tc, dataset=ds),
+        "CftsConfeti": CftsConfetiCF(target_class=tc, dataset=ds),
+        "CftsCounts": CftsCountsCF(target_class=tc, dataset=ds),
+        "CftsCels": CftsCelsCF(target_class=tc, dataset=ds),
     }
 
 

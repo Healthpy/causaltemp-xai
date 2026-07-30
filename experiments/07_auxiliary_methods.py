@@ -96,6 +96,7 @@ from experiments._common import (  # noqa: E402
     build_oracle_interventions,
     config_dir,
     dump_json,
+    select_flip_candidates,
     set_run_context,
 )
 
@@ -627,22 +628,77 @@ def run_ivae(cfg, out_dir, epochs: int = 50) -> None:
 # ---------------------------------------------------------------------------
 
 
-def run_pns(cfg, out_dir) -> None:
+def _generate_pn_cfs(cfg, out_dir, clf, data, n_cf: int, methods_filter=None):
+    """Generate (and cache) the **necessity**-direction counterfactuals.
+
+    The PS direction reuses Phase 03's arrays, but PN needs the mirror image —
+    instances the classifier already puts in the *target* class, with CFs
+    aimed at leaving it — which Phase 03 never generates. Rather than
+    duplicating the method registry, this reuses Phase 03's own
+    ``build_methods``/``generate_cfs`` via ``importlib`` (the same pattern
+    Phase 06 uses to drive phases 01-04), constructed with ``target_class=0``.
+
+    Arrays are cached under ``cf_pn/`` and reused on re-run: CF generation is
+    the expensive part of the pipeline, and PN doubles it.
+    """
+    import importlib
+
+    phase03 = importlib.import_module("experiments.03_run_cf_methods")
+
+    res_dir = config_dir(cfg.name, "lstm")
+    pn_dir = res_dir / "cf_pn"
+    pn_dir.mkdir(parents=True, exist_ok=True)
+
+    x_sel_path = pn_dir / "X_sel.npy"
+    if x_sel_path.exists():
+        X_sel = np.load(x_sel_path)
+    else:
+        # from_class=1: already in the target class -- the population PN
+        # conditions on (see select_flip_candidates / pns_metric_design.md).
+        idx = select_flip_candidates(clf, data["X_test"], n_cf, target_class=1, from_class=1)
+        X_sel = data["X_test"][idx]
+        np.save(x_sel_path, X_sel)
+
+    methods = phase03.build_methods(data["X_train"], data["Y_train"], target_class=0)
+    if methods_filter:
+        methods = {k: v for k, v in methods.items() if k in methods_filter}
+
+    cfs = {}
+    for name, method in methods.items():
+        dest = pn_dir / f"X_cf_{name}.npy"
+        if dest.exists():
+            cfs[name] = np.load(dest)
+            continue
+        print(f"[07]   generating PN-direction CFs: {name} ...")
+        try:
+            arr = phase03.generate_cfs(method, X_sel, clf, data["graph"], data["mechanism"])
+            np.save(dest, arr)
+            cfs[name] = arr
+        except Exception as exc:
+            print(f"[07]   {name} FAILED: {exc}")
+    return X_sel, cfs
+
+
+def run_pns(cfg, out_dir, n_cf: int = 40, with_pn: bool = False, methods_filter=None) -> None:
     """Necessity/sufficiency gap: the model's causal claim vs the world's.
 
-    Scores every CF method Phase 03 already produced arrays for, reusing those
-    arrays — no CF is regenerated here. Writes ``pns.json`` under the config's
-    classifier directory.
+    The **PS** direction reuses the counterfactual arrays Phase 03 already
+    wrote — nothing is regenerated. The **PN** direction (``--with-pn``) needs
+    counterfactuals Phase 03 never produces (target class -> non-target), so
+    they are generated here and cached under ``cf_pn/``.
 
-    **Currently reports the PS direction only.** Genuine PNS additionally needs
-    the PN direction (instances already in the target class, with CFs seeking
-    to leave it), which requires a *second* Phase-03 run with
-    ``select_flip_candidates(..., from_class=target)`` — see
-    ``docs/pns_metric_design.md``. Until those arrays exist this writes
-    ``PN_world: null`` and does **not** synthesise a combined PNS from a
-    missing term.
+    Without ``--with-pn`` this reports PS only and writes ``PN_world: null``;
+    a combined PNS is **never** synthesised from a missing term (R3 — on
+    flip-candidates alone the estimand is sufficiency, not PNS).
+
+    Writes ``pns.json`` under the config's classifier directory.
     """
-    from causaltemp_xai.metrics.pns import pns_direction, recover_label_threshold
+    from causaltemp_xai.metrics.pns import (
+        pns_direction,
+        pns_from_directions,
+        recover_label_threshold,
+        scm_label,
+    )
 
     data = load_dataset(cfg.name, out_dir=out_dir)
     mech = data["mechanism"]
@@ -658,33 +714,69 @@ def run_pns(cfg, out_dir) -> None:
     X_sel = np.load(x_sel_path)
     clf = LSTMClassifier.load(Path(out_dir) / cfg.name / "lstm.pt")
 
-    print(f"[07] PNS (PS direction) on '{cfg.name}' -- theta={theta:+.6f}")
-    rows = {}
+    fmt = lambda v: "nan" if v != v else f"{v:+.2f}"  # noqa: E731
+
+    def _report(label, rows):
+        print(f"[07] {label}")
+        for name, out in rows.items():
+            print(
+                f"     {name:14s} A={fmt(out['A_model_proposed'])} "
+                f"B={fmt(out['B_model_oracle'])} C={fmt(out['C_world_oracle'])} | "
+                f"d_total={fmt(out['delta_total'])} d_traj={fmt(out['delta_trajectory'])} "
+                f"d_out={fmt(out['delta_outcome'])} (n={out['n_scorable']}/{out['n']})"
+            )
+
+    print(f"[07] PNS on '{cfg.name}' -- theta={theta:+.6f}")
+    ps_rows = {}
     for cf_path in sorted(cf_dir.glob("X_cf_*.npy")):
         name = cf_path.stem[len("X_cf_") :]
-        out = pns_direction(X_sel, np.load(cf_path), clf, mech, theta, target_class=1)
-        rows[name] = out
-        fmt = lambda v: "nan" if v != v else f"{v:+.2f}"  # noqa: E731
-        print(
-            f"     {name:14s} A={fmt(out['A_model_proposed'])} B={fmt(out['B_model_oracle'])} "
-            f"C={fmt(out['C_world_oracle'])} | d_total={fmt(out['delta_total'])} "
-            f"d_traj={fmt(out['delta_trajectory'])} d_out={fmt(out['delta_outcome'])} "
-            f"(n={out['n_scorable']}/{out['n']})"
-        )
+        ps_rows[name] = pns_direction(X_sel, np.load(cf_path), clf, mech, theta, target_class=1)
+    _report("PS direction (sufficiency): non-target -> target", ps_rows)
 
     payload = {
         "seed": cfg.seed,
         "config": cfg.name,
         "label_threshold": theta,
-        "direction": "PS",
-        "PN_world": None,
-        "PN_note": (
-            "PN direction not run: needs a second Phase-03 pass with "
-            "select_flip_candidates(from_class=target). Combined PNS is "
-            "deliberately not synthesised from a missing term."
-        ),
-        "methods": rows,
+        "PS": ps_rows,
     }
+
+    if not with_pn:
+        payload.update(
+            direction="PS",
+            PN_world=None,
+            PN_note=(
+                "PN direction not run (pass --with-pn). Combined PNS is "
+                "deliberately not synthesised from a missing term."
+            ),
+        )
+    else:
+        X_sel_pn, pn_cfs = _generate_pn_cfs(cfg, out_dir, clf, data, n_cf, methods_filter)
+        pn_rows = {
+            name: pns_direction(X_sel_pn, arr, clf, mech, theta, target_class=0)
+            for name, arr in sorted(pn_cfs.items())
+        }
+        _report("PN direction (necessity): target -> non-target", pn_rows)
+
+        # Population weights for PNS = P(x,y)*PN + P(x',y')*PS, taken from the
+        # *world's* labels (this is a world-side quantity, so the classifier's
+        # opinion of the class balance is not the right weight).
+        world_y = np.array([scm_label(x, theta) for x in X_all])
+        p_xy = float((world_y == 1).mean())
+        p_xpyp = float(1.0 - p_xy)
+
+        combined = {}
+        for name in sorted(set(ps_rows) & set(pn_rows)):
+            combined[name] = pns_from_directions(ps_rows[name], pn_rows[name], p_xy, p_xpyp)
+        payload.update(direction="PNS", PN=pn_rows, PNS=combined, p_xy=p_xy, p_xpyp=p_xpyp)
+
+        print(f"[07] PNS combined  (P(x,y)={p_xy:.2f}, P(x',y')={p_xpyp:.2f})")
+        for name, c in combined.items():
+            print(
+                f"     {name:14s} PNS={fmt(c['PNS_world'])} "
+                f"= {p_xy:.2f}*PN({fmt(c['PN_world'])}) + {p_xpyp:.2f}*PS({fmt(c['PS_world'])})"
+                f"   | d_total PS={fmt(c['PS_delta_total'])} PN={fmt(c['PN_delta_total'])}"
+            )
+
     dump_json(res_dir / "pns.json", payload)
     print(f"[07] wrote {res_dir / 'pns.json'}")
 
@@ -698,6 +790,8 @@ def run(
     intervention_prob: float = 0.3,
     sweep: bool = False,
     seed: int | None = None,
+    with_pn: bool = False,
+    methods_filter=None,
 ) -> None:
     """Dispatch to the auxiliary-method family selected by ``method``."""
     cfg = get_config(config_name)
@@ -719,7 +813,7 @@ def run(
     elif method == "ivae":
         run_ivae(cfg, out_dir, epochs=n_epochs)
     elif method == "pns":
-        run_pns(cfg, out_dir)
+        run_pns(cfg, out_dir, n_cf=n_cf, with_pn=with_pn, methods_filter=methods_filter)
     else:
         raise SystemExit(
             f"[07] unknown --method {method!r}; use one of "
@@ -760,6 +854,20 @@ def main(argv=None) -> int:
         help="interventional-sequence rate (citris only)",
     )
     parser.add_argument(
+        "--methods",
+        nargs="+",
+        default=None,
+        help="pns --with-pn only: subset of CF methods to generate the "
+        "necessity direction for (defaults to all registered).",
+    )
+    parser.add_argument(
+        "--with-pn",
+        action="store_true",
+        help="pns only: also generate the necessity-direction CFs (target -> "
+        "non-target) and report genuine PNS. Doubles CF generation; arrays are "
+        "cached under cf_pn/ and reused.",
+    )
+    parser.add_argument(
         "--sweep",
         action="store_true",
         help="also compute the graph-quality sweep (graph_error across a "
@@ -782,6 +890,8 @@ def main(argv=None) -> int:
         intervention_prob=args.intervention_prob,
         sweep=args.sweep,
         seed=args.seed,
+        with_pn=args.with_pn,
+        methods_filter=args.methods,
     )
     return 0
 
