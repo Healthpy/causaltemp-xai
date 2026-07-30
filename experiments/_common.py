@@ -65,10 +65,24 @@ def config_dir(config_name: str, classifier: str = "lstm") -> Path:
     return d
 
 
-def select_flip_candidates(clf, X_test, n_cf, target_class=TARGET_CLASS):
-    """Indices of test instances the classifier predicts as NOT target_class."""
+def select_flip_candidates(clf, X_test, n_cf, target_class=TARGET_CLASS, from_class=None):
+    """Indices of test instances to seek counterfactuals for.
+
+    By default (``from_class=None``) returns instances the classifier predicts
+    as **not** ``target_class`` — the standard recourse direction.
+
+    ``from_class`` selects the complementary set instead: instances predicted
+    as exactly that class. Passing ``from_class=target_class`` gives the
+    *reverse* direction (already in the target class, seeking a CF that leaves
+    it), which is what estimating the **probability of necessity** requires —
+    PN conditions on the outcome having occurred, so it cannot be estimated
+    from the default flip-candidate set (see ``docs/pns_metric_design.md``).
+    """
     preds = clf.predict(X_test)
-    src = [i for i in range(len(X_test)) if preds[i] != target_class]
+    if from_class is None:
+        src = [i for i in range(len(X_test)) if preds[i] != target_class]
+    else:
+        src = [i for i in range(len(X_test)) if preds[i] == from_class]
     if len(src) < n_cf:
         src = list(range(len(X_test)))
     return np.asarray(src[:n_cf], dtype=int)

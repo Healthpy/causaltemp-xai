@@ -79,9 +79,14 @@ def structural_counterfactual(
     t0:
         Intervention timestep. The prefix ``x_cf[:t0]`` is held to the factual.
     node:
-        Variable index intervened on at ``t0``.
+        Variable index intervened on at ``t0``. Either a scalar (single-node
+        intervention) or a sequence of indices for a simultaneous multi-node
+        intervention — real CF methods routinely edit several channels at
+        ``t0``, and scoring only one of them would evaluate a *different*
+        intervention than the method actually proposed.
     value:
-        The value forced onto ``x_cf[t0, node]``.
+        The value(s) forced onto ``x_cf[t0, node]``. Must match ``node``'s
+        shape.
     noiseless:
         If ``False`` (default), reuse the abducted factual noise — the textbook
         Pearl counterfactual (``pearl_delta``-faithful). If ``True``, roll
@@ -101,7 +106,17 @@ def structural_counterfactual(
     # Action: hold the pre-intervention prefix + the intervened step.
     x_cf = x_orig.copy()
     x_cf[t0] = x_orig[t0]
-    x_cf[t0, node] = value
+    # ``node``/``value`` are either both scalars (single-node intervention,
+    # the original signature) or matching sequences (multi-node). numpy's
+    # fancy indexing handles both identically once node is an array, so there
+    # is one code path rather than a branch.
+    nodes = np.atleast_1d(np.asarray(node, dtype=int))
+    values = np.atleast_1d(np.asarray(value, dtype=float))
+    if nodes.shape != values.shape:
+        raise ValueError(
+            f"node and value must have the same shape; got {nodes.shape} and {values.shape}"
+        )
+    x_cf[t0, nodes] = values
 
     # Predict: roll forward reusing eps (zero in the noiseless variant).
     for t in range(t0 + 1, T):

@@ -31,9 +31,15 @@ from .axis_d import (
     input_sensitivity,
 )
 from .cf_faith import CFfaith
+from .pns import (
+    extract_intervention,
+    pns_direction,
+    pns_from_directions,
+    recover_label_threshold,
+    scm_label,
+)
 
 __all__ = [
-    # cf_faith
     "CFfaith",
     "compute_axis_a",
     "compute_axis_b",
@@ -41,9 +47,9 @@ __all__ = [
     "compute_axis_d",
     "concept_stability",
     "dci",
+    "extract_intervention",
     "graph_auc",
     "graph_error_decomposition",
-    # axis_a
     "icc",
     "icc_latent",
     "input_sensitivity",
@@ -53,13 +59,15 @@ __all__ = [
     "mcc_concept",
     "mig",
     "ood_plausibility",
+    "pns_direction",
+    "pns_from_directions",
     "proximity",
+    "recover_label_threshold",
     "residual_dependence",
+    "scm_label",
     "scm_noise_plausibility",
-    # axis_b
     "shd",
     "sparsity",
     "trsi",
-    # axis_c
     "validity",
 ]

@@ -627,6 +627,68 @@ def run_ivae(cfg, out_dir, epochs: int = 50) -> None:
 # ---------------------------------------------------------------------------
 
 
+def run_pns(cfg, out_dir) -> None:
+    """Necessity/sufficiency gap: the model's causal claim vs the world's.
+
+    Scores every CF method Phase 03 already produced arrays for, reusing those
+    arrays — no CF is regenerated here. Writes ``pns.json`` under the config's
+    classifier directory.
+
+    **Currently reports the PS direction only.** Genuine PNS additionally needs
+    the PN direction (instances already in the target class, with CFs seeking
+    to leave it), which requires a *second* Phase-03 run with
+    ``select_flip_candidates(..., from_class=target)`` — see
+    ``docs/pns_metric_design.md``. Until those arrays exist this writes
+    ``PN_world: null`` and does **not** synthesise a combined PNS from a
+    missing term.
+    """
+    from causaltemp_xai.metrics.pns import pns_direction, recover_label_threshold
+
+    data = load_dataset(cfg.name, out_dir=out_dir)
+    mech = data["mechanism"]
+    X_all = np.concatenate([data[f"X_{s}"] for s in ("train", "val", "test")])
+    Y_all = np.concatenate([data[f"Y_{s}"] for s in ("train", "val", "test")])
+    theta = recover_label_threshold(X_all, Y_all)
+
+    res_dir = config_dir(cfg.name, "lstm")
+    cf_dir = res_dir / "cf"
+    x_sel_path = cf_dir / "X_sel.npy"
+    if not x_sel_path.exists():
+        raise SystemExit(f"[07] no {x_sel_path}; run experiments/03_run_cf_methods.py first")
+    X_sel = np.load(x_sel_path)
+    clf = LSTMClassifier.load(Path(out_dir) / cfg.name / "lstm.pt")
+
+    print(f"[07] PNS (PS direction) on '{cfg.name}' -- theta={theta:+.6f}")
+    rows = {}
+    for cf_path in sorted(cf_dir.glob("X_cf_*.npy")):
+        name = cf_path.stem[len("X_cf_") :]
+        out = pns_direction(X_sel, np.load(cf_path), clf, mech, theta, target_class=1)
+        rows[name] = out
+        fmt = lambda v: "nan" if v != v else f"{v:+.2f}"  # noqa: E731
+        print(
+            f"     {name:14s} A={fmt(out['A_model_proposed'])} B={fmt(out['B_model_oracle'])} "
+            f"C={fmt(out['C_world_oracle'])} | d_total={fmt(out['delta_total'])} "
+            f"d_traj={fmt(out['delta_trajectory'])} d_out={fmt(out['delta_outcome'])} "
+            f"(n={out['n_scorable']}/{out['n']})"
+        )
+
+    payload = {
+        "seed": cfg.seed,
+        "config": cfg.name,
+        "label_threshold": theta,
+        "direction": "PS",
+        "PN_world": None,
+        "PN_note": (
+            "PN direction not run: needs a second Phase-03 pass with "
+            "select_flip_candidates(from_class=target). Combined PNS is "
+            "deliberately not synthesised from a missing term."
+        ),
+        "methods": rows,
+    }
+    dump_json(res_dir / "pns.json", payload)
+    print(f"[07] wrote {res_dir / 'pns.json'}")
+
+
 def run(
     config_name: str,
     out_dir,
@@ -656,10 +718,12 @@ def run(
         )
     elif method == "ivae":
         run_ivae(cfg, out_dir, epochs=n_epochs)
+    elif method == "pns":
+        run_pns(cfg, out_dir)
     else:
         raise SystemExit(
             f"[07] unknown --method {method!r}; use one of "
-            f"{', '.join((*GRAPH_METHODS, 'ivae'))}"
+            f"{', '.join((*GRAPH_METHODS, 'ivae', 'pns'))}"
         )
 
 
@@ -674,10 +738,11 @@ def main(argv=None) -> int:
     parser.add_argument(
         "--method",
         default="dynotears",
-        choices=(*GRAPH_METHODS, "ivae"),
+        choices=(*GRAPH_METHODS, "ivae", "pns"),
         help="dynotears (default) -- the load-bearing graph-aware baseline; "
         "citris -- the honest secondary self-graphing method; "
-        "ivae -- decoder-based Axis-A ICC.",
+        "ivae -- decoder-based Axis-A ICC; "
+        "pns -- necessity/sufficiency gap (model vs world).",
     )
     parser.add_argument(
         "--n-cf", type=int, default=40, help="instances for the decomposition (graph methods only)"
