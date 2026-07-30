@@ -58,6 +58,21 @@ class CFfaith:
     * **soft** – ``exp(-residual / scale)`` in ``[0, 1]``, where ``scale``
       normalises by the number of features; always 0 when retroactive changes
       are present.
+
+    Degenerate case (``intervention_t >= T - 1``)
+    --------------------------------------------
+    Both scores are **NaN**, not 1.0. With the intervention on (or past) the
+    final timestep there is no post-intervention trajectory to roll forward,
+    so the forward loop has nothing to check and the metric has *no evidence
+    either way* — reporting 1.0 there reports "no evidence" as "perfect
+    evidence". Found 2026-07-30: a literal no-op CF (``x_cf == x``, for which
+    ``derive_intervention_t`` returns ``T-1`` by construction) and a CF with
+    arbitrary garbage confined to the last timestep both scored a perfect 1.0
+    under both semantics, while the same garbage one step earlier correctly
+    scored 0. Callers must aggregate with ``np.nanmean`` and report the
+    degenerate fraction alongside (see :func:`cf_faith_batch`), so a method
+    that games the boundary by only ever editing the last step stays visible
+    rather than scoring a free 1.0.
     """
 
     #: Supported faithfulness semantics (see :meth:`score`).
@@ -161,6 +176,16 @@ class CFfaith:
         x_cf_arr = np.asarray(x_cf, dtype=float)  # (T, k)
         T, k = x_orig.shape
         L = mechanism.L
+
+        # ------------------------------------------------------------------
+        # (0) Degeneracy gate — must precede the retroactive check, which a
+        # no-op CF passes trivially. With t0 >= T-1 the forward loop below is
+        # empty, so every CF (including a no-op, or garbage confined to the
+        # last step) would post a zero residual and score a perfect 1.0. The
+        # metric has no evidence here; NaN says so. See the class docstring.
+        # ------------------------------------------------------------------
+        if intervention_t >= T - 1:
+            return {"hard": float("nan"), "soft": float("nan")}
 
         # ------------------------------------------------------------------
         # (i) Retroactive change check — per-element max, same predicate and

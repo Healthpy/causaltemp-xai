@@ -60,7 +60,9 @@ uv run python -m causaltemp_xai.classifiers.lstm --config full --train --patienc
 
 # 3. run the harness: CF methods x Axis-C + both CF-faith metrics
 #    + IG attribution foil + Shift-VR-lite -> results/full/<classifier>/...
-uv run python experiments/03_run_cf_methods.py --config full --n-cf 100
+#    CftsCounts excluded from the current default run (PI decision, 2026-07-29)
+uv run python experiments/03_run_cf_methods.py --config full --n-cf 100 \
+    --methods CARLA PearlCARLA CftsWachter CftsCOMTE CftsConfeti CftsCels
 uv run python experiments/04_evaluate_axes.py --config full
 
 # 4. render the 3 publication figures -> results/figures/

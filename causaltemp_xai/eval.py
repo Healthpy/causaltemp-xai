@@ -80,6 +80,16 @@ def evaluate_method(
         valid *and* faithful is genuinely good, not gaming.  Also includes
         ``n`` (batch size).
 
+        **Degeneracy (2026-07-30).** The four CF-faith means are ``nanmean``
+        over the batch: instances with ``intervention_t >= T-1`` score NaN
+        (CF-faith is undefined there — see :class:`CFfaith`) and abstain
+        instead of contributing a free 1.0. Two diagnostics are published
+        alongside: ``n_cf_faith_scorable`` (instances CF-faith could be
+        computed on) and ``frac_degenerate``. **A high ``frac_degenerate``
+        invalidates that method's CF-faith columns regardless of their
+        value** — read the two together, never the CF-faith mean alone. When
+        every instance is degenerate the means are NaN, not 1.0.
+
         **Structured sparsity.** ``sparsity`` is a flat count over all ``T×k``
         features and so is blind to the *shape* of the edit. The two structured
         scores say which axis it is sparse along: ``sparsity_channels`` is the
@@ -137,6 +147,22 @@ def evaluate_method(
     ood_scores = np.atleast_1d(ood_plausibility(X_train, CFs))
     sparsity_mean = float(np.mean(spars))
 
+    # CF-faith is NaN on degenerate instances (intervention_t >= T-1: no
+    # post-intervention trajectory exists to check — see CFfaith's docstring).
+    # Aggregate with nanmean so those instances abstain rather than posting a
+    # free 1.0, and publish the degenerate fraction so a method that games the
+    # boundary by only ever editing the last timestep is visible in the table
+    # instead of silently topping it.
+    r_hard_a = np.asarray(r_hard, dtype=float)
+    p_hard_a = np.asarray(p_hard, dtype=float)
+    scorable = ~np.isnan(r_hard_a)
+    n_scorable = int(scorable.sum())
+
+    def _nanmean(a):
+        # all-NaN would warn and return NaN; return NaN explicitly instead.
+        a = np.asarray(a, dtype=float)
+        return float(np.nanmean(a)) if np.any(~np.isnan(a)) else float("nan")
+
     return {
         "n": len(CFs),
         "validity": float(np.mean(valid_i)),
@@ -147,14 +173,21 @@ def evaluate_method(
         "sparsity_channels": float(np.mean(spars_ch)),
         "sparsity_timepoints": float(np.mean(spars_tp)),
         "ood": float(np.mean(ood_scores)),
-        "cf_faith_rollout_hard": float(np.mean(r_hard)),
-        "cf_faith_rollout_soft": float(np.mean(r_soft)),
-        "cf_faith_pearl_hard": float(np.mean(p_hard)),
-        "cf_faith_pearl_soft": float(np.mean(p_soft)),
-        # Joint faithfulness-validity criterion (anti-gameability, M1):
-        # fraction of instances that are BOTH hard-faithful AND valid.
-        "cf_faith_rollout_hard_valid": float(np.mean(np.asarray(r_hard) * valid_i)),
-        "cf_faith_pearl_hard_valid": float(np.mean(np.asarray(p_hard) * valid_i)),
+        "cf_faith_rollout_hard": _nanmean(r_hard),
+        "cf_faith_rollout_soft": _nanmean(r_soft),
+        "cf_faith_pearl_hard": _nanmean(p_hard),
+        "cf_faith_pearl_soft": _nanmean(p_soft),
+        # Degeneracy diagnostics (2026-07-30): how much of the batch CF-faith
+        # could actually be computed on. A high frac_degenerate invalidates
+        # the CF-faith columns for that method regardless of their value.
+        "n_cf_faith_scorable": n_scorable,
+        "frac_degenerate": float(1.0 - n_scorable / len(CFs)) if len(CFs) else float("nan"),
+        # Joint faithfulness-validity criterion (anti-gameability, M1).
+        # NaN-degenerate instances count as 0 here (not faithful-and-valid):
+        # this is a fraction-of-batch criterion, so an instance that cannot be
+        # shown faithful must not be credited to it.
+        "cf_faith_rollout_hard_valid": float(np.mean(np.nan_to_num(r_hard_a) * valid_i)),
+        "cf_faith_pearl_hard_valid": float(np.mean(np.nan_to_num(p_hard_a) * valid_i)),
     }
 
 

@@ -239,12 +239,39 @@ def fig2_distributions(data, methods, out_path):
         axes,
         [("rollout", "cf_faith_rollout_soft"), ("pearl", "cf_faith_pearl_soft")],
     ):
-        series = [data[key][data["method"] == m] for m in methods]
+        # Drop degenerate (NaN) instances before the KDE: violinplot's kernel
+        # estimate returns garbage on NaN input (and warns from linalg.det).
+        # A method with no scorable instances at all gets no violin and is
+        # annotated instead -- an empty slot is honest, a fabricated shape or
+        # a silent gap is not.
+        raw = {m: data[key][data["method"] == m] for m in methods}
+        clean = {m: v[~np.isnan(v)] for m, v in raw.items()}
+        drawable = [m for m in methods if clean[m].size > 0]
         positions = np.arange(1, len(methods) + 1)
-        parts = ax.violinplot(series, positions=positions, showmeans=True, widths=0.8)
-        for body, m in zip(parts["bodies"], methods):
-            body.set_facecolor(COLORS.get(m, "#888888"))
-            body.set_alpha(0.6)
+        pos_of = {m: p for m, p in zip(methods, positions)}
+
+        if drawable:
+            parts = ax.violinplot(
+                [clean[m] for m in drawable],
+                positions=[pos_of[m] for m in drawable],
+                showmeans=True,
+                widths=0.8,
+            )
+            for body, m in zip(parts["bodies"], drawable):
+                body.set_facecolor(COLORS.get(m, "#888888"))
+                body.set_alpha(0.6)
+        for m in methods:
+            if clean[m].size == 0:
+                ax.text(
+                    pos_of[m],
+                    0.5,
+                    "all\ndegen.",
+                    ha="center",
+                    va="center",
+                    fontsize=7,
+                    color="#b00020",
+                    style="italic",
+                )
         ax.set_xticks(positions)
         ax.set_xticklabels(methods, rotation=30, ha="right", fontsize=8)
         ax.set_title(f"CF-faith ({semantics}, soft)")

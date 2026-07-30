@@ -248,6 +248,81 @@ class TestCFfaithAdversarial:
 
 
 # ---------------------------------------------------------------------------
+# Regression: the intervention_t == T-1 degeneracy (found 2026-07-30)
+# ---------------------------------------------------------------------------
+
+
+class TestCFfaithDegeneracy:
+    """With ``intervention_t >= T-1`` the forward-simulation loop
+    ``range(t0+1, T)`` is empty, so *any* CF posted a zero residual and scored
+    a perfect 1.0 under both semantics — "no evidence" reported as "perfect
+    evidence". Both cases below scored 1.0/1.0 before the fix; the metric now
+    returns NaN (undefined) instead. This inflated every cfts method's
+    published CF-faith (e.g. CftsConfeti 0.46 -> 0.00 on `full`, CftsCels
+    0.60 -> 0.00 on `full_nl`).
+    """
+
+    def test_no_op_cf_is_not_faithful(self):
+        """A CF identical to the input is not a counterfactual at all and must
+        never score 1.0. derive_intervention_t returns T-1 for it by
+        construction, which is exactly the degenerate boundary."""
+        x, graph, mech = _make_scm(seed=5)
+        cf = x.copy()  # literal no-op
+        t0 = derive_intervention_t(x, cf)
+        assert t0 == x.shape[0] - 1, "no-op must land on the degenerate boundary"
+        for sem in CFfaith.SEMANTICS:
+            r = CFfaith(semantics=sem).score(x, cf, t0, graph, mech)
+            assert np.isnan(r["hard"]), f"{sem}: no-op CF must not score hard=1.0"
+            assert np.isnan(r["soft"]), f"{sem}: no-op CF must not score soft=1.0"
+
+    def test_garbage_confined_to_last_timestep_is_not_faithful(self):
+        """The sharpest form: arbitrarily large garbage at the final timestep
+        is unfalsifiable (nothing follows it to propagate into), so it must
+        abstain rather than earn a free perfect score."""
+        x, graph, mech = _make_scm(seed=6)
+        cf = x.copy()
+        cf[-1, :] += 999.0
+        t0 = derive_intervention_t(x, cf)
+        assert t0 == x.shape[0] - 1
+        for sem in CFfaith.SEMANTICS:
+            r = CFfaith(semantics=sem).score(x, cf, t0, graph, mech)
+            assert np.isnan(r["hard"]), f"{sem}: last-step garbage must not score 1.0"
+
+    def test_same_garbage_one_step_earlier_is_still_flagged(self):
+        """Control: the degeneracy gate must not become a blanket amnesty for
+        late edits. One step earlier there *is* a trajectory to check, and the
+        identical garbage must still be rejected."""
+        x, graph, mech = _make_scm(seed=6)
+        cf = x.copy()
+        cf[-2, :] += 999.0
+        t0 = derive_intervention_t(x, cf)
+        assert t0 == x.shape[0] - 2
+        for sem in CFfaith.SEMANTICS:
+            r = CFfaith(semantics=sem).score(x, cf, t0, graph, mech)
+            assert r["hard"] == 0.0, f"{sem}: non-degenerate garbage must be flagged"
+
+    def test_batch_degenerate_instances_abstain_and_are_counted(self):
+        """evaluate_method must nanmean over CF-faith and publish the
+        degenerate fraction, so a batch that is half no-ops cannot post a
+        CF-faith inflated by free 1.0s."""
+        from causaltemp_xai.eval import evaluate_method
+
+        x, graph, mech = _make_scm(seed=7)
+        t0 = 10
+        rng = np.random.default_rng(3)
+        good = _noiseless_cf(x, mech, t0, rng.uniform(-0.4, 0.4, x.shape[1]))
+        X_orig = np.stack([x, x])
+        CFs = np.stack([good, x.copy()])  # one real CF, one no-op
+
+        out = evaluate_method(_SignModel(), X_orig, CFs, X_orig, graph, mech, target_class=1)
+        assert out["n_cf_faith_scorable"] == 1, "the no-op must not be scorable"
+        assert out["frac_degenerate"] == 0.5
+        # nanmean over the single scorable instance -- not (1.0 + 1.0)/2 from
+        # the pre-fix free pass on the no-op.
+        assert out["cf_faith_rollout_hard"] == 1.0
+
+
+# ---------------------------------------------------------------------------
 # Regression: the CELS-style false flag (M1 fix #1)
 # ---------------------------------------------------------------------------
 

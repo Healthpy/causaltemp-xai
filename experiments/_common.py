@@ -100,6 +100,9 @@ def per_instance_records(benchmark, classifier, method_name, X_sel, CFs, graph, 
     from causaltemp_xai.metrics.cf_faith import CFfaith
     from causaltemp_xai.scm.intervention import derive_intervention_t
 
+    def _nan_to_zero(v):
+        return 0.0 if np.isnan(v) else v
+
     rollout = CFfaith(semantics="noiseless_rollout")
     pearl = CFfaith(semantics="pearl_delta")
     rows = []
@@ -128,8 +131,15 @@ def per_instance_records(benchmark, classifier, method_name, X_sel, CFs, graph, 
                 "cf_faith_pearl_hard": p["hard"],
                 "cf_faith_pearl_soft": p["soft"],
                 # Joint faithfulness-validity (anti-gameability, M1 2026-07-07).
-                "cf_faith_rollout_hard_valid": (r["hard"] * valid_i if valid_i is not None else ""),
-                "cf_faith_pearl_hard_valid": (p["hard"] * valid_i if valid_i is not None else ""),
+                # A degenerate (NaN) hard score counts as 0 here, not NaN:
+                # this is a fraction-of-batch criterion, so an instance whose
+                # faithfulness cannot be established must not be credited.
+                "cf_faith_rollout_hard_valid": (
+                    _nan_to_zero(r["hard"]) * valid_i if valid_i is not None else ""
+                ),
+                "cf_faith_pearl_hard_valid": (
+                    _nan_to_zero(p["hard"]) * valid_i if valid_i is not None else ""
+                ),
             }
         )
     return rows
@@ -211,14 +221,29 @@ def aggregate_method_row(benchmark, classifier, method_name, instance_rows) -> d
     """Collapse per-instance rows for one method into a single mean-summary row."""
 
     def _mean(key):
-        vals = [r[key] for r in instance_rows if r[key] not in (None, "")]
+        # NaN-aware: CF-faith is NaN on degenerate instances (intervention_t
+        # >= T-1, see CFfaith) and those must abstain from the mean rather
+        # than poison it to NaN or count as a free 1.0.
+        vals = [
+            float(r[key])
+            for r in instance_rows
+            if r[key] not in (None, "") and not np.isnan(float(r[key]))
+        ]
         return float(np.mean(vals)) if vals else None
+
+    n = len(instance_rows)
+    n_scorable = sum(
+        1
+        for r in instance_rows
+        if r.get("cf_faith_rollout_hard") not in (None, "")
+        and not np.isnan(float(r["cf_faith_rollout_hard"]))
+    )
 
     return {
         "benchmark": benchmark,
         "classifier": classifier,
         "method": method_name,
-        "n": len(instance_rows),
+        "n": n,
         "validity": _mean("validity"),
         "proximity_l1": _mean("proximity_l1"),
         "proximity_l2": _mean("proximity_l2"),
@@ -230,6 +255,10 @@ def aggregate_method_row(benchmark, classifier, method_name, instance_rows) -> d
         "cf_faith_rollout_soft": _mean("cf_faith_rollout_soft"),
         "cf_faith_pearl_hard": _mean("cf_faith_pearl_hard"),
         "cf_faith_pearl_soft": _mean("cf_faith_pearl_soft"),
+        # Degeneracy diagnostics — a high frac_degenerate invalidates the
+        # CF-faith columns on this row regardless of their value.
+        "n_cf_faith_scorable": n_scorable,
+        "frac_degenerate": (float(1.0 - n_scorable / n) if n else None),
         # Joint faithfulness-validity (None for classifier-free oracle rows).
         "cf_faith_rollout_hard_valid": _mean("cf_faith_rollout_hard_valid"),
         "cf_faith_pearl_hard_valid": _mean("cf_faith_pearl_hard_valid"),
