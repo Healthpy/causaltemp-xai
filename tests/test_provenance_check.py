@@ -103,7 +103,13 @@ class TestPrintProvenanceWarning:
 
     def test_warns_on_dirty(self, capsys):
         report = [
-            {"dir": "results/full/lstm", "status": "dirty", "seed": 42, "git_commit": "d707aae7", "git_dirty": True}
+            {
+                "dir": "results/full/lstm",
+                "status": "dirty",
+                "seed": 42,
+                "git_commit": "d707aae7",
+                "git_dirty": True,
+            }
         ]
         _common.print_provenance_warning(report)
         out = capsys.readouterr().out
@@ -113,7 +119,15 @@ class TestPrintProvenanceWarning:
         assert "d707aae7" in out
 
     def test_warns_on_missing(self, capsys):
-        report = [{"dir": "results/full/lstm", "status": "missing", "seed": None, "git_commit": None, "git_dirty": None}]
+        report = [
+            {
+                "dir": "results/full/lstm",
+                "status": "missing",
+                "seed": None,
+                "git_commit": None,
+                "git_dirty": None,
+            }
+        ]
         _common.print_provenance_warning(report)
         out = capsys.readouterr().out
         assert "MISSING" in out

@@ -8,7 +8,7 @@ to use (N, T, k) variable naming consistent with causaltemp_xai conventions
 from .abduction import abduct
 from .counterfactual import compute_gt_counterfactual
 from .dag import LaggedDAG, sample_dag
-from .intervention import INTERVENTION_TOL, derive_intervention_t
+from .intervention import INTERVENTION_TOL, derive_intervention_t, is_vacuous_intervention
 from .operators import INVERTIBLE_OPERATORS, OPERATORS, Mechanism, sample_mechanism
 from .tscm import sample_noise, simulate_tscm
 
@@ -21,6 +21,7 @@ __all__ = [
     "abduct",
     "compute_gt_counterfactual",
     "derive_intervention_t",
+    "is_vacuous_intervention",
     "sample_dag",
     "sample_mechanism",
     "sample_noise",

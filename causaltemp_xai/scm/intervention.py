@@ -73,6 +73,93 @@ def derive_intervention_t(x: np.ndarray, x_cf: np.ndarray, tol: float = INTERVEN
     return int(changed[0])
 
 
+def is_vacuous_intervention(
+    x: np.ndarray,
+    x_cf: np.ndarray,
+    mechanism,
+    t0: int | None = None,
+    tol: float = INTERVENTION_TOL,
+) -> bool:
+    """Return True if ``x_cf`` differs from ``x`` but contains no ``do()``.
+
+    A counterfactual claims that *something was set* at ``t0``. Under Pearl's
+    action step an intervened value is one its parents do **not** determine, so
+    a genuine intervention makes ``x_cf[t0]`` deviate from what the mechanism
+    predicts given ``x_cf``'s own (unchanged) prefix. This returns True when
+    that deviation is below ``tol`` — the CF's entire departure from the
+    factual is mechanism continuation, not action.
+
+    The case this exists for is the **noiseless-rollout family with a zero
+    perturbation**. Such a CF drops the factual exogenous noise from ``t0``
+    onward, so it differs from ``x`` (often by a lot — mean ``prox_l1 = 96.06``
+    for CARLA on ``full_nl``) and clears every existing gate:
+    ``derive_intervention_t`` finds a changed timestep, so the CF-faith
+    degeneracy gate (``intervention_t >= T-1``) does not fire; the prefix is
+    untouched, so the retroactive gate passes; and the CF *is* its own
+    noiseless rollout, so the forward residual is zero and
+    ``CFfaith(semantics="noiseless_rollout")`` scores a perfect
+    ``hard=1.0, soft=1.0``. The reported proximity and sparsity then describe
+    deleted noise rather than recourse.
+
+    This is the pathology ``docs/risk_register.md`` RISK-16 charges the Bahri
+    et al. (BigData 2025) causal-likelihood metric with — "a CF that is locally
+    mechanism-consistent at every step while its intervention has no effect on
+    the outcome scores perfectly". RISK-17 records that our own
+    ``noiseless_rollout`` semantics shares the blind spot. Deliberately **not**
+    folded into :class:`~causaltemp_xai.metrics.cf_faith.CFfaith`: CF-faith
+    measures mechanism consistency and answers that question correctly here.
+    Whether an intervention happened at all is a separate predicate, so it gets
+    a separate function and leaves every published CF-faith number untouched
+    (R5/R7 — no silent redefinition of a scored metric).
+
+    Only meaningful against ``noiseless_rollout`` CFs. A ``pearl_delta`` CF
+    with zero perturbation is a *literal* no-op (``x_cf == x``), which the
+    CF-faith degeneracy gate already returns NaN for.
+
+    Parameters
+    ----------
+    x, x_cf:
+        Original and counterfactual trajectories, shape ``(T, k)``.
+    mechanism:
+        Mechanism supplying ``forward_numpy(window)`` — the deterministic
+        next-step mean.
+    t0:
+        Claimed intervention timestep. Defaults to
+        :func:`derive_intervention_t`, the benchmark's uniform heuristic.
+    tol:
+        Per-element threshold on ``|x_cf[t0] - mechanism(x_cf prefix)|``.
+        Defaults to :data:`INTERVENTION_TOL`, the same "is this changed?"
+        predicate ``derive_intervention_t`` and the CF-faith retroactive gate
+        share (M1 decision, 2026-07-07).
+
+    Returns
+    -------
+    bool
+        True if the CF encodes no intervention. A literal no-op (``x_cf == x``)
+        returns True — it intervened on nothing. ``t0 == 0`` returns False:
+        there is no prefix to roll from, so an edit to the initial condition is
+        always a genuine intervention.
+    """
+    from causaltemp_xai.benchmarks.mechanisms import lag_window
+
+    x = np.asarray(x, dtype=float)
+    x_cf = np.asarray(x_cf, dtype=float)
+    k = x.shape[1]
+
+    if t0 is None:
+        t0 = derive_intervention_t(x, x_cf, tol=tol)
+
+    # Literal no-op: nothing was set, trivially vacuous.
+    if float(np.abs(x_cf - x).max()) <= tol:
+        return True
+    # No prefix to predict t0 from — an initial-condition edit is a real do().
+    if t0 <= 0:
+        return False
+
+    predicted = mechanism.forward_numpy(lag_window(x_cf, t0, mechanism.L, k))
+    return float(np.abs(x_cf[t0] - predicted).max()) <= tol
+
+
 # ---------------------------------------------------------------------------
 # Ported from causal_tscf_bench — do-operator (Action step)
 # ---------------------------------------------------------------------------

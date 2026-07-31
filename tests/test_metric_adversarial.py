@@ -21,6 +21,10 @@ Also contains the M1 regression tests:
 * **Joint faithfulness-validity criterion** — a tiny-edit CF that is
   hard-faithful but does not flip the classifier earns no joint credit
   (anti-gameability).
+* **Vacuous intervention** — a noiseless rollout with a *zero* perturbation
+  intervenes on nothing yet scores a perfect CF-faith 1.0, because dropping the
+  exogenous noise is enough to clear the degeneracy gate. Flagged by
+  ``is_vacuous_intervention`` (RISK-17).
 """
 
 from __future__ import annotations
@@ -39,7 +43,11 @@ from causaltemp_xai.metrics.axis_c import (
     validity,
 )
 from causaltemp_xai.metrics.cf_faith import CFfaith
-from causaltemp_xai.scm.intervention import INTERVENTION_TOL, derive_intervention_t
+from causaltemp_xai.scm.intervention import (
+    INTERVENTION_TOL,
+    derive_intervention_t,
+    is_vacuous_intervention,
+)
 
 # ---------------------------------------------------------------------------
 # Shared fixtures / helpers
@@ -320,6 +328,92 @@ class TestCFfaithDegeneracy:
         # nanmean over the single scorable instance -- not (1.0 + 1.0)/2 from
         # the pre-fix free pass on the no-op.
         assert out["cf_faith_rollout_hard"] == 1.0
+
+
+# ---------------------------------------------------------------------------
+# Vacuous (zero-delta) interventions — the CARLA masking case
+# ---------------------------------------------------------------------------
+
+
+class TestVacuousIntervention:
+    """A noiseless rollout with a **zero** perturbation is not a counterfactual:
+    nothing was set. But it differs from the factual (it drops the exogenous
+    noise from t0 onward), so it clears every pre-existing gate —
+    ``derive_intervention_t`` finds a changed timestep, the degeneracy gate does
+    not fire, the prefix is untouched, and the CF *is* its own noiseless
+    rollout, so ``CFfaith(noiseless_rollout)`` scores a perfect 1.0/1.0.
+
+    Located 2026-07-31 in the `full_nl` rerun: PearlCARLA's optimiser gradient
+    collapses to ~3e-9 (contractive MLP mechanism + a saturated LSTM), so its
+    delta stays at 0 and it returns literal no-ops, which the degeneracy gate
+    correctly NaNs. CARLA's delta is *equally* stuck, but its noiseless rollout
+    hides that: its saved `full_nl` CFs are bit-identical to a delta=0 rollout,
+    so its reported ``prox_l1 = 96.059`` is 100% deleted noise and 0%
+    intervention, published alongside ``rollout_hard = 1.00``.
+
+    See ``docs/risk_register.md`` RISK-17, and RISK-16 for the same blind spot
+    charged against a competitor's metric.
+    """
+
+    def test_zero_delta_rollout_scores_perfect_cf_faith(self):
+        """Characterisation of the blind spot itself: CF-faith is *not* wrong
+        here (the CF really is mechanism-consistent), which is exactly why a
+        separate predicate is needed."""
+        x, graph, mech = _make_scm(seed=11)
+        cf = _noiseless_cf(x, mech, 10, np.zeros(x.shape[1]))
+        t0 = derive_intervention_t(x, cf)
+        assert t0 == 11, "noise removal must register as a changed timestep"
+        r = CFfaith(semantics="noiseless_rollout").score(x, cf, t0, graph, mech)
+        assert r["hard"] == 1.0
+        assert np.abs(cf - x).max() > 0.1, "and it is far from the factual"
+
+    def test_flags_zero_delta_rollout(self):
+        """The adversarial case: a CF that intervened on nothing must be
+        flagged, however far its trajectory drifts from the factual."""
+        x, _graph, mech = _make_scm(seed=11)
+        cf = _noiseless_cf(x, mech, 10, np.zeros(x.shape[1]))
+        assert is_vacuous_intervention(x, cf, mech)
+
+    def test_passes_genuine_rollout_intervention(self):
+        """Control: the same construction with a real perturbation must pass.
+        A detector that flags everything measures nothing."""
+        x, _graph, mech = _make_scm(seed=11)
+        cf = _noiseless_cf(x, mech, 10, np.full(x.shape[1], 0.4))
+        assert not is_vacuous_intervention(x, cf, mech)
+
+    def test_passes_genuine_pearl_intervention(self):
+        """Control: Pearl-semantics CFs carry a real do() too."""
+        x, _graph, mech = _make_scm(seed=11)
+        cf = _pearl_cf(x, mech, 10, np.full(x.shape[1], 0.4))
+        assert not is_vacuous_intervention(x, cf, mech)
+
+    def test_flags_literal_no_op(self):
+        """A CF identical to the factual intervened on nothing."""
+        x, _graph, mech = _make_scm(seed=11)
+        assert is_vacuous_intervention(x, x.copy(), mech)
+
+    def test_initial_condition_edit_is_a_real_intervention(self):
+        """t0 == 0 has no prefix to be predicted from, so it must never be
+        called vacuous — otherwise the detector would amnesty the one edit that
+        cannot possibly be mechanism continuation."""
+        x, _graph, mech = _make_scm(seed=11)
+        cf = _noiseless_cf(x, mech, 0, np.full(x.shape[1], 0.4))
+        assert derive_intervention_t(x, cf) == 0
+        assert not is_vacuous_intervention(x, cf, mech)
+
+    def test_detects_regardless_of_intervention_time(self):
+        """The flag must not depend on where the vacuous rollout starts."""
+        x, _graph, mech = _make_scm(seed=12)
+        for t0_true in (3, 10, 20):
+            cf = _noiseless_cf(x, mech, t0_true, np.zeros(x.shape[1]))
+            assert is_vacuous_intervention(x, cf, mech), f"missed at t0={t0_true}"
+
+    def test_survives_float32_round_trip(self):
+        """`results/` CFs are saved as float32; the tolerance must absorb that
+        without turning a vacuous CF into an apparent intervention."""
+        x, _graph, mech = _make_scm(seed=13)
+        cf = _noiseless_cf(x, mech, 10, np.zeros(x.shape[1])).astype(np.float32)
+        assert is_vacuous_intervention(x.astype(np.float32), cf, mech)
 
 
 # ---------------------------------------------------------------------------
