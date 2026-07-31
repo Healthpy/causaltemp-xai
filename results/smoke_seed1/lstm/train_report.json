@@ -1,0 +1,12 @@
+{
+  "seed": 1,
+  "git_commit": "0867e01ea4e16a16207078d3e4fb3aebcd621bd4",
+  "git_dirty": true,
+  "config": "smoke_seed1",
+  "accuracies": {
+    "train": 0.99,
+    "val": 0.9,
+    "test": 0.89
+  },
+  "target_acc": 0.9
+}

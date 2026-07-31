@@ -1,0 +1,11 @@
+{
+  "seed": 0,
+  "config": "smoke_nl",
+  "git_commit": "0867e01ea4e16a16207078d3e4fb3aebcd621bd4",
+  "git_dirty": true,
+  "method": "IntegratedGradients",
+  "deletion_auc": 0.524756474914158,
+  "insertion_auc": 0.05116513541739857,
+  "insertion_minus_deletion": -0.4735913394967594,
+  "n": 20
+}
