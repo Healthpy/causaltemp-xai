@@ -285,7 +285,7 @@ class TestCFFaithSplitIsPrincipledNotCARLASpecific:
     ``_noiseless_rollout_cf`` / ``_noise_reinjected_cf``), not from CARLA's
     actual output — but a reviewer could still suspect the two-semantics split
     was reverse-engineered around CARLA's specific empirical Pearl-hard=0
-    result (see docs/hypotheses_assessment.md). This test constructs a CF via
+    result (see docs/archive/hypotheses_assessment.md). This test constructs a CF via
     a *third*, independently-motivated recipe that is not CARLA's algorithm
     and is not one of this file's existing helpers: a naive "extreme-target
     shooting" recourse — the kind of degenerate, causally-careless CF a

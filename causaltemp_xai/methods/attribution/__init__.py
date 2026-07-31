@@ -12,7 +12,7 @@ earlier disclosed proxies:
   2021), replacing the ``FDSaliency`` finite-difference proxy.
 
 Both proxies had been renamed off their original method names under
-docs/PROJECT_PLAN.md Standing Decision #3 (risk R4); shipping the real methods
+R3 (``docs/risk_register.md`` RISK-04); shipping the real methods
 resolves that concern.
 """
 

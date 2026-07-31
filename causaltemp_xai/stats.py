@@ -1,7 +1,7 @@
 """Bootstrap confidence intervals for aggregated benchmark metrics (M2, O2).
 
-Every headline number reported from M2 onward carries a 95% CI (plan Standing
-Decision #4, ``docs/PROJECT_PLAN.md``). Two estimators are provided:
+Every headline number reported from M2 onward carries a 95% CI (``docs/05_evaluation_plan.md`` §6,
+Statistical Requirements). Two estimators are provided:
 
 * :func:`bootstrap_ci` — a plain percentile bootstrap (Efron, 1979) over a
   flat, i.i.d. sample of per-instance values. Appropriate for a *single*

@@ -4,8 +4,7 @@ Training is mechanism-agnostic (the LSTM only sees ``(X, Y)`` arrays), so any
 registered config -- linear or nonlinear (``smoke_nl``, ``full_nl``) -- can be
 trained here. ``--all`` defaults to the linear configs only, since the
 nonlinear benchmark's *primary* evaluation path is the classifier-free oracle
-structural-CF in Phase 05 (see ``docs/plans/nlinearscm-t/index.md`` Decision
-D13) -- but pass ``--config smoke_nl`` explicitly to also get a classifier for
+structural-CF in Phase 05 (see ``docs/general_plan.md`` §6) -- but pass ``--config smoke_nl`` explicitly to also get a classifier for
 it (e.g. to later explore real CF methods / attribution axes on nonlinear
 data, same as the linear pipeline).
 

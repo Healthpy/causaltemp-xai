@@ -3,7 +3,7 @@ wired into ``experiments/03_run_cf_methods.py::build_methods()`` -- the one
 registry every phase-03/04/06 run reads from.
 
 This guards against exactly the gap found during the M2 pipeline-wiring
-review (see ``docs/m2_multiseed_and_pearl_carla.md``, S3): ``PearlCARLARecourse``
+review (see ``docs/archive/m2_multiseed_and_pearl_carla.md``, S3): ``PearlCARLARecourse``
 was fully implemented (``causaltemp_xai/methods/counterfactual/carla.py``) and
 unit-tested (``tests/test_methods.py::TestPearlCARLA``) but was absent from
 ``build_methods()``, so it had never flowed through a real experiment run
@@ -64,7 +64,7 @@ def test_pearl_carla_is_registered(methods):
     assert "PearlCARLA" in methods, (
         "'PearlCARLA' missing from experiments/03_run_cf_methods.py::build_methods() -- "
         "a fully-implemented, unit-tested method is not reachable by any real "
-        "experiment run. See docs/m2_multiseed_and_pearl_carla.md S3."
+        "experiment run. See docs/archive/m2_multiseed_and_pearl_carla.md S3."
     )
     assert isinstance(methods["PearlCARLA"], PearlCARLARecourse)
 

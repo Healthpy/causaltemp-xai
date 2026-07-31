@@ -6,7 +6,7 @@ dense ``(T, k)`` feature-time importance map.
 
 This replaces the earlier ``MCMaskSHAP`` proxy (a flat Monte-Carlo
 random-coalition sampler that was *not* TimeSHAP and shipped under a disclosure
-note per docs/PROJECT_PLAN.md Standing Decision #3 / risk R4). Because this is
+note per R3; ``docs/risk_register.md`` RISK-04). Because this is
 now the genuine method, no proxy disclosure is required.
 
 Reference: Bento, J., Saleiro, P., Cruz, A. F., Figueiredo, M. A. T., &

@@ -17,7 +17,7 @@
   switch, once, at a fixed deterministic timestep partway through each
   trajectory's *observed* horizon. Minimal viable design (two regimes, one
   switch point — no HMM, no learned transition probabilities); see
-  ``docs/m4_ablation_presets_smoke.md``.
+  ``docs/archive/m4_ablation_presets_smoke.md``.
 
 * :class:`HMMRegimeSwitchNlinearSCMT` — M4/H7 ablation, HMM variant: the same
   parameter-only regime switch, but driven by a genuine **hidden Markov
@@ -34,7 +34,7 @@ innovation distributions: Laplace (default), Uniform, or Gaussian
 (``noise_type="gaussian"`` — M4/H5 negative-control ablation, added
 2026-07-08; variance-matched to the default Laplace scale so the ablation
 isolates innovation *shape*, not scale — see :data:`_GAUSSIAN_STD` and
-``docs/m4_ablation_presets_smoke.md``).
+``docs/archive/m4_ablation_presets_smoke.md``).
 
 Scope (this iteration)
 ----------------------
@@ -43,7 +43,7 @@ only. Additive noise makes Pearl abduction an exact subtraction
 (``eps = x − f(parents)``), so CF-faith and the oracle structural-CF
 (:mod:`causaltemp_xai.benchmark.structural_cf`) remain valid on the nonlinear
 mechanisms. Two axes are deliberately **out of scope** and left as future
-stress tests (see ``docs/plans/nlinearscm-t/`` Backlog #1): nonlinear *mixing*
+stress tests (see ``docs/general_plan.md`` §10 (Scope Boundaries)): nonlinear *mixing*
 ``x = g(z)`` (an invertible observation map over latents — iVAE/CITRIS
 identifiability) and *non-additive* (location-scale) noise. Both degrade
 abduction from exact to **partial** identification, which is why they are not
@@ -65,7 +65,7 @@ _NOISE_TYPES = ("laplace", "uniform", "gaussian")
 #: ``laplace(loc=0, scale=0.1)`` innovation exactly — a Laplace(0, b)'s
 #: variance is ``2 * b**2``, so ``std = b * sqrt(2)`` — so the ablation
 #: isolates innovation-distribution *shape* (kurtosis), not scale. See
-#: ``docs/m4_ablation_presets_smoke.md`` for the derivation and the
+#: ``docs/archive/m4_ablation_presets_smoke.md`` for the derivation and the
 #: pre-registered H5 expected direction.
 _GAUSSIAN_STD = 0.1 * float(np.sqrt(2.0))
 
@@ -297,7 +297,7 @@ class NlinearSCMT:
         monotonicity of the *hidden* representation varies — the mechanism's
         **output** branch is always ``tanh`` regardless of this choice. See
         :mod:`causaltemp_xai.benchmarks.mechanisms` and
-        ``docs/m4_ablation_presets_smoke.md``).
+        ``docs/archive/m4_ablation_presets_smoke.md``).
     clip:
         Divergence threshold; a trajectory whose ``max|x|`` exceeds ``clip`` (or
         goes non-finite) is resampled, then clipped if still diverging.
@@ -455,7 +455,7 @@ class NlinearSCMT:
 #: regimes have different effective parameters" is a deterministic, not
 #: merely probabilistic, structural property -- see
 #: ``tests/test_nlinear_generator.py::TestRegimeSwitchNlinearSCMT`` and
-#: ``docs/m4_ablation_presets_smoke.md``. Regime 2 is, if anything, *more*
+#: ``docs/archive/m4_ablation_presets_smoke.md``. Regime 2 is, if anything, *more*
 #: contractive than regime 1 (lower decay ceiling, lower gain, tighter
 #: spectral cap) -- a deliberately conservative choice so the ablation
 #: cannot itself introduce an instability the stability guard would need to
@@ -482,7 +482,7 @@ class RegimeSwitchNlinearSCMT:
     Minimal-viable regime-switching ablation: **two** regimes and **one**
     deterministic switch point — no HMM, no learned transition
     probabilities (explicitly out of scope; see
-    ``docs/m4_ablation_presets_smoke.md``). Both regimes share the *same*
+    ``docs/archive/m4_ablation_presets_smoke.md``). Both regimes share the *same*
     causal graph (:func:`_sample_graph`); only the per-node MLP mechanism's
     numeric parameters (``decay``, ``gain``, weights) differ between
     regimes — this is a **parameter** regime switch, not a graph change.
@@ -691,7 +691,7 @@ class HMMRegimeSwitchNlinearSCMT:
     probability (:attr:`p_stay`), so regimes *persist* and structural breaks
     occur at **random change-points** — a different number and placement of
     breaks per trajectory. ``R in {2, 3}`` regimes are supported (per
-    ``docs/updated_general_plan.md`` §Benchmarks, NlinearSCM-T
+    ``docs/general_plan.md`` §6, NlinearSCM-T
     regime-switching ablation).
 
     All regimes share the *same* causal graph (:func:`_sample_graph`); only

@@ -181,7 +181,7 @@ class LinearMechanism(Mechanism):
 #: ``[-1, 1]`` and 1-Lipschitz (``|cos| <= 1``) just like ``tanh``, so it
 #: shares tanh's boundedness/Lipschitz properties exactly, but is genuinely
 #: non-monotonic (a local max at ``pi/2``, unlike strictly-increasing
-#: ``tanh``) -- see ``docs/m4_ablation_presets_smoke.md``.
+#: ``tanh``) -- see ``docs/archive/m4_ablation_presets_smoke.md``.
 _ACTIVATIONS_NP = {"tanh": np.tanh, "nonmonotonic": np.sin}
 
 
@@ -229,7 +229,7 @@ class MLPMechanism(Mechanism):
         Hidden-layer activation: ``"tanh"`` (default, monotonic) or
         ``"nonmonotonic"`` (M4/H6 ablation -- ``sin``, bounded in ``[-1, 1]``
         and 1-Lipschitz like ``tanh``, but not monotonic; see
-        ``docs/m4_ablation_presets_smoke.md``). The **output** branch is
+        ``docs/archive/m4_ablation_presets_smoke.md``). The **output** branch is
         always ``tanh`` regardless of this choice, so the mechanism's global
         boundedness guarantee is unaffected by which hidden activation is
         selected -- only the hidden representation's monotonicity varies.

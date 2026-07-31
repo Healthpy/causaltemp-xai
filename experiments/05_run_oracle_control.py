@@ -19,8 +19,8 @@ emitted, which also pins the rollout-vs-Pearl contrast at experiment scale:
 **Runs on every config, linear and nonlinear** (2026-07-15). It was previously
 named ``05_run_oracle_nonlinear.py`` and hard-rejected linear configs with
 "use 03 + 04 instead" — stale advice from when nonlinear CF methods were
-deferred to a collaborator's track (``docs/plans/nlinearscm-t/index.md``
-Backlog #2; Phase 03 has since supported ``*_nl`` configs). That gate conflated
+deferred to a collaborator's track (historical:
+``docs/archive/plans/nlinearscm-t/``; Phase 03 has since supported ``*_nl`` configs). That gate conflated
 *oracle vs explainer* with *linear vs nonlinear*: 03+04 give you explainers on
 linear, never the oracle control, so the linear configs had no experiment-scale
 control at all (only unit-scale, in ``tests/test_metric_adversarial.py``).

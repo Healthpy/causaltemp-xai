@@ -21,7 +21,7 @@ Nonlinear configs (``smoke_nl``/``full_nl``) are supported here too, given a
 trained classifier (Phase 02 now trains on any config -- see its docstring).
 This goes **beyond** the locked NlinearSCM-T plan's scope: real CF methods on
 the nonlinear mechanism were deferred to a collaborator's track and were never
-validated there (``docs/plans/nlinearscm-t/index.md`` Backlog #2). It works
+validated there (historical: ``docs/archive/plans/nlinearscm-t/``). It works
 mechanically because every method here is mechanism-generic -- the cfts-*
 methods never touch the SCM at all, and CARLA/Axis-A's oracle interventions
 route through ``mechanism.forward_torch``/``forward_numpy``, which
@@ -100,7 +100,7 @@ def build_methods(X_train, y_train, target_class: int = TARGET_CLASS) -> dict:
     01-05 passes it; the main pipeline's behaviour is unchanged.
 
     ``n_steps`` decision for ``PearlCARLA`` (M2 gap-closure, see
-    ``docs/m2_multiseed_and_pearl_carla.md`` S3 "Wiring PearlCARLA into the
+    ``docs/archive/m2_multiseed_and_pearl_carla.md`` S3 "Wiring PearlCARLA into the
     phase-03 registry" for the full rationale): ``CARLA`` below overrides
     ``n_steps=300`` (its class default is 500) purely for pipeline speed.
     ``PearlCARLA`` deliberately does **not** override ``n_steps`` here, so it

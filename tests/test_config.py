@@ -127,7 +127,7 @@ class TestSeededVariant:
 # tests/test_generator.py, tests/test_nlinear_generator.py, and
 # tests/test_mechanisms.py for the generator/mechanism-level structural
 # properties (non-monotonicity, regime-parameter difference, noise-shape
-# distinguishability), and docs/m4_ablation_presets_smoke.md for the design
+# distinguishability), and docs/archive/m4_ablation_presets_smoke.md for the design
 # + smoke-scale preliminary findings. No full-scale variant of any of these
 # three presets exists.
 # ---------------------------------------------------------------------------

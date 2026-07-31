@@ -42,11 +42,15 @@ The full benchmark runs end-to-end from a clean checkout. Datasets and the
 classifier checkpoint are **regenerated deterministically** (seeded), never
 committed.
 
-> **v0.1 note:** the frozen v0.1 numbers in
-> [`docs/hypotheses_assessment.md`](docs/hypotheses_assessment.md) were
-> produced with a TCN classifier and 3 CF methods. The TCN was dropped in the
-> package restructure (restoring it is on the roadmap); the current pipeline
-> trains an LSTM and runs 6 CF methods.
+> **⚠ The v0.1 numbers are retracted, not merely stale.** They were produced
+> with a TCN classifier (descoped 2026-07-08) and a since-deleted method
+> (DiCE), on metric code predating the `99a2e9f` construct-validity fixes; the
+> CF-faith column was then retracted outright by `d3c377d`. The historical
+> record is kept at
+> [`docs/archive/hypotheses_assessment.md`](docs/archive/hypotheses_assessment.md)
+> **for provenance only — do not cite it.** Verdicts are regenerated into
+> [`docs/05_evaluation_plan.md`](docs/05_evaluation_plan.md) §5 after the
+> `full`/`full_nl` rerun.
 
 ```bash
 # 0. environment
@@ -70,9 +74,9 @@ uv run python experiments/06_aggregate_and_report.py figures
 ```
 
 Swap `--config full` for `--config smoke` (k=5, T=30, N=500) for a fast pass; the
-smoke pipeline is what CI runs. See
-[`docs/hypotheses_assessment.md`](docs/hypotheses_assessment.md) for the H1/H3/H4
-verdicts and the go/no-go decision.
+smoke pipeline is what CI runs. The scientific claim and evaluation protocol are
+in [`docs/general_plan.md`](docs/general_plan.md); the pre-registered hypotheses
+are in [`docs/05_evaluation_plan.md`](docs/05_evaluation_plan.md).
 
 ### Phased pipeline
 
@@ -139,9 +143,9 @@ config (`--config smoke` as readily as `smoke_nl`); the split between Phase
 **Scope:** this ships nonlinear *transitions* only. Nonlinear **mixing**
 `x = g(z)` (an invertible observation map over latents) and **non-additive**
 noise are a separate identifiability axis (iVAE/CITRIS) and are documented as a
-**future extension** — see the [`docs/plans/nlinearscm-t/`](docs/plans/nlinearscm-t/index.md)
-Backlog. Real CF methods (Wachter/DiCE/CARLA) on the nonlinear SCM are the
-collaborator's track and are likewise out of scope here.
+**future extension** — see [`docs/general_plan.md`](docs/general_plan.md) §10
+(Scope Boundaries) for why relaxing additivity would cost the exact abduction
+the benchmark's contribution depends on.
 
 ## Quickstart (library API)
 
@@ -254,8 +258,10 @@ causaltemp-xai/
 │   ├── 07_auxiliary_methods.py      # phase 7: self-graphing (Axis B) | iVAE ICC (Axis A)
 │   └── _common.py                   # shared paths/loading for the phased pipeline
 ├── results/                     # figures + tables written by the phased pipeline
-├── docs/hypotheses_assessment.md  # H1/H3/H4 verdicts + go/no-go
-├── docs/PROJECT_PLAN.md         # PI project plan: objectives, milestones, todos
+├── docs/general_plan.md         # the scientific claim, contributions, protocol
+├── docs/05_evaluation_plan.md   # pre-registration: configs, methods, hypotheses
+├── docs/risk_register.md        # descriptive risk register (RISK-01..RISK-14)
+├── docs/archive/                # superseded memos, retracted numbers — do not cite
 ├── tests/
 ├── notebooks/                   # 01_data_exploration, 02_benchmark_exploration
 └── data/scm_t/                 # generated datasets + checkpoints (gitignored)

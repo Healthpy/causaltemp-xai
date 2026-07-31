@@ -1,6 +1,6 @@
 # Reference and Novelty Verification — `BenchmarkingTSCFEs.md`
 
-**Owner:** Literature Intelligence Scientist (M6, per `docs/PROJECT_PLAN.md`)
+**Owner:** Literature Intelligence Scientist (M6, per `ROADMAP.md` M6)
 **Date:** 2026-07-08
 **Scope:** (1) verification of all 46 references in `docs/BenchmarkingTSCFEs.md`; (2) novelty-ledger stress test of the central benchmarking-gap claim; (3) venue deadline check for NeurIPS 2027 D&B, ICLR 2027, AAAI 2027.
 **Method:** Direct URL fetch (WebFetch) where the tool could render the page; targeted web search (WebSearch, Google-backed) for cross-corroboration and where direct fetch failed (PDF binaries, CAPTCHA walls, bot-blocked domains). No Google Scholar/Semantic Scholar/PubMed API access beyond one rate-limited Semantic Scholar attempt (429, not retried). No paywalled full-text was purchased or bypassed.
@@ -131,7 +131,7 @@ The draft's prose refers to **"Table 1"** (comparative explainer-paradigm mechan
 
 ## Deliverable 2 — Novelty ledger
 
-**Central claim under test** (from `docs/BenchmarkingTSCFEs.md` and `docs/PROJECT_PLAN.md` §1): *"No existing public benchmark jointly provides (i) ground-truth causal variables, (ii) a ground-truth lagged causal graph, and (iii) analytically exact structural counterfactuals in a temporal **classification** setting."*
+**Central claim under test** (from `docs/BenchmarkingTSCFEs.md` and `docs/general_plan.md` §3): *"No existing public benchmark jointly provides (i) ground-truth causal variables, (ii) a ground-truth lagged causal graph, and (iii) analytically exact structural counterfactuals in a temporal **classification** setting."*
 
 I checked all works the task named, plus what I could find as 2025–2026 successors. Each row is independent evidence, not cumulative with the others unless stated.
 
@@ -161,7 +161,7 @@ Confidence in this overall verdict: **Medium-High** — based on a same-day, bro
 
 ---
 
-## M6 follow-up pass (2026-07-08) — the three open items from PI review §9.3 / `PROJECT_PLAN.md` P0 item 7 and P2 item 30
+## M6 follow-up pass (2026-07-08) — the three open items from PI review §9.3 (former `PROJECT_PLAN.md`, deleted 2026-07-31)
 
 **Owner:** Literature Intelligence. **Dispatched by:** PI, same-day, as the three explicit follow-ups the M6 novelty-ledger review left open (§9.3: "substantially done, not fully closed"). **Method:** live retrieval only — WebFetch against arXiv abstract/HTML/PDF pages, a second independent rendering (`ar5iv.labs.arxiv.org`) used as a cross-check for one paper whose PDF could not be rendered directly in this environment, and WebSearch for venue/DOI corroboration. No claim below rests on parametric/training memory alone; every claim is confidence-tagged per lab policy, and "verified" is distinguished from "recalled." **Scope discipline observed:** no code, no experiments, no files outside `docs/references_verified.md` touched.
 
@@ -231,7 +231,7 @@ No other content in this document was touched. The Deliverable 2 "Verdict" parag
 
 ### Recommendation
 
-Given the project's own critical-path estimate (12–16 weeks from 2026-07-08 to submission-ready without SepsisSim, i.e. roughly late September–November 2026, per `docs/PROJECT_PLAN.md` §4):
+Given the project's own critical-path estimate (12–16 weeks from 2026-07-08 to submission-ready without SepsisSim, i.e. roughly late September–November 2026, per `ROADMAP.md`):
 
 - **AAAI 2027 is not reachable.** Its deadline (21/28 July 2026) is approximately **2–3 weeks from today** and the project is still mid-M2 (multi-seed/CI infrastructure, Transformer classifier, Pearl-CARLA in flight); M1–M4 plus a manuscript skeleton cannot realistically land in three weeks. Recommend dropping AAAI 2027 as a live target for this project cycle (it could remain relevant for a future, separate submission, e.g. a workshop spin-off of the frozen v0.1 phenomenon, per the plan's own P2 item 28 — but not for the full benchmark paper).
 - **ICLR 2027 is very tight even on the unverified aggregator estimate** (~19–24 Sept 2026): that is roughly 10–11 weeks from today, which is within the plan's own 12–16-week envelope only optimistically, and the ICLR estimate itself cannot yet be confirmed against the official source. Treat as a stretch target at best, not a plan of record, until iclr.cc actually publishes its 2027 CFP (worth re-checking monthly).

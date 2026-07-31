@@ -21,7 +21,7 @@ docstring):
   (``CFfaith(semantics="noiseless_rollout")``), but the deterministic,
   noise-free continuation drifts off the noisy data manifold as the
   post-intervention horizon grows — the v0.1-documented long-horizon validity
-  collapse (``docs/hypotheses_assessment.md``).
+  collapse (``docs/archive/hypotheses_assessment.md``).
 * :class:`PearlCARLARecourse` (M2, added 2026-07-08) — **Pearl** rollout:
   abducts the exogenous noise from the factual trajectory
   (``eps[t] = x_orig[t] - mechanism.forward_numpy(window)``, exact under

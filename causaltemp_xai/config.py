@@ -1,7 +1,6 @@
 """Benchmark configuration presets for CausalTemp-XAI.
 
-Two canonical tiers are locked here (see ``docs/plans/mvp-v0.1-completion/
-resources/configs.md``):
+Two canonical tiers are locked here (see ``docs/05_evaluation_plan.md`` §1):
 
 * ``SMOKE`` — small/fast config used by tests and CI.
 * ``FULL`` — the locked paper configuration, run once for results.
@@ -16,7 +15,7 @@ Additionally, three M4 benchmark-extension **ablation presets** are
 registered below, at the same smoke scale as ``SMOKE``/``SMOKE_NL`` (k=5,
 T=30, N=500, seed=0) -- ``SMOKE_GAUSSIAN`` (H5 negative control),
 ``SMOKE_NONMONOTONIC`` (H6 non-monotonic mechanism), and ``SMOKE_REGIME`` (H7
-regime-switching). See ``docs/m4_ablation_presets_smoke.md`` for the full
+regime-switching). See ``docs/archive/m4_ablation_presets_smoke.md`` for the full
 design, pre-registered expected direction, and smoke-scale preliminary
 finding for each. **No full-scale variant of any of these three presets
 exists or is planned as part of this work.**
@@ -163,7 +162,7 @@ FULL_NL = BenchmarkConfig(
 # phased experiment pipeline (experiments/01-04). All three are built at
 # the same smoke scale as SMOKE/SMOKE_NL (k=5, T=30, N=500, seed=0).
 #
-# See docs/m4_ablation_presets_smoke.md for the full design + pre-registered
+# See docs/archive/m4_ablation_presets_smoke.md for the full design + pre-registered
 # expected direction + smoke-scale preliminary finding for each. **No
 # full-scale ("full"/"full_nl"-analogue) variant of any of these three
 # presets exists or is planned as part of this work.**

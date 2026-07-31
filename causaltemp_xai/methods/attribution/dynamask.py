@@ -10,7 +10,7 @@ importance map.
 
 This replaces the earlier ``FDSaliency`` proxy -- a per-coordinate
 finite-difference numerical gradient that was *not* Dynamask and shipped under
-a disclosure note (docs/PROJECT_PLAN.md Standing Decision #3 / risk R4). Because
+a disclosure note (R3; ``docs/risk_register.md`` RISK-04). Because
 this is now the genuine method, no proxy disclosure is required.
 
 Reference: Crabbe, J. & van der Schaar, M. (2021). Explaining Time Series

@@ -125,8 +125,11 @@ uv run python experiments/06_aggregate_and_report.py figures
 uv run python experiments/06_aggregate_and_report.py seeds --config smoke --seeds 0 1 2 3 4 --n-cf 20
 ```
 
-See `docs/plans/mvp-v0.1-completion/` and `docs/plans/nlinearscm-t/` for the
-design rationale behind each metric and the linear/nonlinear benchmark split,
-and `docs/m2_multiseed_and_pearl_carla.md` for the multi-seed/bootstrap-CI
-design and the Pearl-CARLA (`causaltemp_xai.methods.PearlCARLARecourse`)
-noise-reinjecting recourse variant added in M2.
+See `docs/general_plan.md` §5 for what each metric is for and why CF-faith is a
+gate rather than a ranking axis, `docs/cf_faith_methodology.md` for the two
+CF-faith semantics, and `docs/pns_metric_design.md` for the necessity/sufficiency
+audit. Historical design memos (multi-seed/bootstrap-CI machinery, the
+Pearl-CARLA `causaltemp_xai.methods.PearlCARLARecourse` variant) are archived at
+`docs/archive/m2_multiseed_and_pearl_carla.md` — **its §2.3 `lam_prox`
+recommendation was ruled out on 2026-07-30** (`DECISIONS.md`); read it for
+provenance, not for guidance.
