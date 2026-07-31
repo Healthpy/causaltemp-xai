@@ -68,6 +68,45 @@ import torch.nn.functional as F
 from causaltemp_xai.benchmarks.mechanisms import lag_window as _lag_window
 
 
+def _resolve_t0_candidates(
+    T: int,
+    t0_fractions: tuple[float, ...],
+    t0_steps: tuple[int, ...] | None = None,
+) -> list[int]:
+    """Resolve the intervention-timestep candidate set for a ``(T, k)`` instance.
+
+    ``t0_steps`` is an **absolute** step index and takes precedence over
+    ``t0_fractions`` when given. Both CARLA variants share this so a horizon
+    sweep cannot silently pin one variant and not the other.
+
+    Absolute is the correct unit for a horizon sweep (M4d): the Pearl delta
+    decays geometrically in the *absolute* remaining horizon ``T - t0``, so a
+    fraction of ``T`` is scale-dependent in the wrong direction — ``0.25``
+    leaves 22 steps of decay at ``T = 30`` but 75 at ``T = 100``, which is why
+    values validated at smoke scale are structurally hopeless at full scale
+    (``docs/general_plan.md`` §10). Fractions are kept as the default so every
+    pre-M4d run stays byte-identical.
+
+    Candidates are clamped to ``0 < t0 < T - 1``. The lower bound is required by
+    abduction (``eps[0]`` is never defined); the upper bound is the CF-faith
+    degeneracy gate — a CF whose first change is at ``T - 1`` has no
+    post-intervention trajectory to score and is NaN'd, so proposing it would
+    only manufacture unscorable CFs. An empty result falls back to ``[T // 2]``.
+    """
+    if t0_steps is not None:
+        proposed = sorted({int(t) for t in t0_steps})
+        resolved = [t0 for t0 in proposed if 0 < t0 < T - 1]
+        if proposed and not resolved:
+            raise ValueError(
+                f"no t0 in t0_steps={tuple(proposed)} is valid for T={T}: "
+                f"require 0 < t0 < {T - 1}. Silently falling back would report a "
+                "horizon the sweep did not actually evaluate."
+            )
+        return resolved or [T // 2]
+    candidates = sorted({max(1, round(f * T)) for f in t0_fractions})
+    return [t0 for t0 in candidates if 0 < t0 < T - 1] or [T // 2]
+
+
 class CARLARecourse:
     """Stub: CARLA-style causal recourse generator.
 
@@ -103,6 +142,19 @@ class CARLARecourse:
         Adam learning rate.
     n_steps : int
         Gradient-descent iterations.
+    t0_fractions : tuple[float, ...]
+        Candidate intervention timesteps as fractions of ``T``. The default
+        ``(0.25, 0.5)`` is the locked benchmark setting and is deliberately
+        **not** tuned: PearlCARLA's ``validity = 0.00`` under it is the horizon
+        result, not a misconfiguration, so changing this default would select
+        the regime where the method succeeds (`ROADMAP.md` Descoped Items,
+        2026-07-31).
+    t0_steps : tuple[int, ...] | None
+        **Absolute** candidate intervention timesteps. When given, takes
+        precedence over ``t0_fractions``. This is the M4d horizon-sweep entry
+        point — see :func:`_resolve_t0_candidates` for why absolute rather than
+        fractional is the correct unit. ``None`` (default) preserves
+        pre-M4d behaviour exactly.
     """
 
     def __init__(
@@ -114,6 +166,7 @@ class CARLARecourse:
         lr: float = 0.05,
         n_steps: int = 500,
         t0_fractions: tuple[float, ...] = (0.25, 0.5),
+        t0_steps: tuple[int, ...] | None = None,
     ) -> None:
         self.target_class = target_class
         self.actionable_mask = actionable_mask
@@ -122,6 +175,7 @@ class CARLARecourse:
         self.lr = lr
         self.n_steps = n_steps
         self.t0_fractions = t0_fractions
+        self.t0_steps = t0_steps
 
     # ------------------------------------------------------------------
     # Differentiable noiseless VAR rollout
@@ -199,8 +253,7 @@ class CARLARecourse:
             m = np.asarray(self.actionable_mask, dtype=np.float32)
             mask = torch.as_tensor(m[-1] if m.ndim == 2 else m)
 
-        candidates = sorted({max(1, round(f * T)) for f in self.t0_fractions})
-        candidates = [t0 for t0 in candidates if 0 < t0 < T - 1] or [T // 2]
+        candidates = _resolve_t0_candidates(T, self.t0_fractions, self.t0_steps)
 
         best = None  # (flipped, prox, cf_array)
         for t0 in candidates:
@@ -326,6 +379,7 @@ class PearlCARLARecourse:
         lr: float = 0.05,
         n_steps: int = 500,
         t0_fractions: tuple[float, ...] = (0.25, 0.5),
+        t0_steps: tuple[int, ...] | None = None,
     ) -> None:
         self.target_class = target_class
         self.actionable_mask = actionable_mask
@@ -334,6 +388,7 @@ class PearlCARLARecourse:
         self.lr = lr
         self.n_steps = n_steps
         self.t0_fractions = t0_fractions
+        self.t0_steps = t0_steps
 
     # ------------------------------------------------------------------
     # Noise abduction + Pearl rollout
@@ -421,8 +476,7 @@ class PearlCARLARecourse:
             m = np.asarray(self.actionable_mask, dtype=np.float32)
             mask = torch.as_tensor(m[-1] if m.ndim == 2 else m)
 
-        candidates = sorted({max(1, round(f * T)) for f in self.t0_fractions})
-        candidates = [t0 for t0 in candidates if 0 < t0 < T - 1] or [T // 2]
+        candidates = _resolve_t0_candidates(T, self.t0_fractions, self.t0_steps)
 
         best = None  # (flipped, prox, cf_array)
         for t0 in candidates:

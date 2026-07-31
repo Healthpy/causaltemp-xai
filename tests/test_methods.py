@@ -18,6 +18,7 @@ from causaltemp_xai.methods import (
     WachterCF,
     derive_intervention_t,
 )
+from causaltemp_xai.methods.counterfactual.carla import _resolve_t0_candidates
 from causaltemp_xai.metrics.cf_faith import CFfaith
 
 
@@ -169,3 +170,56 @@ class TestPearlCARLA:
         )
         assert cfs.shape == X.shape
         assert np.all(np.isfinite(cfs))
+
+
+class TestT0CandidateResolution:
+    """`t0` selection is the M4d horizon-sweep axis. It must be pinnable in
+    absolute steps, must never silently substitute a horizon the caller did not
+    ask for, and must leave every pre-M4d run byte-identical when unused.
+    """
+
+    def test_absolute_steps_take_precedence_over_fractions(self):
+        got = _resolve_t0_candidates(100, (0.25, 0.5), t0_steps=(90,))
+        assert got == [90], "t0_steps must win; a sweep pinned to 90 cannot run at 25/50"
+
+    def test_fractions_are_unchanged_when_steps_is_none(self):
+        """Regression guard on every committed result: the default path must
+        resolve exactly as it did before t0_steps existed."""
+        assert _resolve_t0_candidates(100, (0.25, 0.5)) == [25, 50]
+        assert _resolve_t0_candidates(30, (0.25, 0.5)) == [8, 15]
+
+    def test_absolute_is_scale_free_where_fractional_is_not(self):
+        """The reason the sweep is specified in absolute steps: the same
+        fraction leaves a different horizon at different T, which is what makes
+        smoke-validated values hopeless at full scale."""
+        assert _resolve_t0_candidates(30, (0.25,)) == [8]  # horizon 22
+        assert _resolve_t0_candidates(100, (0.25,)) == [25]  # horizon 75
+        for T in (30, 100, 250):
+            assert _resolve_t0_candidates(T, (0.25,), t0_steps=(T - 10,)) == [T - 10]
+
+    def test_out_of_range_steps_raise_rather_than_fall_back(self):
+        """Silently falling back to T//2 would label a sweep point with a
+        horizon it never evaluated -- a fabricated row in the decay curve."""
+        with pytest.raises(ValueError, match="no t0 in t0_steps"):
+            _resolve_t0_candidates(100, (0.25,), t0_steps=(99,))
+        with pytest.raises(ValueError, match="no t0 in t0_steps"):
+            _resolve_t0_candidates(100, (0.25,), t0_steps=(0,))
+
+    def test_partially_valid_steps_keep_the_valid_ones(self):
+        assert _resolve_t0_candidates(100, (0.25,), t0_steps=(0, 50, 99)) == [50]
+
+    def test_degeneracy_bound_is_respected(self):
+        """t0 == T-1 is NaN'd by the CF-faith degeneracy gate, so it must never
+        be proposed -- it would manufacture unscorable CFs at the far end of the
+        sweep, exactly where the horizon claim is decided."""
+        with pytest.raises(ValueError):
+            _resolve_t0_candidates(50, (0.25,), t0_steps=(49,))
+        assert _resolve_t0_candidates(50, (0.25,), t0_steps=(48,)) == [48]
+
+    def test_both_variants_accept_the_pin(self):
+        """R9 + a real hazard: if only one variant honoured t0_steps the sweep
+        would compare CARLA at a pinned horizon against PearlCARLA at 25/50."""
+        for cls in (CARLARecourse, PearlCARLARecourse):
+            m = cls(target_class=1, t0_steps=(42,))
+            assert m.t0_steps == (42,)
+            assert _resolve_t0_candidates(100, m.t0_fractions, m.t0_steps) == [42]
