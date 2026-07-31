@@ -383,6 +383,108 @@ def dump_json(path: Path, obj) -> None:
 
 
 # ---------------------------------------------------------------------------
+# Provenance auditing for downstream consumers (06_aggregate_and_report.py)
+# ---------------------------------------------------------------------------
+#
+# ``dump_json`` stamps ``git_dirty`` honestly into every result JSON, but the
+# two report paths in Phase 06 (``figures``, ``seeds``) read only
+# ``per_instance.csv`` -- a plain CSV with no provenance columns -- so a
+# dirty-run warning written into a sibling ``summary.json`` was reachable
+# per-file but silently unreachable from the one place that turns results into
+# publication artifacts. This section makes that flag visible again at the
+# point where it matters (added 2026-07-31; see ``docs/risk_register.md``
+# RISK-13).
+
+
+def read_run_summary_provenance(summary_path: Path) -> dict | None:
+    """Read ``seed``/``git_commit``/``git_dirty`` out of a ``summary.json``.
+
+    Returns ``None`` if the file is missing or unreadable. A ``per_instance.csv``
+    with no sibling ``summary.json`` (or one predating R7 provenance stamping)
+    has no traceable provenance at all -- reported as ``"missing"`` by
+    :func:`check_provenance` rather than silently skipped.
+    """
+    if not summary_path.exists():
+        return None
+    try:
+        with open(summary_path) as fh:
+            obj = json.load(fh)
+    except (OSError, json.JSONDecodeError):
+        return None
+    if not isinstance(obj, dict):
+        return None
+    return {
+        "seed": obj.get("seed"),
+        "git_commit": obj.get("git_commit"),
+        "git_dirty": obj.get("git_dirty"),
+    }
+
+
+def check_provenance(result_dirs: list[Path]) -> list[dict]:
+    """Provenance report for a list of ``results/<config>/<classifier>`` dirs.
+
+    Each directory is expected to hold a Phase-04-style ``summary.json``
+    (stamped via :func:`dump_json`, so it carries ``git_dirty`` whenever a
+    commit hash was resolvable at all). One row per directory::
+
+        {"dir": str, "status": "clean" | "dirty" | "missing",
+         "seed": ..., "git_commit": ..., "git_dirty": ...}
+
+    ``"dirty"`` means the result was produced while the working tree had
+    uncommitted changes, so ``git_commit`` does not identify the code that
+    produced it (see :func:`git_provenance`). ``"missing"`` means no
+    ``summary.json`` / no commit hash was found at all -- e.g. git was
+    unavailable, or the file predates R7 stamping.
+    """
+    report = []
+    for d in result_dirs:
+        prov = read_run_summary_provenance(Path(d) / "summary.json")
+        if prov is None or prov.get("git_commit") is None:
+            status = "missing"
+        elif prov.get("git_dirty"):
+            status = "dirty"
+        else:
+            status = "clean"
+        report.append({"dir": str(d), "status": status, **(prov or {})})
+    return report
+
+
+def print_provenance_warning(report: list[dict]) -> None:
+    """Print a loud banner if any directory in ``report`` is not clean.
+
+    A figure or aggregated table built from a dirty or unprovenanced run is
+    byte-for-byte indistinguishable from one built from a clean, committed
+    run unless someone opens every ``summary.json`` by hand -- so silence here
+    is exactly the failure mode this function exists to prevent. Does not
+    raise: the artifacts are still written (useful for fast local iteration),
+    but the warning must be impossible to miss in the console output.
+    """
+    bad = [r for r in report if r["status"] != "clean"]
+    if not bad:
+        return
+    print("\n" + "=" * 78)
+    print("[06] PROVENANCE WARNING -- not every input is from a clean, committed state")
+    print("=" * 78)
+    for r in bad:
+        if r["status"] == "missing":
+            print(f"  MISSING  {r['dir']}  (no summary.json / no commit hash found)")
+        else:
+            print(
+                f"  DIRTY    {r['dir']}  git_commit={r.get('git_commit')}  "
+                "-- working tree had uncommitted changes when this ran; the "
+                "commit hash does not identify the code that produced it"
+            )
+    print("=" * 78)
+    print(
+        "[06] Figures/tables are still written from this data, but do not cite "
+        "them in a manuscript until every input reads 'clean' -- re-run the "
+        "affected phase(s) once the working tree is committed. See "
+        "docs/risk_register.md RISK-13."
+    )
+    print("=" * 78 + "\n")
+
+
+# ---------------------------------------------------------------------------
 # Axis A (attribution/concept quality) support
 # ---------------------------------------------------------------------------
 

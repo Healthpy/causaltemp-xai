@@ -86,6 +86,8 @@ from experiments._common import (  # noqa: E402
     RESULTS_DIR,
     TABLES_DIR,
     aggregate_across_seeds,
+    check_provenance,
+    print_provenance_warning,
     print_seed_aggregate_table,
     write_csv,
 )
@@ -158,6 +160,19 @@ def run_seeds_report(args) -> None:
     out_path = TABLES_DIR / f"table_seed_aggregate_{args.config}_lstm.csv"
     write_csv(out_path, rows)
     print(f"[06] wrote {out_path}")
+
+    # Same per-seed directories aggregate_across_seeds just read, reconstructed
+    # the same way (via seeded_variant) so the provenance check is guaranteed
+    # to look at the exact inputs the table came from, not an approximation.
+    # NB: results always live under RESULTS_DIR (results/<config>/<classifier>/,
+    # see _common.config_dir) regardless of --out-dir, which is the *data*
+    # output directory (data/scm_t/ by default) -- not the results root.
+    from causaltemp_xai.config import get_config, seeded_variant
+
+    base_cfg = get_config(args.config)
+    seed_dirs = [RESULTS_DIR / seeded_variant(base_cfg, s).name / "lstm" for s in args.seeds]
+    print_provenance_warning(check_provenance(seed_dirs))
+
     print()
     print_seed_aggregate_table(rows)
 
@@ -327,6 +342,9 @@ def run_figures_report(args) -> None:
     results_dir = Path(args.results_dir)
     out_dir = Path(args.out_dir_figures)
     out_dir.mkdir(parents=True, exist_ok=True)
+
+    per_instance_paths = sorted(results_dir.glob("*/*/per_instance.csv"))
+    print_provenance_warning(check_provenance([p.parent for p in per_instance_paths]))
 
     data = _load_all_per_instance(results_dir)
     methods = _methods_in_order(data["method"])
