@@ -1,7 +1,7 @@
 {
   "seed": 42,
   "config": "full_nl",
-  "git_commit": "d707aae7d9ef9abfcec05fcc757309af15cfa8d9",
+  "git_commit": "94182f5d0cd61c2e22ae6047cb2c9696b536c419",
   "git_dirty": true,
   "n": 100,
   "validity": 0.0,
