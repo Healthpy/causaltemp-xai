@@ -1,0 +1,214 @@
+{
+  "git_commit": "1bd608cc7c2a6c1b545f8859fc0ed8003d9326a0",
+  "git_dirty": true,
+  "seed": 42,
+  "config": "full_nl",
+  "label_threshold": 0.0003390061971824407,
+  "PS": {
+    "CARLA": {
+      "n": 100,
+      "n_scorable": 100,
+      "frac_no_intervention": 0.0,
+      "A_model_proposed": 0.0,
+      "B_model_oracle": 0.0,
+      "C_world_oracle": 0.03,
+      "delta_total": -0.03,
+      "delta_trajectory": 0.0,
+      "delta_outcome": -0.03
+    },
+    "CftsCels": {
+      "n": 100,
+      "n_scorable": 43,
+      "frac_no_intervention": 0.57,
+      "A_model_proposed": 1.0,
+      "B_model_oracle": 0.06976744186046512,
+      "C_world_oracle": 0.13953488372093023,
+      "delta_total": 0.8604651162790697,
+      "delta_trajectory": 0.9302325581395349,
+      "delta_outcome": -0.06976744186046512
+    },
+    "CftsCOMTE": {
+      "n": 100,
+      "n_scorable": 99,
+      "frac_no_intervention": 0.01,
+      "A_model_proposed": 1.0,
+      "B_model_oracle": 0.0,
+      "C_world_oracle": 0.030303030303030304,
+      "delta_total": 0.9696969696969697,
+      "delta_trajectory": 1.0,
+      "delta_outcome": -0.030303030303030304
+    },
+    "CftsConfeti": {
+      "n": 100,
+      "n_scorable": 67,
+      "frac_no_intervention": 0.33,
+      "A_model_proposed": 1.0,
+      "B_model_oracle": 0.0,
+      "C_world_oracle": 0.04477611940298507,
+      "delta_total": 0.9552238805970149,
+      "delta_trajectory": 1.0,
+      "delta_outcome": -0.04477611940298507
+    },
+    "CftsWachter": {
+      "n": 100,
+      "n_scorable": 100,
+      "frac_no_intervention": 0.0,
+      "A_model_proposed": 0.94,
+      "B_model_oracle": 0.0,
+      "C_world_oracle": 0.03,
+      "delta_total": 0.9099999999999999,
+      "delta_trajectory": 0.94,
+      "delta_outcome": -0.03
+    },
+    "PearlCARLA": {
+      "n": 100,
+      "n_scorable": 0,
+      "frac_no_intervention": 1.0,
+      "A_model_proposed": NaN,
+      "B_model_oracle": NaN,
+      "C_world_oracle": NaN,
+      "delta_total": NaN,
+      "delta_trajectory": NaN,
+      "delta_outcome": NaN
+    }
+  },
+  "direction": "PNS",
+  "PN": {
+    "CARLA": {
+      "n": 100,
+      "n_scorable": 100,
+      "frac_no_intervention": 0.0,
+      "A_model_proposed": 1.0,
+      "B_model_oracle": 0.0,
+      "C_world_oracle": 0.01,
+      "delta_total": 0.99,
+      "delta_trajectory": 1.0,
+      "delta_outcome": -0.01
+    },
+    "CftsCOMTE": {
+      "n": 100,
+      "n_scorable": 100,
+      "frac_no_intervention": 0.0,
+      "A_model_proposed": 1.0,
+      "B_model_oracle": 0.0,
+      "C_world_oracle": 0.01,
+      "delta_total": 0.99,
+      "delta_trajectory": 1.0,
+      "delta_outcome": -0.01
+    },
+    "CftsCels": {
+      "n": 100,
+      "n_scorable": 40,
+      "frac_no_intervention": 0.6,
+      "A_model_proposed": 1.0,
+      "B_model_oracle": 0.05,
+      "C_world_oracle": 0.05,
+      "delta_total": 0.95,
+      "delta_trajectory": 0.95,
+      "delta_outcome": 0.0
+    },
+    "CftsConfeti": {
+      "n": 100,
+      "n_scorable": 43,
+      "frac_no_intervention": 0.57,
+      "A_model_proposed": 1.0,
+      "B_model_oracle": 0.0,
+      "C_world_oracle": 0.023255813953488372,
+      "delta_total": 0.9767441860465116,
+      "delta_trajectory": 1.0,
+      "delta_outcome": -0.023255813953488372
+    },
+    "CftsWachter": {
+      "n": 100,
+      "n_scorable": 100,
+      "frac_no_intervention": 0.0,
+      "A_model_proposed": 0.94,
+      "B_model_oracle": 0.0,
+      "C_world_oracle": 0.01,
+      "delta_total": 0.9299999999999999,
+      "delta_trajectory": 0.94,
+      "delta_outcome": -0.01
+    },
+    "PearlCARLA": {
+      "n": 100,
+      "n_scorable": 0,
+      "frac_no_intervention": 1.0,
+      "A_model_proposed": NaN,
+      "B_model_oracle": NaN,
+      "C_world_oracle": NaN,
+      "delta_total": NaN,
+      "delta_trajectory": NaN,
+      "delta_outcome": NaN
+    }
+  },
+  "PNS": {
+    "CARLA": {
+      "PNS_world": 0.02,
+      "PS_world": 0.03,
+      "PN_world": 0.01,
+      "p_xy": 0.5,
+      "p_xpyp": 0.5,
+      "PS_delta_total": -0.03,
+      "PN_delta_total": 0.99,
+      "PS_n_scorable": 100,
+      "PN_n_scorable": 100
+    },
+    "CftsCOMTE": {
+      "PNS_world": 0.020151515151515153,
+      "PS_world": 0.030303030303030304,
+      "PN_world": 0.01,
+      "p_xy": 0.5,
+      "p_xpyp": 0.5,
+      "PS_delta_total": 0.9696969696969697,
+      "PN_delta_total": 0.99,
+      "PS_n_scorable": 99,
+      "PN_n_scorable": 100
+    },
+    "CftsCels": {
+      "PNS_world": 0.09476744186046512,
+      "PS_world": 0.13953488372093023,
+      "PN_world": 0.05,
+      "p_xy": 0.5,
+      "p_xpyp": 0.5,
+      "PS_delta_total": 0.8604651162790697,
+      "PN_delta_total": 0.95,
+      "PS_n_scorable": 43,
+      "PN_n_scorable": 40
+    },
+    "CftsConfeti": {
+      "PNS_world": 0.034015966678236725,
+      "PS_world": 0.04477611940298507,
+      "PN_world": 0.023255813953488372,
+      "p_xy": 0.5,
+      "p_xpyp": 0.5,
+      "PS_delta_total": 0.9552238805970149,
+      "PN_delta_total": 0.9767441860465116,
+      "PS_n_scorable": 67,
+      "PN_n_scorable": 43
+    },
+    "CftsWachter": {
+      "PNS_world": 0.02,
+      "PS_world": 0.03,
+      "PN_world": 0.01,
+      "p_xy": 0.5,
+      "p_xpyp": 0.5,
+      "PS_delta_total": 0.9099999999999999,
+      "PN_delta_total": 0.9299999999999999,
+      "PS_n_scorable": 100,
+      "PN_n_scorable": 100
+    },
+    "PearlCARLA": {
+      "PNS_world": NaN,
+      "PS_world": NaN,
+      "PN_world": NaN,
+      "p_xy": 0.5,
+      "p_xpyp": 0.5,
+      "PS_delta_total": NaN,
+      "PN_delta_total": NaN,
+      "PS_n_scorable": 0,
+      "PN_n_scorable": 0
+    }
+  },
+  "p_xy": 0.5,
+  "p_xpyp": 0.5
+}

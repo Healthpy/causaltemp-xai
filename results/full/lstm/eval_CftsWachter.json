@@ -1,17 +1,25 @@
 {
+  "seed": 42,
+  "config": "full",
+  "git_commit": "d707aae7d9ef9abfcec05fcc757309af15cfa8d9",
+  "git_dirty": true,
   "n": 100,
   "validity": 0.99,
   "proximity_l1": 341.03906569513725,
   "proximity_l2": 15.275374459800823,
-  "sparsity": 0.0032,
-  "frac_altered": 0.9968,
+  "sparsity": 0.015849999999999996,
+  "frac_altered": 0.98415,
+  "sparsity_channels": 0.0,
+  "sparsity_timepoints": 0.0033,
   "ood": 0.030433030111794372,
   "cf_faith_rollout_hard": 0.0,
   "cf_faith_rollout_soft": 0.7790453331918777,
   "cf_faith_pearl_hard": 0.0,
   "cf_faith_pearl_soft": 0.7196139640110724,
+  "n_cf_faith_scorable": 100,
+  "frac_degenerate": 0.0,
   "cf_faith_rollout_hard_valid": 0.0,
   "cf_faith_pearl_hard_valid": 0.0,
   "method": "CftsWachter",
-  "trsi": 1.983506597744946
+  "trsi": 1.4033329822202245
 }

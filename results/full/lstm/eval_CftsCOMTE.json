@@ -1,17 +1,25 @@
 {
+  "seed": 42,
+  "config": "full",
+  "git_commit": "d707aae7d9ef9abfcec05fcc757309af15cfa8d9",
+  "git_dirty": true,
   "n": 100,
   "validity": 1.0,
   "proximity_l1": 436.8113425987998,
   "proximity_l2": 17.98445677895957,
-  "sparsity": 0.04189999999999999,
-  "frac_altered": 0.9581,
+  "sparsity": 0.3149199999999999,
+  "frac_altered": 0.6850800000000001,
+  "sparsity_channels": 0.0,
+  "sparsity_timepoints": 0.16770000000000004,
   "ood": -0.016381543966057236,
   "cf_faith_rollout_hard": 0.0,
   "cf_faith_rollout_soft": 0.7068200050074107,
   "cf_faith_pearl_hard": 0.0,
   "cf_faith_pearl_soft": 0.8349931218454694,
+  "n_cf_faith_scorable": 100,
+  "frac_degenerate": 0.0,
   "cf_faith_rollout_hard_valid": 0.0,
   "cf_faith_pearl_hard_valid": 0.0,
   "method": "CftsCOMTE",
-  "trsi": 0.8776345908937051
+  "trsi": 0.7726661492310092
 }
