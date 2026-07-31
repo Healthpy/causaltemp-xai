@@ -44,6 +44,23 @@ Outputs under ``results/<config>/horizon/``:
 * ``per_instance.csv`` — one row per (method, horizon, instance), the Phase-04
   schema plus ``horizon`` / ``t0``
 * ``summary.json`` — per (method, horizon) aggregate, R7-stamped
+
+**The model-vs-world audit over horizon.** Each sweep point also carries the
+``PS`` (sufficiency) decomposition as ``ps_*`` columns: ``A`` (the model's
+verdict on the method's proposed CF), ``B`` (the model's verdict on the *world's*
+realisation of that same intervention), and ``C`` (the **world's** verdict on
+it, read off the true SCM via ``scm_label`` — empirical, not a restatement of
+the classifier). ``delta_outcome = B - C`` is model-vs-world on an identical
+trajectory, so sweeping it says whether the model's causal claim degrades with
+horizon *in the same way* the world's efficacy does, or comes apart from it.
+
+This is **PS, not PNS.** ``X_sel`` is the flip-candidate set (non-target ->
+target), so the estimand on it is sufficiency. The PN direction needs
+target -> non-target counterfactuals regenerated at every horizon; until that
+exists, a combined PNS is deliberately **not** synthesised from the missing
+term (R3, matching Phase 07's default). Columns are prefixed ``ps_`` and
+``summary.json`` records ``estimand: "PS"`` so the distinction survives contact
+with a downstream reader.
 """
 
 from __future__ import annotations
@@ -60,6 +77,7 @@ sys.path.insert(0, str(ROOT))
 from causaltemp_xai.config import CONFIGS, get_config, seeded_variant  # noqa: E402
 from causaltemp_xai.data_io import DEFAULT_OUT_DIR, load_dataset  # noqa: E402
 from causaltemp_xai.methods import CARLARecourse, PearlCARLARecourse  # noqa: E402
+from causaltemp_xai.metrics.pns import pns_direction, recover_label_threshold  # noqa: E402
 from experiments._common import (  # noqa: E402
     aggregate_method_row,
     config_dir,
@@ -129,6 +147,13 @@ def run(
     data = load_dataset(cfg.name, out_dir=out_dir)
     graph, mech = data["graph"], data["mechanism"]
 
+    # World-side label threshold, recovered once from the full dataset. This is
+    # what makes the PS ``C`` term empirical rather than a restatement of the
+    # classifier: ``scm_label`` reads the *true* SCM trajectory, not the model.
+    X_all = np.concatenate([data[f"X_{s}"] for s in ("train", "val", "test")])
+    Y_all = np.concatenate([data[f"Y_{s}"] for s in ("train", "val", "test")])
+    theta = recover_label_threshold(X_all, Y_all)
+
     res_dir = config_dir(cfg.name, "lstm")
     x_sel_path = res_dir / "cf" / "X_sel.npy"
     if not x_sel_path.exists():
@@ -149,11 +174,15 @@ def run(
     T = X_sel.shape[1]
     horizons = resolve_horizons(T, horizons_spec)
     print(f"[08] config={cfg.name} T={T} n_cf={len(X_sel)} " f"horizons={horizons} (t0 = T - h)")
+    print(f"[08] label threshold theta={theta:+.6f} (world-side, for the PS C term)")
 
     out_root = res_dir / "horizon"
     all_rows, summary = [], []
 
-    hdr = f"{'method':<14}{'h':>5}{'t0':>5}{'valid':>8}{'roll_h':>8}{'pearl_h':>8}{'vac':>7}"
+    hdr = (
+        f"{'method':<14}{'h':>5}{'t0':>5}{'valid':>8}{'roll_h':>8}{'pearl_h':>8}{'vac':>7}"
+        f"{'A':>7}{'B':>7}{'C':>7}{'d_tot':>8}{'d_traj':>8}{'d_out':>8}{'n_ps':>6}"
+    )
     print()
     print(hdr)
     print("-" * len(hdr))
@@ -178,6 +207,16 @@ def run(
             agg = aggregate_method_row(cfg.name, "lstm", name, rows)
             agg["horizon"] = h
             agg["t0"] = t0
+
+            # PS direction only. X_sel is the flip-candidate set (non-target ->
+            # target), so this estimand is *sufficiency*, not PNS. The PN
+            # direction needs target -> non-target CFs, which would have to be
+            # generated afresh at every horizon; until they are, a combined PNS
+            # is deliberately NOT synthesised from the missing term (R3, and
+            # matching Phase 07's default). Keys are prefixed ``ps_`` so no
+            # downstream reader can mistake this column for PNS.
+            ps = pns_direction(X_sel, cfs, clf, mech, theta, target_class=1)
+            agg.update({f"ps_{k}": v for k, v in ps.items()})
             summary.append(agg)
 
             def _f(v, w=8):
@@ -189,10 +228,30 @@ def run(
                 f"{name:<14}{h:>5}{t0:>5}{_f(agg['validity'])}"
                 f"{_f(agg['cf_faith_rollout_hard'])}{_f(agg['cf_faith_pearl_hard'])}"
                 f"{_f(agg.get('frac_vacuous'), 7)}"
+                f"{_f(ps['A_model_proposed'], 7)}{_f(ps['B_model_oracle'], 7)}"
+                f"{_f(ps['C_world_oracle'], 7)}{_f(ps['delta_total'])}"
+                f"{_f(ps['delta_trajectory'])}{_f(ps['delta_outcome'])}"
+                f"{ps['n_scorable']:>6}"
             )
 
     write_csv(out_root / "per_instance.csv", all_rows)
-    dump_json(out_root / "summary.json", {"T": T, "horizons": horizons, "rows": summary})
+    dump_json(
+        out_root / "summary.json",
+        {
+            "T": T,
+            "horizons": horizons,
+            "label_threshold": theta,
+            # Named so a reader cannot take the ps_* columns for PNS.
+            "estimand": "PS",
+            "PN_world": None,
+            "PN_note": (
+                "PN direction not run: it needs target -> non-target CFs generated "
+                "at every horizon. Combined PNS is deliberately not synthesised "
+                "from a missing term (R3, matching Phase 07's default)."
+            ),
+            "rows": summary,
+        },
+    )
     print(f"\n[08] wrote {out_root / 'per_instance.csv'}")
     print(f"[08] wrote {out_root / 'summary.json'}")
     print(

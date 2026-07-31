@@ -80,6 +80,22 @@ class TestResolveHorizons:
             t0 = T - h
             assert 0 < t0 < T - 1
 
+    def test_pns_is_labelled_ps_not_pns(self):
+        """The sweep runs only the sufficiency direction (X_sel is the
+        flip-candidate set). Calling that "PNS" would overstate the estimand,
+        and a combined PNS must never be synthesised from the missing PN term
+        (R3). This guards the naming that keeps the two apart."""
+        src = _phase08.__doc__ or ""
+        assert "PS, not PNS" in src
+        # The per-point columns must be prefixed so a downstream reader cannot
+        # pick them up as PNS.
+        import inspect
+
+        run_src = inspect.getsource(_phase08.run)
+        assert 'f"ps_{k}"' in run_src, "PS columns must be prefixed ps_"
+        assert '"estimand": "PS"' in run_src
+        assert '"PN_world": None' in run_src
+
     def test_grid_scales_with_T(self):
         """Fractional defaults must resolve against the config's own T, not a
         hardcoded scale -- smoke (T=30) and full (T=100) both use this path."""
