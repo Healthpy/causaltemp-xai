@@ -415,6 +415,70 @@ class TestVacuousIntervention:
         cf = _noiseless_cf(x, mech, 10, np.zeros(x.shape[1])).astype(np.float32)
         assert is_vacuous_intervention(x.astype(np.float32), cf, mech)
 
+    def test_evaluate_method_publishes_frac_vacuous(self):
+        """The gap only closes if the flag reaches the result table (RISK-17).
+        A batch that is half vacuous must say so *while* CF-faith still reads
+        1.0 — that co-occurrence is the whole point: the CF-faith column is not
+        wrong, it is uninterpretable without this one beside it."""
+        x, graph, mech = _make_scm(seed=14)
+        vacuous = _noiseless_cf(x, mech, 10, np.zeros(x.shape[1]))
+        genuine = _noiseless_cf(x, mech, 10, np.full(x.shape[1], 0.4))
+        X_orig = np.stack([x, x])
+        CFs = np.stack([vacuous, genuine])
+
+        out = evaluate_method(_SignModel(), X_orig, CFs, X_orig, graph, mech, target_class=1)
+        assert out["frac_vacuous"] == 0.5
+        assert out["n_vacuous"] == 1
+        # Neither instance is degenerate, so the pre-existing diagnostic sees
+        # nothing wrong and CF-faith reports a clean 1.0 -- the exact blind
+        # spot frac_vacuous exists to make visible.
+        assert out["frac_degenerate"] == 0.0
+        assert out["cf_faith_rollout_hard"] == 1.0
+
+    def test_per_instance_records_carry_the_flag(self):
+        """Phase 04 writes per_instance.csv from this helper; the column has to
+        be there or the aggregate row cannot be computed."""
+        from experiments._common import aggregate_method_row, per_instance_records
+
+        x, graph, mech = _make_scm(seed=14)
+        vacuous = _noiseless_cf(x, mech, 10, np.zeros(x.shape[1]))
+        genuine = _noiseless_cf(x, mech, 10, np.full(x.shape[1], 0.4))
+        X_sel = np.stack([x, x])
+        CFs = np.stack([vacuous, genuine])
+        preds = np.ones(2, dtype=int)
+
+        rows = per_instance_records("t", "lstm", "m", X_sel, CFs, graph, mech, preds)
+        assert [r["vacuous"] for r in rows] == [1, 0]
+        agg = aggregate_method_row("t", "lstm", "m", rows)
+        assert agg["frac_vacuous"] == 0.5
+        assert agg["n_vacuous"] == 1
+
+    def test_aggregate_tolerates_rows_predating_the_column(self):
+        """Older per_instance.csv files have no `vacuous` column. Aggregation
+        must degrade to 0 rather than raise, so a stale file still reads."""
+        from experiments._common import aggregate_method_row
+
+        legacy = [
+            {
+                "validity": 1.0,
+                "proximity_l1": 1.0,
+                "proximity_l2": 1.0,
+                "sparsity": 0.5,
+                "sparsity_channels": 0.5,
+                "sparsity_timepoints": 0.5,
+                "trsi": 0.1,
+                "cf_faith_rollout_hard": 1.0,
+                "cf_faith_rollout_soft": 1.0,
+                "cf_faith_pearl_hard": 0.0,
+                "cf_faith_pearl_soft": 0.0,
+                "cf_faith_rollout_hard_valid": 1.0,
+                "cf_faith_pearl_hard_valid": 0.0,
+            }
+        ]
+        agg = aggregate_method_row("t", "lstm", "m", legacy)
+        assert agg["n_vacuous"] == 0
+        assert agg["frac_vacuous"] == 0.0
+
 
 # ---------------------------------------------------------------------------
 # Regression: the CELS-style false flag (M1 fix #1)

@@ -1,7 +1,7 @@
 {
   "seed": 42,
   "config": "full_nl",
-  "git_commit": "94182f5d0cd61c2e22ae6047cb2c9696b536c419",
+  "git_commit": "589e74f213b6cfb20fbaee1b4c7a5093ff3eb805",
   "git_dirty": true,
   "n": 100,
   "validity": 0.67,
@@ -18,6 +18,8 @@
   "cf_faith_pearl_soft": 0.9163826491062942,
   "n_cf_faith_scorable": 67,
   "frac_degenerate": 0.32999999999999996,
+  "n_vacuous": 33,
+  "frac_vacuous": 0.33,
   "cf_faith_rollout_hard_valid": 0.0,
   "cf_faith_pearl_hard_valid": 0.0,
   "method": "CftsConfeti",

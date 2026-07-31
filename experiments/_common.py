@@ -109,10 +109,18 @@ def per_instance_records(benchmark, classifier, method_name, X_sel, CFs, graph, 
     can pass the faithfulness check without consulting the SCM, but earns no
     joint credit unless it also flips the classifier. Blank when ``preds`` is
     None (classifier-free oracle rows in Phase 05).
+
+    ``vacuous`` (RISK-17, 2026-07-31) is 1 when the CF encodes no intervention
+    at all: ``x_cf`` differs from ``x``, but ``x_cf[intervention_t]`` is exactly
+    what the mechanism predicts from ``x_cf``'s own prefix. A noiseless-rollout
+    CF with a zero perturbation is the case in point — it drops the factual
+    noise from ``t0`` onward, so it looks like a large edit and scores
+    ``cf_faith_rollout_hard = 1.0`` while having done nothing. Read it before
+    the CF-faith and proximity columns on the same row, not after.
     """
     from causaltemp_xai.metrics.axis_c import proximity, sparsity, trsi
     from causaltemp_xai.metrics.cf_faith import CFfaith
-    from causaltemp_xai.scm.intervention import derive_intervention_t
+    from causaltemp_xai.scm.intervention import derive_intervention_t, is_vacuous_intervention
 
     def _nan_to_zero(v):
         return 0.0 if np.isnan(v) else v
@@ -140,6 +148,12 @@ def per_instance_records(benchmark, classifier, method_name, X_sel, CFs, graph, 
                 "sparsity_timepoints": _spars_detail["timepoints"],
                 "trsi": trsi(x_cf, x),
                 "intervention_t": int(t),
+                # RISK-17: 1 when the CF encodes no do() at all -- x_cf[t] is
+                # what the mechanism predicts from x_cf's own prefix, so the
+                # departure from the factual is continuation, not action. A
+                # zero-perturbation noiseless rollout scores rollout_hard=1.0
+                # while being vacuous; frac_degenerate does not catch it.
+                "vacuous": int(is_vacuous_intervention(x, x_cf, mech, t0=t)),
                 "cf_faith_rollout_hard": r["hard"],
                 "cf_faith_rollout_soft": r["soft"],
                 "cf_faith_pearl_hard": p["hard"],
@@ -252,6 +266,11 @@ def aggregate_method_row(benchmark, classifier, method_name, instance_rows) -> d
         if r.get("cf_faith_rollout_hard") not in (None, "")
         and not np.isnan(float(r["cf_faith_rollout_hard"]))
     )
+    # RISK-17. Tolerates rows predating the column (blank -> not counted)
+    # rather than raising, so an older per_instance.csv still aggregates.
+    n_vacuous = sum(
+        1 for r in instance_rows if str(r.get("vacuous", "")).strip() not in ("", "0", "False")
+    )
 
     return {
         "benchmark": benchmark,
@@ -273,6 +292,11 @@ def aggregate_method_row(benchmark, classifier, method_name, instance_rows) -> d
         # CF-faith columns on this row regardless of their value.
         "n_cf_faith_scorable": n_scorable,
         "frac_degenerate": (float(1.0 - n_scorable / n) if n else None),
+        # Vacuity diagnostic (RISK-17) — a high frac_vacuous invalidates this
+        # row's cf_faith_rollout_* and proximity/sparsity columns regardless
+        # of their value: the CFs contain no intervention to score.
+        "n_vacuous": n_vacuous,
+        "frac_vacuous": (float(n_vacuous / n) if n else None),
         # Joint faithfulness-validity (None for classifier-free oracle rows).
         "cf_faith_rollout_hard_valid": _mean("cf_faith_rollout_hard_valid"),
         "cf_faith_pearl_hard_valid": _mean("cf_faith_pearl_hard_valid"),
@@ -283,7 +307,7 @@ def print_summary_table(rows: list[dict]) -> None:
     hdr = (
         f"{'Method':<16}{'valid':>7}{'prox_l1':>9}{'spars':>7}{'sp_ch':>7}{'sp_tp':>7}"
         f"{'roll_h':>8}{'roll_s':>8}{'pearl_h':>8}{'pearl_s':>8}"
-        f"{'joint_r':>9}{'joint_p':>9}"
+        f"{'joint_r':>9}{'joint_p':>9}{'vac':>7}"
     )
     print(hdr)
     print("-" * len(hdr))
@@ -300,7 +324,7 @@ def print_summary_table(rows: list[dict]) -> None:
             f"{_fmt(r.get('sparsity_channels'), 7)}{_fmt(r.get('sparsity_timepoints'), 7)}"
             f"{r['cf_faith_rollout_hard']:>8.2f}{r['cf_faith_rollout_soft']:>8.2f}"
             f"{r['cf_faith_pearl_hard']:>8.2f}{r['cf_faith_pearl_soft']:>8.2f}"
-            f"{_fmt(joint_r, 9)}{_fmt(joint_p, 9)}"
+            f"{_fmt(joint_r, 9)}{_fmt(joint_p, 9)}{_fmt(r.get('frac_vacuous'), 7)}"
         )
 
 

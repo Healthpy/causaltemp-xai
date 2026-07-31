@@ -102,7 +102,8 @@ def run(config_name: str, out_dir, seed: int | None = None) -> None:
             f"[04] {method_name:<14} validity={rec['validity']:.2f} "
             f"prox_l1={rec['proximity_l1']:.3f} "
             f"cf_faith_rollout_hard={rec['cf_faith_rollout_hard']:.2f} "
-            f"cf_faith_pearl_hard={rec['cf_faith_pearl_hard']:.2f}"
+            f"cf_faith_pearl_hard={rec['cf_faith_pearl_hard']:.2f} "
+            f"frac_vacuous={rec['frac_vacuous']:.2f}"
         )
 
     write_csv(res_dir / "per_instance.csv", all_instance_rows)

@@ -29,7 +29,7 @@ from causaltemp_xai.metrics.axis_c import (
     validity,
 )
 from causaltemp_xai.metrics.cf_faith import CFfaith
-from causaltemp_xai.scm.intervention import derive_intervention_t
+from causaltemp_xai.scm.intervention import derive_intervention_t, is_vacuous_intervention
 
 
 def evaluate_method(
@@ -90,6 +90,31 @@ def evaluate_method(
         value** — read the two together, never the CF-faith mean alone. When
         every instance is degenerate the means are NaN, not 1.0.
 
+        **Vacuity (2026-07-31, RISK-17).** ``frac_vacuous`` is the fraction of
+        the batch whose CF encodes **no intervention at all** — ``x_cf``
+        differs from ``x``, but ``x_cf[t0]`` is exactly what the mechanism
+        predicts from ``x_cf``'s own prefix, so the whole departure from the
+        factual is continuation rather than action (see
+        :func:`~causaltemp_xai.scm.intervention.is_vacuous_intervention`).
+        This catches what ``frac_degenerate`` cannot: a *noiseless-rollout* CF
+        with a zero perturbation drops the factual exogenous noise from ``t0``
+        onward, so it registers a changed timestep (no degeneracy), leaves the
+        prefix untouched (no retroactive edit), and *is* its own noiseless
+        rollout — scoring ``cf_faith_rollout_hard = 1.0`` on a CF that
+        intervened on nothing, with a large ``proximity_l1`` made entirely of
+        deleted noise. **A high ``frac_vacuous`` invalidates that method's
+        ``cf_faith_rollout_*`` and proximity/sparsity columns regardless of
+        their value.** It is *not* a strict superset of ``frac_degenerate``: a
+        literal no-op is both, but a genuine intervention landing at ``T-1``
+        is degenerate without being vacuous.
+
+        Deliberately reported as a diagnostic rather than folded into
+        CF-faith: CF-faith measures mechanism consistency and answers that
+        question correctly on these CFs. "Did an intervention happen at all?"
+        is a separate predicate, so every existing CF-faith number is
+        unchanged by this column (R5 — no silent redefinition of a scored
+        metric).
+
         **Structured sparsity.** ``sparsity`` is a flat count over all ``T×k``
         features and so is blind to the *shape* of the edit. The two structured
         scores say which axis it is sparse along: ``sparsity_channels`` is the
@@ -124,6 +149,7 @@ def evaluate_method(
     prox_l1, prox_l2, spars = [], [], []
     spars_ch, spars_tp = [], []
     r_hard, r_soft, p_hard, p_soft = [], [], [], []
+    vacuous = []
 
     for x, x_cf in zip(X_orig, CFs):
         prox_l1.append(proximity(x, x_cf, norm="l1"))
@@ -143,6 +169,10 @@ def evaluate_method(
         r_soft.append(r["soft"])
         p_hard.append(p["hard"])
         p_soft.append(p["soft"])
+        # RISK-17: does this CF encode a do() at all? Reuses the same t0 the
+        # CF-faith scores above were computed at, so the two always agree on
+        # which timestep is under discussion.
+        vacuous.append(float(is_vacuous_intervention(x, x_cf, mechanism, t0=t)))
 
     ood_scores = np.atleast_1d(ood_plausibility(X_train, CFs))
     sparsity_mean = float(np.mean(spars))
@@ -182,6 +212,12 @@ def evaluate_method(
         # the CF-faith columns for that method regardless of their value.
         "n_cf_faith_scorable": n_scorable,
         "frac_degenerate": float(1.0 - n_scorable / len(CFs)) if len(CFs) else float("nan"),
+        # Vacuity diagnostic (2026-07-31, RISK-17): fraction of the batch whose
+        # CF contains no intervention. Unlike frac_degenerate this catches the
+        # zero-perturbation noiseless rollout, which clears every existing gate
+        # and posts cf_faith_rollout_hard=1.0 on a CF that did nothing.
+        "n_vacuous": int(np.sum(vacuous)),
+        "frac_vacuous": float(np.mean(vacuous)) if len(CFs) else float("nan"),
         # Joint faithfulness-validity criterion (anti-gameability, M1).
         # NaN-degenerate instances count as 0 here (not faithful-and-valid):
         # this is a fraction-of-batch criterion, so an instance that cannot be
