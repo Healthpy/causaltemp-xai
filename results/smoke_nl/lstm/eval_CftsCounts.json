@@ -1,8 +1,8 @@
 {
   "seed": 0,
   "config": "smoke_nl",
-  "git_commit": "0867e01ea4e16a16207078d3e4fb3aebcd621bd4",
-  "git_dirty": true,
+  "git_commit": "8346c24a9b7f87b6b42171c78ba61f955b024650",
+  "git_dirty": false,
   "n": 20,
   "validity": 0.8,
   "proximity_l1": 19.63732665199756,
