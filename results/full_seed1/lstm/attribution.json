@@ -1,0 +1,11 @@
+{
+  "seed": 1,
+  "config": "full_seed1",
+  "git_commit": "a9148ca89639f03f97abef302f7ed73bfdec8059",
+  "git_dirty": true,
+  "method": "IntegratedGradients",
+  "deletion_auc": 0.4237604277321787,
+  "insertion_auc": 0.026849107306788564,
+  "insertion_minus_deletion": -0.3969113204253901,
+  "n": 50
+}
