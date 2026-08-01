@@ -1,0 +1,11 @@
+{
+  "seed": 0,
+  "config": "full_nl_seed0",
+  "git_commit": "989acbd0b8a6e2b8a039bd06793b414ded583824",
+  "git_dirty": true,
+  "ICC": 0.9655764145333299,
+  "MCC_coverage": 0.6648989473428057,
+  "MCC_disent": NaN,
+  "InputSens": 0.1758725271580518,
+  "n": 50
+}

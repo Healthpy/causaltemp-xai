@@ -88,3 +88,35 @@ def test_full_registry_has_no_silent_gaps(methods):
     assert not missing, f"missing from build_methods(): {missing}"
     for name, cls in EXPECTED_REGISTRY.items():
         assert isinstance(methods[name], cls), f"{name} is not a {cls.__name__}"
+
+
+class TestSkipAux:
+    """`--skip-aux` exists so CF generation can be chunked on a host that kills
+    long processes. It must skip *only* the auxiliary blocks and never the CF
+    arrays -- a flag that quietly skipped CF generation would produce an
+    apparently-successful run with nothing to score."""
+
+    def test_flag_is_wired_to_run(self):
+        import inspect
+
+        sig = inspect.signature(_phase03.run)
+        assert "skip_aux" in sig.parameters
+        assert sig.parameters["skip_aux"].default is False, "must default to current behaviour"
+
+    def test_early_return_is_after_cf_generation(self):
+        """The guard must sit after the CF-writing loop, otherwise --skip-aux
+        would write no counterfactuals at all."""
+        import inspect
+
+        src = inspect.getsource(_phase03.run)
+        cf_write = src.index("X_cf_")
+        guard = src.index("if skip_aux:")
+        assert cf_write < guard, "--skip-aux must not short-circuit CF generation"
+
+    def test_guard_precedes_every_aux_block(self):
+        import inspect
+
+        src = inspect.getsource(_phase03.run)
+        guard = src.index("if skip_aux:")
+        for aux in ("attribution_block(", "axis_a_block(", "shift_vr("):
+            assert guard < src.index(aux), f"{aux} must be behind the --skip-aux guard"

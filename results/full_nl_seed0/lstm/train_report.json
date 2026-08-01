@@ -1,0 +1,12 @@
+{
+  "seed": 0,
+  "git_commit": "989acbd0b8a6e2b8a039bd06793b414ded583824",
+  "git_dirty": true,
+  "config": "full_nl_seed0",
+  "accuracies": {
+    "train": 0.997,
+    "val": 0.991,
+    "test": 0.991
+  },
+  "target_acc": 0.9
+}

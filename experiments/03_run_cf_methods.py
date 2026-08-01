@@ -187,7 +187,14 @@ def load_or_make_shift_test(cfg, out_dir):
     return data["X_test"]
 
 
-def run(config_name: str, n_cf: int, out_dir, methods_filter=None, seed: int | None = None) -> None:
+def run(
+    config_name: str,
+    n_cf: int,
+    out_dir,
+    methods_filter=None,
+    seed: int | None = None,
+    skip_aux: bool = False,
+) -> None:
     cfg = get_config(config_name)
     if seed is not None:
         cfg = seeded_variant(cfg, seed)
@@ -241,6 +248,18 @@ def run(config_name: str, n_cf: int, out_dir, methods_filter=None, seed: int | N
         except Exception as exc:
             print(f"     {name} FAILED: {exc}")
 
+    if skip_aux:
+        # CF arrays are written and complete; the auxiliary blocks below
+        # (attribution, Axis-A, Shift-VR) do not depend on which --methods ran
+        # and cost ~8 min per invocation. Skipping them lets CF generation be
+        # run in small chunks -- the only way to make progress on a host where
+        # long processes are being killed sporadically, since X_cf_*.npy files
+        # accumulate across invocations. Run once WITHOUT --skip-aux (or with
+        # the full roster) to produce the auxiliary artifacts.
+        print("[03] --skip-aux: attribution / Axis-A / Shift-VR NOT computed.")
+        print("[03] done (CF arrays only).")
+        return
+
     print("[03] integrated-gradients attribution foil ...")
     attribution, attr_maps = attribution_block(clf, X_sel)
     dump_json(out / "attribution.json", attribution)
@@ -289,6 +308,12 @@ def main(argv=None) -> int:
     parser.add_argument("--config", required=True, choices=sorted(CONFIGS))
     parser.add_argument("--n-cf", type=int, default=None)
     parser.add_argument("--methods", nargs="+", default=None, help="Subset of method names to run.")
+    parser.add_argument(
+        "--skip-aux",
+        action="store_true",
+        help="Write CF arrays only; skip attribution / Axis-A / Shift-VR "
+        "(~8 min of per-invocation overhead). For chunked CF generation.",
+    )
     parser.add_argument("--out-dir", default=str(DEFAULT_OUT_DIR))
     parser.add_argument(
         "--seed",
@@ -303,7 +328,14 @@ def main(argv=None) -> int:
     args = parser.parse_args(argv)
 
     n_cf = args.n_cf or (20 if args.config.startswith("smoke") else 100)
-    run(args.config, n_cf, args.out_dir, methods_filter=args.methods, seed=args.seed)
+    run(
+        args.config,
+        n_cf,
+        args.out_dir,
+        methods_filter=args.methods,
+        seed=args.seed,
+        skip_aux=args.skip_aux,
+    )
     return 0
 
 
