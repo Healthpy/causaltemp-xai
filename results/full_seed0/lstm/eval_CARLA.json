@@ -1,8 +1,8 @@
 {
   "seed": 0,
   "config": "full_seed0",
-  "git_commit": "a9148ca89639f03f97abef302f7ed73bfdec8059",
-  "git_dirty": true,
+  "git_commit": "e4239c51e7cdec99c37d34501b6c8fc4dda35793",
+  "git_dirty": false,
   "n": 50,
   "validity": 0.0,
   "proximity_l1": 179.69353041252037,
