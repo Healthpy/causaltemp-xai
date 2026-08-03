@@ -301,6 +301,40 @@ class TestDefaultUnchanged:
         assert default["do_complexity_mean"] == pytest.approx(2.0)
 
 
+class TestToleranceRobustness:
+    """The group separation must not be a property of `INTERVENTION_TOL`.
+
+    Measured on real CFs (`docs/cf_faith_methodology.md` §10), some methods'
+    exact `D` *is* tolerance-sensitive — CftsCels swings 1.0 -> 13.2 across three
+    orders of magnitude. What the contribution rests on is the separation
+    between a single-`do()` proposal and a dense rewrite, and that is pinned
+    here so a future tolerance change cannot silently erase it.
+    """
+
+    def test_single_do_stays_at_one_across_tolerances(self):
+        x, mech = _make_scm()
+        x_cf = structural_counterfactual(x, mech, t0=10, node=1, value=3.0, noiseless=False)
+        for tol in (1e-2, 1e-3, 1e-4):
+            assert do_complexity(x, x_cf, mech, tol=tol) == 1, tol
+
+    def test_dense_edit_stays_near_maximal_across_tolerances(self):
+        x, mech = _make_scm()
+        rng = np.random.default_rng(7)
+        x_cf = x + rng.normal(0, 1.0, x.shape)
+        for tol in (1e-2, 1e-3, 1e-4):
+            assert do_complexity(x, x_cf, mech, tol=tol) >= T - 2, tol
+
+    def test_separation_survives_every_tolerance(self):
+        x, mech = _make_scm()
+        causal = structural_counterfactual(x, mech, t0=10, node=1, value=3.0, noiseless=False)
+        rng = np.random.default_rng(7)
+        dense = x + rng.normal(0, 1.0, x.shape)
+        for tol in (1e-2, 1e-3, 1e-4):
+            d_causal = do_complexity(x, causal, mech, tol=tol)
+            d_dense = do_complexity(x, dense, mech, tol=tol)
+            assert d_dense > 10 * d_causal, (tol, d_causal, d_dense)
+
+
 class TestScheduleValidation:
     def test_duplicate_timestep_raises(self):
         x, mech = _make_scm()
