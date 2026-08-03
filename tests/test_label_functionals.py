@@ -25,6 +25,7 @@ from causaltemp_xai.benchmarks.labels import (
     LabelFunctional,
     get_label_functional,
 )
+from causaltemp_xai.benchmarks.mechanisms import LinearMechanism
 from causaltemp_xai.config import get_config
 from causaltemp_xai.data_io import build_generator
 from causaltemp_xai.metrics.pns import recover_label_threshold, scm_label
@@ -155,6 +156,81 @@ class TestThresholdRecovery:
         theta = recover_label_threshold(data["X"], data["Y"], label_fn=fn)
         got = np.array([scm_label(x, theta, label_fn=fn) for x in data["X"][:100]])
         assert np.array_equal(got, data["Y"][:100])
+
+
+class TestWorldSideRespectsLabelSite:
+    """A `do()` placed after the label site cannot move the label.
+
+    This is the invariant that caught the 2026-08-03 Phase-08 bug: `C` was
+    computed with the default terminal rule while `theta` came from the config's
+    interior rule, so an intervention at `t=95` appeared to move a label at
+    `t=90` — it was really reading `x[99]`. Any call path that scores the world
+    side must be handed the same functional the threshold was recovered under.
+    """
+
+    @staticmethod
+    def _scm(T=30, k=3, seed=0):
+        rng = np.random.default_rng(seed)
+        A = rng.uniform(-0.3, 0.3, (k, k))
+        x = np.zeros((T, k))
+        for t in range(1, T):
+            x[t] = A @ x[t - 1] + rng.laplace(0, 0.05, k)
+        return x, LinearMechanism([A])
+
+    def test_post_label_intervention_leaves_the_world_label_unchanged(self):
+        from causaltemp_xai.benchmarks.structural_cf import structural_counterfactual
+
+        x, mech = self._scm()
+        fn = get_label_functional("interior_threshold", {"frac": 0.6})  # t_label = 18
+        theta = float(fn.latent_one(x)) - 0.5  # factual label is 1
+        before = scm_label(x, theta, label_fn=fn)
+        # Intervene well past the label site, with a large value.
+        x_cf = structural_counterfactual(x, mech, t0=25, node=0, value=50.0)
+        assert scm_label(x_cf, theta, label_fn=fn) == before
+
+    def test_the_same_cf_does_move_a_terminal_label(self):
+        """The control: the intervention is not inert, it is just out of reach
+        of the interior label. Without this, the test above would pass on a CF
+        that did nothing."""
+        from causaltemp_xai.benchmarks.structural_cf import structural_counterfactual
+
+        x, mech = self._scm()
+        term = get_label_functional("terminal_threshold")
+        x_cf = structural_counterfactual(x, mech, t0=25, node=0, value=50.0)
+        assert term.latent_one(x_cf) != pytest.approx(term.latent_one(x))
+
+    def test_pns_direction_world_side_follows_the_passed_functional(self):
+        """`pns_direction` must not fall back to the terminal rule."""
+        from causaltemp_xai.benchmarks.structural_cf import structural_counterfactual
+        from causaltemp_xai.metrics.pns import pns_direction
+
+        x, mech = self._scm()
+        fn = get_label_functional("interior_threshold", {"frac": 0.6})
+        theta = float(fn.latent_one(x)) - 0.5
+        x_cf = structural_counterfactual(x, mech, t0=25, node=0, value=50.0)
+
+        target = scm_label(x, theta, label_fn=fn)
+        out = pns_direction(
+            x[None],
+            x_cf[None],
+            _ThresholdModel(theta),
+            mech,
+            theta,
+            target_class=target,
+            label_fn=fn,
+        )
+        # The world cannot have changed its mind about a label the intervention
+        # never touched.
+        assert out["C_world_oracle"] == pytest.approx(1.0)
+
+
+class _ThresholdModel:
+    def __init__(self, theta):
+        self.theta = theta
+
+    def predict(self, X):
+        X = np.asarray(X, dtype=float)
+        return (X[:, -1, 0] > self.theta).astype(int)
 
 
 class TestDegenerateLabelIsVisible:

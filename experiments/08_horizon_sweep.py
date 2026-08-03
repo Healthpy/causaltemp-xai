@@ -226,7 +226,13 @@ def run(
             # is deliberately NOT synthesised from the missing term (R3, and
             # matching Phase 07's default). Keys are prefixed ``ps_`` so no
             # downstream reader can mistake this column for PNS.
-            ps = pns_direction(X_sel, cfs, clf, mech, theta, target_class=1)
+            # `label_fn` is NOT optional here. Omitting it silently scores the
+            # world side with the *terminal* rule while `theta` was recovered
+            # under the config's own rule, so on a non-terminal-label config the
+            # C/A/B/delta columns describe a label the intervention was never
+            # aimed at (bug found 2026-08-03: a do() at t=95 appeared to move a
+            # label at t=90, because it was really reading x[99]).
+            ps = pns_direction(X_sel, cfs, clf, mech, theta, target_class=1, label_fn=label)
             agg.update({f"ps_{k}": v for k, v in ps.items()})
             summary.append(agg)
 
