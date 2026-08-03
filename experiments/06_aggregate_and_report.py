@@ -488,6 +488,105 @@ def run_pns_report(args) -> None:
     print(f"[06] wrote {out_path}")
 
 
+def run_horizon_report(args) -> None:
+    """Pool Phase-08 horizon sweeps across seeds; two configs side by side (H8c).
+
+    The point of the side-by-side is that a horizon curve is only attributable
+    to a *distance* if two configs that share `T` but differ in where the label
+    sits are shown together. Read down the `T-t0` column: if the two configs
+    disagree at the same `T-t0`, decay is not a function of `T-t0`.
+    """
+    from causaltemp_xai.stats import bootstrap_ci
+
+    results_dir = Path(args.results_dir)
+    # An empty --seeds means "the base config directory", which is how the
+    # single-run smoke sweeps are laid out (results/smoke/, not smoke_seed0/).
+    seeds = args.seeds if args.seeds else [None]
+    rows = []
+    for config in args.configs:
+        per_cell: dict[tuple, dict[str, list]] = {}
+        t_label_seen = set()
+        for seed in seeds:
+            name = config if seed is None else f"{config}_seed{seed}"
+            path = results_dir / name / "lstm" / "horizon" / "summary.json"
+            if not path.exists():
+                print(f"[06] missing {path} — skipping")
+                continue
+            payload = json.loads(path.read_text())
+            T = payload["T"]
+            for r in payload["rows"]:
+                # `t_label` is absent from sweeps run before the H8c wiring; for
+                # those the label was terminal by definition, so derive it
+                # rather than dropping the row.
+                t_label = r.get("t_label", T - 1)
+                t_label_seen.add(t_label)
+                key = (r["method"], r["horizon"], r["t0"], t_label)
+                slot = per_cell.setdefault(
+                    key,
+                    {"validity": [], "ps_C_world_oracle": [], "ps_delta_total": []},
+                )
+                for col in slot:
+                    v = r.get(col)
+                    if v is not None:
+                        slot[col].append(v)
+        for (method, h, t0, t_label), cols in sorted(per_cell.items(), key=lambda kv: kv[0][1]):
+            row = {
+                "config": config,
+                "method": method,
+                "T_minus_t0": h,
+                "t0": t0,
+                "t_label": t_label,
+                "label_horizon": t_label - t0,
+                "n_seeds": len(cols["validity"]),
+            }
+            for col, vals in cols.items():
+                clean = [v for v in vals if v == v]
+                if not clean:
+                    row[col] = row[f"{col}_lo"] = row[f"{col}_hi"] = float("nan")
+                    continue
+                res = bootstrap_ci(clean, n_boot=args.n_boot)
+                row[col], row[f"{col}_lo"], row[f"{col}_hi"] = res.mean, res.ci_lo, res.ci_hi
+            rows.append(row)
+
+    if not rows:
+        raise SystemExit(f"[06] no horizon results found for {args.configs} under {results_dir}")
+
+    out_path = TABLES_DIR / f"table_horizon_{'_vs_'.join(args.configs)}.csv"
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(out_path, "w", newline="", encoding="utf-8") as fh:
+        writer = csv.DictWriter(fh, fieldnames=list(rows[0]))
+        writer.writeheader()
+        writer.writerows(rows)
+
+    print(f"[06] horizon pooled over {len(seeds)} seed(s)")
+    print(
+        f"{'config':<22}{'method':<13}{'T-t0':>6}{'t0':>5}{'t_l-t0':>8}"
+        f"{'validity [95% CI]':>26}{'C_world':>10}"
+    )
+    for r in sorted(rows, key=lambda r: (r["method"], r["T_minus_t0"], r["config"])):
+        v, lo, hi = r["validity"], r["validity_lo"], r["validity_hi"]
+        ci = "nan" if v != v else f"{v:.2f} [{lo:.2f}, {hi:.2f}]"
+        c = r["ps_C_world_oracle"]
+        print(
+            f"{r['config']:<22}{r['method']:<13}{r['T_minus_t0']:>6}{r['t0']:>5}"
+            f"{r['label_horizon']:>8}{ci:>26}{c:>10.2f}"
+        )
+    print(f"[06] wrote {out_path}")
+
+
+def _add_horizon_args(p) -> None:
+    p.add_argument("--configs", nargs="+", required=True, help="base config names to compare")
+    p.add_argument(
+        "--seeds",
+        type=int,
+        nargs="*",
+        default=[0, 1, 2],
+        help="seed replicates to pool; pass with no values to read the unseeded base config",
+    )
+    p.add_argument("--results-dir", default=str(RESULTS_DIR))
+    p.add_argument("--n-boot", type=int, default=10000)
+
+
 def fig4_do_complexity_calibration(out_path, seed: int = 0) -> None:
     """Do-complexity vs a *known* amount of causal fidelity (M2b).
 
@@ -575,6 +674,11 @@ def main(argv=None) -> int:
     )
     _add_pns_args(p_pns)
 
+    p_hz = sub.add_parser(
+        "horizon", help="pool Phase-08 horizon sweeps across seeds; compare configs (H8c)"
+    )
+    _add_horizon_args(p_hz)
+
     p_all = sub.add_parser("all", help="run 'seeds' then 'figures'")
     _add_seeds_args(p_all)
     _add_figures_args(p_all)
@@ -583,6 +687,9 @@ def main(argv=None) -> int:
 
     if args.report == "pns":
         run_pns_report(args)
+        return 0
+    if args.report == "horizon":
+        run_horizon_report(args)
         return 0
     if args.report in ("seeds", "all"):
         run_seeds_report(args)
