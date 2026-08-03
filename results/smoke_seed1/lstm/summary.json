@@ -1,8 +1,8 @@
 {
   "seed": 1,
   "config": "smoke_seed1",
-  "git_commit": "8346c24a9b7f87b6b42171c78ba61f955b024650",
-  "git_dirty": false,
+  "git_commit": "221c17fb184662a8de575d19e313d74d8e027cd4",
+  "git_dirty": true,
   "provenance": {
     "config": {
       "k": 5,
@@ -14,7 +14,9 @@
       "seed": 1,
       "name": "smoke_seed1",
       "mechanism_type": "linear",
-      "nonlinear": null
+      "nonlinear": null,
+      "label_fn": "terminal_threshold",
+      "label_params": null
     },
     "seed": 1,
     "n_cf": 20
@@ -38,9 +40,12 @@
       "frac_degenerate": 0.0,
       "n_vacuous": 0,
       "frac_vacuous": 0.0,
+      "do_complexity_mean": 18.15,
+      "do_complexity_median": 15.0,
       "cf_faith_rollout_hard_valid": 1.0,
       "cf_faith_pearl_hard_valid": 0.0,
       "method": "CARLA",
+      "scm_noise_plausibility": 0.401862258041617,
       "trsi": 1.426566832026833
     },
     {
@@ -61,9 +66,12 @@
       "frac_degenerate": 0.0,
       "n_vacuous": 0,
       "frac_vacuous": 0.0,
+      "do_complexity_mean": 19.95,
+      "do_complexity_median": 20.0,
       "cf_faith_rollout_hard_valid": 0.0,
       "cf_faith_pearl_hard_valid": 0.0,
       "method": "CftsCels",
+      "scm_noise_plausibility": 0.928453758286589,
       "trsi": 1.2195731658990936
     },
     {
@@ -84,9 +92,12 @@
       "frac_degenerate": 0.0,
       "n_vacuous": 0,
       "frac_vacuous": 0.0,
+      "do_complexity_mean": 30.0,
+      "do_complexity_median": 30.0,
       "cf_faith_rollout_hard_valid": 0.0,
       "cf_faith_pearl_hard_valid": 0.0,
       "method": "CftsCOMTE",
+      "scm_noise_plausibility": 0.4573771166265613,
       "trsi": 0.5121273768262624
     },
     {
@@ -107,9 +118,12 @@
       "frac_degenerate": 0.30000000000000004,
       "n_vacuous": 6,
       "frac_vacuous": 0.3,
+      "do_complexity_mean": 20.9,
+      "do_complexity_median": 30.0,
       "cf_faith_rollout_hard_valid": 0.0,
       "cf_faith_pearl_hard_valid": 0.0,
       "method": "CftsConfeti",
+      "scm_noise_plausibility": 0.9170751960890128,
       "trsi": 1.485383541280235
     },
     {
@@ -130,9 +144,12 @@
       "frac_degenerate": 0.0,
       "n_vacuous": 0,
       "frac_vacuous": 0.0,
+      "do_complexity_mean": 30.0,
+      "do_complexity_median": 30.0,
       "cf_faith_rollout_hard_valid": 0.0,
       "cf_faith_pearl_hard_valid": 0.0,
       "method": "CftsCounts",
+      "scm_noise_plausibility": 0.05946882490117204,
       "trsi": 1.4241460581178536
     },
     {
@@ -153,9 +170,12 @@
       "frac_degenerate": 0.0,
       "n_vacuous": 0,
       "frac_vacuous": 0.0,
+      "do_complexity_mean": 30.0,
+      "do_complexity_median": 30.0,
       "cf_faith_rollout_hard_valid": 0.0,
       "cf_faith_pearl_hard_valid": 0.0,
       "method": "CftsWachter",
+      "scm_noise_plausibility": 0.9031842668988647,
       "trsi": 1.3996645554347065
     },
     {
@@ -176,9 +196,12 @@
       "frac_degenerate": 0.0,
       "n_vacuous": 0,
       "frac_vacuous": 0.0,
+      "do_complexity_mean": 1.0,
+      "do_complexity_median": 1.0,
       "cf_faith_rollout_hard_valid": 0.0,
       "cf_faith_pearl_hard_valid": 0.1,
       "method": "PearlCARLA",
+      "scm_noise_plausibility": 0.8959020849586015,
       "trsi": 1.9386961148057307
     }
   ],
@@ -193,28 +216,7 @@
     "insertion_minus_deletion": -0.6183155372932607,
     "n": 20
   },
-  "axis_a": {
-    "seed": 1,
-    "config": "smoke_seed1",
-    "git_commit": "0867e01ea4e16a16207078d3e4fb3aebcd621bd4",
-    "git_dirty": true,
-    "ICC": 1.019493823237482,
-    "MCC_coverage": 0.49416654420186085,
-    "MCC_disent": NaN,
-    "InputSens": 0.10842161378241304,
-    "n": 20
-  },
-  "axis_b": {
-    "seed": 1,
-    "config": "smoke_seed1",
-    "git_commit": "0867e01ea4e16a16207078d3e4fb3aebcd621bd4",
-    "git_dirty": true,
-    "SHD": 0.0,
-    "LagAcc": 1.0,
-    "LagF1": 1.0,
-    "ResidualDep": 0.014598725810827913,
-    "note": "SHD/LagAcc computed against the graph itself (no graph-discovery method in this pipeline) -- trivially perfect; ResidualDep is the informative benchmark-structural diagnostic here."
-  },
+  "axis_b": null,
   "shift_vr": {
     "seed": 1,
     "config": "smoke_seed1",

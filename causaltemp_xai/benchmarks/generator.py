@@ -86,6 +86,37 @@ def _apply_label(X: np.ndarray, functional: LabelFunctional) -> np.ndarray:
 _GAUSSIAN_STD = 0.1 * float(np.sqrt(2.0))
 
 
+#: Expected **mean absolute innovation** ``E|eps|`` per noise family — the ``b``
+#: that :func:`~causaltemp_xai.metrics.axis_c.scm_noise_plausibility` compares a
+#: counterfactual's implied noise against.
+#:
+#: Not simply "the scale parameter": the three families are matched on *variance*
+#: (see :data:`_GAUSSIAN_STD`), so their mean absolute deviations differ.
+#: Laplace(0, b) has ``E|eps| = b = 0.1``; Uniform(-a, a) has ``a/2 = 0.085``;
+#: Normal(0, s) has ``s*sqrt(2/pi)``. Hardcoding 0.1 for all three would
+#: mis-scale the metric on two of them, so the mapping lives here beside the
+#: sampler it must track.
+_MEAN_ABS_NOISE = {
+    "laplace": 0.1,
+    "uniform": 0.17 / 2.0,
+    "gaussian": _GAUSSIAN_STD * float(np.sqrt(2.0 / np.pi)),
+}
+
+
+def expected_abs_noise(noise_type: str) -> float:
+    """``E|eps|`` for a generator's innovation distribution.
+
+    Single source of truth shared by the generators' ``_sample_noise`` and the
+    ground-truth plausibility metric; if one changes, this must change with it.
+    """
+    try:
+        return _MEAN_ABS_NOISE[noise_type]
+    except KeyError:
+        raise ValueError(
+            f"noise_type must be one of {tuple(_MEAN_ABS_NOISE)}, got {noise_type!r}"
+        ) from None
+
+
 def _sample_lag_mask(
     k: int, lag_index: int, sparsity: float, rng: np.random.Generator
 ) -> np.ndarray:

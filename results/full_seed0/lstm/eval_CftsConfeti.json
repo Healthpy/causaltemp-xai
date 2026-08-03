@@ -1,7 +1,7 @@
 {
   "seed": 0,
   "config": "full_seed0",
-  "git_commit": "f02a50b4c22008038cd9f708c966260f24729abe",
+  "git_commit": "221c17fb184662a8de575d19e313d74d8e027cd4",
   "git_dirty": true,
   "n": 50,
   "validity": 0.72,
@@ -25,5 +25,6 @@
   "cf_faith_rollout_hard_valid": 0.0,
   "cf_faith_pearl_hard_valid": 0.0,
   "method": "CftsConfeti",
+  "scm_noise_plausibility": 0.5607646388474624,
   "trsi": 1.4311823307672682
 }

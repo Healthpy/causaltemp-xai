@@ -74,6 +74,7 @@ import numpy as np
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
+from causaltemp_xai.benchmarks.generator import expected_abs_noise  # noqa: E402
 from causaltemp_xai.config import CONFIGS, get_config, seeded_variant  # noqa: E402
 from causaltemp_xai.data_io import DEFAULT_OUT_DIR, load_dataset  # noqa: E402
 from causaltemp_xai.methods import CARLARecourse, PearlCARLARecourse  # noqa: E402
@@ -205,7 +206,17 @@ def run(
         for name, build in builders.items():
             cfs = build().generate_batch(X_sel, clf, graph, mech)
             preds = np.asarray(clf.predict(cfs)).reshape(-1)
-            rows = per_instance_records(cfg.name, "lstm", name, X_sel, cfs, graph, mech, preds)
+            rows = per_instance_records(
+                cfg.name,
+                "lstm",
+                name,
+                X_sel,
+                cfs,
+                graph,
+                mech,
+                preds,
+                noise_scale=expected_abs_noise(cfg.noise_type),
+            )
             for r in rows:
                 r["horizon"] = h
                 r["t0"] = t0

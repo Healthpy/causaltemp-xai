@@ -118,6 +118,59 @@ class TestEveryEmittedMetricHasAnAxis:
         orphans = [k for k in out if k not in AXIS_OF and k not in NON_METRIC_KEYS]
         assert not orphans, f"PNS keys with no axis: {orphans}"
 
+    def test_every_declared_axis_c_metric_is_actually_emitted(self):
+        """The reverse direction, and the one that was missing.
+
+        The forward check (emitted -> has an axis) passed all day while
+        ``scm_noise_plausibility`` sat declared-but-unreachable: computed only
+        inside an uncalled helper, so it never reached a result file. A
+        taxonomy that lists metrics the pipeline does not produce is as wrong
+        as one that misses metrics it does.
+        """
+        from causaltemp_xai.eval import evaluate_method
+        from causaltemp_xai.metrics.pns import pns_direction
+
+        X, mech, graph = self._fixture()
+        CFs = X + 0.4
+
+        class _Clf:
+            def predict(self, Z):
+                return np.ones(len(np.atleast_3d(Z)), dtype=int)
+
+        emitted = set(evaluate_method(_Clf(), X, CFs, X, graph, mech, target_class=1)) | set(
+            pns_direction(X, CFs, _Clf(), mech, theta=0.0, target_class=1)
+        )
+        # These two are produced by the experiments layer (per_instance_records
+        # / aggregate_method_row), not by evaluate_method, so name them rather
+        # than silently exempting anything absent.
+        from_experiments_layer = {"trsi", "scm_noise_plausibility"}
+
+        missing = set(AXIS_METRICS["C"]) - emitted - from_experiments_layer
+        assert not missing, f"declared on Axis C but never emitted: {sorted(missing)}"
+
+    def test_the_experiments_layer_emits_what_it_is_credited_with(self):
+        """...and those two are checked against the real producer, so the
+        exemption above cannot become a hiding place."""
+        from experiments._common import aggregate_method_row, per_instance_records
+
+        X, mech, graph = self._fixture()
+        CFs = X + 0.4
+        rows = per_instance_records(
+            "t",
+            "lstm",
+            "m",
+            X,
+            CFs,
+            graph,
+            mech,
+            preds=np.ones(len(X), dtype=int),
+            noise_scale=0.1,
+        )
+        agg = aggregate_method_row("t", "lstm", "m", rows)
+        for key in ("trsi", "scm_noise_plausibility"):
+            assert key in agg, f"{key} missing from aggregate_method_row"
+            assert agg[key] is not None, f"{key} present but None"
+
     def test_the_audit_metrics_live_on_axis_c(self):
         """CF-faith, the model-vs-world terms and do-complexity were previously
         described as a gate / an audit / a diagnostic — none of them an axis.

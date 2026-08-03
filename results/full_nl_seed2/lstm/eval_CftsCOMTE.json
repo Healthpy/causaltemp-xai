@@ -1,8 +1,8 @@
 {
   "seed": 2,
   "config": "full_nl_seed2",
-  "git_commit": "04cb2977fc10c27c71b60cc767ea43da8dad9140",
-  "git_dirty": false,
+  "git_commit": "221c17fb184662a8de575d19e313d74d8e027cd4",
+  "git_dirty": true,
   "n": 50,
   "validity": 1.0,
   "proximity_l1": 601.4448718664987,
@@ -25,5 +25,6 @@
   "cf_faith_rollout_hard_valid": 0.0,
   "cf_faith_pearl_hard_valid": 0.0,
   "method": "CftsCOMTE",
+  "scm_noise_plausibility": 0.6530820882677311,
   "trsi": 0.8929716599991306
 }

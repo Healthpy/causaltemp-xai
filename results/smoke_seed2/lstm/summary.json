@@ -1,8 +1,8 @@
 {
   "seed": 2,
   "config": "smoke_seed2",
-  "git_commit": "8346c24a9b7f87b6b42171c78ba61f955b024650",
-  "git_dirty": false,
+  "git_commit": "221c17fb184662a8de575d19e313d74d8e027cd4",
+  "git_dirty": true,
   "provenance": {
     "config": {
       "k": 5,
@@ -14,7 +14,9 @@
       "seed": 2,
       "name": "smoke_seed2",
       "mechanism_type": "linear",
-      "nonlinear": null
+      "nonlinear": null,
+      "label_fn": "terminal_threshold",
+      "label_params": null
     },
     "seed": 2,
     "n_cf": 20
@@ -38,9 +40,12 @@
       "frac_degenerate": 0.0,
       "n_vacuous": 0,
       "frac_vacuous": 0.0,
+      "do_complexity_mean": 19.9,
+      "do_complexity_median": 22.0,
       "cf_faith_rollout_hard_valid": 1.0,
       "cf_faith_pearl_hard_valid": 0.0,
       "method": "CARLA",
+      "scm_noise_plausibility": 0.3568217203627976,
       "trsi": 1.4295005880781806
     },
     {
@@ -61,9 +66,12 @@
       "frac_degenerate": 0.0,
       "n_vacuous": 0,
       "frac_vacuous": 0.0,
+      "do_complexity_mean": 14.4,
+      "do_complexity_median": 15.5,
       "cf_faith_rollout_hard_valid": 0.0,
       "cf_faith_pearl_hard_valid": 0.0,
       "method": "CftsCels",
+      "scm_noise_plausibility": 0.8423519267562121,
       "trsi": 1.22840225026847
     },
     {
@@ -84,9 +92,12 @@
       "frac_degenerate": 0.0,
       "n_vacuous": 0,
       "frac_vacuous": 0.0,
+      "do_complexity_mean": 30.0,
+      "do_complexity_median": 30.0,
       "cf_faith_rollout_hard_valid": 0.0,
       "cf_faith_pearl_hard_valid": 0.0,
       "method": "CftsCOMTE",
+      "scm_noise_plausibility": 0.038733910492162835,
       "trsi": 0.7432385509220477
     },
     {
@@ -107,9 +118,12 @@
       "frac_degenerate": 0.0,
       "n_vacuous": 0,
       "frac_vacuous": 0.0,
+      "do_complexity_mean": 29.9,
+      "do_complexity_median": 30.0,
       "cf_faith_rollout_hard_valid": 0.0,
       "cf_faith_pearl_hard_valid": 0.0,
       "method": "CftsConfeti",
+      "scm_noise_plausibility": 0.09260249544676816,
       "trsi": 1.5018012132115928
     },
     {
@@ -130,9 +144,12 @@
       "frac_degenerate": 0.0,
       "n_vacuous": 0,
       "frac_vacuous": 0.0,
+      "do_complexity_mean": 30.0,
+      "do_complexity_median": 30.0,
       "cf_faith_rollout_hard_valid": 0.0,
       "cf_faith_pearl_hard_valid": 0.0,
       "method": "CftsCounts",
+      "scm_noise_plausibility": 0.5332008005974123,
       "trsi": 1.468776634785733
     },
     {
@@ -153,9 +170,12 @@
       "frac_degenerate": 0.0,
       "n_vacuous": 0,
       "frac_vacuous": 0.0,
+      "do_complexity_mean": 30.0,
+      "do_complexity_median": 30.0,
       "cf_faith_rollout_hard_valid": 0.0,
       "cf_faith_pearl_hard_valid": 0.0,
       "method": "CftsWachter",
+      "scm_noise_plausibility": 0.679144263129688,
       "trsi": 1.3045600741749763
     },
     {
@@ -176,9 +196,12 @@
       "frac_degenerate": 0.0,
       "n_vacuous": 0,
       "frac_vacuous": 0.0,
+      "do_complexity_mean": 1.0,
+      "do_complexity_median": 1.0,
       "cf_faith_rollout_hard_valid": 0.0,
       "cf_faith_pearl_hard_valid": 0.0,
       "method": "PearlCARLA",
+      "scm_noise_plausibility": 0.9463327997219911,
       "trsi": 1.5394686784944072
     }
   ],
@@ -193,28 +216,7 @@
     "insertion_minus_deletion": -0.5438565143430925,
     "n": 20
   },
-  "axis_a": {
-    "seed": 2,
-    "config": "smoke_seed2",
-    "git_commit": "0867e01ea4e16a16207078d3e4fb3aebcd621bd4",
-    "git_dirty": true,
-    "ICC": 1.0220048572722302,
-    "MCC_coverage": 0.19306438151241997,
-    "MCC_disent": NaN,
-    "InputSens": 0.008401842927914079,
-    "n": 20
-  },
-  "axis_b": {
-    "seed": 2,
-    "config": "smoke_seed2",
-    "git_commit": "0867e01ea4e16a16207078d3e4fb3aebcd621bd4",
-    "git_dirty": true,
-    "SHD": 0.0,
-    "LagAcc": 1.0,
-    "LagF1": 1.0,
-    "ResidualDep": 0.011310271551316942,
-    "note": "SHD/LagAcc computed against the graph itself (no graph-discovery method in this pipeline) -- trivially perfect; ResidualDep is the informative benchmark-structural diagnostic here."
-  },
+  "axis_b": null,
   "shift_vr": {
     "seed": 2,
     "config": "smoke_seed2",

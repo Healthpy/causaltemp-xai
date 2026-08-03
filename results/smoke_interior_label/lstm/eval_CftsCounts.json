@@ -1,7 +1,7 @@
 {
   "seed": 0,
   "config": "smoke_interior_label",
-  "git_commit": "f02a50b4c22008038cd9f708c966260f24729abe",
+  "git_commit": "221c17fb184662a8de575d19e313d74d8e027cd4",
   "git_dirty": true,
   "n": 20,
   "validity": 0.5,
@@ -25,5 +25,6 @@
   "cf_faith_rollout_hard_valid": 0.0,
   "cf_faith_pearl_hard_valid": 0.0,
   "method": "CftsCounts",
+  "scm_noise_plausibility": 0.2069502950684349,
   "trsi": 1.3297375604754396
 }

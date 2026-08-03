@@ -1,7 +1,7 @@
 {
   "seed": 0,
   "config": "full_seed0",
-  "git_commit": "f02a50b4c22008038cd9f708c966260f24729abe",
+  "git_commit": "221c17fb184662a8de575d19e313d74d8e027cd4",
   "git_dirty": true,
   "provenance": {
     "config": {
@@ -45,6 +45,7 @@
       "cf_faith_rollout_hard_valid": 0.0,
       "cf_faith_pearl_hard_valid": 0.0,
       "method": "CARLA",
+      "scm_noise_plausibility": 0.2525700433888045,
       "trsi": 1.3560103328706712
     },
     {
@@ -70,6 +71,7 @@
       "cf_faith_rollout_hard_valid": 0.0,
       "cf_faith_pearl_hard_valid": 0.0,
       "method": "CftsCels",
+      "scm_noise_plausibility": 0.973002269802233,
       "trsi": 1.3369692163381472
     },
     {
@@ -95,6 +97,7 @@
       "cf_faith_rollout_hard_valid": 0.0,
       "cf_faith_pearl_hard_valid": 0.0,
       "method": "CftsCOMTE",
+      "scm_noise_plausibility": 0.41961236941818536,
       "trsi": 0.8451794851444003
     },
     {
@@ -120,6 +123,7 @@
       "cf_faith_rollout_hard_valid": 0.0,
       "cf_faith_pearl_hard_valid": 0.0,
       "method": "CftsConfeti",
+      "scm_noise_plausibility": 0.5607646388474624,
       "trsi": 1.4311823307672682
     },
     {
@@ -145,6 +149,7 @@
       "cf_faith_rollout_hard_valid": 0.0,
       "cf_faith_pearl_hard_valid": 0.0,
       "method": "CftsWachter",
+      "scm_noise_plausibility": 0.8572492937535672,
       "trsi": 1.3250900652915316
     },
     {
@@ -170,6 +175,7 @@
       "cf_faith_rollout_hard_valid": 0.0,
       "cf_faith_pearl_hard_valid": 0.0,
       "method": "PearlCARLA",
+      "scm_noise_plausibility": 0.973345916270665,
       "trsi": 1.2322898571680427
     }
   ],

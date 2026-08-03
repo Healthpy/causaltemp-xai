@@ -429,29 +429,36 @@ def compute_axis_c(
     classifier : classifier with .predict()
     target_class : int
     mechanism  : optional Mechanism — with ``noise_scale``, adds the
-                 ground-truth ``SCM_Plausibility`` column (fix #8)
+                 ground-truth ``scm_noise_plausibility`` column (fix #8)
     noise_scale : optional float — the SCM's true noise scale
 
     Returns
     -------
-    dict with Validity, Proximity_L1, Proximity_L2, Sparsity, OOD, TRSI,
-    and (when mechanism + noise_scale are given) SCM_Plausibility.
+    dict keyed exactly as the pipeline's result files are — ``validity``,
+    ``proximity_l1``, ``proximity_l2``, ``sparsity``, ``ood``, ``trsi``, and
+    (given mechanism + noise_scale) ``scm_noise_plausibility``.
+
+    **The keys are snake_case deliberately.** They were TitleCase
+    (``Validity``, ``SCM_Plausibility``, …) until 2026-08-03, which made this a
+    second naming vocabulary for metrics the production path already emitted —
+    so anything wiring this function in would have written keys no axis claims.
+    One metric, one name (``metrics/taxonomy.py``).
     """
     results: dict = {}
-    results["Validity"] = validity(X_cf_exp, classifier, target_class)
-    results["Proximity_L1"] = float(
+    results["validity"] = validity(X_cf_exp, classifier, target_class)
+    results["proximity_l1"] = float(
         np.mean([proximity(X[i], X_cf_exp[i], norm="l1") for i in range(len(X))])
     )
-    results["Proximity_L2"] = float(
+    results["proximity_l2"] = float(
         np.mean([proximity(X[i], X_cf_exp[i], norm="l2") for i in range(len(X))])
     )
-    results["Sparsity"] = float(np.mean([sparsity(X[i], X_cf_exp[i]) for i in range(len(X))]))
-    results["TRSI"] = trsi(X_cf_exp, X)
+    results["sparsity"] = float(np.mean([sparsity(X[i], X_cf_exp[i]) for i in range(len(X))]))
+    results["trsi"] = trsi(X_cf_exp, X)
 
     ood_scores = np.atleast_1d(ood_plausibility(X_train, X_cf_exp))
-    results["OOD"] = float(np.mean(ood_scores))
+    results["ood"] = float(np.mean(ood_scores))
 
     if mechanism is not None and noise_scale is not None:
-        results["SCM_Plausibility"] = scm_noise_plausibility(X_cf_exp, mechanism, noise_scale)
+        results["scm_noise_plausibility"] = scm_noise_plausibility(X_cf_exp, mechanism, noise_scale)
 
     return results

@@ -35,9 +35,11 @@ import numpy as np
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
+from causaltemp_xai.benchmarks.generator import expected_abs_noise  # noqa: E402
 from causaltemp_xai.config import CONFIGS, get_config, seeded_variant  # noqa: E402
 from causaltemp_xai.data_io import DEFAULT_OUT_DIR, load_dataset  # noqa: E402
 from causaltemp_xai.eval import evaluate_method  # noqa: E402
+from causaltemp_xai.metrics.taxonomy import AXIS_METRICS  # noqa: E402
 from experiments._common import (  # noqa: E402
     RESULTS_DIR,
     TABLES_DIR,
@@ -88,12 +90,28 @@ def run(config_name: str, out_dir, seed: int | None = None) -> None:
 
         preds = np.asarray(clf.predict(cfs)).reshape(-1)
         instance_rows = per_instance_records(
-            cfg.name, "lstm", method_name, X_sel, cfs, graph, mech, preds
+            cfg.name,
+            "lstm",
+            method_name,
+            X_sel,
+            cfs,
+            graph,
+            mech,
+            preds,
+            noise_scale=expected_abs_noise(cfg.noise_type),
         )
         all_instance_rows.extend(instance_rows)
         agg_row = aggregate_method_row(cfg.name, "lstm", method_name, instance_rows)
         table_rows.append(agg_row)
-        rec["trsi"] = agg_row["trsi"]  # Axis C extra not covered by evaluate_method
+        # Fill in every Axis-C metric the aggregator computes but
+        # ``evaluate_method`` does not (currently ``trsi`` and
+        # ``scm_noise_plausibility``). Driven by the taxonomy rather than
+        # patched key-by-key: a one-off ``rec["trsi"] = ...`` line is exactly
+        # how ``scm_noise_plausibility`` came to be computed per instance yet
+        # absent from every summary.json.
+        for _k in AXIS_METRICS["C"]:
+            if _k not in rec and _k in agg_row:
+                rec[_k] = agg_row[_k]
         summary.append(rec)
 
         eval_path = res_dir / f"eval_{method_name}.json"

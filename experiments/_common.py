@@ -87,7 +87,9 @@ def select_flip_candidates(clf, X_test, n_cf, target_class=TARGET_CLASS, from_cl
     return np.asarray(src[:n_cf], dtype=int)
 
 
-def per_instance_records(benchmark, classifier, method_name, X_sel, CFs, graph, mech, preds=None):
+def per_instance_records(
+    benchmark, classifier, method_name, X_sel, CFs, graph, mech, preds=None, noise_scale=None
+):
     """One record per (method, instance) with per-CF Axis-C + CF-faith metrics.
 
     Axis C's ``TRSI`` (mechanism-free temporal smoothness of the edit — a
@@ -117,7 +119,12 @@ def per_instance_records(benchmark, classifier, method_name, X_sel, CFs, graph, 
     ``cf_faith_rollout_hard = 1.0`` while having done nothing. Read it before
     the CF-faith and proximity columns on the same row, not after.
     """
-    from causaltemp_xai.metrics.axis_c import proximity, sparsity, trsi
+    from causaltemp_xai.metrics.axis_c import (
+        proximity,
+        scm_noise_plausibility,
+        sparsity,
+        trsi,
+    )
     from causaltemp_xai.metrics.cf_faith import CFfaith
     from causaltemp_xai.scm.intervention import derive_intervention_t, is_vacuous_intervention
 
@@ -146,6 +153,15 @@ def per_instance_records(benchmark, classifier, method_name, X_sel, CFs, graph, 
                 "sparsity_channels": _spars_detail["channels"],
                 "sparsity_timepoints": _spars_detail["timepoints"],
                 "trsi": trsi(x_cf, x),
+                # Ground-truth plausibility: abduct the noise the CF *implies*
+                # under the true mechanism and compare its scale to the SCM's.
+                # Unlike `ood` (IsolationForest, a mechanism-free stand-in) this
+                # needs no estimator, and its symmetric log-ratio penalises the
+                # noiseless skeleton as well as over-large edits. Blank when the
+                # caller does not supply the config's noise scale.
+                "scm_noise_plausibility": (
+                    scm_noise_plausibility(x_cf, mech, noise_scale) if noise_scale else ""
+                ),
                 "intervention_t": int(t),
                 # RISK-17: 1 when the CF encodes no do() at all -- x_cf[t] is
                 # what the mechanism predicts from x_cf's own prefix, so the
@@ -254,7 +270,7 @@ def aggregate_method_row(benchmark, classifier, method_name, instance_rows) -> d
         vals = [
             float(r[key])
             for r in instance_rows
-            if r[key] not in (None, "") and not np.isnan(float(r[key]))
+            if r.get(key) not in (None, "") and not np.isnan(float(r[key]))
         ]
         return float(np.mean(vals)) if vals else None
 
@@ -283,6 +299,9 @@ def aggregate_method_row(benchmark, classifier, method_name, instance_rows) -> d
         "sparsity_channels": _mean("sparsity_channels"),
         "sparsity_timepoints": _mean("sparsity_timepoints"),
         "trsi": _mean("trsi"),
+        # Ground-truth plausibility (None when the caller supplied no noise
+        # scale, e.g. rows aggregated from a pre-2026-08-03 per_instance.csv).
+        "scm_noise_plausibility": _mean("scm_noise_plausibility"),
         "cf_faith_rollout_hard": _mean("cf_faith_rollout_hard"),
         "cf_faith_rollout_soft": _mean("cf_faith_rollout_soft"),
         "cf_faith_pearl_hard": _mean("cf_faith_pearl_hard"),
@@ -628,6 +647,7 @@ SEED_AGGREGATE_METRICS: list[str] = [
     "sparsity_channels",
     "sparsity_timepoints",
     "trsi",
+    "scm_noise_plausibility",
     "cf_faith_rollout_hard",
     "cf_faith_rollout_soft",
     "cf_faith_pearl_hard",
