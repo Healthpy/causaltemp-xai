@@ -32,7 +32,9 @@ from .axis_d import (
 )
 from .cf_faith import CFfaith
 from .pns import (
+    do_complexity,
     extract_intervention,
+    extract_intervention_schedule,
     pns_direction,
     pns_from_directions,
     recover_label_threshold,
@@ -47,7 +49,9 @@ __all__ = [
     "compute_axis_d",
     "concept_stability",
     "dci",
+    "do_complexity",
     "extract_intervention",
+    "extract_intervention_schedule",
     "graph_auc",
     "graph_error_decomposition",
     "icc",

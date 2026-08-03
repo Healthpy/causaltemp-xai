@@ -56,9 +56,25 @@ from typing import Literal, Optional
 
 import numpy as np
 
+from causaltemp_xai.benchmarks.labels import LabelFunctional, get_label_functional
 from causaltemp_xai.benchmarks.mechanisms import LinearMechanism, MLPMechanism
 
 _NOISE_TYPES = ("laplace", "uniform", "gaussian")
+
+
+def _apply_label(X: np.ndarray, functional: LabelFunctional) -> np.ndarray:
+    """Binary labels: median threshold on the functional's scalar reduction.
+
+    The median is taken across samples so classes are balanced by construction,
+    and it is **not persisted** — the world-side PNS terms recover it after the
+    fact (:func:`~causaltemp_xai.metrics.pns.recover_label_threshold`), which
+    only works because the rule is a clean threshold on a recomputable scalar.
+    Every generator routes through here so the four of them cannot drift.
+    """
+    latent = functional.latent_batch(X)
+    threshold = float(np.median(latent))
+    return (latent > threshold).astype(int)
+
 
 #: Std-dev for the Gaussian innovation branch (M4/H5 negative-control
 #: ablation). Chosen to match the *variance* of the default
@@ -136,6 +152,8 @@ class LinearSCMT:
         T: int = 50,
         N: int = 200,
         seed: Optional[int] = 42,
+        label_fn: str | None = None,
+        label_params: dict | None = None,
     ) -> None:
         if noise_type not in _NOISE_TYPES:
             raise ValueError(f"noise_type must be one of {_NOISE_TYPES}, got {noise_type!r}")
@@ -146,6 +164,9 @@ class LinearSCMT:
         self.T = T
         self.N = N
         self.seed = seed
+        # Which scalar of the trajectory the binary label thresholds.
+        # None resolves to the original terminal-timestep rule (RISK-19).
+        self.label_functional = get_label_functional(label_fn, label_params)
         self._rng = np.random.default_rng(seed)
         # Build the lagged graph and mechanism once at construction.
         self.graph, self.mechanism = self._build_graph_and_mechanisms()
@@ -197,11 +218,7 @@ class LinearSCMT:
 
         X = X_full[:, burn_in:, :]  # shape (N, T, k)
 
-        # Labels: threshold on final-timestep value of variable 0
-        # Use the median across samples so classes are balanced by default
-        latent_final = X[:, -1, 0]
-        threshold = float(np.median(latent_final))
-        Y = (latent_final > threshold).astype(int)
+        Y = _apply_label(X, self.label_functional)
 
         return {
             "X": X,
@@ -314,6 +331,8 @@ class NlinearSCMT:
         T: int = 50,
         N: int = 200,
         seed: Optional[int] = 42,
+        label_fn: str | None = None,
+        label_params: dict | None = None,
         hidden: int = 16,
         gain: float = 0.8,
         decay_range: tuple[float, float] = (0.3, 0.8),
@@ -332,6 +351,9 @@ class NlinearSCMT:
         self.T = T
         self.N = N
         self.seed = seed
+        # Which scalar of the trajectory the binary label thresholds.
+        # None resolves to the original terminal-timestep rule (RISK-19).
+        self.label_functional = get_label_functional(label_fn, label_params)
         self.hidden = hidden
         self.gain = gain
         self.decay_range = decay_range
@@ -383,10 +405,7 @@ class NlinearSCMT:
 
         X = X_full[:, burn_in:, :]  # shape (N, T, k)
 
-        # Labels: median threshold on final-step variable 0 (balanced by default).
-        latent_final = X[:, -1, 0]
-        threshold = float(np.median(latent_final))
-        Y = (latent_final > threshold).astype(int)
+        Y = _apply_label(X, self.label_functional)
 
         return {
             "X": X,
@@ -554,6 +573,8 @@ class RegimeSwitchNlinearSCMT:
         T: int = 50,
         N: int = 200,
         seed: Optional[int] = 42,
+        label_fn: str | None = None,
+        label_params: dict | None = None,
         hidden: int = 16,
         switch_frac: float = 0.5,
         regime1: dict | None = None,
@@ -572,6 +593,9 @@ class RegimeSwitchNlinearSCMT:
         self.T = T
         self.N = N
         self.seed = seed
+        # Which scalar of the trajectory the binary label thresholds.
+        # None resolves to the original terminal-timestep rule (RISK-19).
+        self.label_functional = get_label_functional(label_fn, label_params)
         self.hidden = hidden
         self.switch_frac = switch_frac
         self.clip = clip
@@ -614,9 +638,7 @@ class RegimeSwitchNlinearSCMT:
 
         X = X_full[:, burn_in:, :]  # shape (N, T, k)
 
-        latent_final = X[:, -1, 0]
-        threshold = float(np.median(latent_final))
-        Y = (latent_final > threshold).astype(int)
+        Y = _apply_label(X, self.label_functional)
 
         return {
             "X": X,
@@ -756,6 +778,8 @@ class HMMRegimeSwitchNlinearSCMT:
         T: int = 50,
         N: int = 200,
         seed: Optional[int] = 42,
+        label_fn: str | None = None,
+        label_params: dict | None = None,
         hidden: int = 16,
         n_regimes: int = 3,
         p_stay: float = 0.9,
@@ -776,6 +800,9 @@ class HMMRegimeSwitchNlinearSCMT:
         self.T = T
         self.N = N
         self.seed = seed
+        # Which scalar of the trajectory the binary label thresholds.
+        # None resolves to the original terminal-timestep rule (RISK-19).
+        self.label_functional = get_label_functional(label_fn, label_params)
         self.hidden = hidden
         self.n_regimes = n_regimes
         self.p_stay = p_stay
@@ -838,9 +865,7 @@ class HMMRegimeSwitchNlinearSCMT:
         X = X_full[:, burn_in:, :]  # shape (N, T, k)
         regime_path = self._regime_path_full[:, burn_in:]  # (N, T)
 
-        latent_final = X[:, -1, 0]
-        threshold = float(np.median(latent_final))
-        Y = (latent_final > threshold).astype(int)
+        Y = _apply_label(X, self.label_functional)
 
         return {
             "X": X,

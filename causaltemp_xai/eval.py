@@ -29,6 +29,7 @@ from causaltemp_xai.metrics.axis_c import (
     validity,
 )
 from causaltemp_xai.metrics.cf_faith import CFfaith
+from causaltemp_xai.metrics.pns import do_complexity
 from causaltemp_xai.scm.intervention import derive_intervention_t, is_vacuous_intervention
 
 
@@ -150,6 +151,7 @@ def evaluate_method(
     spars_ch, spars_tp = [], []
     r_hard, r_soft, p_hard, p_soft = [], [], [], []
     vacuous = []
+    do_c = []
 
     for x, x_cf in zip(X_orig, CFs):
         prox_l1.append(proximity(x, x_cf, norm="l1"))
@@ -173,6 +175,11 @@ def evaluate_method(
         # CF-faith scores above were computed at, so the two always agree on
         # which timestep is under discussion.
         vacuous.append(float(is_vacuous_intervention(x, x_cf, mechanism, t0=t)))
+        # RISK-18: how many timesteps this CF must declare as do() before the
+        # mechanism can produce it. Read against the Pearl continuation, which
+        # is the oracle the PNS audit scores against, so the two agree on what
+        # "the method's intervention" means. D == 0 is the vacuous case above.
+        do_c.append(do_complexity(x, x_cf, mechanism))
 
     ood_scores = np.atleast_1d(ood_plausibility(X_train, CFs))
     sparsity_mean = float(np.mean(spars))
@@ -218,6 +225,14 @@ def evaluate_method(
         # and posts cf_faith_rollout_hard=1.0 on a CF that did nothing.
         "n_vacuous": int(np.sum(vacuous)),
         "frac_vacuous": float(np.mean(vacuous)) if len(CFs) else float("nan"),
+        # Do-complexity diagnostic (2026-08-03, RISK-18): how densely the method
+        # has to intervene for the mechanism to reproduce its own proposal.
+        # Generalises frac_vacuous, which is the D == 0 row. Reported so that
+        # any delta_trajectory in the PNS table can be read against how much of
+        # the proposal the single-slice audit is modelling — a method with
+        # D >> 1 is not being scored on the intervention it actually made.
+        "do_complexity_mean": float(np.mean(do_c)) if len(CFs) else float("nan"),
+        "do_complexity_median": float(np.median(do_c)) if len(CFs) else float("nan"),
         # Joint faithfulness-validity criterion (anti-gameability, M1).
         # NaN-degenerate instances count as 0 here (not faithful-and-valid):
         # this is a fraction-of-batch criterion, so an instance that cannot be

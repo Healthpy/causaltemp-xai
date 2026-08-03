@@ -66,6 +66,20 @@ so :func:`pns_from_directions` takes both and reports the terms *separately* as
 well as combined — the combined number alone can hide a collapsed PN (R3
 naming honesty; see ``docs/pns_metric_design.md``).
 
+How the intervention is read: do-complexity
+-------------------------------------------
+``A``/``B``/``C`` are only as meaningful as the intervention extracted from
+``x_cf``, and there is no single correct extraction. Reading the CF as one
+``do()`` at ``t0`` (:func:`extract_intervention`, the default and what every
+committed number uses) audits a densely-editing method against an intervention
+it never proposed, inflating ``delta_trajectory``. Reading *every* edited slice
+as a ``do()`` makes the oracle reproduce ``x_cf`` exactly, so
+``delta_trajectory == 0`` by construction. Both endpoints are tautologies in
+opposite directions, so the benchmark reports the bracket:
+:func:`do_complexity` counts how many timesteps a proposal must declare as
+actions before the mechanism can produce it, and is published beside
+``delta_trajectory`` in both modes (RISK-18, ``ROADMAP.md`` M2b).
+
 Prior work: necessity/sufficiency for explanation is **not** new (LEWIS,
 Galhotra et al. 2021; Watson et al. 2021). What is specific here is the
 temporal setting with exact abduction plus the model-vs-world decomposition.
@@ -75,11 +89,19 @@ from __future__ import annotations
 
 import numpy as np
 
-from causaltemp_xai.benchmarks.structural_cf import structural_counterfactual
+from causaltemp_xai.benchmarks.labels import get_label_functional
+from causaltemp_xai.benchmarks.mechanisms import lag_window
+from causaltemp_xai.benchmarks.structural_cf import (
+    abduct_noise,
+    structural_counterfactual,
+    structural_counterfactual_schedule,
+)
 from causaltemp_xai.scm.intervention import INTERVENTION_TOL, derive_intervention_t
 
 __all__ = [
+    "do_complexity",
     "extract_intervention",
+    "extract_intervention_schedule",
     "pns_direction",
     "pns_from_directions",
     "recover_label_threshold",
@@ -87,13 +109,26 @@ __all__ = [
 ]
 
 
-def recover_label_threshold(X: np.ndarray, Y: np.ndarray) -> float:
+def _resolve_label_fn(label_fn):
+    """Accept a :class:`LabelFunctional`, a registry name, or ``None``."""
+    if label_fn is None or isinstance(label_fn, str):
+        return get_label_functional(label_fn)
+    return label_fn
+
+
+def recover_label_threshold(X: np.ndarray, Y: np.ndarray, label_fn=None) -> float:
     """Recover the generator's label threshold ``theta`` from a labelled split.
 
-    The generators label by ``Y = 1[x[-1, 0] > theta]`` with
-    ``theta = median(x[:, -1, 0])`` over all N samples, but **theta is not
-    persisted** — ``generate()`` returns only ``X``/``Y``/``graph``/
-    ``mechanism``. Without it the world-side outcome cannot be computed at all.
+    The generators label by ``Y = 1[g(x) > theta]`` with ``theta`` the median of
+    ``g`` over all N samples, where ``g`` is the config's label functional
+    (``benchmarks/labels.py``; ``label_fn=None`` is the default terminal rule
+    ``g(x) = x[-1, 0]``). **theta is not persisted** — ``generate()`` returns
+    only ``X``/``Y``/``graph``/``mechanism``. Without it the world-side outcome
+    cannot be computed at all.
+
+    Pass the **same** functional the config generated with. Passing the wrong
+    one does not silently corrupt the result: ``g`` will not reproduce the
+    stored labels and this raises.
 
     Recomputing the median over the *concatenated* splits recovers it exactly
     (verified 2026-07-30 on ``full``, ``full_nl``, ``smoke``, ``smoke_nl``,
@@ -108,7 +143,7 @@ def recover_label_threshold(X: np.ndarray, Y: np.ndarray) -> float:
     """
     X = np.asarray(X, dtype=float)
     Y = np.asarray(Y).astype(int).reshape(-1)
-    v = X[:, -1, 0]
+    v = _resolve_label_fn(label_fn).latent_batch(X)
     theta = float(np.median(v))
     if not np.array_equal((v > theta).astype(int), Y):
         # Fall back to the label bracket: any value in [max{v:Y=0}, min{v:Y=1})
@@ -118,7 +153,9 @@ def recover_label_threshold(X: np.ndarray, Y: np.ndarray) -> float:
         if not lo < hi:
             raise ValueError(
                 "cannot recover label threshold: labels are not a clean "
-                f"threshold on x[-1, 0] (max(v|Y=0)={lo!r} >= min(v|Y=1)={hi!r})"
+                f"threshold on the label functional (max(v|Y=0)={lo!r} >= "
+                f"min(v|Y=1)={hi!r}). If this config was generated with a "
+                "non-default label_fn, pass the same one."
             )
         theta = float((lo + hi) / 2)
         if not np.array_equal((v > theta).astype(int), Y):
@@ -126,13 +163,20 @@ def recover_label_threshold(X: np.ndarray, Y: np.ndarray) -> float:
     return theta
 
 
-def scm_label(x: np.ndarray, theta: float) -> int:
-    """The generator's ground-truth label rule: ``1[x[-1, 0] > theta]``.
+def scm_label(x: np.ndarray, theta: float, label_fn=None) -> int:
+    """The generator's ground-truth label rule: ``1[g(x) > theta]``.
 
     This is the *world's* outcome — the data-generating process's own label,
-    not the classifier's opinion of it.
+    not the classifier's opinion of it. ``g`` is the config's label functional;
+    ``label_fn=None`` is the default terminal rule ``x[-1, 0]``, which is what
+    every committed number was computed with.
+
+    **Which ``g`` is in force is not a detail (RISK-19).** While ``g`` reads the
+    terminal timestep, the label site coincides with the trajectory end, so the
+    horizon claim cannot be told apart from a claim about terminal labelling.
+    ``benchmarks/labels.py`` exists to break that tie.
     """
-    return int(np.asarray(x, dtype=float)[-1, 0] > theta)
+    return int(_resolve_label_fn(label_fn).latent_one(x) > theta)
 
 
 def extract_intervention(x: np.ndarray, x_cf: np.ndarray, tol: float = INTERVENTION_TOL):
@@ -156,6 +200,119 @@ def extract_intervention(x: np.ndarray, x_cf: np.ndarray, tol: float = INTERVENT
     return t0, changed, x_cf[t0, changed]
 
 
+def extract_intervention_schedule(
+    x: np.ndarray,
+    x_cf: np.ndarray,
+    mechanism,
+    tol: float = INTERVENTION_TOL,
+    semantics: str = "pearl_delta",
+):
+    """Every timestep ``x_cf`` sets by **action** rather than by continuation.
+
+    Returns a list of ``(t, nodes, values)`` in increasing ``t``, suitable for
+    :func:`~causaltemp_xai.benchmarks.structural_cf.structural_counterfactual_schedule`.
+
+    **What this fixes (RISK-18).** :func:`extract_intervention` reads only the
+    first deviating slice, so a proposal that edits many timesteps is audited
+    against a one-slice ``do()`` it never made, and the resulting
+    ``delta_trajectory`` cannot be told apart from "this method edited more than
+    one timestep". Walking the whole trajectory recovers what the proposal
+    actually asserts.
+
+    The predicate is :func:`~causaltemp_xai.scm.intervention.is_vacuous_intervention`'s,
+    applied at every ``t`` instead of only at ``t0``: a coordinate is an *action*
+    iff it deviates from what the mechanism would produce from ``x_cf``'s own
+    prefix. ``is_vacuous_intervention(x, x_cf, mech)`` is therefore the special
+    case "is the schedule empty at ``t0``", and ``frac_vacuous`` is the ``D = 0``
+    row of the do-complexity distribution.
+
+    Parameters
+    ----------
+    x, x_cf:
+        Factual and counterfactual trajectories, shape ``(T, k)``.
+    mechanism:
+        Mechanism supplying ``forward_numpy(window)``.
+    tol:
+        Per-element "is this changed?" threshold — :data:`INTERVENTION_TOL`, the
+        same predicate that defines ``t0`` and gates CF-faith's retroactive
+        check, so a coordinate certified unchanged there cannot appear here.
+    semantics:
+        Which continuation the proposal is read against, mirroring
+        :class:`~causaltemp_xai.metrics.cf_faith.CFfaith`'s two semantics.
+        ``"pearl_delta"`` (default) re-injects the noise abducted from ``x``, and
+        matches the oracle :func:`pns_direction` scores against.
+        ``"noiseless_rollout"`` uses the deterministic skeleton. The two give
+        very different answers for the noiseless-rollout method family, and that
+        is informative rather than a defect: a CF that discards the factual noise
+        is not reproducible by a Pearl oracle from *any* small set of
+        interventions, so its ``pearl_delta`` do-complexity is near-maximal —
+        which is the quantitative form of the RISK-17 vacuity finding.
+
+    Returns
+    -------
+    list of ``(t, nodes, values)`` — empty if ``x_cf`` asserts no action at all
+    (a literal no-op, or a pure mechanism continuation of the factual prefix).
+    """
+    if semantics not in ("pearl_delta", "noiseless_rollout"):
+        raise ValueError(
+            f"unknown semantics {semantics!r}; expected 'pearl_delta' or 'noiseless_rollout'"
+        )
+    x = np.asarray(x, dtype=float)
+    x_cf = np.asarray(x_cf, dtype=float)
+    T, k = x.shape
+    L = mechanism.L
+
+    if float(np.abs(x_cf - x).max()) <= tol:
+        return []
+
+    eps = (
+        abduct_noise(x, mechanism) if semantics == "pearl_delta" else np.zeros((T, k), dtype=float)
+    )
+
+    t0 = derive_intervention_t(x, x_cf, tol=tol)
+    schedule = []
+    for t in range(t0, T):
+        if t == 0:
+            # No prefix to predict from, so an edit to the initial condition is
+            # always a genuine do() — matching is_vacuous_intervention's t0 == 0
+            # branch rather than reading the zero-padded window as a prediction.
+            changed = np.flatnonzero(np.abs(x_cf[t] - x[t]) > tol)
+        else:
+            predicted = mechanism.forward_numpy(lag_window(x_cf, t, L, k)) + eps[t]
+            changed = np.flatnonzero(np.abs(x_cf[t] - predicted) > tol)
+        if changed.size:
+            schedule.append((t, changed, x_cf[t, changed]))
+    return schedule
+
+
+def do_complexity(
+    x: np.ndarray,
+    x_cf: np.ndarray,
+    mechanism,
+    tol: float = INTERVENTION_TOL,
+    semantics: str = "pearl_delta",
+) -> int:
+    """``D`` — how many timesteps ``x_cf`` must declare as ``do()`` to be realisable.
+
+    ``D = len(extract_intervention_schedule(...))``. Report it **beside**
+    ``delta_trajectory``, never instead of it: the two endpoints of the reading
+    are both tautological on their own. Scoring a proposal as a single-slice
+    ``do()`` inflates ``delta_trajectory`` for any method that edits densely
+    (RISK-18); scoring it as "every edited slice is an intervention" makes the
+    oracle reproduce ``x_cf`` exactly, so ``delta_trajectory == 0`` **by
+    construction**. The informative statement is the pair: a causally coherent CF
+    sets a few values and lets the mechanism produce the rest (``D`` small, and
+    ``delta_trajectory`` small in schedule mode *because* the world agrees); a
+    direct edit of the outcome's neighbourhood buys the same
+    ``delta_trajectory`` only by declaring most of the trajectory to be
+    intervened on, which ``D`` makes visible.
+
+    ``D = 0`` is exactly the vacuous case (RISK-17) — the CF differs from the
+    factual but asserts no action anywhere.
+    """
+    return len(extract_intervention_schedule(x, x_cf, mechanism, tol=tol, semantics=semantics))
+
+
 def pns_direction(
     X: np.ndarray,
     CFs: np.ndarray,
@@ -163,6 +320,8 @@ def pns_direction(
     mechanism,
     theta: float,
     target_class: int = 1,
+    schedule: bool = False,
+    label_fn=None,
 ) -> dict:
     """Score one direction (PS *or* PN) of the model-vs-world gap.
 
@@ -179,9 +338,26 @@ def pns_direction(
     Instances where the CF implies **no intervention at all** are excluded, not
     scored 0: as with CF-faith's degeneracy gate, a no-op carries no evidence
     about causal efficacy and must abstain rather than dilute the mean.
+
+    Parameters
+    ----------
+    schedule:
+        ``False`` (default) reads each CF as a single ``do()`` at ``t0``, which
+        is what every committed number was computed with — the default is
+        load-bearing and must stay bit-identical (R7). ``True`` reads the full
+        multi-timestep schedule the CF implies
+        (:func:`extract_intervention_schedule`) and realises all of it. Neither
+        reading is "the" answer; see :func:`do_complexity`. ``D`` is reported in
+        **both** modes, so a single-slice run still exposes how much of the
+        proposal it is declining to model.
+    label_fn:
+        The world's label rule (``benchmarks/labels.py``). Must be the one the
+        config generated with, and the same one ``theta`` was recovered under —
+        ``C`` is meaningless otherwise. ``None`` is the default terminal rule.
     """
     X = np.asarray(X, dtype=float)
     CFs = np.asarray(CFs, dtype=float)
+    label = _resolve_label_fn(label_fn)
     if len(X) != len(CFs):
         raise ValueError(f"X ({len(X)}) and CFs ({len(CFs)}) batch sizes differ")
 
@@ -190,17 +366,27 @@ def pns_direction(
     n_no_int = 0
     oracle_cfs = []
     keep = []
+    d_values = []
 
     for i, (x, x_cf) in enumerate(zip(X, CFs)):
-        t0, nodes, values = extract_intervention(x, x_cf)
-        if nodes.size == 0:
-            n_no_int += 1
-            continue
-        # The world's realisation of *this* intervention: Pearl semantics.
-        x_oracle = structural_counterfactual(x, mechanism, t0, nodes, values, noiseless=False)
+        sched = extract_intervention_schedule(x, x_cf, mechanism)
+        if schedule:
+            if not sched:
+                n_no_int += 1
+                continue
+            # The world's realisation of *the whole proposal*: Pearl semantics.
+            x_oracle = structural_counterfactual_schedule(x, mechanism, sched, noiseless=False)
+        else:
+            t0, nodes, values = extract_intervention(x, x_cf)
+            if nodes.size == 0:
+                n_no_int += 1
+                continue
+            # The world's realisation of *this* intervention: Pearl semantics.
+            x_oracle = structural_counterfactual(x, mechanism, t0, nodes, values, noiseless=False)
+        d_values.append(len(sched))
         oracle_cfs.append(x_oracle)
         keep.append(i)
-        c_hits.append(int(scm_label(x_oracle, theta) == target_class))
+        c_hits.append(int(scm_label(x_oracle, theta, label_fn=label) == target_class))
 
     n_scorable = len(keep)
     if n_scorable == 0:
@@ -215,6 +401,9 @@ def pns_direction(
             "delta_total": nan,
             "delta_trajectory": nan,
             "delta_outcome": nan,
+            "do_complexity_mean": nan,
+            "do_complexity_median": nan,
+            "schedule_mode": bool(schedule),
         }
 
     # Batch the two classifier calls rather than one per instance.
@@ -235,6 +424,9 @@ def pns_direction(
         "delta_total": A - C,
         "delta_trajectory": A - B,
         "delta_outcome": B - C,
+        "do_complexity_mean": float(np.mean(d_values)),
+        "do_complexity_median": float(np.median(d_values)),
+        "schedule_mode": bool(schedule),
     }
 
 
@@ -265,4 +457,9 @@ def pns_from_directions(ps_dir: dict, pn_dir: dict, p_xy: float, p_xpyp: float) 
         "PN_delta_total": pn_dir["delta_total"],
         "PS_n_scorable": ps_dir["n_scorable"],
         "PN_n_scorable": pn_dir["n_scorable"],
+        # Carried through for the same reason PN and PS are: a PNS computed
+        # from proposals with near-maximal do-complexity is not measuring the
+        # same object as one computed from sparse, genuinely causal edits.
+        "PS_do_complexity_mean": ps_dir.get("do_complexity_mean", float("nan")),
+        "PN_do_complexity_mean": pn_dir.get("do_complexity_mean", float("nan")),
     }

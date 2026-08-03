@@ -121,6 +121,8 @@ def build_generator(config: BenchmarkConfig):
             T=config.T,
             N=config.N,
             seed=config.seed,
+            label_fn=config.label_fn,
+            label_params=config.label_params,
         )
     if config.mechanism_type == "mlp":
         nl = dict(config.nonlinear or {})
@@ -134,6 +136,8 @@ def build_generator(config: BenchmarkConfig):
             T=config.T,
             N=config.N,
             seed=config.seed,
+            label_fn=config.label_fn,
+            label_params=config.label_params,
             **nl,
         )
     if config.mechanism_type == "mlp_regime_switch":
@@ -152,6 +156,8 @@ def build_generator(config: BenchmarkConfig):
             T=config.T,
             N=config.N,
             seed=config.seed,
+            label_fn=config.label_fn,
+            label_params=config.label_params,
             hidden=nl.get("hidden", 16),
             switch_frac=nl.get("switch_frac", 0.5),
             regime1=regime1 or None,
@@ -173,6 +179,8 @@ def build_generator(config: BenchmarkConfig):
             T=config.T,
             N=config.N,
             seed=config.seed,
+            label_fn=config.label_fn,
+            label_params=config.label_params,
             hidden=nl.get("hidden", 16),
             n_regimes=nl.get("n_regimes", 3),
             p_stay=nl.get("p_stay", 0.9),

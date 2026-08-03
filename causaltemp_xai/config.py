@@ -19,6 +19,14 @@ regime-switching). See ``docs/archive/m4_ablation_presets_smoke.md`` for the ful
 design, pre-registered expected direction, and smoke-scale preliminary
 finding for each. **No full-scale variant of any of these three presets
 exists or is planned as part of this work.**
+
+Two **label-site presets** are registered for H8c (M2b, 2026-08-03):
+``SMOKE_INTERIOR_LABEL`` and ``FULL_INTERIOR_LABEL``. They vary exactly one
+field from ``SMOKE``/``FULL`` — ``label_fn="interior_threshold"``, which reads
+the label at ``0.6 T`` while the trajectory still runs to ``T``. Their purpose
+is to separate "recourse validity decays in ``T - t0``" from "…decays in
+``t_label - t0``", which are observationally identical under the default
+terminal label rule and therefore make H8 unfalsifiable (RISK-19).
 """
 
 from __future__ import annotations
@@ -42,6 +50,14 @@ class BenchmarkConfig:
     ``spectral_cap``, ``init_gain``, ``activation``) and is ``None`` for the
     linear family. The defaults (``"linear"`` / ``None``) keep every existing
     preset byte-identical — the Stage-1 golden test guards this.
+
+    ``label_fn`` / ``label_params`` select which scalar of the trajectory the
+    binary label thresholds (``benchmarks/labels.py``). The default
+    ``"terminal_threshold"`` is the original hardcoded rule, so every existing
+    preset and every committed ``results/`` row is unchanged. Non-default values
+    exist for one reason (RISK-19): while the label site *is* the trajectory
+    end, "validity decays in ``T - t0``" and "validity decays in
+    ``t_label - t0``" cannot be told apart, and H8 is unfalsifiable.
     """
 
     k: int
@@ -54,6 +70,14 @@ class BenchmarkConfig:
     name: str
     mechanism_type: str = "linear"
     nonlinear: dict | None = None
+    label_fn: str = "terminal_threshold"
+    label_params: dict | None = None
+
+    def label_functional(self):
+        """Resolve :attr:`label_fn` / :attr:`label_params` to a callable object."""
+        from causaltemp_xai.benchmarks.labels import get_label_functional
+
+        return get_label_functional(self.label_fn, self.label_params)
 
     def as_dict(self) -> dict:
         """Return a JSON-serialisable dict of the config (for ``meta.json``)."""
@@ -147,6 +171,49 @@ FULL_NL = BenchmarkConfig(
     name="full_nl",
     mechanism_type="mlp",
     nonlinear=dict(_NL_HYPERPARAMS),
+)
+
+
+# ---------------------------------------------------------------------------
+# M2b label-site presets (H8c) -- de-confounding the horizon result
+# ---------------------------------------------------------------------------
+#
+# Each varies exactly one field from its base preset: `label_fn`. The
+# trajectory, the SCM, the noise and the seed are all unchanged, so a
+# difference in the horizon curve is attributable to the label *site* and
+# nothing else -- which is the whole point (RISK-19, DECISIONS.md 2026-08-03).
+#
+# `interior_threshold` reads channel 0 at `int(0.6 * T)` instead of at `T - 1`,
+# while the trajectory still runs to `T`. So `t_label - t0` is much shorter
+# than `T - t0` at the same `t0`, and H8's two readings -- "decay in T - t0"
+# vs "decay in t_label - t0" -- finally make different predictions.
+
+#: H8c at smoke scale: SMOKE with the label read at 0.6 T.
+SMOKE_INTERIOR_LABEL = BenchmarkConfig(
+    k=5,
+    L=1,
+    sparsity=0.2,
+    noise_type="laplace",
+    T=30,
+    N=500,
+    seed=0,
+    name="smoke_interior_label",
+    label_fn="interior_threshold",
+    label_params={"frac": 0.6},
+)
+
+#: H8c at paper scale: FULL with the label read at 0.6 T (t_label = 60, T = 100).
+FULL_INTERIOR_LABEL = BenchmarkConfig(
+    k=10,
+    L=1,
+    sparsity=0.2,
+    noise_type="laplace",
+    T=100,
+    N=10_000,
+    seed=42,
+    name="full_interior_label",
+    label_fn="interior_threshold",
+    label_params={"frac": 0.6},
 )
 
 
@@ -312,6 +379,8 @@ CONFIGS: dict[str, BenchmarkConfig] = {
     "smoke_nonmonotonic": SMOKE_NONMONOTONIC,
     "smoke_regime": SMOKE_REGIME,
     "smoke_regime_hmm": SMOKE_REGIME_HMM,
+    "smoke_interior_label": SMOKE_INTERIOR_LABEL,
+    "full_interior_label": FULL_INTERIOR_LABEL,
 }
 
 
@@ -345,6 +414,8 @@ def shifted_config(
         name=name or f"{base.name}_shift",
         mechanism_type=base.mechanism_type,
         nonlinear=dict(base.nonlinear) if base.nonlinear is not None else None,
+        label_fn=base.label_fn,
+        label_params=dict(base.label_params) if base.label_params is not None else None,
     )
 
 
@@ -398,6 +469,8 @@ def seeded_variant(
         name=name or f"{base.name}_seed{seed}",
         mechanism_type=base.mechanism_type,
         nonlinear=dict(base.nonlinear) if base.nonlinear is not None else None,
+        label_fn=base.label_fn,
+        label_params=dict(base.label_params) if base.label_params is not None else None,
     )
 
 
@@ -409,7 +482,8 @@ def get_config(name: str) -> BenchmarkConfig:
     name:
         One of ``"smoke"``, ``"full"``, ``"full_sparse"``, ``"smoke_nl"``,
         ``"full_nl"``, ``"smoke_gaussian"``, ``"smoke_nonmonotonic"``,
-        ``"smoke_regime"``.
+        ``"smoke_regime"``, ``"smoke_regime_hmm"``,
+        ``"smoke_interior_label"``, ``"full_interior_label"``.
 
     Raises
     ------
