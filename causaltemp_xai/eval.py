@@ -29,7 +29,7 @@ from causaltemp_xai.metrics.axis_c import (
     validity,
 )
 from causaltemp_xai.metrics.cf_faith import CFfaith
-from causaltemp_xai.metrics.pns import do_complexity
+from causaltemp_xai.metrics.pns import do_complexity, do_complexity_stability
 from causaltemp_xai.scm.intervention import derive_intervention_t, is_vacuous_intervention
 
 
@@ -152,6 +152,7 @@ def evaluate_method(
     r_hard, r_soft, p_hard, p_soft = [], [], [], []
     vacuous = []
     do_c = []
+    do_stab = []
 
     for x, x_cf in zip(X_orig, CFs):
         prox_l1.append(proximity(x, x_cf, norm="l1"))
@@ -180,6 +181,8 @@ def evaluate_method(
         # is the oracle the PNS audit scores against, so the two agree on what
         # "the method's intervention" means. D == 0 is the vacuous case above.
         do_c.append(do_complexity(x, x_cf, mechanism))
+        # RISK-20: is this row's D threshold-independent? 1.0 = yes.
+        do_stab.append(do_complexity_stability(x, x_cf, mechanism))
 
     ood_scores = np.atleast_1d(ood_plausibility(X_train, CFs))
     sparsity_mean = float(np.mean(spars))
@@ -233,6 +236,10 @@ def evaluate_method(
         # D >> 1 is not being scored on the intervention it actually made.
         "do_complexity_mean": float(np.mean(do_c)) if len(CFs) else float("nan"),
         "do_complexity_median": float(np.median(do_c)) if len(CFs) else float("nan"),
+        # Threshold-stability of the D column above (RISK-20). 1.0 means D is
+        # threshold-independent for this method; a large value means D must not
+        # be cited as a precise value on this row, only as a group placement.
+        "do_complexity_stability": _nanmean(do_stab),
         # Joint faithfulness-validity criterion (anti-gameability, M1).
         # NaN-degenerate instances count as 0 here (not faithful-and-valid):
         # this is a fraction-of-batch criterion, so an instance that cannot be

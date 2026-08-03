@@ -35,8 +35,61 @@ import numpy as np
 #: floating-point reconstruction noise linearly in the pre-window area.
 INTERVENTION_TOL = 1e-3
 
+#: Scale-**relative** alternative: a per-channel threshold of this fraction of
+#: the channel's own factual standard deviation (RISK-20, 2026-08-03).
+#:
+#: The absolute constant above is incoherent across channels, because the
+#: channels are not on one scale: per-channel standard deviations differ by up
+#: to **5.5x within a single config** (``smoke`` 0.144-0.791, ``full``
+#: 0.178-0.579, ``full_nl`` 0.148-0.215). A fixed ``1e-3`` is therefore between
+#: 0.13% and 0.69% of a channel's natural variation depending which channel it
+#: lands on — so "changed" means something different per channel and per config.
+#: That is what made ``CftsCels``'s do-complexity swing 1.0 -> 3.1 -> 13.2 across
+#: three tolerance decades.
+#:
+#: 0.5% is chosen to sit in the *middle* of the absolute default's current
+#: effective range, so adopting it is a recalibration rather than a tightening.
+#: It is not tuned to any method's score.
+#:
+#: **Opt-in.** Every consumer defaults to ``rel_tol=None`` (absolute), so this
+#: changes no committed number. Flipping the default is a separate decision
+#: (``DECISIONS.md`` 2026-08-03).
+RELATIVE_INTERVENTION_TOL = 0.005
 
-def derive_intervention_t(x: np.ndarray, x_cf: np.ndarray, tol: float = INTERVENTION_TOL) -> int:
+#: Floor on a per-channel threshold, so a (near-)constant channel does not get a
+#: zero tolerance and report float noise as an intervention.
+_MIN_CHANNEL_TOL = 1e-12
+
+
+def channel_tolerances(x: np.ndarray, rel_tol: float = RELATIVE_INTERVENTION_TOL) -> np.ndarray:
+    """Per-channel "is this changed?" thresholds, scaled to the factual.
+
+    Returns shape ``(k,)``: ``rel_tol * std(x[:, j])`` over the trajectory's own
+    timesteps, floored at :data:`_MIN_CHANNEL_TOL`.
+
+    Scaling to the **factual** ``x`` rather than the counterfactual is
+    deliberate: the threshold must not move when the CF moves, or a method that
+    edits more would grant itself a looser definition of "changed".
+    """
+    x = np.asarray(x, dtype=float)
+    return np.maximum(rel_tol * x.std(axis=0), _MIN_CHANNEL_TOL)
+
+
+def _resolve_tol(x: np.ndarray, tol: float, rel_tol: float | None):
+    """Scalar ``tol`` (absolute) or a ``(k,)`` array of per-channel thresholds.
+
+    Both broadcast against a ``(k,)`` deviation row, so callers compare the same
+    way in either mode.
+    """
+    return tol if rel_tol is None else channel_tolerances(x, rel_tol)
+
+
+def derive_intervention_t(
+    x: np.ndarray,
+    x_cf: np.ndarray,
+    tol: float = INTERVENTION_TOL,
+    rel_tol: float | None = None,
+) -> int:
     """Return the smallest ``t`` such that ``max_j |x_cf[t,j] - x[t,j]| > tol``.
 
     This is the benchmark's uniform heuristic: all CF methods (Wachter,
@@ -48,22 +101,33 @@ def derive_intervention_t(x: np.ndarray, x_cf: np.ndarray, tol: float = INTERVEN
     x, x_cf:
         Original and counterfactual trajectories, shape ``(T, k)``.
     tol:
-        Per-element threshold below which a timestep is considered unchanged
-        (default :data:`INTERVENTION_TOL` — shared with the CF-faith
-        retroactive gate; see the constant's docstring).
+        Absolute per-element threshold below which a timestep is considered
+        unchanged (default :data:`INTERVENTION_TOL` — shared with the CF-faith
+        retroactive gate; see the constant's docstring). Ignored when
+        ``rel_tol`` is given.
+    rel_tol:
+        If given, use a **per-channel** threshold of ``rel_tol * std(x[:, j])``
+        instead (:func:`channel_tolerances`, RISK-20). ``None`` (default)
+        preserves the absolute behaviour byte-for-byte.
 
     Returns
     -------
     int
         The first changed timestep. If no timestep differs (the CF equals the
-        original within ``tol``), returns ``T - 1`` (degenerate; CF == original).
+        original within tolerance), returns ``T - 1`` (degenerate; CF == original).
     """
     x = np.asarray(x, dtype=float)
     x_cf = np.asarray(x_cf, dtype=float)
     T = x.shape[0]
-    # Max absolute deviation per timestep (over the feature axis/axes).
-    per_t = np.abs(x_cf - x).reshape(T, -1).max(axis=1)
-    changed = np.flatnonzero(per_t > tol)
+    dev = np.abs(x_cf - x).reshape(T, -1)
+    if rel_tol is None:
+        # Max absolute deviation per timestep (over the feature axis/axes).
+        changed = np.flatnonzero(dev.max(axis=1) > tol)
+    else:
+        # Per-channel thresholds: a timestep is changed if ANY channel exceeds
+        # its own threshold. Equivalent in form to the max-vs-scalar test, but
+        # each channel is compared on its own scale.
+        changed = np.flatnonzero((dev > channel_tolerances(x, rel_tol)).any(axis=1))
     if changed.size == 0:
         return T - 1
     return int(changed[0])
@@ -75,6 +139,7 @@ def is_vacuous_intervention(
     mechanism,
     t0: int | None = None,
     tol: float = INTERVENTION_TOL,
+    rel_tol: float | None = None,
 ) -> bool:
     """Return True if ``x_cf`` differs from ``x`` but contains no ``do()``.
 
@@ -142,15 +207,16 @@ def is_vacuous_intervention(
     x_cf = np.asarray(x_cf, dtype=float)
     k = x.shape[1]
 
+    thr = _resolve_tol(x, tol, rel_tol)
     if t0 is None:
-        t0 = derive_intervention_t(x, x_cf, tol=tol)
+        t0 = derive_intervention_t(x, x_cf, tol=tol, rel_tol=rel_tol)
 
     # Literal no-op: nothing was set, trivially vacuous.
-    if float(np.abs(x_cf - x).max()) <= tol:
+    if bool(np.all(np.abs(x_cf - x) <= thr)):
         return True
     # No prefix to predict t0 from — an initial-condition edit is a real do().
     if t0 <= 0:
         return False
 
     predicted = mechanism.forward_numpy(lag_window(x_cf, t0, mechanism.L, k))
-    return float(np.abs(x_cf[t0] - predicted).max()) <= tol
+    return bool(np.all(np.abs(x_cf[t0] - predicted) <= thr))

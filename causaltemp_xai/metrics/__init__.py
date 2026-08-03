@@ -20,6 +20,7 @@ from .axis_c import (
 from .cf_faith import CFfaith
 from .pns import (
     do_complexity,
+    do_complexity_stability,
     extract_intervention,
     extract_intervention_schedule,
     pns_direction,
@@ -40,6 +41,7 @@ __all__ = [
     "compute_axis_c",
     "concept_stability",
     "do_complexity",
+    "do_complexity_stability",
     "extract_intervention",
     "extract_intervention_schedule",
     "graph_auc",

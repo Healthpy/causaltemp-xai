@@ -34,6 +34,7 @@ from causaltemp_xai.benchmarks.structural_cf import (
 )
 from causaltemp_xai.metrics.pns import (
     do_complexity,
+    do_complexity_stability,
     extract_intervention_schedule,
     pns_direction,
     scm_label,
@@ -366,3 +367,46 @@ class TestScheduleValidation:
         a = structural_counterfactual_schedule(x, mech, [(8, 1, 3.0), (14, 2, -2.5)])
         b = structural_counterfactual_schedule(x, mech, [(14, 2, -2.5), (8, 1, 3.0)])
         assert np.array_equal(a, b)
+
+
+class TestThresholdStabilityDiagnostic:
+    """`D` is threshold-stable iff the method's actions are bimodal (RISK-20).
+
+    The stability ratio exists because rescaling the threshold does *not* fix a
+    method whose edit mass sits inside the threshold band — measured, not
+    assumed: switching to a per-channel relative tolerance left CftsCels's swing
+    at 12.7x against 13.2x absolute.
+    """
+
+    def test_bimodal_cf_is_threshold_independent(self):
+        x, mech = _make_scm()
+        # One large, unambiguous do(): far above any threshold in the sweep.
+        x_cf = structural_counterfactual(x, mech, t0=10, node=1, value=3.0, noiseless=False)
+        assert do_complexity_stability(x, x_cf, mech) == pytest.approx(1.0)
+
+    def test_edits_inside_the_threshold_band_are_flagged(self):
+        """A CF whose actions sit *at* the tolerance must not look stable."""
+        x, mech = _make_scm()
+        x_cf = x.copy()
+        rng = np.random.default_rng(3)
+        # Deviations spread across the swept decades (1e-4 .. 1e-2).
+        for t in range(6, T):
+            x_cf[t, 0] += 10 ** rng.uniform(-4, -2)
+        assert do_complexity_stability(x, x_cf, mech) > 2.0
+
+    def test_stability_is_reported_alongside_D(self):
+        from causaltemp_xai.eval import evaluate_method
+
+        x, mech = _make_scm()
+        X = np.stack([x, x])
+        CFs = np.stack(
+            [structural_counterfactual(x, mech, 10, 1, 3.0, noiseless=False) for _ in range(2)]
+        )
+
+        class _Clf:
+            def predict(self, Z):
+                return np.ones(len(np.atleast_3d(Z)), dtype=int)
+
+        out = evaluate_method(_Clf(), X, CFs, X, np.zeros((K, K, 1)), mech, target_class=1)
+        assert "do_complexity_stability" in out
+        assert out["do_complexity_stability"] == pytest.approx(1.0)

@@ -1,7 +1,7 @@
 {
   "seed": 0,
   "config": "smoke_seed0",
-  "git_commit": "221c17fb184662a8de575d19e313d74d8e027cd4",
+  "git_commit": "c55c576a4b17cffb3b1da9c2f7b68244d7fbef9c",
   "git_dirty": true,
   "n": 20,
   "validity": 1.0,
@@ -22,6 +22,7 @@
   "frac_vacuous": 0.0,
   "do_complexity_mean": 30.0,
   "do_complexity_median": 30.0,
+  "do_complexity_stability": 1.0,
   "cf_faith_rollout_hard_valid": 0.0,
   "cf_faith_pearl_hard_valid": 0.0,
   "method": "CftsCOMTE",

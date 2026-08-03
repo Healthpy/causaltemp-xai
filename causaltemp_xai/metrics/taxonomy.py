@@ -90,6 +90,7 @@ AXIS_METRICS: dict[str, tuple[str, ...]] = {
         "delta_outcome",
         "do_complexity_mean",
         "do_complexity_median",
+        "do_complexity_stability",
     ),
 }
 

@@ -96,10 +96,15 @@ from causaltemp_xai.benchmarks.structural_cf import (
     structural_counterfactual,
     structural_counterfactual_schedule,
 )
-from causaltemp_xai.scm.intervention import INTERVENTION_TOL, derive_intervention_t
+from causaltemp_xai.scm.intervention import (
+    INTERVENTION_TOL,
+    channel_tolerances,
+    derive_intervention_t,
+)
 
 __all__ = [
     "do_complexity",
+    "do_complexity_stability",
     "extract_intervention",
     "extract_intervention_schedule",
     "pns_direction",
@@ -179,7 +184,9 @@ def scm_label(x: np.ndarray, theta: float, label_fn=None) -> int:
     return int(_resolve_label_fn(label_fn).latent_one(x) > theta)
 
 
-def extract_intervention(x: np.ndarray, x_cf: np.ndarray, tol: float = INTERVENTION_TOL):
+def extract_intervention(
+    x: np.ndarray, x_cf: np.ndarray, tol: float = INTERVENTION_TOL, rel_tol: float | None = None
+):
     """``(t0, nodes, values)`` for the intervention a CF implies.
 
     ``t0`` comes from :func:`derive_intervention_t` — the benchmark's uniform
@@ -195,8 +202,9 @@ def extract_intervention(x: np.ndarray, x_cf: np.ndarray, tol: float = INTERVENT
     """
     x = np.asarray(x, dtype=float)
     x_cf = np.asarray(x_cf, dtype=float)
-    t0 = derive_intervention_t(x, x_cf, tol=tol)
-    changed = np.flatnonzero(np.abs(x_cf[t0] - x[t0]) > tol)
+    thr = tol if rel_tol is None else channel_tolerances(x, rel_tol)
+    t0 = derive_intervention_t(x, x_cf, tol=tol, rel_tol=rel_tol)
+    changed = np.flatnonzero(np.abs(x_cf[t0] - x[t0]) > thr)
     return t0, changed, x_cf[t0, changed]
 
 
@@ -206,6 +214,7 @@ def extract_intervention_schedule(
     mechanism,
     tol: float = INTERVENTION_TOL,
     semantics: str = "pearl_delta",
+    rel_tol: float | None = None,
 ):
     """Every timestep ``x_cf`` sets by **action** rather than by continuation.
 
@@ -262,24 +271,25 @@ def extract_intervention_schedule(
     T, k = x.shape
     L = mechanism.L
 
-    if float(np.abs(x_cf - x).max()) <= tol:
+    thr = tol if rel_tol is None else channel_tolerances(x, rel_tol)
+    if bool(np.all(np.abs(x_cf - x) <= thr)):
         return []
 
     eps = (
         abduct_noise(x, mechanism) if semantics == "pearl_delta" else np.zeros((T, k), dtype=float)
     )
 
-    t0 = derive_intervention_t(x, x_cf, tol=tol)
+    t0 = derive_intervention_t(x, x_cf, tol=tol, rel_tol=rel_tol)
     schedule = []
     for t in range(t0, T):
         if t == 0:
             # No prefix to predict from, so an edit to the initial condition is
             # always a genuine do() — matching is_vacuous_intervention's t0 == 0
             # branch rather than reading the zero-padded window as a prediction.
-            changed = np.flatnonzero(np.abs(x_cf[t] - x[t]) > tol)
+            changed = np.flatnonzero(np.abs(x_cf[t] - x[t]) > thr)
         else:
             predicted = mechanism.forward_numpy(lag_window(x_cf, t, L, k)) + eps[t]
-            changed = np.flatnonzero(np.abs(x_cf[t] - predicted) > tol)
+            changed = np.flatnonzero(np.abs(x_cf[t] - predicted) > thr)
         if changed.size:
             schedule.append((t, changed, x_cf[t, changed]))
     return schedule
@@ -291,6 +301,7 @@ def do_complexity(
     mechanism,
     tol: float = INTERVENTION_TOL,
     semantics: str = "pearl_delta",
+    rel_tol: float | None = None,
 ) -> int:
     """``D`` — how many timesteps ``x_cf`` must declare as ``do()`` to be realisable.
 
@@ -310,7 +321,67 @@ def do_complexity(
     ``D = 0`` is exactly the vacuous case (RISK-17) — the CF differs from the
     factual but asserts no action anywhere.
     """
-    return len(extract_intervention_schedule(x, x_cf, mechanism, tol=tol, semantics=semantics))
+    return len(
+        extract_intervention_schedule(
+            x, x_cf, mechanism, tol=tol, semantics=semantics, rel_tol=rel_tol
+        )
+    )
+
+
+def do_complexity_stability(
+    x: np.ndarray,
+    x_cf: np.ndarray,
+    mechanism,
+    tol: float = INTERVENTION_TOL,
+    semantics: str = "pearl_delta",
+    decades: float = 1.0,
+) -> float:
+    """How much ``D`` moves when the threshold moves a decade either way.
+
+    Returns ``max(D) / max(min(D), 1)`` over ``tol`` swept across
+    ``[tol / 10**decades, tol * 10**decades]``. **1.0 means the reading is
+    threshold-independent**; large values mean it is not, and that row's ``D``
+    must not be cited as a precise value.
+
+    Returns **NaN**, not 0, when the CF asserts no action at any tolerance in
+    the sweep: there is no reading to be stable or unstable about, so the
+    instance abstains rather than diluting the batch mean toward a spurious
+    "more stable than 1.0". (That the ratio is bounded below by 1 is what makes
+    a sub-1.0 batch mean a detectable bug rather than a plausible number — it
+    was one, caught on `CftsConfeti` at 0.54.) The ``D = 0`` population is
+    already reported as ``frac_vacuous``.
+
+    **Why this rather than a better threshold (RISK-20).** ``D`` was observed to
+    swing 13x for ``CftsCels`` across three tolerance decades while four other
+    methods did not move at all. The original diagnosis — that an *absolute*
+    threshold is incoherent across channels of differing scale — was **wrong**:
+    switching to a per-channel relative threshold leaves the swing at 12.7x.
+    The measured cause is the method's own edit-magnitude distribution. Every
+    stable method is **bimodal**: its per-timestep deviations from the mechanism
+    continuation are either far above the threshold or at float noise, with a
+    gap where the threshold sits, so any threshold in that gap agrees.
+    ``CftsCels`` is the only one with ~12% of its action mass *inside* the
+    threshold band, and no rescaling moves mass out of a band it straddles.
+
+    So threshold sensitivity is a property of the **method**, not a defect of
+    the metric, and the honest response is to publish it beside ``D`` rather
+    than to tune a constant until one method looks stable. This is the same
+    idiom as ``frac_vacuous`` and ``frac_degenerate``: a row that cannot be read
+    at face value says so on its own face.
+    """
+    tols = (tol / 10**decades, tol, tol * 10**decades)
+    ds = [
+        len(extract_intervention_schedule(x, x_cf, mechanism, tol=t, semantics=semantics))
+        for t in tols
+    ]
+    if max(ds) == 0:
+        return float("nan")
+    # Floor the denominator at 1 rather than dividing by zero. min(ds) == 0 just
+    # means a loose threshold missed a single small action; that is a ratio of
+    # 1 action to 0, not an infinitely unstable reading, and `inf` would rank a
+    # clean single-do() method as less stable than one with 12% of its mass in
+    # the threshold band. The floor keeps the statistic continuous.
+    return float(max(ds) / max(min(ds), 1))
 
 
 def pns_direction(
