@@ -152,7 +152,8 @@ def run(
     # classifier: ``scm_label`` reads the *true* SCM trajectory, not the model.
     X_all = np.concatenate([data[f"X_{s}"] for s in ("train", "val", "test")])
     Y_all = np.concatenate([data[f"Y_{s}"] for s in ("train", "val", "test")])
-    theta = recover_label_threshold(X_all, Y_all)
+    label = cfg.label_functional()
+    theta = recover_label_threshold(X_all, Y_all, label_fn=label)
 
     res_dir = config_dir(cfg.name, "lstm")
     x_sel_path = res_dir / "cf" / "X_sel.npy"
@@ -173,14 +174,20 @@ def run(
 
     T = X_sel.shape[1]
     horizons = resolve_horizons(T, horizons_spec)
+    t_label = label.label_site(T)
     print(f"[08] config={cfg.name} T={T} n_cf={len(X_sel)} " f"horizons={horizons} (t0 = T - h)")
     print(f"[08] label threshold theta={theta:+.6f} (world-side, for the PS C term)")
+    # H8c (RISK-19): on the default terminal rule t_label == T-1 and the two
+    # distances coincide, which is exactly why both are printed -- a horizon
+    # curve is only attributable to `T - t0` if `t_label - t0` is also shown.
+    print(f"[08] label functional={cfg.label_fn} site t_label={t_label} of T={T}")
 
     out_root = res_dir / "horizon"
     all_rows, summary = [], []
 
     hdr = (
-        f"{'method':<14}{'h':>5}{'t0':>5}{'valid':>8}{'roll_h':>8}{'pearl_h':>8}{'vac':>7}"
+        f"{'method':<14}{'h':>5}{'t0':>5}{'t_l-t0':>8}"
+        f"{'valid':>8}{'roll_h':>8}{'pearl_h':>8}{'vac':>7}"
         f"{'A':>7}{'B':>7}{'C':>7}{'d_tot':>8}{'d_traj':>8}{'d_out':>8}{'n_ps':>6}"
     )
     print()
@@ -202,11 +209,15 @@ def run(
             for r in rows:
                 r["horizon"] = h
                 r["t0"] = t0
+                r["t_label"] = t_label
+                r["label_horizon"] = t_label - t0
             all_rows.extend(rows)
 
             agg = aggregate_method_row(cfg.name, "lstm", name, rows)
             agg["horizon"] = h
             agg["t0"] = t0
+            agg["t_label"] = t_label
+            agg["label_horizon"] = t_label - t0
 
             # PS direction only. X_sel is the flip-candidate set (non-target ->
             # target), so this estimand is *sufficiency*, not PNS. The PN
@@ -225,7 +236,7 @@ def run(
                 )
 
             print(
-                f"{name:<14}{h:>5}{t0:>5}{_f(agg['validity'])}"
+                f"{name:<14}{h:>5}{t0:>5}{t_label - t0:>8}{_f(agg['validity'])}"
                 f"{_f(agg['cf_faith_rollout_hard'])}{_f(agg['cf_faith_pearl_hard'])}"
                 f"{_f(agg.get('frac_vacuous'), 7)}"
                 f"{_f(ps['A_model_proposed'], 7)}{_f(ps['B_model_oracle'], 7)}"

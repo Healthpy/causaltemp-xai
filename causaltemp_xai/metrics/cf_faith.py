@@ -55,9 +55,11 @@ class CFfaith:
     ------
     * **hard** – 1 if no retroactive changes *and* the simulated residual is
       below ``tol``; 0 otherwise.
-    * **soft** – ``exp(-residual / scale)`` in ``[0, 1]``, where ``scale``
-      normalises by the number of features; always 0 when retroactive changes
-      are present.
+    * **soft** – ``exp(-residual / scale)`` in ``[0, 1]``. ``residual`` is
+      already a *mean* over the post-intervention elements, so ``scale`` sets
+      the decay length of the Laplace kernel and does **not** normalise by the
+      number of features (the default ``scale=1.0`` is therefore a no-op).
+      Always 0 when retroactive changes are present.
 
     Degenerate case (``intervention_t >= T - 1``)
     --------------------------------------------
@@ -70,7 +72,8 @@ class CFfaith:
     arbitrary garbage confined to the last timestep both scored a perfect 1.0
     under both semantics, while the same garbage one step earlier correctly
     scored 0. Callers must aggregate with ``np.nanmean`` and report the
-    degenerate fraction alongside (see :func:`cf_faith_batch`), so a method
+    degenerate fraction alongside (see
+    :func:`~causaltemp_xai.eval.evaluate_method`), so a method
     that games the boundary by only ever editing the last step stays visible
     rather than scoring a free 1.0.
     """

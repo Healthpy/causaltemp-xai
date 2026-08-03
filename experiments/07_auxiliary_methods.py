@@ -679,7 +679,14 @@ def _generate_pn_cfs(cfg, out_dir, clf, data, n_cf: int, methods_filter=None):
     return X_sel, cfs
 
 
-def run_pns(cfg, out_dir, n_cf: int = 40, with_pn: bool = False, methods_filter=None) -> None:
+def run_pns(
+    cfg,
+    out_dir,
+    n_cf: int = 40,
+    with_pn: bool = False,
+    methods_filter=None,
+    schedule: bool = False,
+) -> None:
     """Necessity/sufficiency gap: the model's causal claim vs the world's.
 
     The **PS** direction reuses the counterfactual arrays Phase 03 already
@@ -690,6 +697,12 @@ def run_pns(cfg, out_dir, n_cf: int = 40, with_pn: bool = False, methods_filter=
     Without ``--with-pn`` this reports PS only and writes ``PN_world: null``;
     a combined PNS is **never** synthesised from a missing term (R3 — on
     flip-candidates alone the estimand is sufficiency, not PNS).
+
+    ``schedule=True`` audits each CF against the **whole** multi-timestep
+    intervention it implies rather than the single ``do()`` at ``t0``
+    (RISK-18), and writes to ``pns_schedule.json`` so the default-mode file —
+    which every committed number was produced with — is never clobbered.
+    ``do_complexity`` is reported in both modes.
 
     Writes ``pns.json`` under the config's classifier directory.
     """
@@ -704,7 +717,8 @@ def run_pns(cfg, out_dir, n_cf: int = 40, with_pn: bool = False, methods_filter=
     mech = data["mechanism"]
     X_all = np.concatenate([data[f"X_{s}"] for s in ("train", "val", "test")])
     Y_all = np.concatenate([data[f"Y_{s}"] for s in ("train", "val", "test")])
-    theta = recover_label_threshold(X_all, Y_all)
+    label = cfg.label_functional()
+    theta = recover_label_threshold(X_all, Y_all, label_fn=label)
 
     res_dir = config_dir(cfg.name, "lstm")
     cf_dir = res_dir / "cf"
@@ -723,20 +737,39 @@ def run_pns(cfg, out_dir, n_cf: int = 40, with_pn: bool = False, methods_filter=
                 f"     {name:14s} A={fmt(out['A_model_proposed'])} "
                 f"B={fmt(out['B_model_oracle'])} C={fmt(out['C_world_oracle'])} | "
                 f"d_total={fmt(out['delta_total'])} d_traj={fmt(out['delta_trajectory'])} "
-                f"d_out={fmt(out['delta_outcome'])} (n={out['n_scorable']}/{out['n']})"
+                f"d_out={fmt(out['delta_outcome'])} "
+                f"D={out['do_complexity_mean']:.1f} (n={out['n_scorable']}/{out['n']})"
             )
 
-    print(f"[07] PNS on '{cfg.name}' -- theta={theta:+.6f}")
+    T = X_all.shape[1]
+    print(
+        f"[07] PNS on '{cfg.name}' -- theta={theta:+.6f} "
+        f"label={cfg.label_fn}@t={label.label_site(T)} of T={T} "
+        f"mode={'schedule' if schedule else 'single-slice'}"
+    )
     ps_rows = {}
     for cf_path in sorted(cf_dir.glob("X_cf_*.npy")):
         name = cf_path.stem[len("X_cf_") :]
-        ps_rows[name] = pns_direction(X_sel, np.load(cf_path), clf, mech, theta, target_class=1)
+        ps_rows[name] = pns_direction(
+            X_sel,
+            np.load(cf_path),
+            clf,
+            mech,
+            theta,
+            target_class=1,
+            schedule=schedule,
+            label_fn=label,
+        )
     _report("PS direction (sufficiency): non-target -> target", ps_rows)
 
     payload = {
         "seed": cfg.seed,
         "config": cfg.name,
         "label_threshold": theta,
+        "label_fn": cfg.label_fn,
+        "label_site": label.label_site(T),
+        "T": int(T),
+        "schedule_mode": bool(schedule),
         "PS": ps_rows,
     }
 
@@ -752,7 +785,16 @@ def run_pns(cfg, out_dir, n_cf: int = 40, with_pn: bool = False, methods_filter=
     else:
         X_sel_pn, pn_cfs = _generate_pn_cfs(cfg, out_dir, clf, data, n_cf, methods_filter)
         pn_rows = {
-            name: pns_direction(X_sel_pn, arr, clf, mech, theta, target_class=0)
+            name: pns_direction(
+                X_sel_pn,
+                arr,
+                clf,
+                mech,
+                theta,
+                target_class=0,
+                schedule=schedule,
+                label_fn=label,
+            )
             for name, arr in sorted(pn_cfs.items())
         }
         _report("PN direction (necessity): target -> non-target", pn_rows)
@@ -760,7 +802,7 @@ def run_pns(cfg, out_dir, n_cf: int = 40, with_pn: bool = False, methods_filter=
         # Population weights for PNS = P(x,y)*PN + P(x',y')*PS, taken from the
         # *world's* labels (this is a world-side quantity, so the classifier's
         # opinion of the class balance is not the right weight).
-        world_y = np.array([scm_label(x, theta) for x in X_all])
+        world_y = np.array([scm_label(x, theta, label_fn=label) for x in X_all])
         p_xy = float((world_y == 1).mean())
         p_xpyp = float(1.0 - p_xy)
 
@@ -777,8 +819,9 @@ def run_pns(cfg, out_dir, n_cf: int = 40, with_pn: bool = False, methods_filter=
                 f"   | d_total PS={fmt(c['PS_delta_total'])} PN={fmt(c['PN_delta_total'])}"
             )
 
-    dump_json(res_dir / "pns.json", payload)
-    print(f"[07] wrote {res_dir / 'pns.json'}")
+    fname = "pns_schedule.json" if schedule else "pns.json"
+    dump_json(res_dir / fname, payload)
+    print(f"[07] wrote {res_dir / fname}")
 
 
 def run(
@@ -792,6 +835,7 @@ def run(
     seed: int | None = None,
     with_pn: bool = False,
     methods_filter=None,
+    schedule: bool = False,
 ) -> None:
     """Dispatch to the auxiliary-method family selected by ``method``."""
     cfg = get_config(config_name)
@@ -813,7 +857,14 @@ def run(
     elif method == "ivae":
         run_ivae(cfg, out_dir, epochs=n_epochs)
     elif method == "pns":
-        run_pns(cfg, out_dir, n_cf=n_cf, with_pn=with_pn, methods_filter=methods_filter)
+        run_pns(
+            cfg,
+            out_dir,
+            n_cf=n_cf,
+            with_pn=with_pn,
+            methods_filter=methods_filter,
+            schedule=schedule,
+        )
     else:
         raise SystemExit(
             f"[07] unknown --method {method!r}; use one of "
@@ -868,6 +919,13 @@ def main(argv=None) -> int:
         "cached under cf_pn/ and reused.",
     )
     parser.add_argument(
+        "--schedule",
+        action="store_true",
+        help="pns only: audit each CF against the whole multi-timestep "
+        "intervention it implies rather than the single do() at t0 (RISK-18). "
+        "Writes pns_schedule.json; the default-mode file is left alone.",
+    )
+    parser.add_argument(
         "--sweep",
         action="store_true",
         help="also compute the graph-quality sweep (graph_error across a "
@@ -892,6 +950,7 @@ def main(argv=None) -> int:
         seed=args.seed,
         with_pn=args.with_pn,
         methods_filter=args.methods,
+        schedule=args.schedule,
     )
     return 0
 

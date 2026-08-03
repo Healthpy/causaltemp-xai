@@ -63,6 +63,7 @@ from __future__ import annotations
 import argparse
 import csv
 import importlib
+import json
 import sys
 import warnings
 from pathlib import Path
@@ -403,6 +404,96 @@ def _add_seeds_args(p) -> None:
     p.add_argument("--patience", type=int, default=10)
 
 
+# ---------------------------------------------------------------------------
+# Report 3: PNS pooled across seeds, single-slice vs schedule reading (M2b)
+# ---------------------------------------------------------------------------
+
+#: Columns pooled across seeds for the PNS table. `delta_trajectory` is
+#: included but carries no information in schedule mode (it is 0 by
+#: construction there) — it is reported precisely so that the reader can see
+#: that, rather than being shown only the reading that flatters the metric.
+_PNS_COLUMNS = (
+    "A_model_proposed",
+    "B_model_oracle",
+    "C_world_oracle",
+    "delta_total",
+    "delta_trajectory",
+    "delta_outcome",
+    "do_complexity_mean",
+)
+
+
+def run_pns_report(args) -> None:
+    """Pool ``pns.json`` / ``pns_schedule.json`` across seeds with bootstrap CIs.
+
+    The two readings are printed **side by side** on purpose. Neither is "the"
+    answer: the single-slice reading inflates ``delta_trajectory`` for any
+    method that edits densely, and the schedule reading drives it to 0 by
+    construction (RISK-18). What discriminates the methods is ``D`` — how many
+    timesteps the proposal must declare as ``do()`` before the mechanism can
+    produce it — read alongside ``delta_outcome``, which the schedule reading
+    leaves intact.
+    """
+    from causaltemp_xai.stats import bootstrap_ci
+
+    results_dir = Path(args.results_dir)
+    seeds = args.seeds
+    rows = []
+
+    for mode, fname in (("single_slice", "pns.json"), ("schedule", "pns_schedule.json")):
+        per_method: dict[str, dict[str, list]] = {}
+        for seed in seeds:
+            path = results_dir / f"{args.config}_seed{seed}" / "lstm" / fname
+            if not path.exists():
+                print(f"[06] missing {path} — skipping")
+                continue
+            payload = json.loads(path.read_text())
+            for method, out in payload.get("PS", {}).items():
+                slot = per_method.setdefault(method, {c: [] for c in _PNS_COLUMNS})
+                for col in _PNS_COLUMNS:
+                    slot[col].append(out.get(col, float("nan")))
+        for method, cols in sorted(per_method.items()):
+            row = {"config": args.config, "mode": mode, "method": method, "n_seeds": len(seeds)}
+            for col, vals in cols.items():
+                clean = [v for v in vals if v == v]
+                if not clean:
+                    row[col] = float("nan")
+                    row[f"{col}_lo"] = row[f"{col}_hi"] = float("nan")
+                    continue
+                res = bootstrap_ci(clean, n_boot=args.n_boot)
+                row[col] = res.mean
+                row[f"{col}_lo"], row[f"{col}_hi"] = res.ci_lo, res.ci_hi
+            rows.append(row)
+
+    if not rows:
+        raise SystemExit(f"[06] no PNS results found for {args.config!r} under {results_dir}")
+
+    out_path = TABLES_DIR / f"table_pns_do_complexity_{args.config}.csv"
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(out_path, "w", newline="", encoding="utf-8") as fh:
+        writer = csv.DictWriter(fh, fieldnames=list(rows[0]))
+        writer.writeheader()
+        writer.writerows(rows)
+
+    print(f"[06] PNS pooled over {len(seeds)} seeds — {args.config}")
+    print(f"{'mode':<13} {'method':<14} {'A':>6} {'C':>6} {'d_total':>8} {'d_traj':>7} {'D':>7}")
+    for r in rows:
+        fmt = lambda v: "  nan" if v != v else f"{v:+.2f}"  # noqa: E731
+        print(
+            f"{r['mode']:<13} {r['method']:<14} {fmt(r['A_model_proposed']):>6} "
+            f"{fmt(r['C_world_oracle']):>6} {fmt(r['delta_total']):>8} "
+            f"{fmt(r['delta_trajectory']):>7} {r['do_complexity_mean']:>7.1f}"
+        )
+    print(f"[06] wrote {out_path}")
+
+
+def _add_pns_args(p) -> None:
+    p.add_argument("--config", required=True, help="base config name, e.g. 'full' or 'full_nl'")
+    p.add_argument("--seeds", type=int, nargs="+", default=[0, 1, 2])
+    p.add_argument("--results-dir", default=str(RESULTS_DIR))
+    p.add_argument("--n-boot", type=int, default=10000)
+
+
 def _add_figures_args(p) -> None:
     p.add_argument("--results-dir", default=str(RESULTS_DIR))
     p.add_argument(
@@ -429,12 +520,20 @@ def main(argv=None) -> int:
     p_figs = sub.add_parser("figures", help="render figures from results/*/*/per_instance.csv")
     _add_figures_args(p_figs)
 
+    p_pns = sub.add_parser(
+        "pns", help="pool PNS across seeds; single-slice vs schedule reading (M2b)"
+    )
+    _add_pns_args(p_pns)
+
     p_all = sub.add_parser("all", help="run 'seeds' then 'figures'")
     _add_seeds_args(p_all)
     _add_figures_args(p_all)
 
     args = parser.parse_args(argv)
 
+    if args.report == "pns":
+        run_pns_report(args)
+        return 0
     if args.report in ("seeds", "all"):
         run_seeds_report(args)
     if args.report in ("figures", "all"):
