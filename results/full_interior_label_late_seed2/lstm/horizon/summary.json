@@ -327,5 +327,7 @@
       "ps_do_complexity_median": 1.0,
       "ps_schedule_mode": false
     }
-  ]
+  ],
+  "ps_columns_invalid": true,
+  "ps_columns_invalid_reason": "STALE: written by a process started before the 2026-08-03 label_fn fix (d38a5b8). pns_direction was called without the config's label functional, so every ps_* column scores the TERMINAL rule against a theta recovered under interior_threshold. Non-ps columns (validity, cf_faith_*, frac_vacuous, proximity, sparsity) are UNAFFECTED and citable. Regenerate with: uv run python experiments/08_horizon_sweep.py --config full_interior_label_late --seed <s> --horizons 5,10,20,40 --n-cf 20"
 }
