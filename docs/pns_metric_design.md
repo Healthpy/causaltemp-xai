@@ -241,3 +241,29 @@ Same method, opposite verdict, entirely explained by horizon.
   any novelty claim reaches a manuscript.
 - **Promotion to the main pipeline** (Phase 04) is a separate later decision;
   it stays auxiliary until it has a track record.
+
+
+---
+
+## PN direction at full scale — result (2026-08-03)
+
+Run on `full`, 3 seeds, `n_cf = 50`, 6-method roster. **PN collapses
+structurally**: `PN_world` = 0.00 [0.00, 0.00] for every method, zero-width
+interval. `PS_world` = 0.01-0.02, every CI touching zero. Combined PNS
+0.00-0.01.
+
+This is the horizon, not a metric defect. PN conditions on instances already in
+the target class; at `t0 ∈ {25, 50}` before a terminal label at `T = 100`
+nothing moves the outcome either way. Both populations were baselined — the
+unintervened world-label rate is 0.00 in both directions — so `C = 0` is exactly
+zero causal effect rather than a small one.
+
+**The design's insistence on separate reporting is vindicated on real data.** On
+seed 1, `PNS = +0.01 = 0.50·PN(0.00) + 0.50·PS(0.02)`: cited alone it reads as a
+joint quantity while being entirely the PS term. That is the R3 hazard this
+document anticipated, now observed.
+
+**Consequence.** PNS is reportable where the horizon leaves it non-degenerate
+(smoke) and is reported as a null with both terms shown where it does not
+(full). The ranking quantities at paper scale are `Δ_total` per direction and
+do-complexity — see `general_plan.md` §7, narrowed in the same pass.
