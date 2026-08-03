@@ -354,7 +354,8 @@ def run_figures_report(args) -> None:
     fig1_scatter(data, methods, out_dir / "fig1_validity_vs_cffaith.png")
     fig2_distributions(data, methods, out_dir / "fig2_cffaith_distribution.png")
     fig3_rank_correlation(data, methods, out_dir / "fig3_rank_correlation.png")
-    print(f"\n[06] wrote 3 figures to {out_dir}/")
+    fig4_do_complexity_calibration(out_dir / "fig4_do_complexity_calibration.pdf")
+    print(f"\n[06] wrote 4 figures to {out_dir}/")
 
 
 # ---------------------------------------------------------------------------
@@ -485,6 +486,55 @@ def run_pns_report(args) -> None:
             f"{fmt(r['delta_trajectory']):>7} {r['do_complexity_mean']:>7.1f}"
         )
     print(f"[06] wrote {out_path}")
+
+
+def fig4_do_complexity_calibration(out_path, seed: int = 0) -> None:
+    """Do-complexity vs a *known* amount of causal fidelity (M2b).
+
+    The benchmark's graded-sensitivity evidence, and the one figure that is
+    computed rather than measured: it sweeps an α-blend between an oracle
+    counterfactual (`α = 0`, one genuine `do()`) and a direct rewrite of the
+    same channel path (`α = 1`, mechanism bypassed) and plots `D` against `α`.
+
+    Every other adversarial test in `docs/axis_metrics_report.md` is binary —
+    construct a CF that should fail, assert it fails. None shows that a metric
+    *tracks* causal fidelity rather than merely detecting its total absence.
+    A reviewer is entitled to ask for that, and this is the answer.
+    """
+    from causaltemp_xai.benchmarks.mechanisms import LinearMechanism
+    from causaltemp_xai.benchmarks.structural_cf import structural_counterfactual
+    from causaltemp_xai.metrics.pns import do_complexity
+
+    k, lag, T = 4, 1, 30
+    rng = np.random.default_rng(seed)
+    A_list = [rng.uniform(-0.3, 0.3, (k, k)) for _ in range(lag)]
+    x = np.zeros((T, k))
+    noise = rng.laplace(0, 0.05, (T, k))
+    for t in range(lag, T):
+        for step, A in enumerate(A_list, start=1):
+            x[t] += A @ x[t - step]
+        x[t] += noise[t]
+    mech = LinearMechanism(A_list)
+
+    oracle = structural_counterfactual(x, mech, t0=5, node=0, value=4.0, noiseless=False)
+    direct = x.copy()
+    direct[5:, 0] = oracle[5:, 0]  # same channel-0 path, no mechanism propagation
+
+    alphas = np.linspace(0.0, 1.0, 11)
+    ds = [do_complexity(x, (1 - a) * oracle + a * direct, mech) for a in alphas]
+
+    fig, ax = plt.subplots(figsize=(4.2, 3.0))
+    ax.plot(alphas, ds, "o-", color="#2166AC", lw=1.6, ms=4)
+    ax.axhline(1, color="#7B3294", ls="--", lw=1.0, label="oracle: single $do()$")
+    ax.axhline(T - 5, color="#999999", ls=":", lw=1.0, label="every editable step")
+    ax.set_xlabel(r"$\alpha$: oracle CF $\rightarrow$ direct rewrite")
+    ax.set_ylabel("do-complexity $D$")
+    ax.set_title("$D$ tracks causal fidelity", fontsize=10)
+    ax.legend(fontsize=7, frameon=False)
+    fig.tight_layout()
+    fig.savefig(out_path, format="pdf")
+    plt.close(fig)
+    print(f"[06] wrote {out_path}  (D from {ds[0]} to {ds[-1]})")
 
 
 def _add_pns_args(p) -> None:
