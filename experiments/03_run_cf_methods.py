@@ -1,15 +1,17 @@
-"""Phase 03: Run CF explainers + the IG attribution foil on a trained classifier.
+"""Phase 03: Run CF explainers on a trained classifier.
 
 Loads the dataset + LSTM checkpoint for one config, selects the flip
 candidates (test instances not already predicted as ``TARGET_CLASS``), runs
 every registered CF method (CARLA + PearlCARLA + cfts-backed Wachter/COMTE/
 CONFETTI/CounTS/CELS), and persists the raw counterfactual arrays. Also
-evaluates the Integrated-Gradients attribution foil on its **suitable** axes -- Axis A
-(causal-relevance of the saliency map, scored against ground-truth oracle
-interventions) and Axis D (input-sensitivity) -- plus every CF method's
-Shift-VR-lite robustness metric (Axis D). All of these need live
-method/model access, so they belong here rather than in the metrics-only
-Phase 04.
+computes every CF method's Shift-VR-lite robustness metric (Axis D), which
+needs live method/model access and so belongs here rather than in the
+metrics-only Phase 04.
+
+**Attribution and Axis-A were removed from this phase 2026-08-03**
+(``DECISIONS.md``) along with ``causaltemp_xai/methods/attribution/``. Those
+method families were descoped 2026-07-29 and no axis here scores them, but the
+code stayed wired in, so every run paid for work no contribution claims.
 
 Every axis that scores counterfactual explanations (Axis C + CF-faith here in
 Phase 04/05, Axis D's Shift-VR here in Phase 03) is run over the **full** set
@@ -34,8 +36,6 @@ Outputs (under ``results/<config>/lstm/``)::
 
     cf/X_sel.npy                  selected factual instances, (n_cf, T, k)
     cf/X_cf_<Method>.npy           one array per CF method, (n_cf, T, k)
-    attribution.json              IG deletion/insertion-AUC summary
-    axis_a_attribution.json       Axis A: ICC / causal-coverage of the IG saliency map
     shift_vr.json                 Axis D: validity-retention under a noise shift, all CF methods
 
 Usage
@@ -70,17 +70,8 @@ from causaltemp_xai.methods import (  # noqa: E402  # noqa: E402
     CftsWachterCF,
     PearlCARLARecourse,
 )
-from causaltemp_xai.methods.attribution import (  # noqa: E402
-    deletion_curve,
-    insertion_curve,
-    integrated_gradients,
-)
 from causaltemp_xai.methods.counterfactual.cfts_methods import _DatasetAdapter  # noqa: E402
-from causaltemp_xai.metrics.axis_d import input_sensitivity  # noqa: E402
 from experiments._common import (  # noqa: E402
-    axis_a_for_attribution,
-    build_oracle_interventions,
-    causal_parents,
     config_dir,
     dump_json,
     select_flip_candidates,
@@ -136,46 +127,6 @@ def generate_cfs(method, X, clf, graph, mech) -> np.ndarray:
     else:
         cfs = method.generate_batch(X, clf)
     return np.asarray(cfs, dtype=np.float32)
-
-
-def attribution_block(clf, X_sel, ig_steps=64, curve_steps=50):
-    """IG deletion/insertion-AUC foil, plus the raw ``(N, T, k)`` saliency maps
-    (needed by :func:`axis_a_block` / Axis D input-sensitivity)."""
-    del_aucs, ins_aucs, maps = [], [], []
-    for x in X_sel:
-        ig = integrated_gradients(clf, x, TARGET_CLASS, steps=ig_steps)
-        _, del_auc = deletion_curve(clf, x, ig, TARGET_CLASS, n_steps=curve_steps)
-        _, ins_auc = insertion_curve(clf, x, ig, TARGET_CLASS, n_steps=curve_steps)
-        del_aucs.append(del_auc)
-        ins_aucs.append(ins_auc)
-        maps.append(np.asarray(ig, dtype=float))
-    summary = {
-        "method": "IntegratedGradients",
-        "deletion_auc": float(np.mean(del_aucs)),
-        "insertion_auc": float(np.mean(ins_aucs)),
-        "insertion_minus_deletion": float(np.mean(ins_aucs) - np.mean(del_aucs)),
-        "n": len(X_sel),
-    }
-    return summary, np.stack(maps)
-
-
-def axis_a_block(clf, X_sel, attributions, graph, mech, ig_steps=64) -> dict:
-    """Axis A (ICC + causal-coverage) for the IG saliency map, plus Axis D
-    input-sensitivity -- both scored against ground-truth oracle interventions
-    so ``int_channel`` / ``causal_parents`` are real, not proxies."""
-    interventions = build_oracle_interventions(X_sel, mech)
-    int_channels = [node for (_, node, _) in interventions]
-    t0s = [t0 for (t0, _, _) in interventions]
-    causal_parents_list = [causal_parents(graph, node) for node in int_channels]
-
-    axis_a = axis_a_for_attribution(attributions, int_channels, causal_parents_list, t0s=t0s)
-
-    def _attribution_fn(x):
-        return integrated_gradients(clf, x, TARGET_CLASS, steps=ig_steps)
-
-    axis_a["InputSens"] = input_sensitivity(np.asarray(X_sel), _attribution_fn, n_trials=5)
-    axis_a["n"] = len(X_sel)
-    return axis_a
 
 
 def load_or_make_shift_test(cfg, out_dir):
@@ -249,30 +200,16 @@ def run(
             print(f"     {name} FAILED: {exc}")
 
     if skip_aux:
-        # CF arrays are written and complete; the auxiliary blocks below
-        # (attribution, Axis-A, Shift-VR) do not depend on which --methods ran
+        # CF arrays are written and complete; the auxiliary block below
+        # (Shift-VR) does not depend on which --methods ran
         # and cost ~8 min per invocation. Skipping them lets CF generation be
         # run in small chunks -- the only way to make progress on a host where
         # long processes are being killed sporadically, since X_cf_*.npy files
         # accumulate across invocations. Run once WITHOUT --skip-aux (or with
         # the full roster) to produce the auxiliary artifacts.
-        print("[03] --skip-aux: attribution / Axis-A / Shift-VR NOT computed.")
+        print("[03] --skip-aux: Shift-VR NOT computed.")
         print("[03] done (CF arrays only).")
         return
-
-    print("[03] integrated-gradients attribution foil ...")
-    attribution, attr_maps = attribution_block(clf, X_sel)
-    dump_json(out / "attribution.json", attribution)
-    print(f"     -> {out / 'attribution.json'}")
-
-    print("[03] axis A (causal-relevance of IG saliency) + axis D (input-sensitivity) ...")
-    axis_a = axis_a_block(clf, X_sel, attr_maps, graph, mech)
-    dump_json(out / "axis_a_attribution.json", axis_a)
-    print(
-        f"     ICC={axis_a['ICC']:.3f} MCC_coverage={axis_a['MCC_coverage']:.3f} "
-        f"InputSens={axis_a['InputSens']:.3f}"
-    )
-    print(f"     -> {out / 'axis_a_attribution.json'}")
 
     # Only methods that actually produced base CFs above: their arrays are
     # reused as Shift-VR's base half (no regeneration), and a method that
@@ -304,14 +241,14 @@ def run(
 
 
 def main(argv=None) -> int:
-    parser = argparse.ArgumentParser(description="Run CF methods + attribution + shift-VR.")
+    parser = argparse.ArgumentParser(description="Run CF methods + shift-VR.")
     parser.add_argument("--config", required=True, choices=sorted(CONFIGS))
     parser.add_argument("--n-cf", type=int, default=None)
     parser.add_argument("--methods", nargs="+", default=None, help="Subset of method names to run.")
     parser.add_argument(
         "--skip-aux",
         action="store_true",
-        help="Write CF arrays only; skip attribution / Axis-A / Shift-VR "
+        help="Write CF arrays only; skip Shift-VR "
         "(~8 min of per-invocation overhead). For chunked CF generation.",
     )
     parser.add_argument("--out-dir", default=str(DEFAULT_OUT_DIR))

@@ -589,31 +589,6 @@ def build_masked_mechanism(mechanism, inferred_adj: np.ndarray):
     )
 
 
-def axis_a_for_attribution(
-    attributions: np.ndarray, int_channels, causal_parents_list, t0s=None
-) -> dict:
-    """Axis A (ICC attribution-mass + causal coverage) for one attribution method.
-
-    Thin wrapper around :func:`causaltemp_xai.metrics.axis_a.compute_axis_a`
-    (``MCC_disent`` is skipped — no encoder/latent factors in this pipeline,
-    only the raw saliency maps). ``t0s`` windows ICC to the post-intervention
-    region (fix #6, 2026-07-18).
-    """
-    from causaltemp_xai.metrics.axis_a import compute_axis_a
-
-    return compute_axis_a(
-        attributions=np.asarray(attributions, dtype=float),
-        int_channels=np.asarray(int_channels),
-        causal_parents_list=causal_parents_list,
-        t0s=None if t0s is None else np.asarray(t0s),
-    )
-
-
-# ---------------------------------------------------------------------------
-# Axis B (graph quality) — benchmark-level diagnostic, not per-method
-# ---------------------------------------------------------------------------
-
-
 def axis_b_benchmark_diagnostic(graph: np.ndarray, X: np.ndarray, mechanism=None) -> dict:
     """Structural diagnostic of the benchmark's own ground-truth graph.
 

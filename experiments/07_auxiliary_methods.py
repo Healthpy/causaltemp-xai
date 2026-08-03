@@ -38,31 +38,16 @@ Selected with ``--method``; each writes its own distinct report:
   ``full_nl``) are supported -- the decomposition needs an
   :class:`MLPMechanism` to build the inferred-graph rollout.
 
-* ``ivae`` -> ``results/<config>/ivae/icc.json``
-  **Decoder-based Axis-A ICC** (latent-traversal Interventional Concept
-  Consistency), the definitional ICC for representation methods. Trains an
-  **iVAE** (a method that exposes an encoder + decoder) on a config's
-  observational data, then scores each latent dimension with
-  :func:`causaltemp_xai.metrics.axis_a.icc_latent` (matched-baseline, +/-delta,
-  std-scaled) against the frozen LSTM. Because iVAE identifies factors only up
-  to permutation, latent dims are first **aligned to ground-truth channels**
-  via a Hungarian match on the |correlation| matrix; the causally-relevant
-  concepts are the label channel (channel 0, since ``Y = 1[X_T^0 > theta]``)
-  and its graph ancestors. ICC is then contrasted between
-  causal-relevant-aligned and non-relevant-aligned latent dims.
-
-  Per the PI metric review, this run reports the **sanity gates first** -- if
-  the iVAE reconstruction does not preserve the classifier's decision
-  (``recon_label_agreement`` low), ICC is *not interpretable* and that is
-  reported honestly rather than forced. Magnitudes ``c in {1,2,3}`` are swept
-  (pre-registered; no delta-hacking), and a permuted-assignment null is
-  reported.
+**Removed 2026-08-03** (``DECISIONS.md``): ``--method ivae``, the decoder-based
+Axis-A ICC, went with ``causaltemp_xai/methods/concept/``. Concept-based methods
+were descoped 2026-07-29 and no axis here scores them. ``metrics/axis_a.py``
+itself is retained -- Axis A is paused, not disproven -- and stays covered by
+``tests/test_axis_a_latent.py`` / ``tests/test_icc_latent.py``.
 
 Usage
 -----
     uv run python experiments/07_auxiliary_methods.py --config smoke_nl --method dynotears
     uv run python experiments/07_auxiliary_methods.py --config smoke_nl --method citris
-    uv run python experiments/07_auxiliary_methods.py --config smoke --method ivae --epochs 60
 
 """
 
@@ -73,7 +58,6 @@ import sys
 from pathlib import Path
 
 import numpy as np
-from scipy.optimize import linear_sum_assignment
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
@@ -86,8 +70,6 @@ from causaltemp_xai.classifiers import LSTMClassifier  # noqa: E402
 from causaltemp_xai.config import CONFIGS, get_config, seeded_variant  # noqa: E402
 from causaltemp_xai.data_io import DEFAULT_OUT_DIR, load_dataset  # noqa: E402
 from causaltemp_xai.methods.causal import CITRIS, DYNOTEARS  # noqa: E402
-from causaltemp_xai.methods.concept import iVAE  # noqa: E402
-from causaltemp_xai.metrics.axis_a import icc_latent  # noqa: E402
 from causaltemp_xai.metrics.axis_b import compute_axis_b  # noqa: E402
 from causaltemp_xai.metrics.cf_faith import CFfaith  # noqa: E402
 from causaltemp_xai.scm.intervention import derive_intervention_t  # noqa: E402
@@ -102,13 +84,12 @@ from experiments._common import (  # noqa: E402
 
 GRAPH_METHODS = ("dynotears", "citris")
 ORACLE_SHIFT = 1.5  # must match build_oracle_interventions' default
-RECON_AGREEMENT_GATE = 0.7  # below this, ICC is not interpretable
 
-#: Per-method training-epoch defaults. The two families were separate phases
-#: with separate ``--epochs`` defaults (CITRIS 80, iVAE 50); merging them under
-#: one flag must not silently retune either, so ``--epochs`` defaults to None
-#: and resolves here.
-DEFAULT_EPOCHS = {"citris": 80, "ivae": 50}
+#: Per-method training-epoch defaults. ``--epochs`` defaults to None and
+#: resolves here, so a shared flag cannot silently retune a method that did not
+#: ask for it. (Formerly also carried iVAE's 50; that method was removed
+#: 2026-08-03 -- see the module docstring.)
+DEFAULT_EPOCHS = {"citris": 80}
 
 
 # ---------------------------------------------------------------------------
@@ -474,156 +455,6 @@ def run_graph_method(
 
 
 # ---------------------------------------------------------------------------
-# Report 2: decoder-based Axis-A ICC (ivae)
-# ---------------------------------------------------------------------------
-
-
-def _ancestors_of(node: int, graph: np.ndarray) -> set[int]:
-    """Transitive causal ancestors of ``node`` (incl. itself) in the lagged
-    graph ``(k, k, L)`` where ``graph[i, j, l]==1`` means j causes i."""
-
-    def parents(i):
-        return {j for j in range(graph.shape[1]) if np.any(graph[i, j, :] != 0)}
-
-    seen, stack = {node}, [node]
-    while stack:
-        cur = stack.pop()
-        for p in parents(cur):
-            if p not in seen:
-                seen.add(p)
-                stack.append(p)
-    return seen
-
-
-def _align_latents_to_channels(Z: np.ndarray, F: np.ndarray):
-    """Hungarian match on |Pearson corr| between latent dims ``Z`` (N, d_z) and
-    ground-truth factors ``F`` (N, k). Returns (assign, mcc): ``assign[i]`` =
-    channel matched to latent dim ``i``; ``mcc`` = mean matched |corr|."""
-    Zc = (Z - Z.mean(0)) / (Z.std(0) + 1e-12)
-    Fc = (F - F.mean(0)) / (F.std(0) + 1e-12)
-    corr = np.abs(Zc.T @ Fc) / Z.shape[0]  # (d_z, k)
-    rows, cols = linear_sum_assignment(-corr)
-    assign = {int(r): int(c) for r, c in zip(rows, cols)}
-    mcc = float(corr[rows, cols].mean())
-    return assign, mcc
-
-
-def run_ivae(cfg, out_dir, epochs: int = 50) -> None:
-    """Decoder-based Axis-A ICC via iVAE latent traversal against the frozen LSTM."""
-    data = load_dataset(cfg.name, out_dir=out_dir)
-    graph = data["graph"]
-    k = graph.shape[0]
-    X_train, X_test = data["X_train"], data["X_test"]
-
-    ckpt = Path(out_dir) / cfg.name / "lstm.pt"
-    if not ckpt.exists():
-        raise SystemExit(
-            f"[07] no classifier at {ckpt}; run experiments/02_train_classifiers.py "
-            f"--config {cfg.name} first."
-        )
-    clf = LSTMClassifier.load(ckpt)
-
-    # Train iVAE with latent_dim = k so dims align one-to-one with channels.
-    print(f"[07] training iVAE (latent_dim={k}, epochs={epochs}) on {X_train.shape[0]} seqs ...")
-    ae = iVAE(latent_dim=k, n_segments=min(4, k), epochs=epochs, beta=0.3, kl_warmup_frac=0.3)
-    ae.fit_unsupervised(X_train)
-
-    # --- Sanity gates (report FIRST) ---
-    Z = ae.encode(X_test)  # (N, k)
-    X_recon = ae.decode(Z)  # (N, T, k)
-    recon_mse = float(np.mean((X_recon - X_test) ** 2))
-    f_x = np.asarray(clf.predict(X_test)).reshape(-1)
-    f_recon = np.asarray(clf.predict(X_recon)).reshape(-1)
-    recon_label_agreement = float(np.mean(f_recon == f_x))
-
-    # Ground-truth factors = per-channel final values (the label-driving repr).
-    F = X_test[:, -1, :]  # (N, k)
-    assign, mcc_val = _align_latents_to_channels(Z, F)
-
-    relevant_channels = _ancestors_of(0, graph)  # label channel 0 + ancestors
-    parent_dims = [i for i in range(k) if assign.get(i) in relevant_channels]
-    nonparent_dims = [i for i in range(k) if assign.get(i) not in relevant_channels]
-
-    interpretable = recon_label_agreement >= RECON_AGREEMENT_GATE
-    print(
-        f"[07] GATES: recon_mse={recon_mse:.4f}  recon_label_agreement={recon_label_agreement:.2f} "
-        f"(gate>={RECON_AGREEMENT_GATE})  MCC(latent,channel)={mcc_val:.2f}"
-    )
-    print(
-        f"[07] label-relevant channels (anc. of 0): {sorted(relevant_channels)}; "
-        f"latent->channel assign: {assign}"
-    )
-    if not interpretable:
-        print(
-            "[07] recon_label_agreement below gate -> ICC is NOT interpretable on this "
-            "run (iVAE reconstruction does not preserve the classifier's decision). "
-            "Reporting gates only; this is itself an honest Axis-A finding."
-        )
-
-    # --- ICC magnitude ladder (pre-registered c in {1,2,3}) ---
-    rng = np.random.default_rng(cfg.seed)
-    ladder = []
-    for c in (1.0, 2.0, 3.0):
-        icc = icc_latent(
-            X_test, ae.encode, ae.decode, clf, delta=c, scale_by_std=True, symmetric=True
-        )  # (k,)
-        parent_mean = float(np.mean([icc[i] for i in parent_dims])) if parent_dims else float("nan")
-        nonparent_mean = (
-            float(np.mean([icc[i] for i in nonparent_dims])) if nonparent_dims else float("nan")
-        )
-        # Permuted-assignment null: random partition of the same size as parent_dims.
-        perm = rng.permutation(k)
-        null_parent = perm[: len(parent_dims)]
-        null_mean = (
-            float(np.mean([icc[i] for i in null_parent])) if len(null_parent) else float("nan")
-        )
-        ladder.append(
-            {
-                "c": c,
-                "icc_per_dim": [float(v) for v in icc],
-                "parent_aligned_mean": parent_mean,
-                "nonparent_aligned_mean": nonparent_mean,
-                "contrast": (parent_mean - nonparent_mean),
-                "permuted_null_mean": null_mean,
-            }
-        )
-        print(
-            f"[07] c={c:g}: ICC parent-aligned={parent_mean:.3f}  non-parent={nonparent_mean:.3f}  "
-            f"contrast={parent_mean - nonparent_mean:+.3f}  (null={null_mean:.3f})"
-        )
-
-    out = {
-        "provenance": {
-            "config": cfg.as_dict(),
-            "method": "iVAE",
-            "metric": "icc_latent",
-            "n_eval": int(X_test.shape[0]),
-            "latent_dim": k,
-            "epochs": epochs,
-            "note": "matched-baseline f(D(z)); +/-delta; delta_i=c*std(z_i); "
-            "latents aligned to channels via Hungarian on |corr|.",
-        },
-        "gates": {
-            "recon_mse": recon_mse,
-            "recon_label_agreement": recon_label_agreement,
-            "interpretable": interpretable,
-            "mcc_latent_channel": mcc_val,
-        },
-        "alignment": {
-            "latent_to_channel": assign,
-            "label_relevant_channels": sorted(int(c) for c in relevant_channels),
-            "parent_aligned_dims": parent_dims,
-            "nonparent_aligned_dims": nonparent_dims,
-        },
-        "icc_ladder": ladder,
-    }
-    res_dir = config_dir(cfg.name, "ivae")
-    res_dir.mkdir(parents=True, exist_ok=True)
-    dump_json(res_dir / "icc.json", out)
-    print(f"[07] wrote {res_dir / 'icc.json'}")
-
-
-# ---------------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------------
 
@@ -854,8 +685,6 @@ def run(
             intervention_prob=intervention_prob,
             sweep=sweep,
         )
-    elif method == "ivae":
-        run_ivae(cfg, out_dir, epochs=n_epochs)
     elif method == "pns":
         run_pns(
             cfg,
@@ -867,8 +696,7 @@ def run(
         )
     else:
         raise SystemExit(
-            f"[07] unknown --method {method!r}; use one of "
-            f"{', '.join((*GRAPH_METHODS, 'ivae', 'pns'))}"
+            f"[07] unknown --method {method!r}; use one of " f"{', '.join((*GRAPH_METHODS, 'pns'))}"
         )
 
 
@@ -876,17 +704,16 @@ def main(argv=None) -> int:
     parser = argparse.ArgumentParser(
         description="Phase 07: auxiliary causal methods -- self-graphing (DYNOTEARS / "
         "CITRIS) with the Axis-B graph-error decomposition (H3), or "
-        "decoder-based Axis-A ICC (iVAE).",
+        "or the necessity/sufficiency audit (pns).",
     )
     parser.add_argument("--config", required=True, choices=sorted(CONFIGS))
     parser.add_argument("--out-dir", default=str(DEFAULT_OUT_DIR))
     parser.add_argument(
         "--method",
         default="dynotears",
-        choices=(*GRAPH_METHODS, "ivae", "pns"),
+        choices=(*GRAPH_METHODS, "pns"),
         help="dynotears (default) -- the load-bearing graph-aware baseline; "
         "citris -- the honest secondary self-graphing method; "
-        "ivae -- decoder-based Axis-A ICC; "
         "pns -- necessity/sufficiency gap (model vs world).",
     )
     parser.add_argument(
@@ -896,7 +723,7 @@ def main(argv=None) -> int:
         "--epochs",
         type=int,
         default=None,
-        help="training epochs; defaults per method (citris 80, " "ivae 50). Unused by dynotears.",
+        help="training epochs; default 80 (citris). Unused by dynotears.",
     )
     parser.add_argument(
         "--intervention-prob",
