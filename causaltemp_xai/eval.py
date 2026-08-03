@@ -274,7 +274,7 @@ def shift_vr(
     target_class: int = 1,
     cf_base: dict | None = None,
 ) -> dict:
-    """Shift-VR-lite validity-retention metric (Axis D).
+    """Shift-VR-lite validity-retention metric (Axis B).
 
     Protocol (pinned — see ``resources/configs.md``): keep the **frozen base
     classifier** (no retraining). For each method, generate *fresh* CFs for the

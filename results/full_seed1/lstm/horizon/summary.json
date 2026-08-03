@@ -1,7 +1,7 @@
 {
   "seed": 1,
   "config": "full_seed1",
-  "git_commit": "d38a5b831ca240bc73dd00b547c8888a7dd55bb9",
+  "git_commit": "f02a50b4c22008038cd9f708c966260f24729abe",
   "git_dirty": true,
   "T": 100,
   "horizons": [

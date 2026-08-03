@@ -8,15 +8,15 @@ writes:
 
     results/<config>/lstm/eval_<Method>.json    per-method batch-mean metrics (Axis C + CF-faith)
     results/<config>/lstm/per_instance.csv      one row per (method, instance)
-    results/<config>/lstm/summary.json          combined provenance + methods + axis_a + axis_b + attribution + shift_vr
+    results/<config>/lstm/summary.json          combined provenance + methods + axis_a + shift_vr
     results/tables/table_axis_c_cf_faith.csv    appended, one row per method (cross-run table)
 
 CF-*generating* methods (the ones this phase scores) are evaluated on **Axis
 C** (validity/proximity/sparsity/OOD/TRSI) and **CF-faith**. Axis A
-(attribution quality) and Axis D's Shift-VR/input-sensitivity are computed in
+(attribution quality) and Axis B's Shift-VR/input-sensitivity are computed in
 Phase 03 for the attribution method / native CF methods respectively -- this
 phase folds their already-written JSON into ``summary.json`` for one combined
-view. Axis B is a per-*dataset* diagnostic written by Phase 01.
+view. Axis A is a per-*dataset* diagnostic written by Phase 01.
 
 Usage
 -----
@@ -116,17 +116,15 @@ def run(config_name: str, out_dir, seed: int | None = None) -> None:
         return None
 
     attribution = _load_if_exists(res_dir / "attribution.json")
-    axis_a = _load_if_exists(res_dir / "axis_a_attribution.json")
     shift = _load_if_exists(res_dir / "shift_vr.json")
-    axis_b = _load_if_exists(RESULTS_DIR / cfg.name / "axis_b_benchmark.json")
+    axis_b = _load_if_exists(RESULTS_DIR / cfg.name / "axis_a_benchmark.json")
 
     results = {
         "provenance": {"config": cfg.as_dict(), "seed": cfg.seed, "n_cf": len(X_sel)},
         "methods": summary,  # Axis C + CF-faith, per CF method
         "attribution": attribution,  # IG deletion/insertion-AUC foil
-        "axis_a": axis_a,  # Axis A: attribution causal-relevance (Phase 03)
-        "axis_b": axis_b,  # Axis B: dataset graph diagnostic (Phase 01)
-        "shift_vr": shift,  # Axis D: CF-method validity retention (Phase 03)
+        "axis_b": axis_b,  # Axis A: dataset graph diagnostic (Phase 01)
+        "shift_vr": shift,  # Axis B: CF-method validity retention (Phase 03)
     }
     dump_json(res_dir / "summary.json", results)
 

@@ -34,7 +34,6 @@ import pytest
 
 from causaltemp_xai.benchmarks.mechanisms import LinearMechanism
 from causaltemp_xai.eval import MIN_VALIDITY_BASE_FOR_RATIO, evaluate_method, shift_vr
-from causaltemp_xai.metrics.axis_a import icc, mcc_concept
 from causaltemp_xai.metrics.axis_c import (
     ood_plausibility,
     proximity,
@@ -548,90 +547,7 @@ class TestCelsFalseFlagRegression:
 
 
 # ---------------------------------------------------------------------------
-# Axis A: ICC + MCC_coverage (redesigned) — adversarial + regression
-# ---------------------------------------------------------------------------
-
-
-class TestICCAdversarial:
-    """ICC is chance-normalized (fix #6, 2026-07-18): 1.0 = chance,
-    max = k — the same convention as mcc_concept."""
-
-    def test_flags_wrong_channel_attribution(self):
-        att = np.zeros((20, 4))
-        att[:, 2] = 1.0
-        assert icc(att, int_channel=0) == 0.0
-
-    def test_passes_correct_channel_attribution(self):
-        att = np.zeros((20, 4))
-        att[:, 0] = 1.0
-        assert icc(att, int_channel=0) == pytest.approx(4.0)  # k / (1/k * k)
-
-    def test_uniform_map_scores_chance_level(self):
-        att = np.ones((20, 4))
-        assert icc(att, int_channel=0) == pytest.approx(1.0)
-
-    def test_pre_t0_mass_earns_no_credit(self):
-        """Windowing (fix #6): attribution on the intervened channel *before*
-        the intervention is causally wrong — with t0 passed, only t >= t0
-        mass counts."""
-        att = np.zeros((20, 4))
-        att[:10, 0] = 1.0  # all mass on the right channel, wrong time
-        att[10:, 2] = 1.0  # post-t0 mass on a wrong channel
-        assert icc(att, int_channel=0, t0=10) == 0.0
-        # Without the window the pre-t0 mass is (wrongly) credited.
-        assert icc(att, int_channel=0) == pytest.approx(2.0)
-
-
-class TestMCCCoverageFix:
-    K = 4
-    PARENTS = (0, 1)
-
-    def test_flags_parent_avoiding_attribution(self):
-        att = np.zeros((20, self.K))
-        att[:, 2] = att[:, 3] = 1.0  # all mass off the parents
-        assert mcc_concept(att, self.PARENTS) == 0.0
-
-    def test_passes_parent_concentrated_attribution(self):
-        att = np.zeros((20, self.K))
-        att[:, 0] = att[:, 1] = 1.0  # all mass on the parents
-        # Maximum score = k / |Pa| = 2.0
-        assert mcc_concept(att, self.PARENTS) == pytest.approx(self.K / len(self.PARENTS))
-
-    def test_uniform_map_scores_chance_level(self):
-        att = np.ones((20, self.K))
-        assert mcc_concept(att, self.PARENTS) == pytest.approx(1.0)
-
-    def test_scale_invariance(self):
-        """Pre-M1 the absolute 1e-3 threshold made the score depend on the
-        attribution's output scale; the mass formulation must not."""
-        rng = np.random.default_rng(0)
-        att = rng.normal(size=(20, self.K))
-        s1 = mcc_concept(att, self.PARENTS)
-        s2 = mcc_concept(1e-6 * att, self.PARENTS)
-        s3 = mcc_concept(1e6 * att, self.PARENTS)
-        assert s1 == pytest.approx(s2) == pytest.approx(s3)
-
-    def test_no_ceiling_for_dense_maps(self):
-        """Regression for the ceiling effect: dense (IG-like) maps must not
-        pin the metric at its maximum, and different maps must get different
-        scores (discriminative power restored)."""
-        rng = np.random.default_rng(1)
-        scores = [
-            mcc_concept(np.abs(rng.normal(size=(20, self.K))), self.PARENTS) for _ in range(5)
-        ]
-        ceiling = self.K / len(self.PARENTS)
-        assert all(s < ceiling for s in scores)
-        assert len({round(s, 12) for s in scores}) > 1  # not all identical
-
-    def test_empty_parents_is_nan(self):
-        assert np.isnan(mcc_concept(np.ones((20, self.K)), []))
-
-    def test_zero_mass_map_is_nan(self):
-        assert np.isnan(mcc_concept(np.zeros((20, self.K)), self.PARENTS))
-
-
-# ---------------------------------------------------------------------------
-# Axis D: shift_vr guard (M1 fix #3)
+# Axis B: Shift-VR robustness (formerly Axis D) — adversarial
 # ---------------------------------------------------------------------------
 
 
@@ -682,7 +598,7 @@ class TestShiftVRGuard:
 
 
 # ---------------------------------------------------------------------------
-# Axis D: shift_vr base-CF reuse (2026-07-15)
+# Axis B: shift_vr base-CF reuse (2026-07-15)
 #
 # Regenerating the base CFs was both wasted work (Phase 03 already generated
 # and persisted exactly these arrays) and *wrong* for stochastic methods: the

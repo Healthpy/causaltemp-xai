@@ -1,8 +1,8 @@
 {
   "seed": 1,
   "config": "full_seed1",
-  "git_commit": "371ae412f1895fa11c0e24f6e762378c2166f696",
-  "git_dirty": false,
+  "git_commit": "f02a50b4c22008038cd9f708c966260f24729abe",
+  "git_dirty": true,
   "provenance": {
     "config": {
       "k": 10,
@@ -14,7 +14,9 @@
       "seed": 1,
       "name": "full_seed1",
       "mechanism_type": "linear",
-      "nonlinear": null
+      "nonlinear": null,
+      "label_fn": "terminal_threshold",
+      "label_params": null
     },
     "seed": 1,
     "n_cf": 50
@@ -38,6 +40,8 @@
       "frac_degenerate": 0.0,
       "n_vacuous": 0,
       "frac_vacuous": 0.0,
+      "do_complexity_mean": 59.0,
+      "do_complexity_median": 50.0,
       "cf_faith_rollout_hard_valid": 0.64,
       "cf_faith_pearl_hard_valid": 0.0,
       "method": "CARLA",
@@ -61,6 +65,8 @@
       "frac_degenerate": 0.30000000000000004,
       "n_vacuous": 15,
       "frac_vacuous": 0.3,
+      "do_complexity_mean": 4.48,
+      "do_complexity_median": 4.0,
       "cf_faith_rollout_hard_valid": 0.0,
       "cf_faith_pearl_hard_valid": 0.0,
       "method": "CftsCels",
@@ -84,6 +90,8 @@
       "frac_degenerate": 0.0,
       "n_vacuous": 0,
       "frac_vacuous": 0.0,
+      "do_complexity_mean": 97.6,
+      "do_complexity_median": 100.0,
       "cf_faith_rollout_hard_valid": 0.0,
       "cf_faith_pearl_hard_valid": 0.0,
       "method": "CftsCOMTE",
@@ -107,6 +115,8 @@
       "frac_degenerate": 0.64,
       "n_vacuous": 32,
       "frac_vacuous": 0.64,
+      "do_complexity_mean": 36.0,
+      "do_complexity_median": 0.0,
       "cf_faith_rollout_hard_valid": 0.0,
       "cf_faith_pearl_hard_valid": 0.0,
       "method": "CftsConfeti",
@@ -130,6 +140,8 @@
       "frac_degenerate": 0.0,
       "n_vacuous": 0,
       "frac_vacuous": 0.0,
+      "do_complexity_mean": 91.54,
+      "do_complexity_median": 100.0,
       "cf_faith_rollout_hard_valid": 0.0,
       "cf_faith_pearl_hard_valid": 0.0,
       "method": "CftsWachter",
@@ -153,6 +165,8 @@
       "frac_degenerate": 0.020000000000000018,
       "n_vacuous": 1,
       "frac_vacuous": 0.02,
+      "do_complexity_mean": 0.96,
+      "do_complexity_median": 1.0,
       "cf_faith_rollout_hard_valid": 0.0,
       "cf_faith_pearl_hard_valid": 0.06,
       "method": "PearlCARLA",
@@ -170,27 +184,6 @@
     "insertion_minus_deletion": -0.3969113204253901,
     "n": 50
   },
-  "axis_a": {
-    "seed": 1,
-    "config": "full_seed1",
-    "git_commit": "a9148ca89639f03f97abef302f7ed73bfdec8059",
-    "git_dirty": true,
-    "ICC": 1.019086896529521,
-    "MCC_coverage": 0.6038303192563859,
-    "MCC_disent": NaN,
-    "InputSens": 0.06497693522263974,
-    "n": 50
-  },
-  "axis_b": {
-    "seed": 1,
-    "config": "full_seed1",
-    "git_commit": "a9148ca89639f03f97abef302f7ed73bfdec8059",
-    "git_dirty": true,
-    "SHD": 0.0,
-    "LagAcc": 1.0,
-    "LagF1": 1.0,
-    "ResidualDep": 0.00160264626162933,
-    "note": "SHD/LagAcc computed against the graph itself (no graph-discovery method in this pipeline) -- trivially perfect; ResidualDep is the informative benchmark-structural diagnostic here."
-  },
+  "axis_b": null,
   "shift_vr": null
 }

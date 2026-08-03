@@ -11,11 +11,11 @@ main pipeline.
 Selected with ``--method``; each writes its own distinct report:
 
 * ``dynotears`` / ``citris`` -> ``results/<config>/<method>/graph_error.json``
-  **Self-graphing + Axis-B graph-error decomposition (H3).** Fits a
+  **Self-graphing + Axis-A graph-error decomposition (H3).** Fits a
   self-graphing method on a *nonlinear* (MLP-mechanism) benchmark, reads off
   its inferred lag-1 causal graph, and reports:
 
-  (a) Axis-B graph-recovery of the inferred graph vs. ground truth
+  (a) Axis-A graph-recovery of the inferred graph vs. ground truth
       (SHD/LagAcc/LagF1/AUC);
   (b) the **graph-error decomposition** the general plan calls for: how much
       CF-faith the oracle structural counterfactual loses when it is derived
@@ -28,7 +28,7 @@ Selected with ``--method``; each writes its own distinct report:
   ``dynotears`` (default) is DYNOTEARS (Pamfil et al., 2020, vendored McKinsey
   CausalNex): a classical temporal causal-discovery baseline that recovers the
   benchmark's near-linear lag-1 structure from **observational** data (AUC
-  ~0.9). This is the load-bearing graph-aware method that gives the Axis-B
+  ~0.9). This is the load-bearing graph-aware method that gives the Axis-A
   decomposition real dynamic range and H3 a genuine, non-circular positive.
   ``citris`` is genuine vendored CITRIS (representation learning; needs
   intervention-labeled data) -- an honest *secondary* method: it does not
@@ -70,7 +70,7 @@ from causaltemp_xai.classifiers import LSTMClassifier  # noqa: E402
 from causaltemp_xai.config import CONFIGS, get_config, seeded_variant  # noqa: E402
 from causaltemp_xai.data_io import DEFAULT_OUT_DIR, load_dataset  # noqa: E402
 from causaltemp_xai.methods.causal import CITRIS, DYNOTEARS  # noqa: E402
-from causaltemp_xai.metrics.axis_b import compute_axis_b  # noqa: E402
+from causaltemp_xai.metrics.axis_a import compute_axis_a  # noqa: E402
 from causaltemp_xai.metrics.cf_faith import CFfaith  # noqa: E402
 from causaltemp_xai.scm.intervention import derive_intervention_t  # noqa: E402
 from experiments._common import (  # noqa: E402
@@ -93,7 +93,7 @@ DEFAULT_EPOCHS = {"citris": 80}
 
 
 # ---------------------------------------------------------------------------
-# Report 1: self-graphing + Axis-B graph-error decomposition (dynotears/citris)
+# Report 1: self-graphing + Axis-A graph-error decomposition (dynotears/citris)
 # ---------------------------------------------------------------------------
 
 
@@ -222,7 +222,7 @@ def _graph_quality_sweep(
 ) -> list[dict]:
     """Graph-error across a controlled graph-quality ladder.
 
-    Demonstrates the Axis-B decomposition *discriminates*: ``graph_error``
+    Demonstrates the Axis-A decomposition *discriminates*: ``graph_error``
     (``cf_faith_gt - cf_faith_inferred``) must span ~0 for a good graph up to
     large for a random graph. Points: the true graph (0 by construction),
     progressively corrupted graphs (``frac`` of edges rewired), a fully random
@@ -230,7 +230,7 @@ def _graph_quality_sweep(
     the real-method anchor. Graph quality is reported as SHD-to-true and (for
     the corruption ladder) the corrupted fraction.
     """
-    from causaltemp_xai.metrics.axis_b import graph_auc, shd
+    from causaltemp_xai.metrics.axis_a import graph_auc, shd
 
     true_bin = (graph > 0).astype(int)
     rng = np.random.default_rng(seed)
@@ -267,7 +267,7 @@ def run_graph_method(
     intervention_prob: float = 0.3,
     sweep: bool = False,
 ) -> None:
-    """Self-graphing + Axis-B graph-error decomposition for ``dynotears``/``citris``."""
+    """Self-graphing + Axis-A graph-error decomposition for ``dynotears``/``citris``."""
     if cfg.mechanism_type != "mlp":
         raise SystemExit(
             f"[07] self-graphing graph-error needs a nonlinear (mlp) config; "
@@ -282,7 +282,7 @@ def run_graph_method(
     # 1. Fit the self-graphing method and read off its inferred lag-1 graph.
     #    DYNOTEARS (default) is a classical temporal causal-discovery baseline
     #    that recovers the benchmark's near-linear structure from OBSERVATIONAL
-    #    data -- the load-bearing graph-aware method for Axis B / H3. CITRIS is
+    #    data -- the load-bearing graph-aware method for Axis A / H3. CITRIS is
     #    an honest secondary (representation-learning) method that needs
     #    intervention-labeled data and does not identify at smoke scale (see
     #    methods/causal/citris.py).
@@ -347,10 +347,10 @@ def run_graph_method(
     cf_faith_gt = float(np.mean(gt_soft))
     cf_faith_inferred = float(np.mean(inf_soft))
 
-    # 3. Axis B (graph recovery + oracle decomposition) in one call. The oracle
+    # 3. Axis A (graph recovery + oracle decomposition) in one call. The oracle
     #    row is the perfect-propagator reference: propagation_error == 0, so its
     #    graph_error is the pure cost of the inferred graph.
-    axis_b = compute_axis_b(
+    axis_b = compute_axis_a(
         adj_true_lagged=graph,
         adj_pred_lagged=adj_pred,
         score_matrix=scores,
@@ -367,7 +367,7 @@ def run_graph_method(
     method_rows = _per_method_propagation(res_dir / "cf", graph, mech, rollout, pearl)
 
     # 5. Graph-quality sweep (optional): show graph_error spans ~0 (good graph)
-    #    to large (random graph), so the Axis-B decomposition is demonstrably
+    #    to large (random graph), so the Axis-A decomposition is demonstrably
     #    discriminative rather than evaluated at a single near-perfect point.
     sweep_rows = None
     if sweep:
@@ -419,7 +419,7 @@ def run_graph_method(
     dump_json(out_dir_res / "graph_error.json", out)
 
     print(
-        f"[07] {method} Axis B: SHD={axis_b['SHD']:.0f} LagAcc={axis_b['LagAcc']:.2f} "
+        f"[07] {method} Axis A: SHD={axis_b['SHD']:.0f} LagAcc={axis_b['LagAcc']:.2f} "
         f"AUC={axis_b.get('AUC', float('nan')):.3f}"
     )
     print(
@@ -703,7 +703,7 @@ def run(
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(
         description="Phase 07: auxiliary causal methods -- self-graphing (DYNOTEARS / "
-        "CITRIS) with the Axis-B graph-error decomposition (H3), or "
+        "CITRIS) with the Axis-A graph-error decomposition (H3), or "
         "or the necessity/sufficiency audit (pns).",
     )
     parser.add_argument("--config", required=True, choices=sorted(CONFIGS))

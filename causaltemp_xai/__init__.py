@@ -10,9 +10,6 @@ from causaltemp_xai.metrics import (
     compute_axis_a,
     compute_axis_b,
     compute_axis_c,
-    compute_axis_d,
-    icc,
-    icc_latent,
     ood_plausibility,
     proximity,
     sparsity,
@@ -33,13 +30,10 @@ __all__ = [
     "compute_axis_a",
     "compute_axis_b",
     "compute_axis_c",
-    "compute_axis_d",
     # utils
     "derive_intervention_t",
     # evaluation
     "evaluate_method",
-    "icc",
-    "icc_latent",
     "ood_plausibility",
     "proximity",
     "shift_vr_methods",

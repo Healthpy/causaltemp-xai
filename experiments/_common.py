@@ -9,9 +9,8 @@ by path convention::
     results/<config_name>/<classifier>/eval_<Method>.json
     results/<config_name>/<classifier>/per_instance.csv
     results/<config_name>/<classifier>/attribution.json
-    results/<config_name>/<classifier>/axis_a_attribution.json
     results/<config_name>/<classifier>/shift_vr.json
-    results/<config_name>/axis_b_benchmark.json      # dataset-level, no classifier needed
+    results/<config_name>/axis_a_benchmark.json      # dataset-level, no classifier needed
     results/<config_name>/oracle/...                 # nonlinear configs
     results/tables/table_axis_c_cf_faith.csv         # accumulated across runs
     results/figures/*.png
@@ -26,7 +25,7 @@ are evaluated on whichever kind of method they are actually suited to:
   "does the counterfactual itself look good and respect the SCM." Axis C scores
   the CF as an artifact; CF-faith scores it against the mechanism (including
   the retroactive-edit gate).
-* **Axis D** (Shift-VR + attribution input-sensitivity) — Shift-VR applies to
+* **Axis B** (Shift-VR + attribution input-sensitivity) — Shift-VR applies to
   CF methods (validity retention under a noise-distribution shift, computed
   live in Phase 03); input-sensitivity applies to attribution methods
   (stability of the saliency map under small input perturbations).
@@ -34,10 +33,10 @@ are evaluated on whichever kind of method they are actually suited to:
   methods (Integrated Gradients), scored against **ground-truth oracle
   interventions** built from the known SCM (:func:`build_oracle_interventions`)
   so ``int_channel`` / ``causal_parents`` are real, not proxies.
-* **Axis B** (SHD, LagAcc, TV-Confounding) — no graph-*discovery* method
-  exists in this pipeline, so Axis B is not a per-method score here. It is
+* **Axis A** (SHD, LagAcc, TV-Confounding) — no graph-*discovery* method
+  exists in this pipeline, so Axis A is not a per-method score here. It is
   computed once per **dataset** (Phase 01) as a structural diagnostic of the
-  benchmark's own causal graph (:func:`axis_b_benchmark_diagnostic`).
+  benchmark's own causal graph (:func:`axis_a_benchmark_diagnostic`).
 """
 
 from __future__ import annotations
@@ -554,7 +553,7 @@ def build_masked_mechanism(mechanism, inferred_adj: np.ndarray):
     """Copy an :class:`MLPMechanism` with its adjacency replaced by ``inferred_adj``.
 
     Keeps the mechanism's learned weights/decay/gain but swaps in a different
-    ``(k, k, L)`` parent structure. Used by the Axis-B graph-error decomposition
+    ``(k, k, L)`` parent structure. Used by the Axis-A graph-error decomposition
     (Phase 07): rolling the oracle structural CF through a mechanism that only
     propagates along the CITRIS-*inferred* edges — instead of the true edges —
     isolates how much CF-faith is lost to graph-estimation error (vs. the
@@ -589,11 +588,11 @@ def build_masked_mechanism(mechanism, inferred_adj: np.ndarray):
     )
 
 
-def axis_b_benchmark_diagnostic(graph: np.ndarray, X: np.ndarray, mechanism=None) -> dict:
+def axis_a_benchmark_diagnostic(graph: np.ndarray, X: np.ndarray, mechanism=None) -> dict:
     """Structural diagnostic of the benchmark's own ground-truth graph.
 
     No graph-*discovery* method is wired into this pipeline, so there is no
-    "inferred" adjacency to compare against — Axis B's SHD/LagAcc against the
+    "inferred" adjacency to compare against — Axis A's SHD/LagAcc against the
     ground truth graph itself are trivially perfect (0 / 1) by construction.
     What *is* informative here is ``ResidualDep`` (metric-quality fix #1,
     2026-07-18, replacing the retired TV-confounding score): the mean |Pearson
@@ -602,10 +601,10 @@ def axis_b_benchmark_diagnostic(graph: np.ndarray, X: np.ndarray, mechanism=None
     benchmark's confounder-free SCMs. Pass ``mechanism`` to enable the
     residual (recommended) mode. Report once per dataset.
     """
-    from causaltemp_xai.metrics.axis_b import compute_axis_b
+    from causaltemp_xai.metrics.axis_a import compute_axis_a
 
     adj = (np.asarray(graph) != 0).astype(int)
-    result = compute_axis_b(adj, adj, X=np.asarray(X, dtype=float), mechanism=mechanism)
+    result = compute_axis_a(adj, adj, X=np.asarray(X, dtype=float), mechanism=mechanism)
     result["note"] = (
         "SHD/LagAcc computed against the graph itself (no graph-discovery "
         "method in this pipeline) -- trivially perfect; ResidualDep is "

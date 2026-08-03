@@ -365,7 +365,7 @@ class NlinearSCMT:
         self._rng = np.random.default_rng(seed)
         # Build graph + mechanism at construction, *before* any noise is drawn, so
         # a noise-only `shifted_config` yields a bit-identical graph + mechanism
-        # (Axis-D invariant). Graph first, then MLP weights (both from self._rng).
+        # (Axis-B invariant). Graph first, then MLP weights (both from self._rng).
         self.graph = _sample_graph(self.k, self.L, self.sparsity, self._rng)
         self.mechanism = MLPMechanism.random(
             self.graph,

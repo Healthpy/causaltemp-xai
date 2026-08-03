@@ -4,7 +4,7 @@ Loads the dataset + LSTM checkpoint for one config, selects the flip
 candidates (test instances not already predicted as ``TARGET_CLASS``), runs
 every registered CF method (CARLA + PearlCARLA + cfts-backed Wachter/COMTE/
 CONFETTI/CounTS/CELS), and persists the raw counterfactual arrays. Also
-computes every CF method's Shift-VR-lite robustness metric (Axis D), which
+computes every CF method's Shift-VR-lite robustness metric (Axis B), which
 needs live method/model access and so belongs here rather than in the
 metrics-only Phase 04.
 
@@ -14,7 +14,7 @@ method families were descoped 2026-07-29 and no axis here scores them, but the
 code stayed wired in, so every run paid for work no contribution claims.
 
 Every axis that scores counterfactual explanations (Axis C + CF-faith here in
-Phase 04/05, Axis D's Shift-VR here in Phase 03) is run over the **full** set
+Phase 04/05, Axis B's Shift-VR here in Phase 03) is run over the **full** set
 of selected CF methods -- no method is singled out or excluded from an
 applicable axis. Wachter is the cfts-backed gradient implementation
 (``CftsWachterCF``); the native from-scratch ``WachterCF`` is not used here.
@@ -36,7 +36,7 @@ Outputs (under ``results/<config>/lstm/``)::
 
     cf/X_sel.npy                  selected factual instances, (n_cf, T, k)
     cf/X_cf_<Method>.npy           one array per CF method, (n_cf, T, k)
-    shift_vr.json                 Axis D: validity-retention under a noise shift, all CF methods
+    shift_vr.json                 Axis B: validity-retention under a noise shift, all CF methods
 
 Usage
 -----

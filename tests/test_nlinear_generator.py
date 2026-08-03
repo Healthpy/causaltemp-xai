@@ -467,8 +467,8 @@ class TestConfigDispatch:
         assert shift.nonlinear == SMOKE_NL.nonlinear
         assert shift.noise_type == "uniform"
 
-    def test_shifted_config_axis_d_invariant(self):
-        """Noise-only shift ⇒ bit-identical graph + MLP mechanism (Axis D)."""
+    def test_shifted_config_axis_b_invariant(self):
+        """Noise-only shift ⇒ bit-identical graph + MLP mechanism (Axis B)."""
         base = build_generator(SMOKE_NL)
         shift = build_generator(shifted_config(SMOKE_NL, noise_type="uniform"))
         assert np.array_equal(base.graph, shift.graph)

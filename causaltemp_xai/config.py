@@ -429,7 +429,7 @@ def shifted_config(
     build the graph and mechanism in ``__init__`` from the seed *before* and
     independent of the noise distribution, a generator built from this config has
     a **bit-identical** ``graph`` and ``mechanism`` to one built from ``base`` —
-    isolating a pure innovation-distribution shift (Axis D), per the pinned
+    isolating a pure innovation-distribution shift (Axis B), per the pinned
     Shift-VR protocol in ``resources/configs.md``. This holds for the nonlinear
     family too (the MLP weights are seed-built before any noise is drawn).
     """

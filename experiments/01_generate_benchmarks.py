@@ -5,11 +5,11 @@ generate a single config or every registered config in one call. Datasets are
 deterministic (seeded), so they are written under ``data/scm_t/<config>/``
 (gitignored, regenerated on demand) rather than into ``results/``.
 
-Also computes the **Axis B** graph diagnostic (SHD/LagAcc/TV-Confounding) once
-per dataset -- see ``experiments/_common.py`` module docstring for why Axis B
+Also computes the **Axis A** graph diagnostic (SHD/LagAcc/TV-Confounding) once
+per dataset -- see ``experiments/_common.py`` module docstring for why Axis A
 is a dataset-level diagnostic rather than a per-method score in this pipeline
 (no graph-discovery method is wired in) -- and writes it to
-``results/<config>/axis_b_benchmark.json``.
+``results/<config>/axis_a_benchmark.json``.
 
 Usage
 -----
@@ -32,7 +32,7 @@ from causaltemp_xai.config import CONFIGS, get_config, seeded_variant, shifted_c
 from causaltemp_xai.data_io import DEFAULT_OUT_DIR, generate_and_save, load_dataset  # noqa: E402
 from experiments._common import (  # noqa: E402
     RESULTS_DIR,
-    axis_b_benchmark_diagnostic,
+    axis_a_benchmark_diagnostic,
     dump_json,
     set_run_context,
 )
@@ -56,16 +56,16 @@ def generate_one(
     print(f"     class balance: {meta['class_balance']}")
 
     data = load_dataset(cfg.name, out_dir=out_dir)
-    axis_b = axis_b_benchmark_diagnostic(
+    axis_b = axis_a_benchmark_diagnostic(
         data["graph"], data["X_test"], mechanism=data.get("mechanism")
     )
-    axis_b_path = RESULTS_DIR / cfg.name / "axis_b_benchmark.json"
-    dump_json(axis_b_path, axis_b)
+    axis_a_path = RESULTS_DIR / cfg.name / "axis_a_benchmark.json"
+    dump_json(axis_a_path, axis_b)
     print(
-        f"     axis B (graph diagnostic): SHD={axis_b['SHD']:.0f} "
+        f"     axis A (graph diagnostic): SHD={axis_b['SHD']:.0f} "
         f"LagAcc={axis_b['LagAcc']:.2f} ResidualDep={axis_b.get('ResidualDep', float('nan')):.3f}"
     )
-    print(f"     -> {axis_b_path}")
+    print(f"     -> {axis_a_path}")
 
 
 def main(argv=None) -> int:

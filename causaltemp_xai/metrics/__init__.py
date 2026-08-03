@@ -1,14 +1,5 @@
 from .axis_a import (
     compute_axis_a,
-    dci,
-    icc,
-    icc_latent,
-    mcc,
-    mcc_concept,
-    mig,
-)
-from .axis_b import (
-    compute_axis_b,
     graph_auc,
     graph_error_decomposition,
     lag_accuracy,
@@ -16,6 +7,7 @@ from .axis_b import (
     residual_dependence,
     shd,
 )
+from .axis_b import compute_axis_b, concept_stability, input_sensitivity
 from .axis_c import (
     compute_axis_c,
     ood_plausibility,
@@ -24,11 +16,6 @@ from .axis_c import (
     sparsity,
     trsi,
     validity,
-)
-from .axis_d import (
-    compute_axis_d,
-    concept_stability,
-    input_sensitivity,
 )
 from .cf_faith import CFfaith
 from .pns import (
@@ -40,28 +27,26 @@ from .pns import (
     recover_label_threshold,
     scm_label,
 )
+from .taxonomy import AXES, AXIS_METRICS, AXIS_OF, axis_of
 
 __all__ = [
+    "AXES",
+    "AXIS_METRICS",
+    "AXIS_OF",
     "CFfaith",
+    "axis_of",
     "compute_axis_a",
     "compute_axis_b",
     "compute_axis_c",
-    "compute_axis_d",
     "concept_stability",
-    "dci",
     "do_complexity",
     "extract_intervention",
     "extract_intervention_schedule",
     "graph_auc",
     "graph_error_decomposition",
-    "icc",
-    "icc_latent",
     "input_sensitivity",
     "lag_accuracy",
     "lagged_edge_f1",
-    "mcc",
-    "mcc_concept",
-    "mig",
     "ood_plausibility",
     "pns_direction",
     "pns_from_directions",
