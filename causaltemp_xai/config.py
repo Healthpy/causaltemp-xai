@@ -202,7 +202,38 @@ SMOKE_INTERIOR_LABEL = BenchmarkConfig(
     label_params={"frac": 0.6},
 )
 
-#: H8c at paper scale: FULL with the label read at 0.6 T (t_label = 60, T = 100).
+#: H8c at paper scale, **corrected** (2026-08-03): FULL with the label at 0.9 T
+#: (`t_label = 90`, `T = 100`), so the label's information must survive only 9
+#: contractive steps to reach the LSTM's terminal readout instead of 39.
+#:
+#: `FULL_INTERIOR_LABEL` below (`frac = 0.6`) is **not usable for H8c at this
+#: scale**: its classifier trains to 0.501 test accuracy — chance — because the
+#: same contraction that produces the horizon result also destroys the label
+#: signal before the readout can see it. Measured carry distance vs accuracy:
+#: 0 steps -> 0.996 (`full`) / 0.920 (`smoke`), 11 steps -> 0.790
+#: (`smoke_interior_label`), 39 steps -> 0.501. Validity is undefined against a
+#: chance classifier, so no H8c verdict can come from that config; it is kept
+#: registered because that failure is itself a recorded finding.
+#:
+#: 9 steps of separation is smaller than smoke's 11 but still separates
+#: `t_label - t0` from `T - t0`, and sits in the regime where a readable
+#: classifier demonstrably exists.
+FULL_INTERIOR_LABEL_LATE = BenchmarkConfig(
+    k=10,
+    L=1,
+    sparsity=0.2,
+    noise_type="laplace",
+    T=100,
+    N=10_000,
+    seed=42,
+    name="full_interior_label_late",
+    label_fn="interior_threshold",
+    label_params={"frac": 0.9},
+)
+
+#: H8c at paper scale, first attempt: FULL with the label read at 0.6 T
+#: (t_label = 60, T = 100). **Superseded by FULL_INTERIOR_LABEL_LATE** — see
+#: that preset's note. Retained so the negative result stays reproducible.
 FULL_INTERIOR_LABEL = BenchmarkConfig(
     k=10,
     L=1,
@@ -381,6 +412,7 @@ CONFIGS: dict[str, BenchmarkConfig] = {
     "smoke_regime_hmm": SMOKE_REGIME_HMM,
     "smoke_interior_label": SMOKE_INTERIOR_LABEL,
     "full_interior_label": FULL_INTERIOR_LABEL,
+    "full_interior_label_late": FULL_INTERIOR_LABEL_LATE,
 }
 
 
@@ -483,7 +515,8 @@ def get_config(name: str) -> BenchmarkConfig:
         One of ``"smoke"``, ``"full"``, ``"full_sparse"``, ``"smoke_nl"``,
         ``"full_nl"``, ``"smoke_gaussian"``, ``"smoke_nonmonotonic"``,
         ``"smoke_regime"``, ``"smoke_regime_hmm"``,
-        ``"smoke_interior_label"``, ``"full_interior_label"``.
+        ``"smoke_interior_label"``, ``"full_interior_label"``,
+        ``"full_interior_label_late"``.
 
     Raises
     ------
