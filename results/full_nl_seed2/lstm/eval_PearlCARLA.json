@@ -1,7 +1,7 @@
 {
   "seed": 2,
   "config": "full_nl_seed2",
-  "git_commit": "371ae412f1895fa11c0e24f6e762378c2166f696",
+  "git_commit": "04cb2977fc10c27c71b60cc767ea43da8dad9140",
   "git_dirty": false,
   "n": 50,
   "validity": 0.0,
@@ -20,6 +20,8 @@
   "frac_degenerate": 1.0,
   "n_vacuous": 50,
   "frac_vacuous": 1.0,
+  "do_complexity_mean": 0.0,
+  "do_complexity_median": 0.0,
   "cf_faith_rollout_hard_valid": 0.0,
   "cf_faith_pearl_hard_valid": 0.0,
   "method": "PearlCARLA",
