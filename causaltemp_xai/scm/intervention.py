@@ -1,23 +1,19 @@
-"""
-Intervention-time derivation and do-operator specification.
+"""Intervention-time derivation and the benchmark's shared "is this changed?" predicate.
 
-This module combines two sources:
-1. derive_intervention_t() — MOVED from methods/intervention.py (causaltemp_xai
-   original implementation). This is the benchmark's uniform intervention-time
-   heuristic for CF methods that don't declare an explicit intervention point.
+:func:`derive_intervention_t` is the uniform intervention-time heuristic applied
+to every CF method that does not declare an explicit intervention point, so
+CF-faith, do-complexity and the PNS audit all score the *same* object rather
+than three readings of one counterfactual. :data:`INTERVENTION_TOL` is the
+single per-element threshold they share.
 
-2. Intervention dataclass and apply_intervention() — ported from
-   causal_tscf_bench/causal_tscf_bench/scm/intervention.py. These implement
-   Pearl's do-operator (Action step of the causal ladder).
-
-The derive_intervention_t() function is kept identical to the original in
-methods/intervention.py so that existing callers in eval.py and cf_faith.py
-continue to work after import path update.
+A ported ``Intervention`` dataclass and ``apply_intervention()`` also lived here
+until 2026-08-03. Their only consumer was ``scm/counterfactual.py``, deleted the
+same day as a duplicate of ``benchmarks/structural_cf.py`` (``DECISIONS.md``);
+the do-operator's live implementation is that module's ``structural_counterfactual``
+/ ``structural_counterfactual_schedule``.
 """
 
 from __future__ import annotations
-
-from dataclasses import dataclass
 
 import numpy as np
 
@@ -158,54 +154,3 @@ def is_vacuous_intervention(
 
     predicted = mechanism.forward_numpy(lag_window(x_cf, t0, mechanism.L, k))
     return float(np.abs(x_cf[t0] - predicted).max()) <= tol
-
-
-# ---------------------------------------------------------------------------
-# Ported from causal_tscf_bench — do-operator (Action step)
-# ---------------------------------------------------------------------------
-
-
-@dataclass
-class Intervention:
-    """Specification of a single do-operator intervention."""
-
-    channel: int  # i — the intervened channel
-    time: int  # T_int — the time step of intervention
-    value: float  # x'_int — the constant value imposed
-
-    def affects_time(self, t: int) -> bool:
-        """True if time t is at or after the intervention time."""
-        return t >= self.time
-
-
-def apply_intervention(
-    X_running: np.ndarray,
-    t: int,
-    j: int,
-    intervention: Intervention | None,
-) -> np.ndarray:
-    """
-    During forward simulation, override X[t, j] if an intervention targets (j, t).
-
-    Called inside compute_gt_counterfactual at each (t, j) step.
-    Returns the (possibly overridden) value for channel j at time t.
-
-    Parameters
-    ----------
-    X_running : np.ndarray
-        Partially filled simulation array, shape (N, T_padded, k).
-    t : int
-        Current absolute time index in X_running.
-    j : int
-        Current channel being computed.
-    intervention : Intervention | None
-
-    Returns
-    -------
-    np.ndarray
-        Shape (N,) — the value for X[:, t, j] after potential override.
-    """
-    value = X_running[:, t, j].copy()
-    if intervention is not None and intervention.channel == j and intervention.time == t:
-        value[:] = intervention.value
-    return value

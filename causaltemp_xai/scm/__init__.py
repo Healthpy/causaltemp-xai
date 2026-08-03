@@ -1,29 +1,22 @@
-"""SCM sub-package: lagged DAG, operators, simulation, abduction, and counterfactuals.
+"""SCM sub-package: intervention-time derivation and the shared "is this changed?" predicate.
 
-Ported from causal_tscf_bench/causal_tscf_bench/scm/ with minor adaptations
-to use (N, T, k) variable naming consistent with causaltemp_xai conventions
-(k = number of channels/variables; semantically identical to bench's M).
+Reduced to :mod:`~causaltemp_xai.scm.intervention` on 2026-08-03
+(``DECISIONS.md``). The package previously also carried a ported
+``causal_tscf_bench`` cluster — ``operators``, ``abduction``, ``counterfactual``,
+``dag``, ``tscm`` — which was a **second, untested implementation of the
+benchmark's ground truth**, unimported from outside this package and
+self-described as "the preferred path for new code". It was deleted.
+
+The canonical implementations live in :mod:`causaltemp_xai.benchmarks`:
+mechanisms in ``benchmarks/mechanisms.py``, oracle abduction–action–prediction
+counterfactuals in ``benchmarks/structural_cf.py``, generation in
+``benchmarks/generator.py``. There is exactly one of each.
 """
 
-from .abduction import abduct
-from .counterfactual import compute_gt_counterfactual
-from .dag import LaggedDAG, sample_dag
 from .intervention import INTERVENTION_TOL, derive_intervention_t, is_vacuous_intervention
-from .operators import INVERTIBLE_OPERATORS, OPERATORS, Mechanism, sample_mechanism
-from .tscm import sample_noise, simulate_tscm
 
 __all__ = [
     "INTERVENTION_TOL",
-    "INVERTIBLE_OPERATORS",
-    "OPERATORS",
-    "LaggedDAG",
-    "Mechanism",
-    "abduct",
-    "compute_gt_counterfactual",
     "derive_intervention_t",
     "is_vacuous_intervention",
-    "sample_dag",
-    "sample_mechanism",
-    "sample_noise",
-    "simulate_tscm",
 ]
