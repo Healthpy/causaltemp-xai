@@ -1,4 +1,4 @@
-"""Phase 06: post-hoc aggregation and publication artifacts.
+"""Phase 08: post-hoc aggregation and publication artifacts.
 
 The one phase that reads what Phases 01-05 wrote and turns it into the two
 artifact families a paper needs. It runs *no* explainer and defines *no* metric
@@ -39,16 +39,16 @@ generated from the same freshly-pooled results.
 Usage
 -----
     # Full pipeline per seed, then pool with bootstrap CIs:
-    uv run python experiments/06_aggregate_and_report.py seeds --config smoke --seeds 0 1 2 --n-cf 20
+    uv run python experiments/08_aggregate_and_report.py seeds --config smoke --seeds 0 1 2 --n-cf 20
 
     # Re-aggregate only (seeds' phases 01-04 already ran):
-    uv run python experiments/06_aggregate_and_report.py seeds --config smoke --seeds 0 1 2 --skip-runs
+    uv run python experiments/08_aggregate_and_report.py seeds --config smoke --seeds 0 1 2 --skip-runs
 
     # Render figures from whatever results/ already contains:
-    uv run python experiments/06_aggregate_and_report.py figures
+    uv run python experiments/08_aggregate_and_report.py figures
 
     # Both, in order:
-    uv run python experiments/06_aggregate_and_report.py all --config smoke --seeds 0 1 2
+    uv run python experiments/08_aggregate_and_report.py all --config smoke --seeds 0 1 2
 
 Scope note: the ``seeds`` subcommand targets the **classifier + CF-method**
 pipeline (phases 01-04). The oracle positive control (Phase 05) is
@@ -124,16 +124,16 @@ def run_seed(
     config_name: str, seed: int, n_cf: int, out_dir, hparams: dict, methods_filter=None
 ) -> None:
     """Run phases 01->04 for one seed replicate of ``config_name``."""
-    print(f"\n=== [06] seed={seed}: phase 01 (generate) ===")
+    print(f"\n=== [08] seed={seed}: phase 01 (generate) ===")
     _phase01.generate_one(config_name, out_dir, shift_noise=None, seed=seed)
 
-    print(f"=== [06] seed={seed}: phase 02 (train LSTM) ===")
+    print(f"=== [08] seed={seed}: phase 02 (train LSTM) ===")
     _phase02.train_one(config_name, out_dir, seed=seed, **hparams)
 
-    print(f"=== [06] seed={seed}: phase 03 (CF methods) ===")
+    print(f"=== [08] seed={seed}: phase 03 (CF methods) ===")
     _phase03.run(config_name, n_cf, out_dir, methods_filter=methods_filter, seed=seed)
 
-    print(f"=== [06] seed={seed}: phase 04 (evaluate axes) ===")
+    print(f"=== [08] seed={seed}: phase 04 (evaluate axes) ===")
     _phase04.run(config_name, out_dir, seed=seed)
 
 
@@ -154,13 +154,13 @@ def run_seeds_report(args) -> None:
         for seed in args.seeds:
             run_seed(args.config, seed, n_cf, args.out_dir, hparams, methods_filter=args.methods)
     else:
-        print("[06] --skip-runs: aggregating already-produced per-seed results only.")
+        print("[08] --skip-runs: aggregating already-produced per-seed results only.")
 
-    print(f"\n=== [06] aggregating {len(args.seeds)} seeds for '{args.config}' ===")
+    print(f"\n=== [08] aggregating {len(args.seeds)} seeds for '{args.config}' ===")
     rows = aggregate_across_seeds(args.config, args.seeds, classifier="lstm", n_boot=args.n_boot)
     out_path = TABLES_DIR / f"table_seed_aggregate_{args.config}_lstm.csv"
     write_csv(out_path, rows)
-    print(f"[06] wrote {out_path}")
+    print(f"[08] wrote {out_path}")
 
     # Same per-seed directories aggregate_across_seeds just read, reconstructed
     # the same way (via seeded_variant) so the provenance check is guaranteed
@@ -349,13 +349,13 @@ def run_figures_report(args) -> None:
 
     data = _load_all_per_instance(results_dir)
     methods = _methods_in_order(data["method"])
-    print(f"[06] loaded {len(data['method'])} per-instance rows across {len(methods)} methods")
+    print(f"[08] loaded {len(data['method'])} per-instance rows across {len(methods)} methods")
 
     fig1_scatter(data, methods, out_dir / "fig1_validity_vs_cffaith.png")
     fig2_distributions(data, methods, out_dir / "fig2_cffaith_distribution.png")
     fig3_rank_correlation(data, methods, out_dir / "fig3_rank_correlation.png")
     fig4_do_complexity_calibration(out_dir / "fig4_do_complexity_calibration.pdf")
-    print(f"\n[06] wrote 4 figures to {out_dir}/")
+    print(f"\n[08] wrote 4 figures to {out_dir}/")
 
 
 # ---------------------------------------------------------------------------
@@ -446,7 +446,7 @@ def run_pns_report(args) -> None:
         for seed in seeds:
             path = results_dir / f"{args.config}_seed{seed}" / "lstm" / fname
             if not path.exists():
-                print(f"[06] missing {path} — skipping")
+                print(f"[08] missing {path} — skipping")
                 continue
             payload = json.loads(path.read_text())
             for method, out in payload.get("PS", {}).items():
@@ -467,7 +467,7 @@ def run_pns_report(args) -> None:
             rows.append(row)
 
     if not rows:
-        raise SystemExit(f"[06] no PNS results found for {args.config!r} under {results_dir}")
+        raise SystemExit(f"[08] no PNS results found for {args.config!r} under {results_dir}")
 
     out_path = TABLES_DIR / f"table_pns_do_complexity_{args.config}.csv"
     out_path.parent.mkdir(parents=True, exist_ok=True)
@@ -476,7 +476,7 @@ def run_pns_report(args) -> None:
         writer.writeheader()
         writer.writerows(rows)
 
-    print(f"[06] PNS pooled over {len(seeds)} seeds — {args.config}")
+    print(f"[08] PNS pooled over {len(seeds)} seeds — {args.config}")
     print(f"{'mode':<13} {'method':<14} {'A':>6} {'C':>6} {'d_total':>8} {'d_traj':>7} {'D':>7}")
     for r in rows:
         fmt = lambda v: "  nan" if v != v else f"{v:+.2f}"  # noqa: E731
@@ -485,7 +485,7 @@ def run_pns_report(args) -> None:
             f"{fmt(r['C_world_oracle']):>6} {fmt(r['delta_total']):>8} "
             f"{fmt(r['delta_trajectory']):>7} {r['do_complexity_mean']:>7.1f}"
         )
-    print(f"[06] wrote {out_path}")
+    print(f"[08] wrote {out_path}")
 
 
 def run_horizon_report(args) -> None:
@@ -510,7 +510,7 @@ def run_horizon_report(args) -> None:
             name = config if seed is None else f"{config}_seed{seed}"
             path = results_dir / name / "lstm" / "horizon" / "summary.json"
             if not path.exists():
-                print(f"[06] missing {path} — skipping")
+                print(f"[08] missing {path} — skipping")
                 continue
             payload = json.loads(path.read_text())
             T = payload["T"]
@@ -549,7 +549,7 @@ def run_horizon_report(args) -> None:
             rows.append(row)
 
     if not rows:
-        raise SystemExit(f"[06] no horizon results found for {args.configs} under {results_dir}")
+        raise SystemExit(f"[08] no horizon results found for {args.configs} under {results_dir}")
 
     out_path = TABLES_DIR / f"table_horizon_{'_vs_'.join(args.configs)}.csv"
     out_path.parent.mkdir(parents=True, exist_ok=True)
@@ -558,7 +558,7 @@ def run_horizon_report(args) -> None:
         writer.writeheader()
         writer.writerows(rows)
 
-    print(f"[06] horizon pooled over {len(seeds)} seed(s)")
+    print(f"[08] horizon pooled over {len(seeds)} seed(s)")
     print(
         f"{'config':<22}{'method':<13}{'T-t0':>6}{'t0':>5}{'t_l-t0':>8}"
         f"{'validity [95% CI]':>26}{'C_world':>10}"
@@ -571,7 +571,7 @@ def run_horizon_report(args) -> None:
             f"{r['config']:<22}{r['method']:<13}{r['T_minus_t0']:>6}{r['t0']:>5}"
             f"{r['label_horizon']:>8}{ci:>26}{c:>10.2f}"
         )
-    print(f"[06] wrote {out_path}")
+    print(f"[08] wrote {out_path}")
 
 
 def _add_horizon_args(p) -> None:
@@ -633,7 +633,7 @@ def fig4_do_complexity_calibration(out_path, seed: int = 0) -> None:
     fig.tight_layout()
     fig.savefig(out_path, format="pdf")
     plt.close(fig)
-    print(f"[06] wrote {out_path}  (D from {ds[0]} to {ds[-1]})")
+    print(f"[08] wrote {out_path}  (D from {ds[0]} to {ds[-1]})")
 
 
 def _add_pns_args(p) -> None:
@@ -654,7 +654,7 @@ def _add_figures_args(p) -> None:
 
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(
-        description="Phase 06: post-hoc aggregation (multi-seed bootstrap CI tables) "
+        description="Phase 08: post-hoc aggregation (multi-seed bootstrap CI tables) "
         "and publication figures.",
     )
     sub = parser.add_subparsers(dest="report", required=True)

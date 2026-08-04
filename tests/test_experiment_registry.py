@@ -12,7 +12,7 @@ correct and tested and still never actually run -- this test exists so that
 gap cannot recur silently for *any* of the seven currently-registered methods.
 
 Phase 03 is a numbered-prefix module (not a valid ``import`` target), so it is
-loaded the same way ``experiments/06_aggregate_and_report.py`` already does:
+loaded the same way ``experiments/08_aggregate_and_report.py`` already does:
 ``importlib.import_module("experiments.03_run_cf_methods")``.
 """
 

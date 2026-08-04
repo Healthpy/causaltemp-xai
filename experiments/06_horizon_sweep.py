@@ -1,4 +1,4 @@
-"""Phase 08: horizon sweep — validity and CF-faith as functions of ``T - t0`` (M4d).
+"""Phase 06: horizon sweep — validity and CF-faith as functions of ``T - t0`` (M4d).
 
 Contribution #2 is horizon impossibility: a single causal intervention placed
 far enough from the label site cannot move the classifier, however faithful it
@@ -36,8 +36,8 @@ edit**, and it is reported as a fixed reference line, not as a swept curve.
 
 Run (after Phases 01-03 for the config)::
 
-    uv run python experiments/08_horizon_sweep.py --config smoke --n-cf 10
-    uv run python experiments/08_horizon_sweep.py --config full --horizons 2,5,10,25,50,75
+    uv run python experiments/06_horizon_sweep.py --config smoke --n-cf 10
+    uv run python experiments/06_horizon_sweep.py --config full --horizons 2,5,10,25,50,75
 
 Outputs under ``results/<config>/horizon/``:
 
@@ -125,11 +125,11 @@ def resolve_horizons(T: int, spec: str | None) -> list[int]:
     dropped = sorted(set(proposed) - set(kept))
     if dropped:
         print(
-            f"[08] dropped unscorable horizons {dropped} for T={T} "
+            f"[06] dropped unscorable horizons {dropped} for T={T} "
             f"(need 0 < T-h < T-1, i.e. 1 < h < {T})"
         )
     if not kept:
-        raise SystemExit(f"[08] no scorable horizon in {proposed} for T={T}")
+        raise SystemExit(f"[06] no scorable horizon in {proposed} for T={T}")
     return kept
 
 
@@ -176,12 +176,12 @@ def run(
     T = X_sel.shape[1]
     horizons = resolve_horizons(T, horizons_spec)
     t_label = label.label_site(T)
-    print(f"[08] config={cfg.name} T={T} n_cf={len(X_sel)} " f"horizons={horizons} (t0 = T - h)")
-    print(f"[08] label threshold theta={theta:+.6f} (world-side, for the PS C term)")
+    print(f"[06] config={cfg.name} T={T} n_cf={len(X_sel)} " f"horizons={horizons} (t0 = T - h)")
+    print(f"[06] label threshold theta={theta:+.6f} (world-side, for the PS C term)")
     # H8c (RISK-19): on the default terminal rule t_label == T-1 and the two
     # distances coincide, which is exactly why both are printed -- a horizon
     # curve is only attributable to `T - t0` if `t_label - t0` is also shown.
-    print(f"[08] label functional={cfg.label_fn} site t_label={t_label} of T={T}")
+    print(f"[06] label functional={cfg.label_fn} site t_label={t_label} of T={T}")
 
     out_root = res_dir / "horizon"
     all_rows, summary = [], []
@@ -280,10 +280,10 @@ def run(
             "rows": summary,
         },
     )
-    print(f"\n[08] wrote {out_root / 'per_instance.csv'}")
-    print(f"[08] wrote {out_root / 'summary.json'}")
+    print(f"\n[06] wrote {out_root / 'per_instance.csv'}")
+    print(f"[06] wrote {out_root / 'summary.json'}")
     print(
-        "[08] read frac_vacuous alongside validity: a method whose delta collapses "
+        "[06] read frac_vacuous alongside validity: a method whose delta collapses "
         "produces CFs that never intervened, which is a different failure from "
         "intervening and not reaching the label (RISK-17)."
     )

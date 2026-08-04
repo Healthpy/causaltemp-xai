@@ -2,7 +2,7 @@
 
 Covers ``experiments._common.read_run_summary_provenance``,
 ``check_provenance``, and ``print_provenance_warning`` — added because the
-figures/seeds reports in ``06_aggregate_and_report.py`` read only
+figures/seeds reports in ``08_aggregate_and_report.py`` read only
 ``per_instance.csv`` (no provenance columns), so a ``git_dirty`` flag honestly
 stamped into a sibling ``summary.json`` by ``dump_json`` was reachable
 per-file but never surfaced at the point where publication artifacts are

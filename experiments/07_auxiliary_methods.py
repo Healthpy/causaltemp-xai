@@ -4,7 +4,7 @@ Phases 01-05 evaluate *counterfactual-generating* methods against a trained
 LSTM. This phase covers the two method families that do not fit that shape --
 they learn causal structure or a causal representation rather than producing a
 counterfactual -- and scores each on the axis its output actually addresses.
-Neither family is wired into the multi-seed orchestrator (Phase 06 ``seeds``),
+Neither family is wired into the multi-seed orchestrator (Phase 08 ``seeds``),
 and both are config-restricted; that is why they live here rather than in the
 main pipeline.
 
@@ -467,7 +467,7 @@ def _generate_pn_cfs(cfg, out_dir, clf, data, n_cf: int, methods_filter=None):
     aimed at leaving it — which Phase 03 never generates. Rather than
     duplicating the method registry, this reuses Phase 03's own
     ``build_methods``/``generate_cfs`` via ``importlib`` (the same pattern
-    Phase 06 uses to drive phases 01-04), constructed with ``target_class=0``.
+    Phase 08 uses to drive phases 01-04), constructed with ``target_class=0``.
 
     Arrays are cached under ``cf_pn/`` and reused on re-run: CF generation is
     the expensive part of the pipeline, and PN doubles it.

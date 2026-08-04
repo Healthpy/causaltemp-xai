@@ -58,7 +58,7 @@ run python experiments/05_run_oracle_control.py --config full_nl
 run python experiments/07_auxiliary_methods.py --config full_nl --method dynotears
 
 echo "=== Aggregation ==="
-run python experiments/06_aggregate_and_report.py figures
+run python experiments/08_aggregate_and_report.py figures
 
 echo "=== Done ==="
 git status --porcelain -- results/ | head -20 || true

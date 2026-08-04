@@ -17,8 +17,8 @@ import importlib
 
 import pytest
 
-_phase08 = importlib.import_module("experiments.08_horizon_sweep")
-resolve_horizons = _phase08.resolve_horizons
+_phase06 = importlib.import_module("experiments.06_horizon_sweep")
+resolve_horizons = _phase06.resolve_horizons
 
 
 class TestResolveHorizons:
@@ -85,13 +85,13 @@ class TestResolveHorizons:
         flip-candidate set). Calling that "PNS" would overstate the estimand,
         and a combined PNS must never be synthesised from the missing PN term
         (R3). This guards the naming that keeps the two apart."""
-        src = _phase08.__doc__ or ""
+        src = _phase06.__doc__ or ""
         assert "PS, not PNS" in src
         # The per-point columns must be prefixed so a downstream reader cannot
         # pick them up as PNS.
         import inspect
 
-        run_src = inspect.getsource(_phase08.run)
+        run_src = inspect.getsource(_phase06.run)
         assert 'f"ps_{k}"' in run_src, "PS columns must be prefixed ps_"
         assert '"estimand": "PS"' in run_src
         assert '"PN_world": None' in run_src

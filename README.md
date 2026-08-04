@@ -104,7 +104,7 @@ uv run python experiments/03_run_cf_methods.py --config full --n-cf 100 \
 uv run python experiments/04_evaluate_axes.py --config full
 
 # 4. render the 3 publication figures -> results/figures/
-uv run python experiments/06_aggregate_and_report.py figures
+uv run python experiments/08_aggregate_and_report.py figures
 ```
 
 Swap `--config full` for `--config smoke` (k=5, T=30, N=500) for a fast pass; the
@@ -127,9 +127,9 @@ uv run python experiments/03_run_cf_methods.py --config smoke --n-cf 20
 uv run python experiments/04_evaluate_axes.py --config smoke
 uv run python experiments/05_run_oracle_control.py --config smoke     # oracle positive control; any config, classifier-free
 
-# phase 6 — post-hoc publication artifacts (two reports, one per subcommand)
-uv run python experiments/06_aggregate_and_report.py figures                            # -> results/figures/
-uv run python experiments/06_aggregate_and_report.py seeds --config smoke --seeds 0 1 2 # -> results/tables/ (multi-seed + bootstrap CIs)
+# phase 8 — post-hoc publication artifacts (subcommands: figures | seeds | pns | horizon)
+uv run python experiments/08_aggregate_and_report.py figures                            # -> results/figures/
+uv run python experiments/08_aggregate_and_report.py seeds --config smoke --seeds 0 1 2 # -> results/tables/ (multi-seed + bootstrap CIs)
 
 # phase 7 — auxiliary method families outside the main 01-05 pipeline
 uv run python experiments/07_auxiliary_methods.py --config smoke_nl --method dynotears  # self-graphing + H3 graph-error split (nonlinear configs); --method citris for the secondary
@@ -139,7 +139,7 @@ uv run python experiments/07_auxiliary_methods.py --config smoke --method ivae  
 # multi-timestep intervention a CF implies rather than the single do() at t0.
 uv run python experiments/07_auxiliary_methods.py --config full --method pns --seed 0
 uv run python experiments/07_auxiliary_methods.py --config full --method pns --seed 0 --schedule
-uv run python experiments/06_aggregate_and_report.py pns --config full   # -> results/tables/table_pns_do_complexity_full.csv
+uv run python experiments/08_aggregate_and_report.py pns --config full   # -> results/tables/table_pns_do_complexity_full.csv
 ```
 
 See [`results/README.md`](results/README.md) for the on-disk layout each
@@ -298,8 +298,9 @@ causaltemp-xai/
 │   ├── 03_run_cf_methods.py         # phase 3: run CF methods + IG + shift-VR
 │   ├── 04_evaluate_axes.py          # phase 4: Axis-C + CF-faith on persisted CFs
 │   ├── 05_run_oracle_control.py     # phase 5: oracle structural-CF positive control (any config)
-│   ├── 06_aggregate_and_report.py   # phase 6: multi-seed pooling + bootstrap CIs (M2) | figures
-│   ├── 07_auxiliary_methods.py      # phase 7: self-graphing (Axis B) | iVAE ICC (Axis A)
+│   ├── 06_horizon_sweep.py          # phase 6: sweep t0, so the horizon claim is plotted not asserted
+│   ├── 07_auxiliary_methods.py      # phase 7: self-graphing (Axis A) | PNS model-vs-world audit
+│   ├── 08_aggregate_and_report.py   # phase 8: multi-seed pooling + bootstrap CIs | figures
 │   └── _common.py                   # shared paths/loading for the phased pipeline
 ├── results/                     # figures + tables written by the phased pipeline
 ├── docs/general_plan.md         # the scientific claim, contributions, protocol

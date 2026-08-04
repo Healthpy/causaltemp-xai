@@ -1,7 +1,7 @@
 """Shared helpers for the numbered experiment-phase scripts (01-07).
 
 Every phase script writes under a single ``results/`` tree so later phases
-(and ``06_aggregate_and_report.py``) can discover what earlier phases produced purely
+(and ``08_aggregate_and_report.py``) can discover what earlier phases produced purely
 by path convention::
 
     results/<config_name>/<classifier>/cf/X_sel.npy
@@ -425,11 +425,11 @@ def dump_json(path: Path, obj) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Provenance auditing for downstream consumers (06_aggregate_and_report.py)
+# Provenance auditing for downstream consumers (08_aggregate_and_report.py)
 # ---------------------------------------------------------------------------
 #
 # ``dump_json`` stamps ``git_dirty`` honestly into every result JSON, but the
-# two report paths in Phase 06 (``figures``, ``seeds``) read only
+# two report paths in Phase 08 (``figures``, ``seeds``) read only
 # ``per_instance.csv`` -- a plain CSV with no provenance columns -- so a
 # dirty-run warning written into a sibling ``summary.json`` was reachable
 # per-file but silently unreachable from the one place that turns results into
@@ -689,7 +689,7 @@ def _read_per_instance_csv(path: Path) -> list[dict]:
     if not path.exists():
         raise FileNotFoundError(
             f"no {path}; run phases 01-04 for this seed first (see "
-            "experiments/06_aggregate_and_report.py seeds)"
+            "experiments/08_aggregate_and_report.py seeds)"
         )
     with open(path, newline="") as fh:
         return list(csv.DictReader(fh))
@@ -711,7 +711,7 @@ def aggregate_across_seeds(
     Reads ``results/<base_config>_seed<seed>/<classifier>/per_instance.csv``
     for every ``seed`` in ``seeds`` (written by Phase 04, one file per seed
     replicate produced via ``causaltemp_xai.config.seeded_variant`` -- see
-    ``experiments/06_aggregate_and_report.py seeds``), groups by ``method``, and for each
+    ``experiments/08_aggregate_and_report.py seeds``), groups by ``method``, and for each
     metric in ``metrics`` runs :func:`causaltemp_xai.stats.hierarchical_bootstrap_ci`
     over the seed-grouped per-instance values. The hierarchical (not flat)
     bootstrap is required here specifically because each seed's instances

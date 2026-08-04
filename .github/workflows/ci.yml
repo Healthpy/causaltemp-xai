@@ -75,4 +75,4 @@ jobs:
           uv run --no-sync --python 3.11 python experiments/02_train_classifiers.py --config smoke
           uv run --no-sync --python 3.11 python experiments/03_run_cf_methods.py --config smoke --n-cf 10
           uv run --no-sync --python 3.11 python experiments/04_evaluate_axes.py --config smoke
-          uv run --no-sync --python 3.11 python experiments/06_aggregate_and_report.py figures
+          uv run --no-sync --python 3.11 python experiments/08_aggregate_and_report.py figures

@@ -116,13 +116,13 @@ uv run python experiments/04_evaluate_axes.py --config smoke
 uv run python experiments/05_run_oracle_control.py --config smoke_nl
 
 # 6. Render figures from everything under results/
-uv run python experiments/06_aggregate_and_report.py figures
+uv run python experiments/08_aggregate_and_report.py figures
 
 # 7. Multi-seed replication (M2): run phases 01-04 once per seed, then pool
 #    with bootstrap 95% CIs. Each seed writes to results/<config>_seed<N>/ --
 #    the un-suffixed results/<config>/ from a single-seed run above is never
 #    touched.
-uv run python experiments/06_aggregate_and_report.py seeds --config smoke --seeds 0 1 2 3 4 --n-cf 20
+uv run python experiments/08_aggregate_and_report.py seeds --config smoke --seeds 0 1 2 3 4 --n-cf 20
 ```
 
 See `docs/general_plan.md` §5 for what each metric is for and why CF-faith is a
