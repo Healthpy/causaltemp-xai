@@ -56,7 +56,7 @@ sys.path.insert(0, str(ROOT))
 
 from causaltemp_xai.benchmarks.generator import expected_abs_noise  # noqa: E402
 from causaltemp_xai.benchmarks.structural_cf import structural_counterfactual  # noqa: E402
-from causaltemp_xai.config import CONFIGS, get_config  # noqa: E402
+from causaltemp_xai.config import CONFIGS, get_config, seeded_variant  # noqa: E402
 from causaltemp_xai.data_io import DEFAULT_OUT_DIR, generate_and_save, load_dataset  # noqa: E402
 from experiments._common import (  # noqa: E402
     TABLES_DIR,
@@ -87,8 +87,10 @@ def build_oracle_cfs(X_sel, mechanism, noiseless, shift=ORACLE_SHIFT) -> np.ndar
     return np.asarray(cfs, dtype=np.float32)
 
 
-def run(config_name: str, n_cf: int, out_dir) -> None:
+def run(config_name: str, n_cf: int, out_dir, seed: int | None = None) -> None:
     cfg = get_config(config_name)
+    if seed is not None:
+        cfg = seeded_variant(cfg, seed)
     set_run_context(seed=cfg.seed, config=cfg.name)
     try:
         data = load_dataset(cfg.name, out_dir=out_dir)
@@ -156,10 +158,22 @@ def main(argv=None) -> int:
     parser.add_argument("--config", required=True, choices=sorted(CONFIGS))
     parser.add_argument("--n-cf", type=int, default=None)
     parser.add_argument("--out-dir", default=str(DEFAULT_OUT_DIR))
+    parser.add_argument(
+        "--seed",
+        type=int,
+        default=None,
+        help=(
+            "Multi-seed replicate: override --config's registered seed via "
+            "causaltemp_xai.config.seeded_variant, reading/writing under "
+            "'<config>_seed<seed>'. Added 2026-08-04 -- until then the oracle "
+            "control was the only phase that could not be replicated, so the "
+            "benchmark's anchor was reported without a CI (DECISIONS.md)."
+        ),
+    )
     args = parser.parse_args(argv)
 
     n_cf = args.n_cf or (20 if args.config.startswith("smoke") else 100)
-    run(args.config, n_cf, args.out_dir)
+    run(args.config, n_cf, args.out_dir, seed=args.seed)
     return 0
 
 
