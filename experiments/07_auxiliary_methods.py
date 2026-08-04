@@ -104,12 +104,25 @@ def _mean_soft_cf_faith(X_sel, cfs, graph, mechanism, scorer) -> float:
     independent), so the true-graph and inferred-graph scorings use the same
     intervention point and differ only in the mechanism the CF is checked
     against.
+
+    ``nanmean``, not ``mean`` (bug found 2026-08-04): ``CFfaith.score``
+    deliberately returns NaN when ``intervention_t >= T - 1`` -- the
+    degeneracy gate documented on that method, since a rollout window of
+    length 0 has no evidence either way. A method whose derived intervention
+    lands on the last step for even one instance (CftsCels does, on ~60% of
+    `full_nl`'s selection) poisoned the *entire* method's mean under plain
+    ``np.mean``, silently. Every other CF-faith aggregator in this codebase
+    (``causaltemp_xai/eval.py``, ``experiments/_common.py``) already treats a
+    gated instance as an abstention via ``nanmean``, not a NaN result.
     """
     vals = []
     for x, x_cf in zip(np.asarray(X_sel, dtype=float), np.asarray(cfs, dtype=float)):
         t = derive_intervention_t(x, x_cf)
         vals.append(scorer.score(x, x_cf, t, graph, mechanism)["soft"])
-    return float(np.mean(vals)) if vals else float("nan")
+    if not vals:
+        return float("nan")
+    arr = np.asarray(vals, dtype=float)
+    return float(np.nanmean(arr)) if np.any(~np.isnan(arr)) else float("nan")
 
 
 def _per_method_propagation(cf_dir, graph, true_mech, rollout, pearl):
@@ -350,7 +363,7 @@ def run_graph_method(
     # 3. Axis A (graph recovery + oracle decomposition) in one call. The oracle
     #    row is the perfect-propagator reference: propagation_error == 0, so its
     #    graph_error is the pure cost of the inferred graph.
-    axis_b = compute_axis_a(
+    axis_a = compute_axis_a(
         adj_true_lagged=graph,
         adj_pred_lagged=adj_pred,
         score_matrix=scores,
@@ -379,7 +392,7 @@ def run_graph_method(
             rollout,
             cf_faith_gt,
             method_adj=adj_pred,
-            method_auc=axis_b.get("AUC"),
+            method_auc=axis_a.get("AUC"),
             method_label=method,
             seed=cfg.seed,
         )
@@ -401,12 +414,12 @@ def run_graph_method(
             ),
             "citris": citris_meta,
         },
-        "axis_b": axis_b,
+        "axis_a": axis_a,
         "oracle_decomposition": {
-            "cf_faith_gt": axis_b["cf_faith_gt"],
-            "cf_faith_inferred": axis_b["cf_faith_inferred"],
-            "graph_error": axis_b["graph_error"],
-            "propagation_error": axis_b["propagation_error"],
+            "cf_faith_gt": axis_a["cf_faith_gt"],
+            "cf_faith_inferred": axis_a["cf_faith_inferred"],
+            "graph_error": axis_a["graph_error"],
+            "propagation_error": axis_a["propagation_error"],
         },
         "methods": method_rows,
         "graph_quality_sweep": sweep_rows,
@@ -419,12 +432,12 @@ def run_graph_method(
     dump_json(out_dir_res / "graph_error.json", out)
 
     print(
-        f"[07] {method} Axis A: SHD={axis_b['SHD']:.0f} LagAcc={axis_b['LagAcc']:.2f} "
-        f"AUC={axis_b.get('AUC', float('nan')):.3f}"
+        f"[07] {method} Axis A: SHD={axis_a['SHD']:.0f} LagAcc={axis_a['LagAcc']:.2f} "
+        f"AUC={axis_a.get('AUC', float('nan')):.3f}"
     )
     print(
-        f"[07] oracle (perfect propagator): graph_error={axis_b['graph_error']:+.3f} "
-        f"propagation_error={axis_b['propagation_error']:+.3f}"
+        f"[07] oracle (perfect propagator): graph_error={axis_a['graph_error']:+.3f} "
+        f"propagation_error={axis_a['propagation_error']:+.3f}"
     )
     if method_rows:
         print(f"[07] per-method decomposition ({len(method_rows)} CF methods):")
