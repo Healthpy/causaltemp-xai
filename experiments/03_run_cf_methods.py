@@ -63,6 +63,7 @@ from causaltemp_xai.data_io import DEFAULT_OUT_DIR, generate_and_save, load_data
 from causaltemp_xai.eval import shift_vr  # noqa: E402
 from causaltemp_xai.methods import (  # noqa: E402  # noqa: E402
     CARLARecourse,
+    CausalFeasibilityCF,
     CftsCelsCF,
     CftsCOMTECF,
     CftsConfetiCF,
@@ -104,6 +105,17 @@ def build_methods(X_train, y_train, target_class: int = TARGET_CLASS) -> dict:
     and costs little at smoke scale (k=5, T=30) -- it would need revisiting
     before any full-scale run given full_nl's much longer horizon (see the
     same doc section's note on `lam_prox` needing to shrink further there).
+
+    ``CausalFeasibilityCF`` (M3 priority baseline, added 2026-08-04 -- see
+    ``DECISIONS.md``) is registered at its class defaults, not tuned for
+    pipeline speed the way ``CARLA``'s ``n_steps`` is above: unlike CARLA it
+    has no full-scale timing data yet to justify an override, and unlike
+    ``CftsCounts`` (registered but excluded from full-scale ``--methods``
+    lists by explicit PI decision, 2026-07-29) no such exclusion decision has
+    been made for it either. Whether it runs in a given invocation is decided
+    at run time via ``--methods``, the same mechanism ``CftsCounts`` already
+    uses -- this registration makes it *available*, not a claim that it has
+    been validated at ``full``/``full_nl`` scale.
     """
     ds = _DatasetAdapter(X_train, y_train)
     tc = target_class
@@ -115,6 +127,7 @@ def build_methods(X_train, y_train, target_class: int = TARGET_CLASS) -> dict:
         "CftsConfeti": CftsConfetiCF(target_class=tc, dataset=ds),
         "CftsCounts": CftsCountsCF(target_class=tc, dataset=ds),
         "CftsCels": CftsCelsCF(target_class=tc, dataset=ds),
+        "CausalFeasibility": CausalFeasibilityCF(target_class=tc),
     }
 
 

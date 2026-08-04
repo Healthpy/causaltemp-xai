@@ -13,6 +13,7 @@ from causaltemp_xai.scm.intervention import derive_intervention_t
 from .base import AttributionMethod, CFExplainer
 from .causal.citris import CITRIS
 from .counterfactual.carla import CARLARecourse, PearlCARLARecourse
+from .counterfactual.causal_feasibility import CausalFeasibilityCF
 from .counterfactual.cfts_methods import (
     CftsCelsCF,
     CftsCOMTECF,
@@ -28,6 +29,7 @@ __all__ = [
     "AttributionMethod",
     "CARLARecourse",
     "CFExplainer",
+    "CausalFeasibilityCF",
     "CftsCOMTECF",
     "CftsCelsCF",
     "CftsConfetiCF",

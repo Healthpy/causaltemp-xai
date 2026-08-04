@@ -1,24 +1,33 @@
-"""Tests for the three CF generators on a small trained LSTM.
+"""Tests for the native CF generators on a small trained LSTM.
 
-Verifies output shapes/finiteness, that Wachter flips at least one label, and
-that CARLA-causal has zero retroactive change and is CF-faith (rollout) hard=1
-by construction.
+Verifies output shapes/finiteness, that Wachter flips at least one label, that
+CARLA-causal has zero retroactive change and is CF-faith (rollout) hard=1 by
+construction, and that CausalFeasibilityCF's FISTA proximal step and
+causal-residual masking match the paper's equations cell-for-cell.
 """
 
 from __future__ import annotations
 
 import numpy as np
 import pytest
+import torch
 
-from causaltemp_xai.benchmarks.generator import LinearSCMT
+from causaltemp_xai.benchmarks.generator import LinearSCMT, exogenous_channels
 from causaltemp_xai.classifiers import LSTMClassifier
 from causaltemp_xai.methods import (
     CARLARecourse,
+    CausalFeasibilityCF,
     PearlCARLARecourse,
     WachterCF,
     derive_intervention_t,
 )
 from causaltemp_xai.methods.counterfactual.carla import _resolve_t0_candidates
+from causaltemp_xai.methods.counterfactual.causal_feasibility import (
+    _batched_lag_windows,
+    _build_loss_masks,
+    _shift_forward,
+    _soft_threshold,
+)
 from causaltemp_xai.metrics.cf_faith import CFfaith
 
 
@@ -170,6 +179,171 @@ class TestPearlCARLA:
         )
         assert cfs.shape == X.shape
         assert np.all(np.isfinite(cfs))
+
+
+# ---------------------------------------------------------------------------
+# CausalFeasibilityCF (M3, 2026-08-04) — SCM-regularised recourse
+# (Bahri et al., IEEE BigData 2025)
+# ---------------------------------------------------------------------------
+
+
+class TestCausalFeasibilityHelpers:
+    """The FISTA building blocks, tested in isolation: soft-thresholding is a
+    real proximal operator (not folded into the loss like Adam+L1 would be),
+    and the lag-window construction matches
+    ``causaltemp_xai.benchmarks.mechanisms.lag_window``'s per-timestep,
+    zero-pad-before-t=0 contract, just vectorised over every t at once.
+    """
+
+    def test_soft_threshold_shrinks_toward_zero(self):
+        z = torch.tensor([-5.0, -0.5, 0.0, 0.5, 5.0])
+        out = _soft_threshold(z, torch.tensor(1.0))
+        assert torch.allclose(out, torch.tensor([-4.0, 0.0, 0.0, 0.0, 4.0]))
+
+    def test_soft_threshold_zero_threshold_is_identity(self):
+        z = torch.tensor([-3.0, 0.0, 2.5])
+        out = _soft_threshold(z, torch.tensor(0.0))
+        assert torch.allclose(out, z)
+
+    def test_shift_forward_zero_pads_the_front(self):
+        x = torch.arange(5.0).reshape(5, 1)  # [[0],[1],[2],[3],[4]]
+        shifted = _shift_forward(x, shift=2)
+        assert torch.allclose(shifted, torch.tensor([[0.0], [0.0], [0.0], [1.0], [2.0]]))
+
+    def test_shift_forward_shift_zero_is_identity(self):
+        x = torch.arange(4.0).reshape(4, 1)
+        assert torch.allclose(_shift_forward(x, shift=0), x)
+
+    def test_shift_forward_shift_exceeding_length_is_all_zero(self):
+        x = torch.ones(3, 2)
+        assert torch.allclose(_shift_forward(x, shift=10), torch.zeros(3, 2))
+
+    def test_batched_lag_windows_matches_per_timestep_construction(self):
+        """window[t, -1] must equal x[t-1] (lag 1, zero before t=0) -- the same
+        contract as ``lag_window(arr, t, L, k)`` called once per t, but built
+        here for every t in one vectorised pass."""
+        from causaltemp_xai.benchmarks.mechanisms import lag_window
+
+        rng = np.random.default_rng(0)
+        x_np = rng.normal(size=(6, 3)).astype(np.float32)
+        x = torch.as_tensor(x_np)
+        L = 2
+        windows = _batched_lag_windows(x, L)
+        assert windows.shape == (6, L, 3)
+        for t in range(6):
+            expected = lag_window(x_np, t, L, 3)
+            assert np.allclose(windows[t].numpy(), expected)
+
+    def test_masks_no_typing_is_all_causal(self):
+        """U_s and U_d both empty (this benchmark's actual full/full_nl case,
+        DECISIONS.md 2026-08-04): every cell is causal, the proximal step is
+        a structural no-op everywhere."""
+        prox_mask, causal_mask, thresh = _build_loss_masks(
+            T=4, k=3, u_s=[], u_d=[], lam_s=1.0, lam_d=13.0
+        )
+        assert not prox_mask.any()
+        assert causal_mask.all()
+        assert not thresh.any()
+
+    def test_masks_static_exogenous_is_prox_at_every_t(self):
+        prox_mask, _causal_mask, thresh = _build_loss_masks(
+            T=4, k=3, u_s=[1], u_d=[], lam_s=2.0, lam_d=13.0
+        )
+        assert prox_mask[:, 1].all()
+        assert not prox_mask[:, [0, 2]].any()
+        assert torch.allclose(thresh[:, 1], torch.full((4,), 2.0))
+
+    def test_masks_dynamic_exogenous_is_prox_only_at_t0(self):
+        prox_mask, causal_mask, thresh = _build_loss_masks(
+            T=4, k=3, u_s=[], u_d=[2], lam_s=1.0, lam_d=13.0
+        )
+        assert bool(prox_mask[0, 2])
+        assert not prox_mask[1:, 2].any(), "U_d is only prox-only at t=0 (eq. 3/4)"
+        assert causal_mask[1:, 2].all(), "U_d must be causally checked for t >= 1"
+        assert float(thresh[0, 2]) == 13.0
+        assert not thresh[1:, 2].any()
+
+    def test_masks_prox_and_causal_partition_every_cell(self):
+        """Every (t, channel) cell is exactly one of prox or causal -- never
+        both, never neither -- for an arbitrary typing."""
+        prox_mask, causal_mask, _ = _build_loss_masks(
+            T=5, k=4, u_s=[0], u_d=[3], lam_s=1.0, lam_d=13.0
+        )
+        assert torch.equal(causal_mask, ~prox_mask)
+        assert (prox_mask.to(torch.int) + causal_mask.to(torch.int)).eq(1).all()
+
+
+class TestCausalFeasibilityCF:
+    def test_shape_and_finite(self, trained):
+        clf, data = trained
+        x = data["X"][0]
+        cf = CausalFeasibilityCF(target_class=1, n_steps=60).generate(
+            x, clf, data["graph"], data["mechanism"]
+        )
+        assert cf.shape == x.shape
+        assert np.all(np.isfinite(cf))
+
+    def test_flips_at_least_one(self, trained):
+        """Unlike CARLARecourse, this method has no do()-timestep search --
+        Delta is free over the whole trajectory (see the class module
+        docstring on why: the paper has no intervention time at all)."""
+        clf, data = trained
+        X = data["X"]
+        preds = clf.predict(X[:20])
+        src = [i for i in range(20) if preds[i] == 0][:3] or list(range(3))
+        method = CausalFeasibilityCF(target_class=1, n_steps=150)
+        flips = 0
+        for i in src:
+            cf = method.generate(X[i], clf, data["graph"], data["mechanism"])
+            if clf.predict(cf) == 1:
+                flips += 1
+        assert flips >= 1, "CausalFeasibilityCF failed to flip any selected instance"
+
+    def test_generate_batch_shape(self, trained):
+        clf, data = trained
+        X = data["X"][:4]
+        cfs = CausalFeasibilityCF(target_class=1, n_steps=40).generate_batch(
+            X, clf, data["graph"], data["mechanism"]
+        )
+        assert cfs.shape == X.shape
+        assert np.all(np.isfinite(cfs))
+
+    def test_lam_zero_disables_the_causal_penalty(self, trained):
+        """With lam=0 the objective is plain Wachter (L_pred only) -- the
+        causal-residual and proximity terms both vanish (lam_d = lam_v = lam
+        per the paper's own D1 trade-off study), so this is a sanity check
+        that the causal term is genuinely additive, not silently always-on."""
+        clf, data = trained
+        x = data["X"][3]
+        cf_reg = CausalFeasibilityCF(target_class=1, n_steps=80, lam=13.0).generate(
+            x, clf, data["graph"], data["mechanism"]
+        )
+        cf_unreg = CausalFeasibilityCF(target_class=1, n_steps=80, lam=0.0).generate(
+            x, clf, data["graph"], data["mechanism"]
+        )
+        assert not np.allclose(cf_reg, cf_unreg, atol=1e-4), (
+            "lam=13 and lam=0 produced the same trajectory -- the causal "
+            "penalty is not affecting the optimisation"
+        )
+
+    def test_typing_uses_the_benchmark_exogenous_channels(self, trained):
+        """Whatever :func:`exogenous_channels` reports for this fixture's
+        graph is exactly what ends up proximity-only at t=0 -- the one place
+        this benchmark's U_s/U_d/V decision (DECISIONS.md 2026-08-04) is
+        exercised end-to-end, not just in the mask-construction unit tests
+        below."""
+        _clf, data = trained
+        exo = exogenous_channels(data["graph"])
+        T, k = data["X"][0].shape
+        prox_mask, causal_mask, thresh = _build_loss_masks(T, k, [], exo, lam_s=1.0, lam_d=13.0)
+        for j in range(k):
+            assert bool(prox_mask[0, j]) == (j in exo)
+            assert bool(causal_mask[0, j]) == (j not in exo)
+            assert float(thresh[0, j]) == (13.0 if j in exo else 0.0)
+        # Every cell at t >= 1 is causal regardless of typing (eq. 4: U_d only
+        # gets the proximity exemption at the literal first timestep).
+        if T > 1:
+            assert bool(causal_mask[1:].all())
 
 
 class TestT0CandidateResolution:
