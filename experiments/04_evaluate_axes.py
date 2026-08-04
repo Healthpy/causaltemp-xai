@@ -11,12 +11,17 @@ writes:
     results/<config>/lstm/summary.json          combined provenance + methods + axis_a + shift_vr
     results/tables/table_axis_c_cf_faith.csv    appended, one row per method (cross-run table)
 
-CF-*generating* methods (the ones this phase scores) are evaluated on **Axis
-C** (validity/proximity/sparsity/OOD/TRSI) and **CF-faith**. Axis A
-(attribution quality) and Axis B's Shift-VR/input-sensitivity are computed in
-Phase 03 for the attribution method / native CF methods respectively -- this
-phase folds their already-written JSON into ``summary.json`` for one combined
-view. Axis A is a per-*dataset* diagnostic written by Phase 01.
+CF-*generating* methods (the ones this phase scores) are evaluated on **Axis C**
+(validity, proximity, sparsity, OOD, SCM-noise plausibility, TRSI, both CF-faith
+semantics, the model-vs-world audit and do-complexity -- see
+``causaltemp_xai/metrics/taxonomy.py``). This phase computes none of the other
+axes itself; it folds their already-written JSON into ``summary.json`` for one
+combined view: **Axis A** (the per-*dataset* graph diagnostic) from Phase 01,
+and **Axis B**'s Shift-VR from Phase 03.
+
+Only artifacts a phase still writes are folded in. An ``attribution`` key was
+read here until 2026-08-04 from a file nothing had produced since ``ba8e990``
+(RISK-21).
 
 Usage
 -----
@@ -133,15 +138,18 @@ def run(config_name: str, out_dir, seed: int | None = None) -> None:
                 return json.load(fh)
         return None
 
-    attribution = _load_if_exists(res_dir / "attribution.json")
     shift = _load_if_exists(res_dir / "shift_vr.json")
-    axis_b = _load_if_exists(RESULTS_DIR / cfg.name / "axis_a_benchmark.json")
+    axis_a = _load_if_exists(RESULTS_DIR / cfg.name / "axis_a_benchmark.json")
 
+    # NB: only read artifacts some phase still *writes*. An `attribution` key was
+    # loaded here until 2026-08-04 from `attribution.json`, which no phase has
+    # produced since the attribution block was removed (`ba8e990`) — so it went on
+    # silently merging pre-removal files into freshly regenerated summaries, which
+    # a clean checkout could not reproduce (RISK-21).
     results = {
         "provenance": {"config": cfg.as_dict(), "seed": cfg.seed, "n_cf": len(X_sel)},
         "methods": summary,  # Axis C + CF-faith, per CF method
-        "attribution": attribution,  # IG deletion/insertion-AUC foil
-        "axis_b": axis_b,  # Axis A: dataset graph diagnostic (Phase 01)
+        "axis_a": axis_a,  # Axis A: dataset graph diagnostic (Phase 01)
         "shift_vr": shift,  # Axis B: CF-method validity retention (Phase 03)
     }
     dump_json(res_dir / "summary.json", results)

@@ -1,7 +1,7 @@
 {
   "seed": 42,
   "config": "full",
-  "git_commit": "c55c576a4b17cffb3b1da9c2f7b68244d7fbef9c",
+  "git_commit": "0d1c47ae959b5c7c7c51ed206173228ecbd28d38",
   "git_dirty": true,
   "provenance": {
     "config": {
@@ -185,18 +185,7 @@
       "trsi": 1.727589284850558
     }
   ],
-  "attribution": {
-    "seed": 42,
-    "config": "full",
-    "git_commit": null,
-    "git_dirty": null,
-    "method": "IntegratedGradients",
-    "deletion_auc": 0.7603174834429745,
-    "insertion_auc": 0.019347355667553176,
-    "insertion_minus_deletion": -0.7409701277754213,
-    "n": 100
-  },
-  "axis_b": null,
+  "axis_a": null,
   "shift_vr": {
     "seed": 42,
     "config": "full",

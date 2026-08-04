@@ -1,7 +1,7 @@
 {
   "seed": 1,
   "config": "smoke_seed1",
-  "git_commit": "c55c576a4b17cffb3b1da9c2f7b68244d7fbef9c",
+  "git_commit": "0d1c47ae959b5c7c7c51ed206173228ecbd28d38",
   "git_dirty": true,
   "provenance": {
     "config": {
@@ -212,18 +212,7 @@
       "trsi": 1.9386961148057307
     }
   ],
-  "attribution": {
-    "seed": 1,
-    "config": "smoke_seed1",
-    "git_commit": "0867e01ea4e16a16207078d3e4fb3aebcd621bd4",
-    "git_dirty": true,
-    "method": "IntegratedGradients",
-    "deletion_auc": 0.7128137022330354,
-    "insertion_auc": 0.09449816493977473,
-    "insertion_minus_deletion": -0.6183155372932607,
-    "n": 20
-  },
-  "axis_b": null,
+  "axis_a": null,
   "shift_vr": {
     "seed": 1,
     "config": "smoke_seed1",

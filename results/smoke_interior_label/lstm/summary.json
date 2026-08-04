@@ -1,7 +1,7 @@
 {
   "seed": 0,
   "config": "smoke_interior_label",
-  "git_commit": "c55c576a4b17cffb3b1da9c2f7b68244d7fbef9c",
+  "git_commit": "0d1c47ae959b5c7c7c51ed206173228ecbd28d38",
   "git_dirty": true,
   "provenance": {
     "config": {
@@ -214,18 +214,7 @@
       "trsi": 0.7470478913960261
     }
   ],
-  "attribution": {
-    "seed": 0,
-    "config": "smoke_interior_label",
-    "git_commit": "b896751fb9e047e8bef4f1104e1c2e3140fdd983",
-    "git_dirty": true,
-    "method": "IntegratedGradients",
-    "deletion_auc": 0.5400789224286564,
-    "insertion_auc": 0.29787671597907317,
-    "insertion_minus_deletion": -0.24220220644958323,
-    "n": 20
-  },
-  "axis_b": null,
+  "axis_a": null,
   "shift_vr": {
     "seed": 0,
     "config": "smoke_interior_label",
