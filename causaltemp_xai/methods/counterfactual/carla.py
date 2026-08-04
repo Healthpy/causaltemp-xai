@@ -1,15 +1,36 @@
-"""CARLA-style causal recourse â€” stub.
+"""Causal noiseless/Pearl-rollout recourse -- this project's own construction,
+used as a **positive control** (its own faithfulness is true by definition,
+not an empirical finding). Not an implementation of any specific algorithm
+from the paper below -- see the naming disclosure and
+``docs/method_provenance.md``.
 
-Reference
----------
+Reference (naming origin, not an implementation target)
+---------------------------------------------------------
 Pawelczyk, M., Bielawski, S., van den Heuvel, J., Richter, T., & Kasneci, G.
 (2021). *CARLA: A Python Library to Benchmark Algorithmic Recourse and
 Counterfactual Explanation Algorithms.*  NeurIPS 2021 Datasets and Benchmarks.
 
-This stub defines the ``CARLARecourse`` class interface.  The real
-implementation would train a generative model (e.g. CVAE) or apply
-constrained optimisation that respects actionability constraints and the
-causal ordering over variables.
+**Naming disclosure (added 2026-08-05, while building the M3 provenance
+table):** this module's docstring previously called itself a "stub" citing
+the above paper as its "Reference" and said "the real implementation would
+train a generative model... The real implementation would" -- stale scaffold
+text from before this class was actually implemented and tested
+(``tests/test_methods.py::TestCARLA``/``TestPearlCARLA``). What is
+implemented is **not** an approximation of anything in Pawelczyk et al.'s
+CARLA toolkit -- CARLA is a *benchmarking library* hosting many third-party
+recourse algorithms, not itself a single method to approximate, and nothing
+here reuses code or a specific published algorithm from it. ``CARLARecourse``
+/ ``PearlCARLARecourse`` are this project's own noiseless-rollout /
+Pearl-abduction causal-recourse constructions, used throughout this
+benchmark's docs as **positive controls** (`docs/general_plan.md`: "CARLA and
+PearlCARLA are positive controls, labelled as such wherever they appear") --
+their faithfulness is true by construction against this benchmark's own
+CF-faith metric, not a claim about matching CARLA-the-library's behaviour.
+The class names predate this disclosure and are left unchanged here (a
+rename would ripple through every committed result column, table, and
+governance doc referencing "CARLA"/"PearlCARLA" -- out of scope for a
+documentation-accuracy pass); flagged in ``docs/method_provenance.md`` for a
+PI decision on whether to rename.
 
 Two recourse variants are provided, differing only in the forward-rollout
 semantics used to propagate the intervention past ``t0`` (see each class's
@@ -108,23 +129,19 @@ def _resolve_t0_candidates(
 
 
 class CARLARecourse:
-    """Stub: CARLA-style causal recourse generator.
+    """Causal noiseless-rollout recourse generator (this project's own
+    construction -- see the module docstring's naming disclosure).
 
-    The real implementation should:
+    Optimises only ``x[t0]`` on the ``actionable_mask``-selected variables:
 
-    1. Encode the SCM causal ordering to determine which variables are
-       *actionable* (can be intervened on by the individual).
-    2. Optimise only over the perturbation delta on actionable variables:
+        delta_actionable = delta * actionable_mask
+        x[t0] = x_orig[t0] + delta_actionable
 
-           delta_actionable = delta * actionable_mask
-           cf = x + delta_actionable
-
-    3. Minimise ``lam_pred * pred_loss(model(cf), target) + lam_prox * ||delta||^2``.
-    4. Propagate the intervention through the causal graph to update
-       non-actionable downstream variables consistently.
-
-    Alternatively, a CVAE-based approach can be used to sample plausible
-    recourses directly from the learned latent space.
+    minimising ``lam_pred * CE(model(x_cf), target) + lam_prox * ||delta||^2``,
+    then deterministically rolls the mechanism forward for every ``t > t0``
+    (:meth:`_rollout`) -- so the intervention propagates through the SCM by
+    construction, not via a separately-encoded causal-ordering step. See
+    :meth:`generate`'s docstring for the full contract.
 
     Parameters
     ----------

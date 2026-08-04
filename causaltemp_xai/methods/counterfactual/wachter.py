@@ -1,10 +1,17 @@
-﻿"""Wachter et al. (2017) gradient-based counterfactual method â€” stub.
+﻿"""Wachter et al. (2017) gradient-based counterfactual method.
 
 Reference
 ---------
 Wachter, S., Mittelstadt, B., & Russell, C. (2017).
 *Counterfactual explanations without opening the black box: Automated
 decisions and the GDPR.*  Harvard Journal of Law & Technology, 31(2).
+
+A genuine implementation of the paper's own loss (below), not a stand-in --
+see ``docs/method_provenance.md``. The class docstring below said "Stub" and
+"the real implementation should" against exactly this same loss the
+implementation already minimises; stale scaffold text from before the class
+was implemented and tested (``tests/test_methods.py::TestWachter``), fixed
+2026-08-05 while building the M3 provenance table.
 
 The method minimises the loss
 
@@ -29,16 +36,19 @@ import torch.nn.functional as F
 
 
 class WachterCF:
-    """Stub: Wachter counterfactual generator.
+    """Wachter counterfactual generator.
 
-    The real implementation should minimise the following loss w.r.t. ``cf``
-    using gradient descent through a differentiable model:
+    Minimises the following loss w.r.t. ``cf`` using gradient descent through
+    a differentiable model:
 
         L(cf) = lambda * yloss(f(cf), y_target) + ||cf - x||_2^2
 
-    where ``yloss`` is typically hinge loss on the output logit for
-    ``y_target``, and ``lambda`` is increased (or ``cf`` re-initialised) when
-    no valid CF is found within ``n_steps`` optimisation iterations.
+    where ``yloss`` is cross-entropy on the target class (see ``generate``
+    below) and ``lambda`` trades prediction fidelity against proximity.
+    Not used in the main pipeline -- ``experiments/03_run_cf_methods.py``
+    uses the cfts-backed ``CftsWachterCF`` instead (see that module's
+    docstring); this class stays exported and tested as the from-scratch
+    reference implementation.
 
     Parameters
     ----------
