@@ -1,8 +1,8 @@
 {
   "seed": 42,
   "config": "full_nl",
-  "git_commit": "3cb3fe306a37c13ba94ce213fd8783c7743da4a1",
-  "git_dirty": true,
+  "git_commit": "a3731f872705579c20bec66d0c7783f1397116cd",
+  "git_dirty": false,
   "provenance": {
     "config": {
       "k": 10,
