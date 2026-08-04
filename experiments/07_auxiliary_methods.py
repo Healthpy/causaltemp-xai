@@ -74,6 +74,7 @@ from causaltemp_xai.metrics.axis_a import compute_axis_a  # noqa: E402
 from causaltemp_xai.metrics.cf_faith import CFfaith  # noqa: E402
 from causaltemp_xai.scm.intervention import derive_intervention_t  # noqa: E402
 from experiments._common import (  # noqa: E402
+    ORACLE_SHIFT,
     build_masked_mechanism,
     build_oracle_interventions,
     config_dir,
@@ -83,7 +84,6 @@ from experiments._common import (  # noqa: E402
 )
 
 GRAPH_METHODS = ("dynotears", "citris")
-ORACLE_SHIFT = 1.5  # must match build_oracle_interventions' default
 
 #: Per-method training-epoch defaults. ``--epochs`` defaults to None and
 #: resolves here, so a shared flag cannot silently retune a method that did not

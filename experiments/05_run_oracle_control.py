@@ -59,31 +59,32 @@ from causaltemp_xai.benchmarks.structural_cf import structural_counterfactual  #
 from causaltemp_xai.config import CONFIGS, get_config, seeded_variant  # noqa: E402
 from causaltemp_xai.data_io import DEFAULT_OUT_DIR, generate_and_save, load_dataset  # noqa: E402
 from experiments._common import (  # noqa: E402
+    ORACLE_SHIFT,
     TABLES_DIR,
     aggregate_method_row,
     append_table,
     config_dir,
     dump_json,
+    oracle_intervention_spec,
     per_instance_records,
     print_summary_table,
     set_run_context,
     write_csv,
 )
 
-ORACLE_SHIFT = 1.5
-
 
 def build_oracle_cfs(X_sel, mechanism, noiseless, shift=ORACLE_SHIFT) -> np.ndarray:
-    """Build a (N, T, k) batch of oracle structural counterfactuals."""
+    """Build a (N, T, k) batch of oracle structural counterfactuals.
+
+    The ``do()`` convention comes from
+    :func:`experiments._common.oracle_intervention_spec` — shared with the
+    Axis-A fixtures so the control and the thing it anchors cannot drift apart.
+    """
     X_sel = np.asarray(X_sel, dtype=float)
-    T = X_sel.shape[1]
-    k = mechanism.k
-    t0 = T // 2
-    cfs = []
-    for i, x in enumerate(X_sel):
-        node = i % k
-        value = float(x[t0, node]) + shift
-        cfs.append(structural_counterfactual(x, mechanism, t0, node, value, noiseless=noiseless))
+    cfs = [
+        structural_counterfactual(x, mechanism, t0, node, value, noiseless=noiseless)
+        for x, (t0, node, value) in zip(X_sel, oracle_intervention_spec(X_sel, mechanism.k, shift))
+    ]
     return np.asarray(cfs, dtype=np.float32)
 
 

@@ -1,8 +1,8 @@
 {
   "seed": 42,
   "config": "full_nl",
-  "git_commit": "23a408080e134287166db01718077ad10ba02e9c",
-  "git_dirty": false,
+  "git_commit": "8466f4d317dd87c390e31779a0768c241df501b1",
+  "git_dirty": true,
   "provenance": {
     "config": {
       "k": 10,
@@ -24,7 +24,9 @@
         "spectral_cap": 0.9,
         "init_gain": 0.7,
         "activation": "tanh"
-      }
+      },
+      "label_fn": "terminal_threshold",
+      "label_params": null
     },
     "seed": 42,
     "n_cf": 100,
@@ -43,6 +45,7 @@
       "sparsity_channels": 0.47,
       "sparsity_timepoints": 0.824,
       "trsi": 0.9133757626964806,
+      "scm_noise_plausibility": 0.9788007732638636,
       "cf_faith_rollout_hard": 0.0,
       "cf_faith_rollout_soft": 0.8817469736907866,
       "cf_faith_pearl_hard": 1.0,
@@ -66,6 +69,7 @@
       "sparsity_channels": 0.0,
       "sparsity_timepoints": 0.5,
       "trsi": 0.9434066809073606,
+      "scm_noise_plausibility": 0.5181689574296946,
       "cf_faith_rollout_hard": 1.0,
       "cf_faith_rollout_soft": 0.9999999997499216,
       "cf_faith_pearl_hard": 0.0,

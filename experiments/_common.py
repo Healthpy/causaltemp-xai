@@ -541,13 +541,44 @@ def causal_parents(graph: np.ndarray, node: int) -> list[int]:
     return [j for j in range(graph.shape[1]) if np.any(graph[node, j, :] != 0)]
 
 
-def build_oracle_interventions(X_sel: np.ndarray, mechanism, shift: float = 1.5):
+#: Magnitude of the ground-truth ``do()`` used by the oracle control and by the
+#: Axis-A intervention fixtures, in units of the channel's own value.
+#:
+#: **One definition, deliberately.** This lived in three places until 2026-08-04
+#: — here as a default, and as a module constant in both
+#: ``05_run_oracle_control.py`` and ``07_auxiliary_methods.py``, the latter
+#: carrying the comment *"must match ``build_oracle_interventions``' default"*.
+#: Duplication that has to document its own fragility is a defect: changing this
+#: number would silently have desynchronised the oracle control from the fixtures
+#: it is supposed to anchor.
+ORACLE_SHIFT = 1.5
+
+
+def oracle_intervention_spec(X_sel: np.ndarray, k: int, shift: float = ORACLE_SHIFT):
+    """The benchmark's ground-truth ``do()`` convention, in one place.
+
+    Yields ``(t0, node, value)`` per instance: intervene at the midpoint
+    ``t0 = T // 2``, cycling ``node = i % k`` so every channel gets exercised,
+    setting it to its own value plus ``shift``.
+
+    Callers differ in what they *build* from this — the oracle control wants an
+    ``(N, T, k)`` batch and parameterises ``noiseless``, while the Axis-A
+    fixtures want ``(t0, node, skeleton)`` tuples — but the convention itself
+    must not differ, or the control stops anchoring the thing it anchors.
+    """
+    X_sel = np.asarray(X_sel, dtype=float)
+    t0 = X_sel.shape[1] // 2
+    for i, x in enumerate(X_sel):
+        node = i % k
+        yield t0, node, float(x[t0, node]) + shift
+
+
+def build_oracle_interventions(X_sel: np.ndarray, mechanism, shift: float = ORACLE_SHIFT):
     """Ground-truth ``do(x[t0, node] = value)`` skeleton CF per instance.
 
-    Cycles ``node = i % k`` across instances (same convention as
-    ``05_run_oracle_control.py``) so every channel gets exercised. Used to
-    give Axis A a *real* ``int_channel`` / causal-parent ground truth instead
-    of a proxy, for any mechanism family (linear or MLP — both implement
+    Uses :func:`oracle_intervention_spec` for the convention. Gives Axis A a
+    *real* ``int_channel`` / causal-parent ground truth instead of a proxy, for
+    any mechanism family (linear or MLP — both implement
     :func:`~causaltemp_xai.benchmarks.structural_cf.structural_counterfactual`).
 
     Returns
@@ -557,15 +588,12 @@ def build_oracle_interventions(X_sel: np.ndarray, mechanism, shift: float = 1.5)
     from causaltemp_xai.benchmarks.structural_cf import structural_counterfactual
 
     X_sel = np.asarray(X_sel, dtype=float)
-    T, k = X_sel.shape[1], X_sel.shape[2]
-    t0 = T // 2
-    out = []
-    for i, x in enumerate(X_sel):
-        node = i % k
-        value = float(x[t0, node]) + shift
-        x_cf = structural_counterfactual(x, mechanism, t0, node, value, noiseless=True)
-        out.append((t0, node, x_cf))
-    return out
+    return [
+        (t0, node, structural_counterfactual(x, mechanism, t0, node, value, noiseless=True))
+        for x, (t0, node, value) in zip(
+            X_sel, oracle_intervention_spec(X_sel, X_sel.shape[2], shift)
+        )
+    ]
 
 
 def build_masked_mechanism(mechanism, inferred_adj: np.ndarray):

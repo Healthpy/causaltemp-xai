@@ -1,8 +1,8 @@
 {
   "seed": 42,
   "config": "full_nl",
-  "git_commit": "23a408080e134287166db01718077ad10ba02e9c",
-  "git_dirty": false,
+  "git_commit": "8466f4d317dd87c390e31779a0768c241df501b1",
+  "git_dirty": true,
   "benchmark": "full_nl",
   "classifier": "oracle",
   "method": "OracleCF-Rollout",
@@ -14,6 +14,7 @@
   "sparsity_channels": 0.0,
   "sparsity_timepoints": 0.5,
   "trsi": 0.9434066809073606,
+  "scm_noise_plausibility": 0.5181689574296946,
   "cf_faith_rollout_hard": 1.0,
   "cf_faith_rollout_soft": 0.9999999997499216,
   "cf_faith_pearl_hard": 0.0,

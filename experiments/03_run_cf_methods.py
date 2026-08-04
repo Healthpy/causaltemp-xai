@@ -72,13 +72,12 @@ from causaltemp_xai.methods import (  # noqa: E402  # noqa: E402
 )
 from causaltemp_xai.methods.counterfactual.cfts_methods import _DatasetAdapter  # noqa: E402
 from experiments._common import (  # noqa: E402
+    TARGET_CLASS,
     config_dir,
     dump_json,
     select_flip_candidates,
     set_run_context,
 )
-
-TARGET_CLASS = 1
 
 
 def build_methods(X_train, y_train, target_class: int = TARGET_CLASS) -> dict:

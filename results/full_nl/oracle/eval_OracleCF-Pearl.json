@@ -1,8 +1,8 @@
 {
   "seed": 42,
   "config": "full_nl",
-  "git_commit": "23a408080e134287166db01718077ad10ba02e9c",
-  "git_dirty": false,
+  "git_commit": "8466f4d317dd87c390e31779a0768c241df501b1",
+  "git_dirty": true,
   "benchmark": "full_nl",
   "classifier": "oracle",
   "method": "OracleCF-Pearl",
@@ -14,6 +14,7 @@
   "sparsity_channels": 0.47,
   "sparsity_timepoints": 0.824,
   "trsi": 0.9133757626964806,
+  "scm_noise_plausibility": 0.9788007732638636,
   "cf_faith_rollout_hard": 0.0,
   "cf_faith_rollout_soft": 0.8817469736907866,
   "cf_faith_pearl_hard": 1.0,
