@@ -1,5 +1,5 @@
 {
-  "git_commit": "b896751fb9e047e8bef4f1104e1c2e3140fdd983",
+  "git_commit": "4dd19f4b10f889a24904d0a1440758e584ae58b9",
   "git_dirty": true,
   "seed": 2,
   "config": "full_nl_seed2",
@@ -94,7 +94,173 @@
       "schedule_mode": false
     }
   },
-  "direction": "PS",
-  "PN_world": null,
-  "PN_note": "PN direction not run (pass --with-pn). Combined PNS is deliberately not synthesised from a missing term."
+  "direction": "PNS",
+  "PN": {
+    "CARLA": {
+      "n": 50,
+      "n_scorable": 50,
+      "frac_no_intervention": 0.0,
+      "A_model_proposed": 1.0,
+      "B_model_oracle": 0.0,
+      "C_world_oracle": 0.0,
+      "delta_total": 1.0,
+      "delta_trajectory": 1.0,
+      "delta_outcome": 0.0,
+      "do_complexity_mean": 74.0,
+      "do_complexity_median": 74.0,
+      "schedule_mode": false
+    },
+    "CftsCOMTE": {
+      "n": 50,
+      "n_scorable": 50,
+      "frac_no_intervention": 0.0,
+      "A_model_proposed": 1.0,
+      "B_model_oracle": 0.0,
+      "C_world_oracle": 0.0,
+      "delta_total": 1.0,
+      "delta_trajectory": 1.0,
+      "delta_outcome": 0.0,
+      "do_complexity_mean": 97.32,
+      "do_complexity_median": 100.0,
+      "schedule_mode": false
+    },
+    "CftsCels": {
+      "n": 50,
+      "n_scorable": 27,
+      "frac_no_intervention": 0.46,
+      "A_model_proposed": 1.0,
+      "B_model_oracle": 0.07407407407407407,
+      "C_world_oracle": 0.07407407407407407,
+      "delta_total": 0.9259259259259259,
+      "delta_trajectory": 0.9259259259259259,
+      "delta_outcome": 0.0,
+      "do_complexity_mean": 4.555555555555555,
+      "do_complexity_median": 4.0,
+      "schedule_mode": false
+    },
+    "CftsConfeti": {
+      "n": 50,
+      "n_scorable": 12,
+      "frac_no_intervention": 0.76,
+      "A_model_proposed": 1.0,
+      "B_model_oracle": 0.0,
+      "C_world_oracle": 0.0,
+      "delta_total": 1.0,
+      "delta_trajectory": 1.0,
+      "delta_outcome": 0.0,
+      "do_complexity_mean": 100.0,
+      "do_complexity_median": 100.0,
+      "schedule_mode": false
+    },
+    "CftsWachter": {
+      "n": 50,
+      "n_scorable": 50,
+      "frac_no_intervention": 0.0,
+      "A_model_proposed": 0.98,
+      "B_model_oracle": 0.0,
+      "C_world_oracle": 0.0,
+      "delta_total": 0.98,
+      "delta_trajectory": 0.98,
+      "delta_outcome": 0.0,
+      "do_complexity_mean": 99.34,
+      "do_complexity_median": 100.0,
+      "schedule_mode": false
+    },
+    "PearlCARLA": {
+      "n": 50,
+      "n_scorable": 0,
+      "frac_no_intervention": 1.0,
+      "A_model_proposed": NaN,
+      "B_model_oracle": NaN,
+      "C_world_oracle": NaN,
+      "delta_total": NaN,
+      "delta_trajectory": NaN,
+      "delta_outcome": NaN,
+      "do_complexity_mean": NaN,
+      "do_complexity_median": NaN,
+      "schedule_mode": false
+    }
+  },
+  "PNS": {
+    "CARLA": {
+      "PNS_world": 0.01,
+      "PS_world": 0.02,
+      "PN_world": 0.0,
+      "p_xy": 0.5,
+      "p_xpyp": 0.5,
+      "PS_delta_total": -0.02,
+      "PN_delta_total": 1.0,
+      "PS_n_scorable": 50,
+      "PN_n_scorable": 50,
+      "PS_do_complexity_mean": 74.0,
+      "PN_do_complexity_mean": 74.0
+    },
+    "CftsCOMTE": {
+      "PNS_world": 0.01,
+      "PS_world": 0.02,
+      "PN_world": 0.0,
+      "p_xy": 0.5,
+      "p_xpyp": 0.5,
+      "PS_delta_total": 0.98,
+      "PN_delta_total": 1.0,
+      "PS_n_scorable": 50,
+      "PN_n_scorable": 50,
+      "PS_do_complexity_mean": 98.08,
+      "PN_do_complexity_mean": 97.32
+    },
+    "CftsCels": {
+      "PNS_world": 0.10225442834138486,
+      "PS_world": 0.13043478260869565,
+      "PN_world": 0.07407407407407407,
+      "p_xy": 0.5,
+      "p_xpyp": 0.5,
+      "PS_delta_total": 0.8695652173913043,
+      "PN_delta_total": 0.9259259259259259,
+      "PS_n_scorable": 23,
+      "PN_n_scorable": 27,
+      "PS_do_complexity_mean": 3.739130434782609,
+      "PN_do_complexity_mean": 4.555555555555555
+    },
+    "CftsConfeti": {
+      "PNS_world": 0.027777777777777776,
+      "PS_world": 0.05555555555555555,
+      "PN_world": 0.0,
+      "p_xy": 0.5,
+      "p_xpyp": 0.5,
+      "PS_delta_total": 0.9444444444444444,
+      "PN_delta_total": 1.0,
+      "PS_n_scorable": 18,
+      "PN_n_scorable": 12,
+      "PS_do_complexity_mean": 100.0,
+      "PN_do_complexity_mean": 100.0
+    },
+    "CftsWachter": {
+      "PNS_world": 0.01,
+      "PS_world": 0.02,
+      "PN_world": 0.0,
+      "p_xy": 0.5,
+      "p_xpyp": 0.5,
+      "PS_delta_total": 0.96,
+      "PN_delta_total": 0.98,
+      "PS_n_scorable": 50,
+      "PN_n_scorable": 50,
+      "PS_do_complexity_mean": 99.66,
+      "PN_do_complexity_mean": 99.34
+    },
+    "PearlCARLA": {
+      "PNS_world": NaN,
+      "PS_world": NaN,
+      "PN_world": NaN,
+      "p_xy": 0.5,
+      "p_xpyp": 0.5,
+      "PS_delta_total": NaN,
+      "PN_delta_total": NaN,
+      "PS_n_scorable": 0,
+      "PN_n_scorable": 0,
+      "PS_do_complexity_mean": NaN,
+      "PN_do_complexity_mean": NaN
+    }
+  },
+  "p_xy": 0.5,
+  "p_xpyp": 0.5
 }
