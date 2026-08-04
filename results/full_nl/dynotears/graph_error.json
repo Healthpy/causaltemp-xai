@@ -1,7 +1,7 @@
 {
   "seed": 42,
   "config": "full_nl",
-  "git_commit": "9eaa906d5ea9f3abb93b3d558ca6b2eaa26fa13b",
+  "git_commit": "3cb3fe306a37c13ba94ce213fd8783c7743da4a1",
   "git_dirty": true,
   "provenance": {
     "config": {
@@ -24,7 +24,9 @@
         "spectral_cap": 0.9,
         "init_gain": 0.7,
         "activation": "tanh"
-      }
+      },
+      "label_fn": "terminal_threshold",
+      "label_params": null
     },
     "method": "dynotears",
     "n_cf": 40,
@@ -36,7 +38,7 @@
     },
     "citris": null
   },
-  "axis_b": {
+  "axis_a": {
     "SHD": 4.0,
     "LagAcc": 0.9047619047619048,
     "LagF1": 0.9047619047619048,
@@ -62,24 +64,24 @@
     },
     {
       "method": "CftsCels",
-      "cf_faith_gt": 0.9686929304595775,
-      "propagation_error": 0.031307069540422505,
-      "cf_faith_pearl_gt": 0.9985810187854081,
-      "propagation_error_pearl": 0.0014189812145919412
+      "cf_faith_gt": 0.9217323261489438,
+      "propagation_error": 0.07826767385105615,
+      "cf_faith_pearl_gt": 0.9964525469635204,
+      "propagation_error_pearl": 0.003547453036479631
     },
     {
       "method": "CftsCOMTE",
-      "cf_faith_gt": 0.7778996848486563,
-      "propagation_error": 0.22210031515134365,
-      "cf_faith_pearl_gt": 0.8363245395031954,
-      "propagation_error_pearl": 0.1636754604968046
+      "cf_faith_gt": 0.7756562473218751,
+      "propagation_error": 0.2243437526781249,
+      "cf_faith_pearl_gt": 0.8346712520234297,
+      "propagation_error_pearl": 0.16532874797657027
     },
     {
       "method": "CftsConfeti",
-      "cf_faith_gt": 0.9226195803078234,
-      "propagation_error": 0.07738041969217657,
-      "cf_faith_pearl_gt": 0.9439763749012172,
-      "propagation_error_pearl": 0.05602362509878278
+      "cf_faith_gt": 0.8845068362803337,
+      "propagation_error": 0.11549316371966634,
+      "cf_faith_pearl_gt": 0.9163826491062942,
+      "propagation_error_pearl": 0.08361735089370581
     },
     {
       "method": "CftsWachter",
@@ -90,13 +92,56 @@
     },
     {
       "method": "PearlCARLA",
-      "cf_faith_gt": 1.0,
-      "propagation_error": 0.0,
-      "cf_faith_pearl_gt": 1.0,
-      "propagation_error_pearl": 0.0
+      "cf_faith_gt": NaN,
+      "propagation_error": NaN,
+      "cf_faith_pearl_gt": NaN,
+      "propagation_error_pearl": NaN
     }
   ],
-  "graph_quality_sweep": null,
+  "graph_quality_sweep": [
+    {
+      "label": "corrupt_frac=0",
+      "graph_auc": 1.0,
+      "shd": 0.0,
+      "cf_faith_inferred": 1.0,
+      "graph_error": 0.0
+    },
+    {
+      "label": "corrupt_frac=0.25",
+      "graph_auc": 0.8493068113321277,
+      "shd": 10.0,
+      "cf_faith_inferred": 0.9987112284338568,
+      "graph_error": 0.0012887715661431542
+    },
+    {
+      "label": "corrupt_frac=0.5",
+      "graph_auc": 0.6986136226642556,
+      "shd": 20.0,
+      "cf_faith_inferred": 0.9973597593313546,
+      "graph_error": 0.0026402406686454327
+    },
+    {
+      "label": "corrupt_frac=0.75",
+      "graph_auc": 0.517781796262809,
+      "shd": 32.0,
+      "cf_faith_inferred": 0.9966702871922533,
+      "graph_error": 0.003329712807746743
+    },
+    {
+      "label": "corrupt_frac=1",
+      "graph_auc": 0.3670886075949367,
+      "shd": 42.0,
+      "cf_faith_inferred": 0.9962256111260785,
+      "graph_error": 0.0037743888739214526
+    },
+    {
+      "label": "dynotears",
+      "graph_auc": 0.9523809523809523,
+      "shd": 4.0,
+      "cf_faith_inferred": 0.9995231799860402,
+      "graph_error": 0.0004768200139597667
+    }
+  ],
   "inferred_edges": 21,
   "true_edges": 21
 }
