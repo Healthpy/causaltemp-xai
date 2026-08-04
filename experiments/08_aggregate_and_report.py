@@ -1,11 +1,25 @@
 """Phase 08: post-hoc aggregation and publication artifacts.
 
-The one phase that reads what Phases 01-05 wrote and turns it into the two
+The one phase that reads what the earlier phases wrote and turns it into the
 artifact families a paper needs. It runs *no* explainer and defines *no* metric
-of its own -- every number here is pooled or plotted from an existing
-``results/<config>/<classifier>/per_instance.csv``.
+of its own -- every number here is pooled or plotted from an artifact some
+earlier phase already produced.
 
-Two distinct reports, one per subcommand:
+Numbered last because it is the downstream **consumer**::
+
+    01 -> 02 -> 03 -+-> 04 --------+
+                    |              |
+                    +-> 06 --------+--> 08   (horizon reads 06/horizon/summary.json)
+                    |              |         (pns     reads 07/pns.json)
+                    +-> 07 --------+         (figures reads 04+05 per_instance.csv)
+    05  independent leaf -- classifier-free oracle control
+
+...but it is *also* an upstream **driver**: ``seeds`` runs phases 01->04
+in-process, once per seed. The number reflects its reporting role; it is not a
+claim that it only ever runs last. (It was numbered 06 until 2026-08-04, which
+put the aggregator *before* the two phases it consumes.)
+
+Four reports, one per subcommand:
 
 * ``seeds``   -> ``results/tables/table_seed_aggregate_<config>_lstm.csv``
   **Multi-seed replication + bootstrap CIs (M2, O2).** Runs Phases 01 -> 02 ->
@@ -32,6 +46,17 @@ Two distinct reports, one per subcommand:
   - **Fig 2** -- CF-faith distribution per method, rollout | pearl side by side.
   - **Fig 3** -- rank correlation: Spearman rho between each traditional metric
     (validity, proximity, sparsity) and CF-faith(rollout, hard) across methods.
+  - **Fig 4** -- do-complexity calibration (vector PDF).
+
+  Sourced from a **depth-2** glob over ``results/*/*/per_instance.csv``, which
+  deliberately excludes Phase 06's deeper ``.../horizon/per_instance.csv`` --
+  see :func:`_load_all_per_instance`.
+
+* ``pns``     -> ``results/tables/table_pns_do_complexity_<config>.csv``
+  Pools Phase 07's ``pns.json`` / ``pns_schedule.json`` across seeds.
+
+* ``horizon`` -> ``results/tables/table_horizon_<configA>_vs_<configB>.csv``
+  Pools Phase 06's ``horizon/summary.json`` across seeds and configs.
 
 ``all`` runs ``seeds`` then ``figures``, so the tables and the figures are
 generated from the same freshly-pooled results.
@@ -184,6 +209,15 @@ def run_seeds_report(args) -> None:
 
 
 def _load_all_per_instance(results_dir: Path) -> dict:
+    """Every main-pipeline ``per_instance.csv``, one row per (method, instance).
+
+    The depth-2 glob is deliberate and must stay depth-2. Phase 06 writes a
+    *third* level, ``<config>/<clf>/horizon/per_instance.csv``, which re-scores
+    the **same instances** once per swept ``t0`` -- so folding it in here would
+    count each of those instances four times over and blend distinct ``t0``
+    regimes into one per-method distribution. The horizon sweep gets its own
+    reading via the ``horizon`` subcommand and ``table_horizon_*.csv``.
+    """
     rows = []
     for fpath in sorted(results_dir.glob("*/*/per_instance.csv")):
         with open(fpath, newline="") as fh:
@@ -438,13 +472,19 @@ def run_pns_report(args) -> None:
     from causaltemp_xai.stats import bootstrap_ci
 
     results_dir = Path(args.results_dir)
-    seeds = args.seeds
+    # An empty --seeds means "the base config directory", matching
+    # run_horizon_report. Without this the path is seed-mandatory, so an
+    # unseeded single run (results/smoke/lstm/pns.json, which is what
+    # `07 --method pns` writes when given no --seed) could never be read and
+    # the command exited "no PNS results found" for a file sitting on disk.
+    seeds = args.seeds if args.seeds else [None]
     rows = []
 
     for mode, fname in (("single_slice", "pns.json"), ("schedule", "pns_schedule.json")):
         per_method: dict[str, dict[str, list]] = {}
         for seed in seeds:
-            path = results_dir / f"{args.config}_seed{seed}" / "lstm" / fname
+            name = args.config if seed is None else f"{args.config}_seed{seed}"
+            path = results_dir / name / "lstm" / fname
             if not path.exists():
                 print(f"[08] missing {path} — skipping")
                 continue
@@ -638,7 +678,13 @@ def fig4_do_complexity_calibration(out_path, seed: int = 0) -> None:
 
 def _add_pns_args(p) -> None:
     p.add_argument("--config", required=True, help="base config name, e.g. 'full' or 'full_nl'")
-    p.add_argument("--seeds", type=int, nargs="+", default=[0, 1, 2])
+    p.add_argument(
+        "--seeds",
+        type=int,
+        nargs="*",
+        default=[0, 1, 2],
+        help="seed replicates to pool; pass with no values to read the unseeded base config",
+    )
     p.add_argument("--results-dir", default=str(RESULTS_DIR))
     p.add_argument("--n-boot", type=int, default=10000)
 

@@ -6,7 +6,10 @@ convention -- each phase hand-wrote ``seed`` into the ``provenance`` block of
 no ``seed`` at all: ``eval_<Method>.json``, ``attribution.json``,
 ``axis_a_benchmark.json``, ``train_report.json`` and ``shift_vr.json`` were all
 missing it, because a per-call-site convention is precisely what a new phase
-forgets. Stamping moved into ``_common.dump_json`` so the gate holds for every
+forgets. (``attribution.json`` is named as it stood at that audit; the
+attribution family was descoped 2026-07-29 and no phase writes that file now.
+The graph diagnostic was ``axis_b_benchmark.json`` until the 2026-08-03
+relettering.) Stamping moved into ``_common.dump_json`` so the gate holds for every
 current and future phase; these tests are what keep it there.
 """
 
