@@ -54,20 +54,18 @@ import numpy as np
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from causaltemp_xai.benchmarks.generator import expected_abs_noise  # noqa: E402
 from causaltemp_xai.benchmarks.structural_cf import structural_counterfactual  # noqa: E402
 from causaltemp_xai.config import CONFIGS, get_config, seeded_variant  # noqa: E402
 from causaltemp_xai.data_io import DEFAULT_OUT_DIR, generate_and_save, load_dataset  # noqa: E402
 from experiments._common import (  # noqa: E402
     ORACLE_SHIFT,
     TABLES_DIR,
-    aggregate_method_row,
     append_table,
     config_dir,
     dump_json,
     oracle_intervention_spec,
-    per_instance_records,
     print_summary_table,
+    score_and_collect,
     set_run_context,
     write_csv,
 )
@@ -115,18 +113,9 @@ def run(config_name: str, n_cf: int, out_dir, seed: int | None = None) -> None:
         print(f"[05] building oracle CFs: {name} ...")
         cfs = build_oracle_cfs(X_sel, mech, noiseless=noiseless)
 
-        instance_rows = per_instance_records(
-            cfg.name,
-            "oracle",
-            name,
-            X_sel,
-            cfs,
-            graph,
-            mech,
-            noise_scale=expected_abs_noise(cfg.noise_type),
-        )
+        # clf deliberately omitted: this is the classifier-free positive control.
+        instance_rows, rec = score_and_collect(cfg, "oracle", name, X_sel, cfs, graph, mech)
         all_instance_rows.extend(instance_rows)
-        rec = aggregate_method_row(cfg.name, "oracle", name, instance_rows)
         table_rows.append(rec)
         summary.append(rec)
 

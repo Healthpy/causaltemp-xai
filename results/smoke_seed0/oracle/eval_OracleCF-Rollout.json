@@ -1,7 +1,7 @@
 {
   "seed": 0,
   "config": "smoke_seed0",
-  "git_commit": "4b93f2736994e147030c6a892b6652872e468f94",
+  "git_commit": "b73aba2940c6484652f5acc57bc8786f38c60e15",
   "git_dirty": true,
   "benchmark": "smoke_seed0",
   "classifier": "oracle",

@@ -40,7 +40,6 @@ import numpy as np
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from causaltemp_xai.benchmarks.generator import expected_abs_noise  # noqa: E402
 from causaltemp_xai.config import CONFIGS, get_config, seeded_variant  # noqa: E402
 from causaltemp_xai.data_io import DEFAULT_OUT_DIR, load_dataset  # noqa: E402
 from causaltemp_xai.eval import evaluate_method  # noqa: E402
@@ -48,12 +47,11 @@ from causaltemp_xai.metrics.taxonomy import AXIS_METRICS  # noqa: E402
 from experiments._common import (  # noqa: E402
     RESULTS_DIR,
     TABLES_DIR,
-    aggregate_method_row,
     append_table,
     config_dir,
     dump_json,
-    per_instance_records,
     print_summary_table,
+    score_and_collect,
     set_run_context,
     write_csv,
 )
@@ -93,20 +91,10 @@ def run(config_name: str, out_dir, seed: int | None = None) -> None:
         rec = evaluate_method(clf, X_sel, cfs, data["X_train"], graph, mech, target_class=1)
         rec["method"] = method_name
 
-        preds = np.asarray(clf.predict(cfs)).reshape(-1)
-        instance_rows = per_instance_records(
-            cfg.name,
-            "lstm",
-            method_name,
-            X_sel,
-            cfs,
-            graph,
-            mech,
-            preds,
-            noise_scale=expected_abs_noise(cfg.noise_type),
+        instance_rows, agg_row = score_and_collect(
+            cfg, "lstm", method_name, X_sel, cfs, graph, mech, clf=clf
         )
         all_instance_rows.extend(instance_rows)
-        agg_row = aggregate_method_row(cfg.name, "lstm", method_name, instance_rows)
         table_rows.append(agg_row)
         # Fill in every Axis-C metric the aggregator computes but
         # ``evaluate_method`` does not (currently ``trsi`` and

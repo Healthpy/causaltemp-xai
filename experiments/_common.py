@@ -188,6 +188,54 @@ def per_instance_records(
     return rows
 
 
+def score_and_collect(cfg, slot, method_name, X_sel, cfs, graph, mech, clf=None, extra=None):
+    """Score one method's counterfactuals: per-instance rows + the aggregate row.
+
+    The step phases 04, 05 and 06 all perform identically, differing only in
+    three things this signature makes explicit:
+
+    * ``clf=None`` — Phase 05 is deliberately classifier-free (it scores the
+      oracle control, which is correct *by construction*), so ``validity`` and
+      the joint faith-validity columns are blank rather than computed. Passing a
+      classifier there would quietly put a model back into the positive control.
+    * ``slot`` — the ``results/<config>/<slot>/`` directory: ``"lstm"`` for the
+      explainer phases, ``"oracle"`` for the control.
+    * ``extra`` — extra keys stamped onto *both* the per-instance rows and the
+      aggregate, which Phase 06 uses for ``horizon`` / ``t0`` / ``t_label``.
+
+    ``noise_scale`` is derived here from ``cfg.noise_type`` rather than passed
+    in: all three callers computed the identical
+    ``expected_abs_noise(cfg.noise_type)``, and the families are variance-matched
+    so the value genuinely differs per family (Laplace 0.100, Uniform 0.085,
+    Gaussian 0.113) — not something a caller should be able to get wrong.
+
+    Deliberately does **not** write anything. The three phases differ in where
+    their output goes and in whether they append to the committed cross-run
+    table (Phase 06 must not — see its docstring), so unifying the writes would
+    erase a distinction that is load-bearing.
+    """
+    from causaltemp_xai.benchmarks.generator import expected_abs_noise
+
+    preds = None if clf is None else np.asarray(clf.predict(cfs)).reshape(-1)
+    rows = per_instance_records(
+        cfg.name,
+        slot,
+        method_name,
+        X_sel,
+        cfs,
+        graph,
+        mech,
+        preds,
+        noise_scale=expected_abs_noise(cfg.noise_type),
+    )
+    agg = aggregate_method_row(cfg.name, slot, method_name, rows)
+    if extra:
+        for r in rows:
+            r.update(extra)
+        agg.update(extra)
+    return rows, agg
+
+
 def write_csv(path: Path, rows: list[dict]) -> None:
     """Overwrite ``path`` with ``rows`` (first row's keys define the header)."""
     path.parent.mkdir(parents=True, exist_ok=True)

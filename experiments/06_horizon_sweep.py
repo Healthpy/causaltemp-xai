@@ -74,16 +74,14 @@ import numpy as np
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from causaltemp_xai.benchmarks.generator import expected_abs_noise  # noqa: E402
 from causaltemp_xai.config import CONFIGS, get_config, seeded_variant  # noqa: E402
 from causaltemp_xai.data_io import DEFAULT_OUT_DIR, load_dataset  # noqa: E402
 from causaltemp_xai.methods import CARLARecourse, PearlCARLARecourse  # noqa: E402
 from causaltemp_xai.metrics.pns import pns_direction, recover_label_threshold  # noqa: E402
 from experiments._common import (  # noqa: E402
-    aggregate_method_row,
     config_dir,
     dump_json,
-    per_instance_records,
+    score_and_collect,
     set_run_context,
     write_csv,
 )
@@ -205,30 +203,27 @@ def run(
         }
         for name, build in builders.items():
             cfs = build().generate_batch(X_sel, clf, graph, mech)
-            preds = np.asarray(clf.predict(cfs)).reshape(-1)
-            rows = per_instance_records(
-                cfg.name,
+            # `extra` stamps the sweep coordinates onto both the per-instance
+            # rows and the aggregate. `t_label - t0` travels with `T - t0`
+            # because a horizon curve is only attributable to a distance if both
+            # are shown (RISK-19).
+            rows, agg = score_and_collect(
+                cfg,
                 "lstm",
                 name,
                 X_sel,
                 cfs,
                 graph,
                 mech,
-                preds,
-                noise_scale=expected_abs_noise(cfg.noise_type),
+                clf=clf,
+                extra={
+                    "horizon": h,
+                    "t0": t0,
+                    "t_label": t_label,
+                    "label_horizon": t_label - t0,
+                },
             )
-            for r in rows:
-                r["horizon"] = h
-                r["t0"] = t0
-                r["t_label"] = t_label
-                r["label_horizon"] = t_label - t0
             all_rows.extend(rows)
-
-            agg = aggregate_method_row(cfg.name, "lstm", name, rows)
-            agg["horizon"] = h
-            agg["t0"] = t0
-            agg["t_label"] = t_label
-            agg["label_horizon"] = t_label - t0
 
             # PS direction only. X_sel is the flip-candidate set (non-target ->
             # target), so this estimand is *sufficiency*, not PNS. The PN
