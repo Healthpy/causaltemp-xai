@@ -1,7 +1,7 @@
 {
   "seed": 0,
   "config": "smoke",
-  "git_commit": "b73aba2940c6484652f5acc57bc8786f38c60e15",
+  "git_commit": "55aa34e5456a648767fe1b615ac7eb87d57077ed",
   "git_dirty": true,
   "provenance": {
     "config": {
@@ -212,7 +212,17 @@
       "trsi": 0.9121352997907449
     }
   ],
-  "axis_a": null,
+  "axis_a": {
+    "seed": 0,
+    "config": "smoke",
+    "git_commit": "55aa34e5456a648767fe1b615ac7eb87d57077ed",
+    "git_dirty": true,
+    "SHD": 0.0,
+    "LagAcc": 1.0,
+    "LagF1": 1.0,
+    "ResidualDep": 0.015884303272757402,
+    "note": "SHD/LagAcc computed against the graph itself (no graph-discovery method in this pipeline) -- trivially perfect; ResidualDep is the informative benchmark-structural diagnostic here."
+  },
   "shift_vr": {
     "seed": 0,
     "config": "smoke",

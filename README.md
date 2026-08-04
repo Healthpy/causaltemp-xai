@@ -97,7 +97,7 @@ uv run python -m causaltemp_xai.data_io --config full
 uv run python -m causaltemp_xai.classifiers.lstm --config full --train --patience 20
 
 # 3. run the harness: CF methods x Axis-C + both CF-faith metrics
-#    + IG attribution foil + Shift-VR-lite -> results/full/<classifier>/...
+#    + Shift-VR-lite -> results/full/<classifier>/...
 #    CftsCounts excluded from the current default run (PI decision, 2026-07-29)
 uv run python experiments/03_run_cf_methods.py --config full --n-cf 100 \
     --methods CARLA PearlCARLA CftsWachter CftsCOMTE CftsConfeti CftsCels
@@ -133,7 +133,6 @@ uv run python experiments/08_aggregate_and_report.py seeds --config smoke --seed
 
 # phase 7 — auxiliary method families outside the main 01-05 pipeline
 uv run python experiments/07_auxiliary_methods.py --config smoke_nl --method dynotears  # self-graphing + H3 graph-error split (nonlinear configs); --method citris for the secondary
-uv run python experiments/07_auxiliary_methods.py --config smoke --method ivae          # decoder-based Axis-A ICC (iVAE latent traversal) with recon gate + latent->factor alignment
 
 # model-vs-world audit + do-complexity (M2b). --schedule audits the whole
 # multi-timestep intervention a CF implies rather than the single do() at t0.
@@ -281,12 +280,6 @@ causaltemp-xai/
 │       │   ├── dice.py          # DiCECF (dice-ml gradient + DPP fallback)
 │       │   ├── carla.py         # CARLARecourse (causal noiseless-rollout recourse)
 │       │   └── cfts_methods.py  # cfts-backed Wachter/COMTE/CONFETI/CounTS/CELS
-│       ├── attribution/
-│       │   ├── integrated_gradients.py   # hand-rolled IG attribution foil (WP3)
-│       │   ├── perturbation_curves.py    # deletion / insertion curves
-│       │   ├── timeshap.py      # TimeSHAP: official feedzai timeshap wrapper (Bento et al., 2021)
-│       │   └── dynamask.py      # Dynamask: official Dynamask submodule wrapper (Crabbe & van der Schaar, 2021)
-│       ├── concept/             # CBM-T probe + iVAE (experimental, unwired)
 │       └── causal/              # DYNOTEARS + CITRIS (genuine, vendored)
 ├── third_party/cfts_repo/       # vendored cfts reference implementations
 ├── third_party/dynamask_repo/   # vendored official Dynamask
@@ -295,7 +288,7 @@ causaltemp-xai/
 ├── experiments/
 │   ├── 01_generate_benchmarks.py    # phase 1: generate + persist datasets
 │   ├── 02_train_classifiers.py      # phase 2: train the LSTM classifier
-│   ├── 03_run_cf_methods.py         # phase 3: run CF methods + IG + shift-VR
+│   ├── 03_run_cf_methods.py         # phase 3: run CF methods + shift-VR
 │   ├── 04_evaluate_axes.py          # phase 4: Axis-C + CF-faith on persisted CFs
 │   ├── 05_run_oracle_control.py     # phase 5: oracle structural-CF positive control (any config)
 │   ├── 06_horizon_sweep.py          # phase 6: sweep t0, so the horizon claim is plotted not asserted

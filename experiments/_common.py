@@ -1,4 +1,4 @@
-"""Shared helpers for the numbered experiment-phase scripts (01-07).
+"""Shared helpers for the numbered experiment-phase scripts (01-08).
 
 Every phase script writes under a single ``results/`` tree so later phases
 (and ``08_aggregate_and_report.py``) can discover what earlier phases produced purely
@@ -8,8 +8,9 @@ by path convention::
     results/<config_name>/<classifier>/cf/X_cf_<Method>.npy
     results/<config_name>/<classifier>/eval_<Method>.json
     results/<config_name>/<classifier>/per_instance.csv
-    results/<config_name>/<classifier>/attribution.json
     results/<config_name>/<classifier>/shift_vr.json
+    results/<config_name>/<classifier>/horizon/                (Phase 06)
+    results/<config_name>/<classifier>/pns.json                (Phase 07)
     results/<config_name>/axis_a_benchmark.json      # dataset-level, no classifier needed
     results/<config_name>/oracle/...                 # nonlinear configs
     results/tables/table_axis_c_cf_faith.csv         # accumulated across runs
@@ -17,26 +18,36 @@ by path convention::
 
 Axis routing
 ------------
-The benchmark's four metric axes (``causaltemp_xai/metrics/axis_{a,b,c,d}.py``)
-are evaluated on whichever kind of method they are actually suited to:
+Three axes, defined once in ``causaltemp_xai/metrics/taxonomy.py`` (that module
+is the single source of truth; ``tests/test_taxonomy.py`` fails if a reported
+metric has no axis). **The axes are not parallel columns** — A scores the
+*benchmark*, B and C score *methods*:
 
-* **Axis C** (validity, proximity, sparsity, OOD, TRSI) + **CF-faith** —
-  every CF-*generating* method (Wachter, CARLA, cfts-*, OracleCF-*). This is
-  "does the counterfactual itself look good and respect the SCM." Axis C scores
-  the CF as an artifact; CF-faith scores it against the mechanism (including
-  the retroactive-edit gate).
-* **Axis B** (Shift-VR + attribution input-sensitivity) — Shift-VR applies to
-  CF methods (validity retention under a noise-distribution shift, computed
-  live in Phase 03); input-sensitivity applies to attribution methods
-  (stability of the saliency map under small input perturbations).
-* **Axis A** (ICC attribution-mass, causal-coverage) — attribution/saliency
-  methods (Integrated Gradients), scored against **ground-truth oracle
-  interventions** built from the known SCM (:func:`build_oracle_interventions`)
-  so ``int_channel`` / ``causal_parents`` are real, not proxies.
-* **Axis A** (SHD, LagAcc, TV-Confounding) — no graph-*discovery* method
-  exists in this pipeline, so Axis A is not a per-method score here. It is
-  computed once per **dataset** (Phase 01) as a structural diagnostic of the
-  benchmark's own causal graph (:func:`axis_a_benchmark_diagnostic`).
+* **Axis A** (SHD, lag accuracy, lagged-edge F1, graph AUC, residual
+  dependence, graph-error decomposition) — per **dataset**, not per method.
+  No graph-*discovery* method runs in the main pipeline, so this is computed
+  once per dataset in Phase 01 as a structural diagnostic of the benchmark's
+  own causal graph (:func:`axis_a_benchmark_diagnostic`). Phase 07's DYNOTEARS
+  self-graphing is the one exception. Printing it beside B/C as a third
+  per-method column is a category error (``docs/general_plan.md`` §5).
+* **Axis B** (Shift-VR, input sensitivity) — per **method**: validity retention
+  under a noise-distribution shift, computed live in Phase 03.
+* **Axis C** (validity, proximity, sparsity, OOD, SCM-noise plausibility, TRSI,
+  both CF-faith semantics and their gate diagnostics, the model-vs-world audit,
+  do-complexity, ``frac_vacuous``, ``frac_degenerate``) — per **method**, every
+  CF-*generating* method (Wachter, CARLA, cfts-*, OracleCF-*). Axis C scores the
+  CF as an artifact; CF-faith scores it against the mechanism.
+
+The oracle interventions built here (:func:`build_oracle_interventions`,
+:func:`oracle_intervention_spec`) come from the known SCM, so the intervened
+channel is ground truth rather than a proxy.
+
+Superseded 2026-08-03/04: this docstring previously carried **two** conflicting
+"Axis A" bullets — one describing attribution/ICC scoring, one saying Axis A is
+not a per-method score. Both predated the three-axis taxonomy; the ICC/concept
+axis and the attribution methods it scored were deleted, and the graph
+diagnostic was relettered B -> A. ``TV-Confounding`` named here was retired with
+the ``R<n>``/risk collision.
 """
 
 from __future__ import annotations
@@ -553,7 +564,7 @@ def print_provenance_warning(report: list[dict]) -> None:
     if not bad:
         return
     print("\n" + "=" * 78)
-    print("[06] PROVENANCE WARNING -- not every input is from a clean, committed state")
+    print("[08] PROVENANCE WARNING -- not every input is from a clean, committed state")
     print("=" * 78)
     for r in bad:
         if r["status"] == "missing":
@@ -566,7 +577,7 @@ def print_provenance_warning(report: list[dict]) -> None:
             )
     print("=" * 78)
     print(
-        "[06] Figures/tables are still written from this data, but do not cite "
+        "[08] Figures/tables are still written from this data, but do not cite "
         "them in a manuscript until every input reads 'clean' -- re-run the "
         "affected phase(s) once the working tree is committed. See "
         "docs/risk_register.md RISK-13."
@@ -575,7 +586,7 @@ def print_provenance_warning(report: list[dict]) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Axis A (attribution/concept quality) support
+# Oracle-intervention support (ground-truth do() specs from the known SCM)
 # ---------------------------------------------------------------------------
 
 

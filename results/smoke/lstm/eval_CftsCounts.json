@@ -1,7 +1,7 @@
 {
   "seed": 0,
   "config": "smoke",
-  "git_commit": "b73aba2940c6484652f5acc57bc8786f38c60e15",
+  "git_commit": "55aa34e5456a648767fe1b615ac7eb87d57077ed",
   "git_dirty": true,
   "n": 20,
   "validity": 0.5,
