@@ -17,6 +17,11 @@ from causaltemp_xai.classifiers import LSTMClassifier
 from causaltemp_xai.methods import (
     CARLARecourse,
     CausalFeasibilityCF,
+    CftsCelsCF,
+    CftsCOMTECF,
+    CftsConfetiCF,
+    CftsCountsCF,
+    CftsWachterCF,
     PearlCARLARecourse,
     WachterCF,
     derive_intervention_t,
@@ -344,6 +349,116 @@ class TestCausalFeasibilityCF:
         # gets the proximity exemption at the literal first timestep).
         if T > 1:
             assert bool(causal_mask[1:].all())
+
+
+# ---------------------------------------------------------------------------
+# cfts-backed methods (M3 DoD: every wired method needs an output-contract
+# test — these five were registered in build_methods() with zero direct
+# behavioural coverage; test_experiment_registry.py only checked isinstance,
+# never called .generate()/.generate_batch() on any of them).
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture(scope="module")
+def cfts_dataset(trained):
+    """The same (X, y) split ``trained`` fit the classifier on, wrapped for
+    the cfts-backed methods' reference-dataset argument."""
+    from causaltemp_xai.methods.counterfactual.cfts_methods import _DatasetAdapter
+
+    _clf, data = trained
+    return _DatasetAdapter(data["X"][:240], data["Y"][:240])
+
+
+class TestCftsWachter:
+    def test_shape_and_finite(self, trained, cfts_dataset):
+        clf, data = trained
+        x = data["X"][3]
+        cf = CftsWachterCF(target_class=1, dataset=cfts_dataset, max_cfs=50).generate(x, clf)
+        assert cf.shape == x.shape
+        assert np.all(np.isfinite(cf))
+
+    def test_generate_batch_shape(self, trained, cfts_dataset):
+        clf, data = trained
+        X = data["X"][:3]
+        cfs = CftsWachterCF(target_class=1, dataset=cfts_dataset, max_cfs=50).generate_batch(X, clf)
+        assert cfs.shape == X.shape
+        assert np.all(np.isfinite(cfs))
+
+
+class TestCftsCOMTE:
+    def test_shape_and_finite(self, trained, cfts_dataset):
+        clf, data = trained
+        x = data["X"][3]
+        cf = CftsCOMTECF(target_class=1, dataset=cfts_dataset).generate(x, clf)
+        assert cf.shape == x.shape
+        assert np.all(np.isfinite(cf))
+
+    def test_generate_batch_shape(self, trained, cfts_dataset):
+        clf, data = trained
+        X = data["X"][:3]
+        cfs = CftsCOMTECF(target_class=1, dataset=cfts_dataset).generate_batch(X, clf)
+        assert cfs.shape == X.shape
+        assert np.all(np.isfinite(cfs))
+
+
+class TestCftsConfeti:
+    def test_shape_and_finite(self, trained, cfts_dataset):
+        clf, data = trained
+        x = data["X"][3]
+        cf = CftsConfetiCF(
+            target_class=1, dataset=cfts_dataset, max_iterations=10, population_size=10
+        ).generate(x, clf)
+        assert cf.shape == x.shape
+        assert np.all(np.isfinite(cf))
+
+    def test_generate_batch_shape(self, trained, cfts_dataset):
+        clf, data = trained
+        X = data["X"][:3]
+        cfs = CftsConfetiCF(
+            target_class=1, dataset=cfts_dataset, max_iterations=10, population_size=10
+        ).generate_batch(X, clf)
+        assert cfs.shape == X.shape
+        assert np.all(np.isfinite(cfs))
+
+
+class TestCftsCounts:
+    """CounTS trains its own internal VAE per call (not our LSTM) -- kept to
+    a handful of epochs/steps here purely for test speed; the output-contract
+    check does not depend on the VAE having converged."""
+
+    def test_shape_and_finite(self, trained, cfts_dataset):
+        clf, data = trained
+        x = data["X"][3]
+        cf = CftsCountsCF(
+            target_class=1, dataset=cfts_dataset, train_epochs=5, max_iter=20
+        ).generate(x, clf)
+        assert cf.shape == x.shape
+        assert np.all(np.isfinite(cf))
+
+    def test_generate_batch_shape(self, trained, cfts_dataset):
+        clf, data = trained
+        X = data["X"][:2]  # CounTS retrains its VAE per instance -- keep this one small
+        cfs = CftsCountsCF(
+            target_class=1, dataset=cfts_dataset, train_epochs=5, max_iter=20
+        ).generate_batch(X, clf)
+        assert cfs.shape == X.shape
+        assert np.all(np.isfinite(cfs))
+
+
+class TestCftsCels:
+    def test_shape_and_finite(self, trained, cfts_dataset):
+        clf, data = trained
+        x = data["X"][3]
+        cf = CftsCelsCF(target_class=1, dataset=cfts_dataset, max_iter=20).generate(x, clf)
+        assert cf.shape == x.shape
+        assert np.all(np.isfinite(cf))
+
+    def test_generate_batch_shape(self, trained, cfts_dataset):
+        clf, data = trained
+        X = data["X"][:3]
+        cfs = CftsCelsCF(target_class=1, dataset=cfts_dataset, max_iter=20).generate_batch(X, clf)
+        assert cfs.shape == X.shape
+        assert np.all(np.isfinite(cfs))
 
 
 class TestT0CandidateResolution:
