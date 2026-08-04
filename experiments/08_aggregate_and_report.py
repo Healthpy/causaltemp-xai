@@ -389,7 +389,10 @@ def run_figures_report(args) -> None:
     fig2_distributions(data, methods, out_dir / "fig2_cffaith_distribution.png")
     fig3_rank_correlation(data, methods, out_dir / "fig3_rank_correlation.png")
     fig4_do_complexity_calibration(out_dir / "fig4_do_complexity_calibration.pdf")
-    print(f"\n[08] wrote 4 figures to {out_dir}/")
+    n = 4
+    if fig5_horizon_decay(TABLES_DIR, out_dir / "fig5_horizon_decay.png"):
+        n += 1
+    print(f"\n[08] wrote {n} figures to {out_dir}/")
 
 
 # ---------------------------------------------------------------------------
@@ -674,6 +677,84 @@ def fig4_do_complexity_calibration(out_path, seed: int = 0) -> None:
     fig.savefig(out_path, format="pdf")
     plt.close(fig)
     print(f"[08] wrote {out_path}  (D from {ds[0]} to {ds[-1]})")
+
+
+def fig5_horizon_decay(tables_dir: Path, out_path) -> bool:
+    """Validity as a function of the intervention-to-outcome distance ``T - t0``.
+
+    Added 2026-08-04 to close the M2 DoD item "every validity and PNS figure
+    reported with T - t0" -- none of fig1-4 carry a horizon axis. This is the
+    one figure that should: it is the direct plot of H8/H8c's evidence, built
+    from ``table_horizon_<configA>_vs_<configB>.csv`` (Phase 06 pooled across
+    seeds with bootstrap CIs), not recomputed here. Only the CARLA family is
+    swept (Phase 06's own scope note: sweeping Wachter-style unconstrained
+    edits on the same axis as single-``do()`` methods would conflate two
+    different failure modes -- see ``06_horizon_sweep.py``).
+
+    Returns ``False`` (and writes nothing) if no horizon table exists yet, so
+    a smoke-only ``figures`` run does not fail on missing paper-scale data.
+    """
+    paths = sorted(tables_dir.glob("table_horizon_*.csv"))
+    if not paths:
+        print("[08] fig5: no table_horizon_*.csv found -- skipped")
+        return False
+
+    rows = []
+    for p in paths:
+        with open(p, newline="") as fh:
+            rows.extend(csv.DictReader(fh))
+    if not rows:
+        return False
+
+    configs = sorted({r["config"] for r in rows})
+    methods = sorted({r["method"] for r in rows})
+    linestyles = {c: ls for c, ls in zip(configs, ["-", "--", ":", "-."])}
+
+    fig, ax = plt.subplots(figsize=(6.5, 4.5))
+    for method in methods:
+        color = COLORS.get(method, "#333333")
+        for config in configs:
+            pts = sorted(
+                (
+                    (
+                        int(r["T_minus_t0"]),
+                        float(r["validity"]),
+                        float(r["validity_lo"]),
+                        float(r["validity_hi"]),
+                    )
+                    for r in rows
+                    if r["method"] == method and r["config"] == config
+                ),
+                key=lambda t: t[0],
+            )
+            if not pts:
+                continue
+            xs = [p[0] for p in pts]
+            ys = [p[1] for p in pts]
+            los = [p[2] for p in pts]
+            his = [p[3] for p in pts]
+            ax.plot(
+                xs,
+                ys,
+                linestyles[config],
+                color=color,
+                marker="o",
+                ms=4,
+                label=f"{method} ({config})",
+            )
+            ax.fill_between(xs, los, his, color=color, alpha=0.12, linewidth=0)
+
+    ax.set_xlabel(r"Intervention-to-outcome distance $T - t_0$")
+    ax.set_ylabel("Validity (pooled across seeds, 95% CI band)")
+    ax.set_title("Recourse validity vs. horizon (H8/H8c evidence)")
+    ax.set_ylim(-0.05, 1.05)
+    ax.legend(fontsize=7, frameon=False, ncol=2)
+    ax.grid(True, alpha=0.3)
+    fig.tight_layout()
+    fig.savefig(out_path, dpi=200)
+    plt.close(fig)
+    print(f"  [fig] -> {out_path}")
+    return True
 
 
 def _add_pns_args(p) -> None:
