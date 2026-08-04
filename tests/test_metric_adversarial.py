@@ -33,6 +33,7 @@ import numpy as np
 import pytest
 
 from causaltemp_xai.benchmarks.mechanisms import LinearMechanism
+from causaltemp_xai.benchmarks.structural_cf import structural_counterfactual
 from causaltemp_xai.eval import MIN_VALIDITY_BASE_FOR_RATIO, evaluate_method, shift_vr
 from causaltemp_xai.metrics.axis_c import (
     ood_plausibility,
@@ -844,3 +845,108 @@ class TestSCMNoisePlausibilityAdversarial:
         s_pearl = scm_noise_plausibility(pearl, mech, NOISE_SCALE)
         s_junk = scm_noise_plausibility(junk, mech, NOISE_SCALE)
         assert s_pearl > s_junk
+
+
+# ---------------------------------------------------------------------------
+# Cross-layer consistency: one definition, two granularities
+# ---------------------------------------------------------------------------
+
+
+class TestLayerConsistency:
+    """``causaltemp_xai.eval`` and ``experiments._common`` must agree.
+
+    Three Axis-C quantities are computed twice, at different granularities:
+    ``eval.evaluate_method`` works batch-wise over arrays, while
+    ``_common.per_instance_records`` + ``aggregate_method_row`` go per-instance
+    and then aggregate from CSV-round-tripped rows. That split is deliberate —
+    the experiments layer has to survive a `per_instance.csv` reload, where
+    every value is a string and a blank means "not applicable" — so merging the
+    two would make one of them worse.
+
+    What is *not* acceptable is silent divergence. ``metrics/taxonomy.py``
+    lists these as single Axis-C metrics and Phase 04 merges both code paths
+    into one ``summary.json``, so if the two ever disagree the published number
+    depends on which function happened to write the key. This pins them.
+
+    The fixture is adversarial on purpose: it mixes a real ``do()``, a vacuous
+    zero-perturbation noiseless rollout (RISK-17), and a degenerate edit at
+    ``T-1`` (which makes CF-faith NaN), against a classifier that validates only
+    half the batch — so the NaN-abstention policy, the vacuity detector and the
+    joint faith-validity rule are all exercised at once.
+    """
+
+    K, T, N = 4, 25, 12
+
+    @classmethod
+    def _fixture(cls):
+        rng = np.random.default_rng(0)
+        A = rng.uniform(-0.3, 0.3, (cls.K, cls.K))
+        X = np.zeros((cls.N, cls.T, cls.K))
+        for i in range(cls.N):
+            for t in range(1, cls.T):
+                X[i, t] = A @ X[i, t - 1] + rng.laplace(0, 0.05, cls.K)
+        mech = LinearMechanism([A])
+        cfs = []
+        for i, x in enumerate(X):
+            if i % 3 == 0:  # genuine single do()
+                cfs.append(structural_counterfactual(x, mech, 10, 0, 3.0, noiseless=False))
+            elif i % 3 == 1:  # vacuous: noiseless rollout, zero perturbation
+                cfs.append(
+                    structural_counterfactual(x, mech, 10, 0, float(x[10, 0]), noiseless=True)
+                )
+            else:  # degenerate: only the last timestep moves
+                c = x.copy()
+                c[-1, 0] += 5.0
+                cfs.append(c)
+        return X, np.stack(cfs), mech, np.zeros((cls.K, cls.K, 1))
+
+    class _HalfValid:
+        def predict(self, Z):
+            return (np.arange(len(np.atleast_3d(Z))) % 2).astype(int)
+
+    def _both_layers(self):
+        from causaltemp_xai.eval import evaluate_method
+        from experiments._common import aggregate_method_row, per_instance_records
+
+        X, cfs, mech, graph = self._fixture()
+        clf = self._HalfValid()
+        batch = evaluate_method(clf, X, cfs, X, graph, mech, target_class=1)
+        rows = per_instance_records(
+            "t",
+            "lstm",
+            "m",
+            X,
+            cfs,
+            graph,
+            mech,
+            preds=np.asarray(clf.predict(cfs)),
+            noise_scale=0.1,
+        )
+        return batch, aggregate_method_row("t", "lstm", "m", rows)
+
+    @pytest.mark.parametrize(
+        "metric",
+        [
+            "frac_degenerate",
+            "frac_vacuous",
+            "n_vacuous",
+            "n_cf_faith_scorable",
+            "cf_faith_rollout_hard_valid",
+            "cf_faith_pearl_hard_valid",
+        ],
+    )
+    def test_both_layers_agree(self, metric):
+        batch, agg = self._both_layers()
+        assert batch[metric] == pytest.approx(agg[metric]), (
+            f"{metric} disagrees between causaltemp_xai.eval ({batch[metric]}) and "
+            f"experiments._common ({agg[metric]}) — Phase 04 merges both paths, so the "
+            f"published value would depend on which one wrote the key"
+        )
+
+    def test_the_fixture_actually_exercises_all_three_cases(self):
+        """Guard the guard: if the fixture stopped producing degenerate and
+        vacuous instances the parametrised test above would pass vacuously."""
+        batch, _ = self._both_layers()
+        assert batch["frac_degenerate"] > 0, "fixture has no degenerate instance"
+        assert batch["frac_vacuous"] > 0, "fixture has no vacuous instance"
+        assert 0 < batch["cf_faith_rollout_hard_valid"] < 1, "joint criterion not exercised"
