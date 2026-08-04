@@ -82,13 +82,13 @@ A beside B/C as a third per-method column is a category error
 |---|---|---|---|
 | **A** | SHD, lag accuracy, lagged-edge F1, graph AUC, residual dependence, graph-error decomposition | the **dataset** — no graph-discovery method is wired into the main pipeline, so this is a structural diagnostic of the benchmark's own graph, not a per-method score | Phase 01 (Phase 07 for DYNOTEARS self-graphing) |
 | **B** | Shift-VR: validity retention under a noise-distribution shift; input sensitivity | every selected CF **method** | Phase 03 |
-| **C** | validity, proximity, sparsity (flat + `sparsity_channels` / `sparsity_timepoints`), OOD, SCM-noise plausibility, TRSI (a mechanism-free edit-smoothness *descriptor*, not a faithfulness score), both CF-faith semantics + gate diagnostics, the model-vs-world audit, do-complexity, `frac_vacuous`, `frac_degenerate` | every selected CF **method** (CARLA, PearlCARLA, CftsWachter, CftsCOMTE, CftsConfeti, CftsCels, OracleCF-\*) | Phase 04 (explainers) / 05 (oracle control) |
+| **C** | validity, proximity, sparsity (flat + `sparsity_channels` / `sparsity_timepoints`), OOD, SCM-noise plausibility, TRSI (a mechanism-free edit-smoothness *descriptor*, not a faithfulness score), both CF-faith semantics + gate diagnostics, the model-vs-world audit, do-complexity, `frac_vacuous`, `frac_degenerate` | every selected CF **method** (CARLA, PearlCARLA, CftsWachter, CftsCOMTE, CftsConfeti, CftsCels, CausalFeasibility, OracleCF-\*) | Phase 04 (explainers) / 05 (oracle control) |
 
 Every axis that scores counterfactual explanations (Axis C incl. CF-faith, and
 Axis B's Shift-VR) runs over the **full** selected CF method set — no method is
 singled out. The gradient-based Wachter baseline is the cfts-backed
-`CftsWachterCF`; the native from-scratch `WachterCF` implementation is not
-used in this pipeline.
+`CftsWachterCF`; the native from-scratch `WachterCF` reimplementation was
+removed 2026-08-05 (`DECISIONS.md`) as a redundant duplicate.
 
 **Superseded 2026-08-03/04.** This file previously documented an `attribution.json`
 / `axis_a_attribution.json` pair, an `ivae/` output directory, and a four-axis

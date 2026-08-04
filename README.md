@@ -265,21 +265,20 @@ causaltemp-xai/
 │   │   ├── mechanisms.py        # Mechanism / LinearMechanism / MLPMechanism (+ serialize)
 │   │   └── structural_cf.py     # oracle abduction-action-prediction CF (single do() or schedule)
 │   ├── scm/
-│   │   ├── intervention.py      # derive_intervention_t (uniform rule)
-│   │   ├── abduction.py         # noise abduction for Pearl counterfactuals
-│   │   └── counterfactual.py    # abduction-action-prediction machinery
+│   │   └── intervention.py      # derive_intervention_t, is_vacuous_intervention (only file here)
 │   ├── metrics/
+│   │   ├── taxonomy.py          # AXES / AXIS_METRICS -- sole source of truth for A/B/C routing
+│   │   ├── axis_a.py            # structure: SHD, lag accuracy, graph AUC (per dataset)
+│   │   ├── axis_b.py            # robustness: Shift-VR, input sensitivity (per method)
+│   │   ├── axis_c.py            # counterfactual quality: validity, proximity, sparsity, OOD, TRSI
 │   │   ├── cf_faith.py          # CFfaith (noiseless_rollout | pearl_delta semantics)
-│   │   ├── pns.py               # model-vs-world audit: A/B/C split + do-complexity
-│   │   ├── axis_c.py            # validity, proximity, sparsity, OOD, TRSI
-│   │   └── axis_a|b|d.py        # concept, graph, robustness axis metrics
+│   │   └── pns.py               # model-vs-world audit: A/B/C split + do-complexity
 │   ├── classifiers/lstm.py      # LSTM + LSTMClassifier wrapper (+ train CLI)
 │   └── methods/
 │       ├── counterfactual/
-│       │   ├── wachter.py       # WachterCF (gradient CF)
-│       │   ├── dice.py          # DiCECF (dice-ml gradient + DPP fallback)
-│       │   ├── carla.py         # CARLARecourse (causal noiseless-rollout recourse)
-│       │   └── cfts_methods.py  # cfts-backed Wachter/COMTE/CONFETI/CounTS/CELS
+│       │   ├── carla.py               # CARLARecourse / PearlCARLARecourse (causal recourse, positive controls)
+│       │   ├── causal_feasibility.py  # CausalFeasibilityCF (Bahri et al. 2025, FISTA, SCM-regularised)
+│       │   └── cfts_methods.py        # cfts-backed Wachter/COMTE/CONFETI/CounTS/CELS/NativeGuide
 │       └── causal/              # DYNOTEARS + CITRIS (genuine, vendored)
 ├── third_party/cfts_repo/       # vendored cfts reference implementations
 ├── third_party/dynamask_repo/   # vendored official Dynamask

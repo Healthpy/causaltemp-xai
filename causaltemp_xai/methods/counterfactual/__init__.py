@@ -13,7 +13,6 @@ from .cfts_methods import (
     CftsNativeGuideCF,
     CftsWachterCF,
 )
-from .wachter import WachterCF
 
 __all__ = [
     "CARLARecourse",
@@ -25,5 +24,4 @@ __all__ = [
     "CftsNativeGuideCF",
     "CftsWachterCF",
     "PearlCARLARecourse",
-    "WachterCF",
 ]

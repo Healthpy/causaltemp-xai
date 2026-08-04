@@ -10,7 +10,8 @@ from causaltemp_xai.benchmarks.generator import LinearSCMT
 from causaltemp_xai.classifiers import LSTMClassifier
 from causaltemp_xai.config import SMOKE, shifted_config
 from causaltemp_xai.eval import shift_vr
-from causaltemp_xai.methods import CARLARecourse, WachterCF
+from causaltemp_xai.methods import CARLARecourse, CftsWachterCF
+from causaltemp_xai.methods.counterfactual.cfts_methods import _DatasetAdapter
 
 
 def _gen(config):
@@ -82,8 +83,9 @@ class TestShiftVR:
         X_shift_test = shift_data["X"][:4]
         graph, mech = base_data["graph"], base_data["mechanism"]
 
+        ds = _DatasetAdapter(X[:400], Y[:400])
         methods = {
-            "wachter": WachterCF(target_class=1, n_steps=50, lr=0.1),
+            "wachter": CftsWachterCF(target_class=1, dataset=ds, max_cfs=50),
             "carla": CARLARecourse(target_class=1, n_steps=50, t0_fractions=(0.5,)),
         }
         result = shift_vr(clf, methods, X_base_test, X_shift_test, graph, mech, 1)

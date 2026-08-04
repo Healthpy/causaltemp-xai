@@ -4,7 +4,6 @@ from causaltemp_xai.classifiers.lstm import LSTMClassifier
 from causaltemp_xai.eval import evaluate_method
 from causaltemp_xai.eval import shift_vr as shift_vr_methods
 from causaltemp_xai.methods.counterfactual.carla import CARLARecourse
-from causaltemp_xai.methods.counterfactual.wachter import WachterCF
 from causaltemp_xai.metrics import (
     CFfaith,
     compute_axis_a,
@@ -25,8 +24,6 @@ __all__ = [
     "CFfaith",
     # classifiers
     "LSTMClassifier",
-    # CF methods
-    "WachterCF",
     "compute_axis_a",
     "compute_axis_b",
     "compute_axis_c",

@@ -23,7 +23,6 @@ from causaltemp_xai.methods import (
     CftsCountsCF,
     CftsWachterCF,
     PearlCARLARecourse,
-    WachterCF,
     derive_intervention_t,
 )
 from causaltemp_xai.methods.counterfactual.carla import _resolve_t0_candidates
@@ -55,34 +54,6 @@ def trained():
     )
     clf.fit(X[:240], Y[:240], X[240:], Y[240:])
     return clf, data
-
-
-# ---------------------------------------------------------------------------
-# Wachter
-# ---------------------------------------------------------------------------
-
-
-class TestWachter:
-    def test_shape_and_finite(self, trained):
-        clf, data = trained
-        x = data["X"][0]
-        cf = WachterCF(target_class=1, n_steps=60, lr=0.1).generate(x, clf)
-        assert cf.shape == x.shape
-        assert np.all(np.isfinite(cf))
-
-    def test_flips_at_least_one(self, trained):
-        clf, data = trained
-        X = data["X"]
-        preds = clf.predict(X[:20])
-        # Choose a few instances NOT in class 1, ask Wachter to flip them.
-        src = [i for i in range(20) if preds[i] == 0][:3] or list(range(3))
-        wachter = WachterCF(target_class=1, n_steps=100, lr=0.1)
-        flips = 0
-        for i in src:
-            cf = wachter.generate(X[i], clf)
-            if clf.predict(cf) == 1:
-                flips += 1
-        assert flips >= 1, "Wachter failed to flip any of the selected instances"
 
 
 # ---------------------------------------------------------------------------
@@ -383,6 +354,22 @@ class TestCftsWachter:
         cfs = CftsWachterCF(target_class=1, dataset=cfts_dataset, max_cfs=50).generate_batch(X, clf)
         assert cfs.shape == X.shape
         assert np.all(np.isfinite(cfs))
+
+    def test_flips_at_least_one(self, trained, cfts_dataset):
+        """Carried over from the removed native WachterCF's test (2026-08-05,
+        DECISIONS.md) -- CftsWachterCF is what the pipeline actually uses, so
+        this is the one that should carry the invariant now."""
+        clf, data = trained
+        X = data["X"]
+        preds = clf.predict(X[:20])
+        src = [i for i in range(20) if preds[i] == 0][:3] or list(range(3))
+        method = CftsWachterCF(target_class=1, dataset=cfts_dataset, max_cfs=100)
+        flips = 0
+        for i in src:
+            cf = method.generate(X[i], clf)
+            if clf.predict(cf) == 1:
+                flips += 1
+        assert flips >= 1, "CftsWachterCF failed to flip any of the selected instances"
 
 
 class TestCftsCOMTE:

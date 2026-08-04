@@ -17,7 +17,9 @@ Every axis that scores counterfactual explanations (Axis C + CF-faith here in
 Phase 04/05, Axis B's Shift-VR here in Phase 03) is run over the **full** set
 of selected CF methods -- no method is singled out or excluded from an
 applicable axis. Wachter is the cfts-backed gradient implementation
-(``CftsWachterCF``); the native from-scratch ``WachterCF`` is not used here.
+(``CftsWachterCF``, wrapping the genuine vendored ``cfts`` library); the
+native from-scratch ``WachterCF`` reimplementation was removed 2026-08-05
+(``DECISIONS.md``) as redundant with it.
 
 Nonlinear configs (``smoke_nl``/``full_nl``) are supported here too, given a
 trained classifier (Phase 02 now trains on any config -- see its docstring).
@@ -83,7 +85,9 @@ from experiments._common import (  # noqa: E402
 
 def build_methods(X_train, y_train, target_class: int = TARGET_CLASS) -> dict:
     """The full set of selected CF methods -- every axis below runs on all of
-    them. ``CftsWachter`` (cfts-backed) replaces the native ``WachterCF``.
+    them. ``CftsWachter`` is the cfts-backed Wachter implementation; the
+    native from-scratch ``WachterCF`` was removed 2026-08-05 as a redundant
+    duplicate (``DECISIONS.md``).
 
     ``target_class`` defaults to the pipeline-wide ``TARGET_CLASS`` and is
     parameterised only so Phase 07's necessity direction can build the same

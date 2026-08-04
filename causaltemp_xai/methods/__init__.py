@@ -2,9 +2,14 @@
 
 The top-level namespace re-exports the most commonly used classes.
 The full method collections are available in the subpackages:
-  - causaltemp_xai.methods.counterfactual  (WachterCF, CARLARecourse,
-                                             PearlCARLARecourse, cfts_*)
+  - causaltemp_xai.methods.counterfactual  (CARLARecourse, PearlCARLARecourse,
+                                             CausalFeasibilityCF, cfts_*)
   - causaltemp_xai.methods.causal          (CITRIS)
+
+The native from-scratch ``WachterCF`` was removed 2026-08-05 (`DECISIONS.md`):
+``CftsWachterCF`` wraps the genuine vendored ``cfts`` implementation and was
+already what the pipeline used, so the from-scratch reimplementation was
+redundant duplication, not a distinct method.
 """
 
 # Backward-compat: derive_intervention_t moved to scm.intervention
@@ -22,7 +27,6 @@ from .counterfactual.cfts_methods import (
     CftsNativeGuideCF,
     CftsWachterCF,
 )
-from .counterfactual.wachter import WachterCF
 
 __all__ = [
     "CITRIS",
@@ -37,6 +41,5 @@ __all__ = [
     "CftsNativeGuideCF",
     "CftsWachterCF",
     "PearlCARLARecourse",
-    "WachterCF",
     "derive_intervention_t",
 ]
