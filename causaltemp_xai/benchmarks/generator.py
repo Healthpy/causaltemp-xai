@@ -148,6 +148,34 @@ def _sample_graph(k: int, L: int, sparsity: float, rng: np.random.Generator) -> 
     return graph
 
 
+def exogenous_channels(graph: np.ndarray) -> list[int]:
+    """Channels with no incoming edge at any lag -- this SCM's exogenous variables.
+
+    A channel ``i`` with ``graph[i, :, :].sum() == 0`` has no causal parents, so
+    under this benchmark's additive-noise mechanisms its entire trajectory is
+    ``x_t[i] = eps_t[i]`` -- literally an exogenous noise process, the textbook
+    definition. ``L=1`` (every locked preset) makes this exact: lag-1 self-loops
+    are excluded by construction (:func:`_sample_lag_mask`), so a channel with no
+    incoming edges has no dependence on anything, including its own past.
+
+    This is the "dynamic exogenous" (``U_d``) half of the ``U_s``/``U_d``/``V``
+    typing `CausalFeasibilityCF` (Bahri et al., IEEE BigData 2025) needs (M3,
+    ``ROADMAP.md``). ``U_s`` (static exogenous) has no counterpart here -- this
+    benchmark has no channel held constant across ``t`` -- so it is always empty;
+    every other channel is ``V`` (endogenous).
+
+    **Decided 2026-08-04 (`DECISIONS.md`) not to route around it:** at the
+    sparsity the paper-scale presets actually use (0.2, ``k=10``), this returns
+    ``[]`` for both ``full`` and ``full_nl`` -- every one of their 10 channels has
+    at least one parent. ``smoke`` (``k=5``) returns one channel. The empty case
+    is accepted, not engineered away: it is what "sparsity=0.2 at k=10" honestly
+    produces, and forcing a non-empty ``U_d`` there (e.g. by hand-picking a
+    preset or graph draw) would score the method against a fictional benchmark
+    rather than this one.
+    """
+    return [i for i in range(graph.shape[0]) if graph[i, :, :].sum() == 0]
+
+
 class LinearSCMT:
     """VAR(L) data generator with a fixed causal structure.
 

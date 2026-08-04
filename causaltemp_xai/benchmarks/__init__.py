@@ -12,6 +12,7 @@ from .generator import (
     LinearSCMT,
     NlinearSCMT,
     RegimeSwitchNlinearSCMT,
+    exogenous_channels,
 )
 from .mechanisms import (
     LinearMechanism,
@@ -29,6 +30,7 @@ __all__ = [
     "Mechanism",
     "NlinearSCMT",
     "RegimeSwitchNlinearSCMT",
+    "exogenous_channels",
     "lag_window",
     "mechanism_from_state_dict",
 ]
