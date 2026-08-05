@@ -19,7 +19,7 @@ in-process, once per seed. The number reflects its reporting role; it is not a
 claim that it only ever runs last. (It was numbered 06 until 2026-08-04, which
 put the aggregator *before* the two phases it consumes.)
 
-Four reports, one per subcommand:
+Five reports, one per subcommand:
 
 * ``seeds``   -> ``results/tables/table_seed_aggregate_<config>_lstm.csv``
   **Multi-seed replication + bootstrap CIs (M2, O2).** Runs Phases 01 -> 02 ->
@@ -64,6 +64,14 @@ Four reports, one per subcommand:
   does **not** match ``fig5_horizon_decay``'s ``table_horizon_*.csv`` glob --
   it has different columns (no ``T_minus_t0``/``validity`` per row) and would
   break that figure if picked up by the same pattern.
+
+* ``graph_quality`` -> ``results/tables/table_graph_quality_<configA>_vs_<configB>_vs_....csv``
+  Pools Phase 07's ``dynotears/graph_error.json`` (``--sweep``) across seeds
+  and configs (M4e). One row per (config, ladder point) with bootstrapped
+  ``graph_error``/``frac_vacuous``, plus each config's per-CF-method
+  ``propagation_error`` min/max (the "method-axis span" that makes a flat
+  graph-error curve legible as a *contrast*, not a null result — see
+  ``fig6_graph_quality_curve``).
 
 ``all`` runs ``seeds`` then ``figures``, so the tables and the figures are
 generated from the same freshly-pooled results.
@@ -399,6 +407,8 @@ def run_figures_report(args) -> None:
     n = 4
     if fig5_horizon_decay(TABLES_DIR, out_dir / "fig5_horizon_decay.png"):
         n += 1
+    if fig6_graph_quality_curve(TABLES_DIR, out_dir / "fig6_graph_quality_curve.pdf"):
+        n += 1
     print(f"\n[08] wrote {n} figures to {out_dir}/")
 
 
@@ -691,6 +701,124 @@ def _add_horizon_args(p) -> None:
     p.add_argument("--n-boot", type=int, default=10000)
 
 
+# ---------------------------------------------------------------------------
+# Report 5: graph-quality degradation curve pooled across seeds (M4e)
+# ---------------------------------------------------------------------------
+
+
+def run_graph_quality_report(args) -> None:
+    """Pool Phase-07's ``dynotears --sweep`` graph-error ladder across seeds
+    and configs (M4e — Bahri et al. §V direction 1).
+
+    Reads each config's ``results/<config>_seed<N>/dynotears/graph_error.json``,
+    pools ``graph_quality_sweep`` (one point per corruption fraction, plus the
+    real ``dynotears`` anchor) with a bootstrap 95%% CI on ``graph_error`` and
+    ``frac_vacuous`` per point, and separately pools each config's per-CF-method
+    ``propagation_error`` (from the ``methods`` block) into a min/max span —
+    the method-axis dynamic range that a flat graph-error curve must be shown
+    against, or it reads as a null finding rather than a finding about
+    *dissipation* (`ROADMAP.md` M4e).
+    """
+    from causaltemp_xai.stats import bootstrap_ci
+
+    results_dir = Path(args.results_dir)
+    seeds = args.seeds if args.seeds else [None]
+    rows = []
+
+    for config in args.configs:
+        per_label: dict[str, dict[str, list]] = {}
+        prop_errors: list[float] = []
+        n_seeds_found = 0
+        for seed in seeds:
+            name = config if seed is None else f"{config}_seed{seed}"
+            path = results_dir / name / "dynotears" / "graph_error.json"
+            if not path.exists():
+                print(f"[08] missing {path} — skipping")
+                continue
+            n_seeds_found += 1
+            payload = json.loads(path.read_text())
+            for point in payload["graph_quality_sweep"]:
+                slot = per_label.setdefault(
+                    point["label"], {"graph_error": [], "frac_vacuous": [], "shd": []}
+                )
+                slot["graph_error"].append(point["graph_error"])
+                slot["frac_vacuous"].append(point["frac_vacuous"])
+                slot["shd"].append(point["shd"])
+            for m in payload.get("methods", []):
+                pe = m.get("propagation_error")
+                if pe is not None and pe == pe:  # exclude NaN (e.g. PearlCARLA/full_nl)
+                    prop_errors.append(pe)
+
+        if not per_label:
+            print(f"[08] no graph-quality sweep found for {config!r} — skipping")
+            continue
+
+        prop_lo = min(prop_errors) if prop_errors else float("nan")
+        prop_hi = max(prop_errors) if prop_errors else float("nan")
+
+        for label, cols in per_label.items():
+            # The controlled ladder's label doubles as its exact corrupt_frac;
+            # the "dynotears" anchor has no fraction (it's the method's own
+            # recovered graph) — kept as NaN, not 0 or 1, so it's never
+            # mistaken for a controlled ladder point on the x-axis.
+            corrupt_frac = (
+                float(label.split("=")[1]) if label.startswith("corrupt_frac=") else float("nan")
+            )
+            row = {
+                "config": config,
+                "label": label,
+                "corrupt_frac": corrupt_frac,
+                "n_seeds": len(cols["graph_error"]),
+                "shd_mean": float(np.mean(cols["shd"])),
+                "propagation_error_min": prop_lo,
+                "propagation_error_max": prop_hi,
+            }
+            for col in ("graph_error", "frac_vacuous"):
+                vals = cols[col]
+                res = bootstrap_ci(vals, n_boot=args.n_boot)
+                row[col], row[f"{col}_lo"], row[f"{col}_hi"] = res.mean, res.ci_lo, res.ci_hi
+            rows.append(row)
+
+    if not rows:
+        raise SystemExit(
+            f"[08] no graph-quality results found for {args.configs} under {results_dir}"
+        )
+
+    out_path = TABLES_DIR / f"table_graph_quality_{'_vs_'.join(args.configs)}.csv"
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(out_path, "w", newline="", encoding="utf-8") as fh:
+        writer = csv.DictWriter(fh, fieldnames=list(rows[0]))
+        writer.writeheader()
+        writer.writerows(rows)
+
+    print(f"[08] graph-quality pooled over {len(seeds)} seed(s)")
+    print(
+        f"{'config':<20}{'label':<18}{'shd':>6}"
+        f"{'graph_error [95% CI]':>26}{'method span [min,max]':>26}"
+    )
+    for r in sorted(rows, key=lambda r: (r["config"], r["shd_mean"])):
+        e, lo, hi = r["graph_error"], r["graph_error_lo"], r["graph_error_hi"]
+        span = f"[{r['propagation_error_min']:.3f}, {r['propagation_error_max']:.3f}]"
+        print(
+            f"{r['config']:<20}{r['label']:<18}{r['shd_mean']:>6.1f}"
+            f"{f'{e:.4f} [{lo:.4f}, {hi:.4f}]':>26}{span:>26}"
+        )
+    print(f"[08] wrote {out_path}")
+
+
+def _add_graph_quality_args(p) -> None:
+    p.add_argument("--configs", nargs="+", required=True, help="base config names to compare")
+    p.add_argument(
+        "--seeds",
+        type=int,
+        nargs="*",
+        default=[0, 1, 2],
+        help="seed replicates to pool; pass with no values to read the unseeded base config",
+    )
+    p.add_argument("--results-dir", default=str(RESULTS_DIR))
+    p.add_argument("--n-boot", type=int, default=10000)
+
+
 def fig4_do_complexity_calibration(out_path, seed: int = 0) -> None:
     """Do-complexity vs a *known* amount of causal fidelity (M2b).
 
@@ -818,6 +946,110 @@ def fig5_horizon_decay(tables_dir: Path, out_path) -> bool:
     return True
 
 
+#: Per-config colour/marker, distinct from COLORS (which is method-keyed) --
+#: this figure's lines are one per *config*, not per method.
+_GRAPH_QUALITY_STYLE = {
+    "full_nl": ("#999999", "o"),  # dissipative baseline -- grey, deliberately unremarkable
+    "smoke_spring": ("#2166AC", "s"),  # non-dissipative (M4c)
+    "smoke_kuramoto": ("#B2182B", "^"),  # non-dissipative (M4c)
+}
+
+
+def fig6_graph_quality_curve(tables_dir: Path, out_path) -> bool:
+    """Graph-error vs. graph quality, dissipative vs. non-dissipative (M4e).
+
+    Two panels sharing a y-axis, because a flat `graph_error` curve alone
+    reads as a null finding -- it is only a finding about *dissipation* once
+    shown against the method-axis span the same decomposition produces
+    (`ROADMAP.md` M4e: "~54x more dynamic range across methods than across
+    graph quality" on `full_nl`). Left panel: `graph_error` against the
+    controlled corruption fraction (0 = true graph, 1 = chance-level random
+    graph of the same density) -- this, not raw SHD, is the x-axis, because
+    it is exact and comparable across configs of different graph size,
+    whereas absolute SHD scales with `k`. Right panel: each config's
+    per-CF-method `propagation_error` range as a vertical bar on the *same*
+    y-axis -- so whether the graph-quality curve's climb is small or large
+    relative to ordinary method-to-method variation is visible in one glance,
+    not left to a table lookup.
+
+    Returns ``False`` (writes nothing) if no `table_graph_quality_*.csv`
+    exists yet.
+    """
+    paths = sorted(tables_dir.glob("table_graph_quality_*.csv"))
+    if not paths:
+        print("[08] fig6: no table_graph_quality_*.csv found -- skipped")
+        return False
+
+    rows = []
+    for p in paths:
+        with open(p, newline="") as fh:
+            rows.extend(csv.DictReader(fh))
+    if not rows:
+        return False
+
+    configs = sorted(
+        {r["config"] for r in rows},
+        key=lambda c: list(_GRAPH_QUALITY_STYLE).index(c) if c in _GRAPH_QUALITY_STYLE else 99,
+    )
+    y_max = max(
+        max(float(r["graph_error_hi"]) for r in rows),
+        max(float(r["propagation_error_max"]) for r in rows),
+    )
+
+    fig, (ax_l, ax_r) = plt.subplots(
+        1, 2, figsize=(7.25, 3.2), gridspec_kw={"width_ratios": [2.2, 1]}
+    )
+
+    for config in configs:
+        color, marker = _GRAPH_QUALITY_STYLE.get(config, ("#333333", "x"))
+        pts = sorted(
+            (
+                (
+                    float(r["corrupt_frac"]),
+                    float(r["graph_error"]),
+                    float(r["graph_error_lo"]),
+                    float(r["graph_error_hi"]),
+                )
+                for r in rows
+                if r["config"] == config
+                and r["corrupt_frac"] == r["corrupt_frac"]  # exclude NaN (the dynotears anchor)
+            ),
+            key=lambda t: t[0],
+        )
+        if not pts:
+            continue
+        xs, ys, los, his = zip(*pts)
+        ax_l.plot(xs, ys, "-", color=color, marker=marker, ms=5, lw=1.6, label=config)
+        ax_l.fill_between(xs, los, his, color=color, alpha=0.15, linewidth=0)
+
+    ax_l.set_xlabel("Corruption fraction (0 = true graph, 1 = chance)")
+    ax_l.set_ylabel("graph_error (CF-faith lost to the wrong graph)")
+    ax_l.set_ylim(-0.02, y_max * 1.08)
+    ax_l.legend(fontsize=7, frameon=False, loc="upper left")
+    ax_l.grid(True, alpha=0.3)
+    ax_l.set_title("Graph quality", fontsize=10)
+
+    bar_x = np.arange(len(configs))
+    for i, config in enumerate(configs):
+        color, _ = _GRAPH_QUALITY_STYLE.get(config, ("#333333", "x"))
+        lo = float(next(r["propagation_error_min"] for r in rows if r["config"] == config))
+        hi = float(next(r["propagation_error_max"] for r in rows if r["config"] == config))
+        ax_r.bar(i, hi - lo, bottom=lo, color=color, alpha=0.8, width=0.6)
+    ax_r.set_xticks(bar_x)
+    ax_r.set_xticklabels(configs, fontsize=7, rotation=20, ha="right")
+    ax_r.set_ylim(-0.02, y_max * 1.08)
+    ax_r.set_yticklabels([])
+    ax_r.set_title("Method-axis span\n(propagation_error)", fontsize=9)
+    ax_r.grid(True, alpha=0.3, axis="y")
+
+    fig.suptitle("Graph quality bites only where effects persist (M4e)", fontsize=10)
+    fig.tight_layout()
+    fig.savefig(out_path, format="pdf", bbox_inches="tight")
+    plt.close(fig)
+    print(f"  [fig] -> {out_path}")
+    return True
+
+
 def _add_pns_args(p) -> None:
     p.add_argument("--config", required=True, help="base config name, e.g. 'full' or 'full_nl'")
     p.add_argument(
@@ -867,6 +1099,12 @@ def main(argv=None) -> int:
     )
     _add_horizon_args(p_hz)
 
+    p_gq = sub.add_parser(
+        "graph_quality",
+        help="pool Phase-07 dynotears --sweep graph-error ladders across seeds/configs (M4e)",
+    )
+    _add_graph_quality_args(p_gq)
+
     p_all = sub.add_parser("all", help="run 'seeds' then 'figures'")
     _add_seeds_args(p_all)
     _add_figures_args(p_all)
@@ -878,6 +1116,9 @@ def main(argv=None) -> int:
         return 0
     if args.report == "horizon":
         run_horizon_report(args)
+        return 0
+    if args.report == "graph_quality":
+        run_graph_quality_report(args)
         return 0
     if args.report in ("seeds", "all"):
         run_seeds_report(args)

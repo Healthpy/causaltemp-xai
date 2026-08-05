@@ -72,7 +72,10 @@ from causaltemp_xai.data_io import DEFAULT_OUT_DIR, load_dataset  # noqa: E402
 from causaltemp_xai.methods.causal import CITRIS, DYNOTEARS  # noqa: E402
 from causaltemp_xai.metrics.axis_a import compute_axis_a  # noqa: E402
 from causaltemp_xai.metrics.cf_faith import CFfaith  # noqa: E402
-from causaltemp_xai.scm.intervention import derive_intervention_t  # noqa: E402
+from causaltemp_xai.scm.intervention import (  # noqa: E402
+    derive_intervention_t,
+    is_vacuous_intervention,
+)
 from experiments._common import (  # noqa: E402
     ORACLE_SHIFT,
     build_masked_mechanism,
@@ -182,17 +185,24 @@ def _density_matched_adjacency(scores: np.ndarray, n_true: int) -> np.ndarray:
     return adj
 
 
-def _inferred_cf_faith(graph, mech, adj_pred, X_sel, oracle_ints, rollout) -> float:
+def _inferred_cf_faith(graph, mech, adj_pred, X_sel, oracle_ints, rollout) -> tuple[float, float]:
     """Mean soft rollout CF-faith of the oracle CF *derived from* ``adj_pred``
     (a masked mechanism restricted to the inferred edges), scored against the
-    true mechanism. Lower => more graph-induced divergence."""
+    true mechanism, plus the fraction of those inferred CFs that are vacuous
+    (RISK-17: a masked graph that makes the inferred intervention collapse to
+    no-op is a different failure from one that mispropagates, and must not be
+    invisible inside a low ``graph_error``). Lower CF-faith => more
+    graph-induced divergence."""
     inf_mech = build_masked_mechanism(mech, adj_pred)
     vals = []
+    n_vacuous = 0
     for (t0, node, _true_cf), x in zip(oracle_ints, X_sel):
         value = float(x[t0, node]) + ORACLE_SHIFT
         inf_cf = structural_counterfactual(x, inf_mech, t0, node, value, noiseless=True)
         vals.append(rollout.score(x, inf_cf, t0, graph, mech)["soft"])
-    return float(np.mean(vals))
+        if is_vacuous_intervention(x, inf_cf, inf_mech, t0=t0):
+            n_vacuous += 1
+    return float(np.mean(vals)), float(n_vacuous) / len(oracle_ints)
 
 
 def _corrupt_graph(true_bin: np.ndarray, frac: float, rng: np.random.Generator) -> np.ndarray:
@@ -255,13 +265,18 @@ def _graph_quality_sweep(
     graph quality**. So the decomposition discriminates *methods* but not
     *graphs* here.
 
-    Working explanation, unverified: in a dissipative regime the single-node
-    oracle shift attenuates before parent-set differences can propagate into
-    the trajectory, so rewiring parents changes little downstream, while a
-    method that fails to propagate at all is still plainly visible. The test
-    that would settle it is a **non-dissipative** family (M4c springs/Kuramoto,
-    rho ~ 1), where effects persist. Until then, do not report ``graph_error``
-    as a graph-quality measure on a dissipative config without this caveat.
+    **Dissipation hypothesis CONFIRMED (2026-08-05, `b56d0d8`).** The above
+    explanation was "unverified" pending a non-dissipative test; it no longer
+    is. Run on ``smoke_spring``/``smoke_kuramoto`` (M4c, rho ~ +0.02 / ~0,
+    vs. `full_nl`'s rho ~ -0.29), 3 seeds each: ``graph_error`` reaches
+    0.09-0.54 on Spring and 0.06-0.16 on Kuramoto across the same corruption
+    ladder that produced 0.0018-0.0040 on `full_nl` -- 45x-123x the dynamic
+    range, non-overlapping across seeds. Graph quality is near-irrelevant
+    when effects attenuate before parent-set differences propagate
+    (dissipative), and bites hard once effects persist (non-dissipative).
+    ``graph_error`` is therefore a graph-quality measure **conditional on**
+    the mechanism family's contraction rate, not a general one -- report it
+    with that family's measured rho, not as a standalone number.
     """
     from causaltemp_xai.metrics.axis_a import graph_auc, shd
 
@@ -270,7 +285,7 @@ def _graph_quality_sweep(
     rows = []
 
     def _point(label, adj, auc):
-        cf_inf = _inferred_cf_faith(graph, mech, adj, X_sel, oracle_ints, rollout)
+        cf_inf, frac_vac = _inferred_cf_faith(graph, mech, adj, X_sel, oracle_ints, rollout)
         rows.append(
             {
                 "label": label,
@@ -278,6 +293,7 @@ def _graph_quality_sweep(
                 "shd": float(shd(true_bin, adj)),
                 "cf_faith_inferred": cf_inf,
                 "graph_error": float(cf_faith_gt - cf_inf),
+                "frac_vacuous": frac_vac,
             }
         )
 

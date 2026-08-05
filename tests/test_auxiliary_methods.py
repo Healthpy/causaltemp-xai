@@ -81,3 +81,48 @@ class TestMeanSoftCfFaith:
         x_sel = np.zeros((0, 5, 2))
         cfs = np.zeros((0, 5, 2))
         assert np.isnan(self._run(x_sel, cfs))
+
+
+class TestGraphQualitySweepFracVacuous:
+    """M4e: frac_vacuous per sweep point (RISK-17) -- a degraded graph that
+    makes the inferred intervention collapse to no-op is a different failure
+    from one that mispropagates, and must not hide inside a low graph_error."""
+
+    def _make_scm(self, k=4, L=1, T=20, N=10, seed=0):
+        from causaltemp_xai.benchmarks.generator import NlinearSCMT
+
+        gen = NlinearSCMT(k=k, L=L, T=T, N=N, seed=seed, hidden=8)
+        data = gen.generate(burn_in=20)
+        return data["X"], data["graph"], data["mechanism"]
+
+    def test_frac_vacuous_present_and_in_unit_interval(self):
+        from causaltemp_xai.metrics.cf_faith import CFfaith
+
+        _graph_quality_sweep = _phase07._graph_quality_sweep
+        build_oracle_interventions = _phase07.build_oracle_interventions
+
+        X, graph, mech = self._make_scm()
+        X_sel = X[:5]
+        oracle_ints = build_oracle_interventions(X_sel, mech)
+        rollout = CFfaith(semantics="noiseless_rollout")
+        cf_faith_gt = 1.0  # oracle is faithful by construction
+
+        rows = _graph_quality_sweep(
+            graph,
+            mech,
+            X_sel,
+            oracle_ints,
+            rollout,
+            cf_faith_gt,
+            method_adj=(graph > 0).astype(int),
+            method_auc=1.0,
+            method_label="anchor",
+            seed=0,
+        )
+        assert all("frac_vacuous" in r for r in rows)
+        assert all(0.0 <= r["frac_vacuous"] <= 1.0 for r in rows)
+        # The true graph (corrupt_frac=0) restricts the mechanism to exactly
+        # its real parents, so the inferred CF must match the oracle's own
+        # non-vacuous-by-construction intervention -- zero vacuous instances.
+        true_row = next(r for r in rows if r["label"] == "corrupt_frac=0")
+        assert true_row["frac_vacuous"] == 0.0
