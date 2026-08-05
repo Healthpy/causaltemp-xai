@@ -1,0 +1,65 @@
+{
+  "config": "real_basicmotions",
+  "git_commit": "6c539ac23da543d4736fcb453f5b2f54e4573dce",
+  "git_dirty": true,
+  "seed": 0,
+  "dataset": "basicmotions",
+  "T": 100,
+  "n_classes": 4,
+  "target_class": 0,
+  "test_acc": 0.925,
+  "graph": null,
+  "note": "M4b: no causal graph, CF-faith/PNS/do-complexity not computed (no oracle mechanism on real data). Horizon is DERIVED per instance via extract_intervention, not swept -- these 5 methods have no t0 parameter to control.",
+  "horizon_bins": [
+    {
+      "method": "CftsWachter",
+      "horizon_bin_lo": 75,
+      "horizon_bin_hi": 100,
+      "n": 27,
+      "validity_mean": 0.9629629629629629,
+      "proximity_l1_mean": 2302.460223248554,
+      "sparsity_mean": 0.03691358024691358,
+      "ood_mean": 0.10445175148582614
+    },
+    {
+      "method": "CftsCOMTE",
+      "horizon_bin_lo": 75,
+      "horizon_bin_hi": 100,
+      "n": 27,
+      "validity_mean": 1.0,
+      "proximity_l1_mean": 1105.0537186688725,
+      "sparsity_mean": 0.00030864197530864197,
+      "ood_mean": 0.09395811111343114
+    },
+    {
+      "method": "CftsConfeti",
+      "horizon_bin_lo": 75,
+      "horizon_bin_hi": 100,
+      "n": 12,
+      "validity_mean": 1.0,
+      "proximity_l1_mean": 1386.5032054195442,
+      "sparsity_mean": 0.5026388888888889,
+      "ood_mean": 0.11791385385668011
+    },
+    {
+      "method": "CftsCounts",
+      "horizon_bin_lo": 75,
+      "horizon_bin_hi": 100,
+      "n": 27,
+      "validity_mean": 0.8518518518518519,
+      "proximity_l1_mean": 1428.40318316339,
+      "sparsity_mean": 0.0016049382716049384,
+      "ood_mean": 0.19843794574619586
+    },
+    {
+      "method": "CftsCels",
+      "horizon_bin_lo": 75,
+      "horizon_bin_hi": 100,
+      "n": 27,
+      "validity_mean": 0.7777777777777778,
+      "proximity_l1_mean": 168.29492137322165,
+      "sparsity_mean": 0.6790123456790123,
+      "ood_mean": 0.13181026086457437
+    }
+  ]
+}
