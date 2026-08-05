@@ -235,13 +235,33 @@ def _graph_quality_sweep(
 ) -> list[dict]:
     """Graph-error across a controlled graph-quality ladder.
 
-    Demonstrates the Axis-A decomposition *discriminates*: ``graph_error``
-    (``cf_faith_gt - cf_faith_inferred``) must span ~0 for a good graph up to
-    large for a random graph. Points: the true graph (0 by construction),
-    progressively corrupted graphs (``frac`` of edges rewired), a fully random
-    graph (high-error endpoint), and the method's *actual* recovered graph as
-    the real-method anchor. Graph quality is reported as SHD-to-true and (for
-    the corruption ladder) the corrupted fraction.
+    Points: the true graph (0 by construction), progressively corrupted graphs
+    (``frac`` of edges rewired), a fully random graph, and the method's
+    *actual* recovered graph as the real-method anchor. Graph quality is
+    reported as SHD-to-true and (for the corruption ladder) the corrupted
+    fraction.
+
+    **Measured outcome, `full_nl`, 3 seeds (2026-08-05) — read this before
+    citing ``graph_error`` as a graph-quality measure.** This docstring
+    previously asserted that ``graph_error`` "must span ~0 for a good graph up
+    to large for a random graph". It does not, and the data wins (R5). The
+    ladder is monotone in the mean but has almost no dynamic range: destroying
+    the graph entirely (AUC 1.00 -> 0.39, SHD 0 -> 35) costs a mean
+    ``graph_error`` of **0.0033** (per-seed 0.0018 / 0.0040 / 0.0039).
+
+    The insensitivity is specific to the *graph* axis, not to the metric: on
+    the same runs ``propagation_error`` spans 0.0000 (CARLA) to 0.1771
+    (CftsCOMTE), i.e. **~54x more dynamic range across methods than across
+    graph quality**. So the decomposition discriminates *methods* but not
+    *graphs* here.
+
+    Working explanation, unverified: in a dissipative regime the single-node
+    oracle shift attenuates before parent-set differences can propagate into
+    the trajectory, so rewiring parents changes little downstream, while a
+    method that fails to propagate at all is still plainly visible. The test
+    that would settle it is a **non-dissipative** family (M4c springs/Kuramoto,
+    rho ~ 1), where effects persist. Until then, do not report ``graph_error``
+    as a graph-quality measure on a dissipative config without this caveat.
     """
     from causaltemp_xai.metrics.axis_a import graph_auc, shd
 
