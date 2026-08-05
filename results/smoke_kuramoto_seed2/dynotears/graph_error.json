@@ -1,8 +1,8 @@
 {
   "seed": 2,
   "config": "smoke_kuramoto_seed2",
-  "git_commit": "f131b02511abe220b535256b90cf4455f329049a",
-  "git_dirty": true,
+  "git_commit": "b78d97e6b2d510452cfe181e5c43747530fea499",
+  "git_dirty": false,
   "provenance": {
     "config": {
       "k": 5,
