@@ -56,7 +56,14 @@ Four reports, one per subcommand:
   Pools Phase 07's ``pns.json`` / ``pns_schedule.json`` across seeds.
 
 * ``horizon`` -> ``results/tables/table_horizon_<configA>_vs_<configB>.csv``
-  Pools Phase 06's ``horizon/summary.json`` across seeds and configs.
+  Pools Phase 06's ``horizon/summary.json`` across seeds and configs. Also
+  writes ``table_collapse_horizon_<configA>_vs_<configB>.csv`` (M4d) -- per
+  method, the ``T - t0`` at which the seed-pooled validity curve crosses 0.5,
+  bootstrapped over seeds (:func:`causaltemp_xai.stats.collapse_horizon_ci`).
+  Named with the words swapped from the main horizon table specifically so it
+  does **not** match ``fig5_horizon_decay``'s ``table_horizon_*.csv`` glob --
+  it has different columns (no ``T_minus_t0``/``validity`` per row) and would
+  break that figure if picked up by the same pattern.
 
 ``all`` runs ``seeds`` then ``figures``, so the tables and the figures are
 generated from the same freshly-pooled results.
@@ -539,16 +546,23 @@ def run_horizon_report(args) -> None:
     sits are shown together. Read down the `T-t0` column: if the two configs
     disagree at the same `T-t0`, decay is not a function of `T-t0`.
     """
-    from causaltemp_xai.stats import bootstrap_ci
+    from causaltemp_xai.stats import bootstrap_ci, collapse_horizon_ci
 
     results_dir = Path(args.results_dir)
     # An empty --seeds means "the base config directory", which is how the
     # single-run smoke sweeps are laid out (results/smoke/, not smoke_seed0/).
     seeds = args.seeds if args.seeds else [None]
     rows = []
+    collapse_rows = []
     for config in args.configs:
         per_cell: dict[tuple, dict[str, list]] = {}
         t_label_seen = set()
+        # Per-(method, seed) validity-by-horizon curve, for the collapse-horizon
+        # estimate below. Keyed separately from per_cell because that dict
+        # collects validity *across* seeds per cell, losing which seed each
+        # value came from -- collapse_horizon_ci needs each seed's own
+        # complete curve, not a pre-pooled column.
+        curves: dict[tuple, dict[float, float]] = {}
         for seed in seeds:
             name = config if seed is None else f"{config}_seed{seed}"
             path = results_dir / name / "lstm" / "horizon" / "summary.json"
@@ -572,6 +586,8 @@ def run_horizon_report(args) -> None:
                     v = r.get(col)
                     if v is not None:
                         slot[col].append(v)
+                if r.get("validity") is not None:
+                    curves.setdefault((r["method"], seed), {})[r["horizon"]] = r["validity"]
         for (method, h, t0, t_label), cols in sorted(per_cell.items(), key=lambda kv: kv[0][1]):
             row = {
                 "config": config,
@@ -590,6 +606,37 @@ def run_horizon_report(args) -> None:
                 res = bootstrap_ci(clean, n_boot=args.n_boot)
                 row[col], row[f"{col}_lo"], row[f"{col}_hi"] = res.mean, res.ci_lo, res.ci_hi
             rows.append(row)
+
+        # Collapse horizon per method (M4d): the T-t0 at which the seed-pooled
+        # validity curve crosses 0.5, bootstrapped over seeds. Only seeds whose
+        # curve covers every horizon this method was swept at are used --
+        # collapse_horizon_ci assumes a complete, aligned grid per seed
+        # (module docstring), and a partial curve would silently misalign
+        # which horizon each validity value belongs to.
+        methods_in_curves = sorted({m for m, _s in curves})
+        for method in methods_in_curves:
+            per_seed = {s: c for (m, s), c in curves.items() if m == method}
+            all_horizons = sorted({h for c in per_seed.values() for h in c})
+            complete_seeds = [s for s, c in per_seed.items() if all(h in c for h in all_horizons)]
+            if len(all_horizons) < 2 or not complete_seeds:
+                continue
+            validity_by_seed = [[per_seed[s][h] for h in all_horizons] for s in complete_seeds]
+            cr = collapse_horizon_ci(
+                all_horizons, validity_by_seed, threshold=0.5, n_boot=args.n_boot
+            )
+            collapse_rows.append(
+                {
+                    "config": config,
+                    "method": method,
+                    "threshold": 0.5,
+                    "collapse_horizon": cr.horizon,
+                    "collapse_horizon_lo": cr.ci_lo,
+                    "collapse_horizon_hi": cr.ci_hi,
+                    "n_seeds": cr.n_seeds,
+                    "frac_boot_crossed": cr.frac_boot_crossed,
+                    "horizons_swept": ",".join(str(int(h)) for h in all_horizons),
+                }
+            )
 
     if not rows:
         raise SystemExit(f"[08] no horizon results found for {args.configs} under {results_dir}")
@@ -615,6 +662,20 @@ def run_horizon_report(args) -> None:
             f"{r['label_horizon']:>8}{ci:>26}{c:>10.2f}"
         )
     print(f"[08] wrote {out_path}")
+
+    if collapse_rows:
+        collapse_path = TABLES_DIR / f"table_collapse_horizon_{'_vs_'.join(args.configs)}.csv"
+        with open(collapse_path, "w", newline="", encoding="utf-8") as fh:
+            writer = csv.DictWriter(fh, fieldnames=list(collapse_rows[0]))
+            writer.writeheader()
+            writer.writerows(collapse_rows)
+        print("\n[08] collapse horizon (T-t0 where validity crosses 0.5, bootstrapped over seeds):")
+        print(f"{'config':<22}{'method':<13}{'horizon [95% CI]':>26}{'frac crossed':>14}")
+        for r in sorted(collapse_rows, key=lambda r: (r["config"], r["method"])):
+            h, lo, hi = r["collapse_horizon"], r["collapse_horizon_lo"], r["collapse_horizon_hi"]
+            txt = "never (in range)" if h != h else f"{h:.1f} [{lo:.1f}, {hi:.1f}]"
+            print(f"{r['config']:<22}{r['method']:<13}{txt:>26}{r['frac_boot_crossed']:>14.2f}")
+        print(f"[08] wrote {collapse_path}")
 
 
 def _add_horizon_args(p) -> None:

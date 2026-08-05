@@ -190,3 +190,142 @@ def hierarchical_bootstrap_ci(
 
     lo, hi = _percentile_ci(boot, ci)
     return BootstrapResult(mean=point, ci_lo=lo, ci_hi=hi, n=n_total, n_boot=n_boot)
+
+
+@dataclass(frozen=True)
+class CrossingResult:
+    """Point estimate + bootstrap CI for where a curve crosses a threshold."""
+
+    horizon: float  #: NaN if the pooled curve never crosses within the tested range
+    ci_lo: float
+    ci_hi: float
+    n_seeds: int
+    n_boot: int
+    frac_boot_crossed: float  #: fraction of bootstrap resamples that found a crossing
+
+    def as_dict(self, prefix: str = "") -> dict:
+        return {
+            f"{prefix}horizon": self.horizon,
+            f"{prefix}ci_lo": self.ci_lo,
+            f"{prefix}ci_hi": self.ci_hi,
+            f"{prefix}n_seeds": self.n_seeds,
+            f"{prefix}frac_boot_crossed": self.frac_boot_crossed,
+        }
+
+
+def _first_falling_crossing(x: np.ndarray, y: np.ndarray, threshold: float) -> float:
+    """Smallest ``x`` at which ``y`` first drops to/below ``threshold``, linearly
+    interpolated between the bracketing grid points. ``x`` must be sorted
+    ascending. Returns ``nan`` if ``y`` never crosses (stays above threshold at
+    every point, or is already at/below it at the first point -- both are
+    genuinely unobserved crossings, not a crossing at ``x[0]``: the curve may
+    have crossed *before* the first tested horizon, which this grid cannot
+    see, so reporting ``x[0]`` would fabricate precision the data doesn't
+    support).
+    """
+    if y[0] <= threshold:
+        return float("nan")
+    for i in range(1, len(x)):
+        if y[i] <= threshold:
+            # Linear interpolation between (x[i-1], y[i-1]) and (x[i], y[i]).
+            if y[i - 1] == y[i]:
+                return float(x[i])
+            frac = (y[i - 1] - threshold) / (y[i - 1] - y[i])
+            return float(x[i - 1] + frac * (x[i] - x[i - 1]))
+    return float("nan")
+
+
+def collapse_horizon_ci(
+    horizons: Sequence[float],
+    validity_by_seed: Sequence[Sequence[float]],
+    threshold: float = 0.5,
+    n_boot: int = 10000,
+    ci: float = 0.95,
+    seed: int = 0,
+) -> CrossingResult:
+    """Bootstrap CI for the horizon at which a validity curve collapses.
+
+    Unlike :func:`bootstrap_ci` / :func:`hierarchical_bootstrap_ci`, the
+    quantity being estimated here is a property of the **seed-pooled mean
+    curve** (where does it cross ``threshold``), not a mean of per-instance
+    values -- so the resampling unit is the seed alone; there is no
+    within-seed instance level to resample a second time, because a "collapse
+    horizon" is not defined per instance.
+
+    Parameters
+    ----------
+    horizons:
+        Sorted ascending ``T - t0`` grid points swept (e.g. from
+        ``table_horizon_*.csv``'s ``T_minus_t0`` column).
+    validity_by_seed:
+        One row per seed, each a sequence of per-horizon validity means
+        aligned to ``horizons`` (same length, same order). A seed missing a
+        horizon should not be passed at all for that row's construction —
+        this function assumes a complete grid per seed.
+    threshold:
+        Validity level defining "collapsed" (default 0.5).
+    n_boot, ci, seed:
+        As in :func:`bootstrap_ci`.
+
+    Returns
+    -------
+    CrossingResult
+        ``horizon`` is the pooled-curve crossing point (mean validity across
+        all seeds at each horizon, then interpolated crossing). ``ci_lo``/
+        ``ci_hi`` come from resampling seeds with replacement and
+        recomputing the crossing on the resampled pooled curve each time;
+        resamples that never cross contribute ``nan`` and are excluded by
+        ``nanpercentile`` rather than treated as a crossing at either
+        boundary. ``frac_boot_crossed`` reports how many resamples actually
+        found a crossing -- a CI built from a small fraction is a much
+        weaker claim than one built from nearly all of them, so it ships
+        alongside the interval rather than being silently absorbed into it.
+    """
+    x = np.asarray(horizons, dtype=float)
+    order = np.argsort(x)
+    x = x[order]
+    Y = np.asarray(validity_by_seed, dtype=float)[:, order]  # (n_seeds, n_horizons)
+    n_seeds = Y.shape[0]
+
+    if n_seeds == 0 or Y.shape[1] != len(x):
+        return CrossingResult(
+            horizon=float("nan"),
+            ci_lo=float("nan"),
+            ci_hi=float("nan"),
+            n_seeds=n_seeds,
+            n_boot=n_boot,
+            frac_boot_crossed=0.0,
+        )
+
+    point = _first_falling_crossing(x, Y.mean(axis=0), threshold)
+
+    if n_seeds == 1:
+        crossed = not np.isnan(point)
+        return CrossingResult(
+            horizon=point,
+            ci_lo=point,
+            ci_hi=point,
+            n_seeds=1,
+            n_boot=n_boot,
+            frac_boot_crossed=1.0 if crossed else 0.0,
+        )
+
+    rng = np.random.default_rng(seed)
+    boot = np.empty(n_boot, dtype=float)
+    for b in range(n_boot):
+        chosen = rng.integers(0, n_seeds, size=n_seeds)
+        boot[b] = _first_falling_crossing(x, Y[chosen].mean(axis=0), threshold)
+
+    frac_crossed = float(np.mean(~np.isnan(boot)))
+    if frac_crossed == 0.0:
+        lo = hi = float("nan")
+    else:
+        lo, hi = _percentile_ci(boot, ci)
+    return CrossingResult(
+        horizon=point,
+        ci_lo=lo,
+        ci_hi=hi,
+        n_seeds=n_seeds,
+        n_boot=n_boot,
+        frac_boot_crossed=frac_crossed,
+    )
