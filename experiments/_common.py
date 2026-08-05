@@ -665,21 +665,52 @@ def build_masked_mechanism(mechanism, inferred_adj: np.ndarray):
     isolates how much CF-faith is lost to graph-estimation error (vs. the
     propagation error a real CF method would additionally incur).
 
-    Raises ``TypeError`` for non-MLP mechanisms (the decomposition targets the
-    nonlinear/causal benchmark, where CITRIS operates).
-    """
-    from causaltemp_xai.benchmarks.mechanisms import MLPMechanism
+    **Extended to the M4c non-dissipative families 2026-08-05.** The
+    graph-quality ladder measured on ``full_nl`` is nearly flat (a fully random
+    graph costs 0.0033 of CF-faith, ~54x less range than the method axis), and
+    the standing explanation is that a *dissipative* mechanism attenuates the
+    oracle shift before parent-set differences can propagate. Testing that
+    requires running the same ladder on a family where effects persist
+    (``rho ~ 1``), so ``SpringMechanism`` and ``KuramotoMechanism`` are
+    supported here. Masking is arguably more direct for them than for the MLP:
+    both take ``graph`` as an explicit coupling structure, so restricting it
+    zeroes the corresponding couplings and nothing else -- the springs' stiffness
+    ``k_spring``/``dt`` and the oscillators' ``omega``/``k_coupling``/``dt`` are
+    carried through unchanged.
 
-    if not isinstance(mechanism, MLPMechanism):
+    Note for Kuramoto: its update normalizes by in-degree
+    (``deg_i = max(sum_j A[i,j], 1)``), so a masked graph changes the
+    normalization as well as the neighbour set. That is faithful -- it is what
+    the mechanism would do with that graph -- but it means the masked mechanism
+    is not simply "the true one with terms deleted".
+
+    Raises ``TypeError`` for any other mechanism family.
+    """
+    from causaltemp_xai.benchmarks.mechanisms import (
+        KuramotoMechanism,
+        MLPMechanism,
+        SpringMechanism,
+    )
+
+    if not isinstance(mechanism, (MLPMechanism, SpringMechanism, KuramotoMechanism)):
         raise TypeError(
-            "graph-error decomposition requires an MLPMechanism (nonlinear "
-            f"config); got {type(mechanism).__name__}"
+            "graph-error decomposition requires an MLPMechanism, SpringMechanism "
+            f"or KuramotoMechanism; got {type(mechanism).__name__}"
         )
     inferred_adj = np.asarray(inferred_adj, dtype=float)
     if inferred_adj.shape != mechanism.graph.shape:
         raise ValueError(
             f"inferred_adj shape {inferred_adj.shape} != mechanism.graph "
             f"{mechanism.graph.shape}"
+        )
+    if isinstance(mechanism, SpringMechanism):
+        return SpringMechanism(graph=inferred_adj, k_spring=mechanism.k_spring, dt=mechanism.dt)
+    if isinstance(mechanism, KuramotoMechanism):
+        return KuramotoMechanism(
+            graph=inferred_adj,
+            omega=mechanism.omega,
+            k_coupling=mechanism.k_coupling,
+            dt=mechanism.dt,
         )
     return MLPMechanism(
         graph=inferred_adj,

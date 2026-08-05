@@ -301,11 +301,21 @@ def run_graph_method(
     sweep: bool = False,
 ) -> None:
     """Self-graphing + Axis-A graph-error decomposition for ``dynotears``/``citris``."""
-    if cfg.mechanism_type != "mlp":
+    # Families whose mechanism `build_masked_mechanism` can restrict to an
+    # inferred graph. Spring/Kuramoto were added 2026-08-05 specifically to test
+    # the dissipation hypothesis for M4e's near-flat graph-quality ladder: the
+    # ladder needs a NON-dissipative family (rho ~ 1) as its comparison arm.
+    _MASKABLE = ("mlp", "spring", "kuramoto")
+    if cfg.mechanism_type not in _MASKABLE:
         raise SystemExit(
-            f"[07] self-graphing graph-error needs a nonlinear (mlp) config; "
-            f"{cfg.name!r} is mechanism_type={cfg.mechanism_type!r}. "
-            "Try --config smoke_nl."
+            f"[07] self-graphing graph-error needs a config whose mechanism can be "
+            f"restricted to an inferred graph {_MASKABLE}; {cfg.name!r} is "
+            f"mechanism_type={cfg.mechanism_type!r}. Try --config smoke_nl."
+        )
+    if cfg.mechanism_type != "mlp" and method == "citris":
+        raise SystemExit(
+            f"[07] citris is only wired for mlp configs; {cfg.name!r} is "
+            f"{cfg.mechanism_type!r}. Use --method dynotears."
         )
 
     data = load_dataset(cfg.name, out_dir=out_dir)
