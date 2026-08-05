@@ -1,8 +1,8 @@
 {
   "seed": 1,
   "config": "full_nl_seed1",
-  "git_commit": "003c549fcace78ac1bd19a0fa8888d267f523872",
-  "git_dirty": false,
+  "git_commit": "f131b02511abe220b535256b90cf4455f329049a",
+  "git_dirty": true,
   "provenance": {
     "config": {
       "k": 10,
@@ -104,42 +104,48 @@
       "graph_auc": 1.0,
       "shd": 0.0,
       "cf_faith_inferred": 1.0,
-      "graph_error": 0.0
+      "graph_error": 0.0,
+      "frac_vacuous": 0.0
     },
     {
       "label": "corrupt_frac=0.25",
       "graph_auc": 0.8644986449864498,
       "shd": 8.0,
       "cf_faith_inferred": 0.9980871630153267,
-      "graph_error": 0.0019128369846732607
+      "graph_error": 0.0019128369846732607,
+      "frac_vacuous": 0.0
     },
     {
       "label": "corrupt_frac=0.5",
       "graph_auc": 0.6951219512195123,
       "shd": 18.0,
       "cf_faith_inferred": 0.9975762438044647,
-      "graph_error": 0.002423756195535254
+      "graph_error": 0.002423756195535254,
+      "frac_vacuous": 0.0
     },
     {
       "label": "corrupt_frac=0.75",
       "graph_auc": 0.5257452574525745,
       "shd": 28.0,
       "cf_faith_inferred": 0.9962800108430188,
-      "graph_error": 0.0037199891569812404
+      "graph_error": 0.0037199891569812404,
+      "frac_vacuous": 0.0
     },
     {
       "label": "corrupt_frac=1",
       "graph_auc": 0.3902439024390244,
       "shd": 36.0,
       "cf_faith_inferred": 0.995987488709438,
-      "graph_error": 0.004012511290562015
+      "graph_error": 0.004012511290562015,
+      "frac_vacuous": 0.0
     },
     {
       "label": "dynotears",
       "graph_auc": 0.9166666666666667,
       "shd": 4.0,
       "cf_faith_inferred": 0.9995772131387701,
-      "graph_error": 0.0004227868612298735
+      "graph_error": 0.0004227868612298735,
+      "frac_vacuous": 0.0
     }
   ],
   "inferred_edges": 18,
