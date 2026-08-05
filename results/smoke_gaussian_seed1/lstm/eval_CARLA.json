@@ -1,8 +1,8 @@
 {
   "seed": 1,
   "config": "smoke_gaussian_seed1",
-  "git_commit": "ad699ba6079202f49acbd95d338dd50dc6611da5",
-  "git_dirty": true,
+  "git_commit": "cb34394e94817c854b072dff3736bd7fbdd96537",
+  "git_dirty": false,
   "n": 20,
   "validity": 1.0,
   "proximity_l1": 12.28283906198948,
