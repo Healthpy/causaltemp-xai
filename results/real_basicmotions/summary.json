@@ -1,6 +1,6 @@
 {
   "config": "real_basicmotions",
-  "git_commit": "6c539ac23da543d4736fcb453f5b2f54e4573dce",
+  "git_commit": "de28ec09ece7fed88a43694248a25dbc64c2abfd",
   "git_dirty": true,
   "seed": 0,
   "dataset": "basicmotions",
@@ -35,11 +35,11 @@
       "method": "CftsConfeti",
       "horizon_bin_lo": 75,
       "horizon_bin_hi": 100,
-      "n": 12,
+      "n": 10,
       "validity_mean": 1.0,
-      "proximity_l1_mean": 1386.5032054195442,
-      "sparsity_mean": 0.5026388888888889,
-      "ood_mean": 0.11791385385668011
+      "proximity_l1_mean": 1690.0647253211223,
+      "sparsity_mean": 0.4725,
+      "ood_mean": 0.11729622292114654
     },
     {
       "method": "CftsCounts",

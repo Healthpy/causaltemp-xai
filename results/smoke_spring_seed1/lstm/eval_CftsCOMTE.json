@@ -1,8 +1,8 @@
 {
   "seed": 1,
   "config": "smoke_spring_seed1",
-  "git_commit": "6c539ac23da543d4736fcb453f5b2f54e4573dce",
-  "git_dirty": true,
+  "git_commit": "de28ec09ece7fed88a43694248a25dbc64c2abfd",
+  "git_dirty": false,
   "n": 20,
   "validity": 1.0,
   "proximity_l1": 2189.66861295164,
