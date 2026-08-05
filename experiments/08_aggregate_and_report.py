@@ -590,7 +590,17 @@ def run_horizon_report(args) -> None:
                 key = (r["method"], r["horizon"], r["t0"], t_label)
                 slot = per_cell.setdefault(
                     key,
-                    {"validity": [], "ps_C_world_oracle": [], "ps_delta_total": []},
+                    # `frac_vacuous` (RISK-17): a method whose delta collapses
+                    # produces vacuous CFs, a different failure from
+                    # intervening and not reaching the label -- was already
+                    # computed per row (score_and_collect) but never pooled
+                    # here, so every horizon table silently dropped it (M4d).
+                    {
+                        "validity": [],
+                        "ps_C_world_oracle": [],
+                        "ps_delta_total": [],
+                        "frac_vacuous": [],
+                    },
                 )
                 for col in slot:
                     v = r.get(col)
