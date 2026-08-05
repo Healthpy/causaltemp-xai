@@ -32,6 +32,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
+from causaltemp_xai.benchmarks.generator import KuramotoSCMT, SpringSCMT
 from causaltemp_xai.benchmarks.mechanisms import LinearMechanism
 from causaltemp_xai.benchmarks.structural_cf import structural_counterfactual
 from causaltemp_xai.eval import MIN_VALIDITY_BASE_FOR_RATIO, evaluate_method, shift_vr
@@ -105,6 +106,20 @@ def _pearl_cf(x, mechanism, t0, pert):
                 nxt += A @ cf[lag_t]
         cf[t] = nxt
     return cf
+
+
+def _make_spring(n_particles=3, T=30, seed=0):
+    """(x_original, graph, mechanism) from a small SpringSCMT (M4c)."""
+    gen = SpringSCMT(n_particles=n_particles, T=T, N=1, seed=seed)
+    data = gen.generate(burn_in=20)
+    return data["X"][0], data["graph"], data["mechanism"]
+
+
+def _make_kuramoto(k=3, T=30, seed=0):
+    """(x_original, graph, mechanism) from a small KuramotoSCMT (M4c)."""
+    gen = KuramotoSCMT(k=k, T=T, N=1, seed=seed)
+    data = gen.generate(burn_in=20)
+    return data["X"][0], data["graph"], data["mechanism"]
 
 
 class _SignModel:
@@ -250,6 +265,56 @@ class TestCFfaithAdversarial:
         t0 = 10
         rng = np.random.default_rng(2)
         cf = _pearl_cf(x, mech, t0, rng.uniform(-0.4, 0.4, x.shape[1]))
+        r = CFfaith(semantics="pearl_delta").score(x, cf, t0, graph, mech)
+        assert r["hard"] == 1.0
+        assert r["soft"] > 0.99
+
+
+# ---------------------------------------------------------------------------
+# M4c: CF-faith adversarial tests on the two new non-dissipative families
+# (R6 -- "adversarial tests green for CF-faith and PNS on both families").
+# Uses `structural_counterfactual` directly for the oracle positive control
+# rather than hand-rolled per-mechanism rollouts, since it is generic over
+# any `Mechanism` subclass (verified in tests/test_structural_cf.py).
+# ---------------------------------------------------------------------------
+
+
+class TestCFfaithAdversarialNewFamilies:
+    @pytest.mark.parametrize("make_scm", [_make_spring, _make_kuramoto], ids=["spring", "kuramoto"])
+    def test_flags_retroactive_violator_both_semantics(self, make_scm):
+        x, graph, mech = make_scm(seed=1)
+        t0 = 12
+        cf = x.copy()
+        cf[3, 0] += 5.0  # blatant retroactive edit
+        for sem in CFfaith.SEMANTICS:
+            r = CFfaith(semantics=sem).score(x, cf, t0, graph, mech)
+            assert r == {"hard": 0.0, "soft": 0.0}, f"{sem} must flag retro edit"
+
+    @pytest.mark.parametrize("make_scm", [_make_spring, _make_kuramoto], ids=["spring", "kuramoto"])
+    def test_flags_scm_ignorant_cf(self, make_scm):
+        x, graph, mech = make_scm(seed=2)
+        t0 = 10
+        rng = np.random.default_rng(0)
+        cf = x.copy()
+        cf[t0:] += rng.normal(scale=0.5, size=cf[t0:].shape)
+        for sem in CFfaith.SEMANTICS:
+            r = CFfaith(semantics=sem).score(x, cf, t0, graph, mech)
+            assert r["hard"] == 0.0, f"{sem} must flag an SCM-ignorant CF"
+
+    @pytest.mark.parametrize("make_scm", [_make_spring, _make_kuramoto], ids=["spring", "kuramoto"])
+    def test_passes_noiseless_rollout_oracle(self, make_scm):
+        x, graph, mech = make_scm(seed=3)
+        t0 = 10
+        cf = structural_counterfactual(x, mech, t0, 0, x[t0, 0] + 0.3, noiseless=True)
+        r = CFfaith(semantics="noiseless_rollout").score(x, cf, t0, graph, mech)
+        assert r["hard"] == 1.0
+        assert r["soft"] > 0.99
+
+    @pytest.mark.parametrize("make_scm", [_make_spring, _make_kuramoto], ids=["spring", "kuramoto"])
+    def test_passes_pearl_oracle(self, make_scm):
+        x, graph, mech = make_scm(seed=4)
+        t0 = 10
+        cf = structural_counterfactual(x, mech, t0, 0, x[t0, 0] + 0.3, noiseless=False)
         r = CFfaith(semantics="pearl_delta").score(x, cf, t0, graph, mech)
         assert r["hard"] == 1.0
         assert r["soft"] > 0.99

@@ -57,7 +57,12 @@ from typing import Literal, Optional
 import numpy as np
 
 from causaltemp_xai.benchmarks.labels import LabelFunctional, get_label_functional
-from causaltemp_xai.benchmarks.mechanisms import LinearMechanism, MLPMechanism
+from causaltemp_xai.benchmarks.mechanisms import (
+    KuramotoMechanism,
+    LinearMechanism,
+    MLPMechanism,
+    SpringMechanism,
+)
 
 _NOISE_TYPES = ("laplace", "uniform", "gaussian")
 
@@ -1005,6 +1010,291 @@ class HMMRegimeSwitchNlinearSCMT:
         elif self.noise_type == "uniform":
             return self._rng.uniform(low=-0.17, high=0.17, size=size)  # std ≈ 0.1
         else:  # gaussian (M4/H5 negative-control ablation)
+            return self._rng.normal(loc=0.0, scale=_GAUSSIAN_STD, size=size)
+
+
+class SpringSCMT:
+    """Spring-coupled particle system generator (M4c, non-dissipative).
+
+    Shares :class:`NlinearSCMT`'s noise distributions, burn-in and
+    label-threshold rule, but the mechanism is
+    :class:`~causaltemp_xai.benchmarks.mechanisms.SpringMechanism`
+    (``L=1``, position **and** velocity as separate exposed channels,
+    ``k = 2 * n_particles``, one symplectic-Euler step per timestep). Unlike
+    every other family in this module, the dynamics are deliberately **not**
+    contractive — no decay term, no spectral cap — so validity/CF-faith can
+    be tested in the regime where causal effects *persist* rather than decay
+    (M4c's purpose: H8's horizon claim is weakest here). Adopted from Bahri
+    et al. (IEEE BigData 2025); see ``docs/method_provenance.md`` (this is a
+    benchmark SCM family, not a reimplementation of a published *method*, so
+    R3 does not apply).
+
+    **Graph shape differs from every other family**: ``(2*n_particles,
+    2*n_particles, 1)``, not the generic ``_sample_graph`` output — a
+    particle-level sparsity draw over the ``n_particles x n_particles``
+    adjacency (no self-coupling) is embedded into the velocity-row /
+    position-column block only (``graph[n_particles+i, j, 0]``), per
+    :class:`~causaltemp_xai.benchmarks.mechanisms.SpringMechanism`'s
+    docstring. Two particles (default: the last two — M4c's "particles
+    p4/p5") have their velocity row forced to zero after the random draw,
+    guaranteeing at least two exogenous (``U_d``) particles regardless of the
+    random sparsity draw — unlike :func:`exogenous_channels`'s general
+    "accepted, not engineered away" stance for the dissipative families
+    (`DECISIONS.md` 2026-08-04), M4c's own DoD explicitly names p4/p5 as
+    required roots, so this family guarantees them by construction. See
+    :meth:`exogenous_particles` for the particle-level (not raw
+    per-channel) reading of ``U_d``.
+
+    Same divergence guard as :class:`NlinearSCMT` (resample, then clip) —
+    a genuinely undamped integrator with too large a ``dt``/``k_spring``
+    product is unstable and can blow up, unlike the dissipative families
+    where blow-up is already prevented by contractive weights.
+    """
+
+    def __init__(
+        self,
+        n_particles: int = 5,
+        sparsity: float = 0.3,
+        noise_type: Literal["laplace", "uniform", "gaussian"] = "laplace",
+        T: int = 50,
+        N: int = 200,
+        seed: Optional[int] = 42,
+        label_fn: str | None = None,
+        label_params: dict | None = None,
+        k_spring: float = 0.3,
+        dt: float = 0.1,
+        n_exogenous: int = 2,
+        clip: float = 1e3,
+        max_resample: int = 10,
+    ) -> None:
+        if noise_type not in _NOISE_TYPES:
+            raise ValueError(f"noise_type must be one of {_NOISE_TYPES}, got {noise_type!r}")
+        self.n_particles = n_particles
+        self.k = 2 * n_particles  # SpringMechanism's fixed layout: [pos..., vel...]
+        self.L = 1  # SpringMechanism's fixed requirement (no finite-diff velocity)
+        self.sparsity = sparsity
+        self.noise_type = noise_type
+        self.T = T
+        self.N = N
+        self.seed = seed
+        self.label_functional = get_label_functional(label_fn, label_params)
+        self.k_spring = k_spring
+        self.dt = dt
+        self.n_exogenous = n_exogenous
+        self.clip = clip
+        self.max_resample = max_resample
+        self._rng = np.random.default_rng(seed)
+        p = self.n_particles
+        # Particle-level sparsity draw (p x p, no self-coupling) -- the SCM
+        # graph, not the raw channel graph. Embedded into the velocity-row /
+        # position-col block only; every other entry of the (2p, 2p, 1)
+        # graph stays zero (position channels' true dependency is their own
+        # velocity, deliberately excluded -- see SpringMechanism docstring).
+        particle_mask = (self._rng.random((p, p)) < self.sparsity).astype(float)
+        np.fill_diagonal(particle_mask, 0.0)
+        # Force the last `n_exogenous` particles to have zero incoming
+        # spring edges ("particles p4/p5") -- guaranteed, not merely likely.
+        for i in range(max(0, p - self.n_exogenous), p):
+            particle_mask[i, :] = 0.0
+        self.graph = np.zeros((self.k, self.k, 1))
+        self.graph[p : 2 * p, 0:p, 0] = particle_mask
+        self.mechanism = SpringMechanism(self.graph, k_spring=self.k_spring, dt=self.dt)
+
+    def exogenous_particles(self) -> list[int]:
+        """Particle indices with no incoming spring coupling (M4c's ``U_d``).
+
+        Reads only the velocity half of :func:`exogenous_channels`'s output
+        on this family's graph -- the position half is always exogenous by
+        construction (see :class:`~causaltemp_xai.benchmarks.mechanisms.SpringMechanism`'s
+        docstring) and therefore uninformative about which *particles* are
+        actually uninfluenced by the rest of the system.
+        """
+        p = self.n_particles
+        raw = exogenous_channels(self.graph)
+        return sorted(i - p for i in raw if i >= p)
+
+    # ------------------------------------------------------------------
+    # Public API
+    # ------------------------------------------------------------------
+
+    def generate(self, burn_in: int = 100) -> dict:
+        """Generate a full spring-system dataset (same contract as :class:`NlinearSCMT`)."""
+        total_T = self.T + burn_in
+        X_full = np.zeros((self.N, total_T, self.k))
+
+        self._roll(X_full, np.arange(self.N), total_T)
+        for _ in range(self.max_resample):
+            bad = self._diverging(X_full)
+            if not bad.any():
+                break
+            self._roll(X_full, np.nonzero(bad)[0], total_T)
+        if self._diverging(X_full).any():
+            np.clip(X_full, -self.clip, self.clip, out=X_full)
+
+        X = X_full[:, burn_in:, :]
+        Y = _apply_label(X, self.label_functional)
+
+        return {
+            "X": X,
+            "Y": Y,
+            "graph": self.graph,
+            "mechanism": self.mechanism,
+        }
+
+    # ------------------------------------------------------------------
+    # Private helpers
+    # ------------------------------------------------------------------
+
+    def _roll(self, X_full: np.ndarray, rows: np.ndarray, total_T: int) -> None:
+        rows = np.sort(np.asarray(rows))
+        n = int(rows.size)
+        if n == 0:
+            return
+        sub = np.zeros((n, total_T, self.k))
+        for lag in range(self.L):
+            sub[:, lag, :] = self._sample_noise(n, self.k) * 0.1
+        noise = self._sample_noise(n * total_T * self.k).reshape(n, total_T, self.k)
+        for t in range(self.L, total_T):
+            window = sub[:, t - self.L : t, :]
+            x_t = noise[:, t, :].copy()
+            x_t += self.mechanism.forward_numpy(window)
+            sub[:, t, :] = x_t
+        X_full[rows] = sub
+
+    def _diverging(self, X_full: np.ndarray) -> np.ndarray:
+        finite = np.isfinite(X_full).all(axis=(1, 2))
+        bounded = np.abs(np.nan_to_num(X_full, nan=np.inf)).max(axis=(1, 2)) <= self.clip
+        return ~(finite & bounded)
+
+    def _sample_noise(self, *shape) -> np.ndarray:
+        size = shape if len(shape) > 1 else shape[0]
+        if self.noise_type == "laplace":
+            return self._rng.laplace(loc=0.0, scale=0.1, size=size)
+        elif self.noise_type == "uniform":
+            return self._rng.uniform(low=-0.17, high=0.17, size=size)
+        else:  # gaussian
+            return self._rng.normal(loc=0.0, scale=_GAUSSIAN_STD, size=size)
+
+
+class KuramotoSCMT:
+    """Coupled-phase-oscillator system generator (M4c, non-dissipative).
+
+    Shares :class:`NlinearSCMT`'s graph sampling, noise distributions,
+    burn-in and label-threshold rule, but the mechanism is
+    :class:`~causaltemp_xai.benchmarks.mechanisms.KuramotoMechanism`
+    (``L=1``, sparse-graph phase coupling, **unwrapped** phase state — see
+    that class's docstring for why wrapping would break exact abduction).
+    Adopted from Kipf et al. (NRI); see ``docs/method_provenance.md`` (a
+    benchmark SCM family, not a method reimplementation — R3 does not
+    apply).
+
+    Two oscillators (default: the last two, indices ``k-2, k-1`` — M4c's
+    "pacemaker oscillators o4/o5") are forced to zero incoming coupling
+    edges, same rationale as :class:`SpringSCMT`'s forced exogenous
+    channels.
+
+    **No divergence/clip guard.** Unlike every other family, unbounded phase
+    growth (``theta ~ omega * t``) is the *expected*, not pathological,
+    behaviour — a magnitude-based clip would truncate normal drift and
+    silently corrupt the model. Only a finite-value check guards against
+    genuine NaN/Inf (which additive Laplace/Gaussian/Uniform noise on a
+    ``sin``-bounded coupling term should never produce).
+    """
+
+    def __init__(
+        self,
+        k: int = 5,
+        sparsity: float = 0.3,
+        noise_type: Literal["laplace", "uniform", "gaussian"] = "laplace",
+        T: int = 50,
+        N: int = 200,
+        seed: Optional[int] = 42,
+        label_fn: str | None = None,
+        label_params: dict | None = None,
+        omega_range: tuple[float, float] = (0.5, 1.5),
+        k_coupling: float = 0.5,
+        dt: float = 0.1,
+        n_exogenous: int = 2,
+    ) -> None:
+        if noise_type not in _NOISE_TYPES:
+            raise ValueError(f"noise_type must be one of {_NOISE_TYPES}, got {noise_type!r}")
+        self.k = k
+        self.L = 1  # KuramotoMechanism's fixed requirement
+        self.sparsity = sparsity
+        self.noise_type = noise_type
+        self.T = T
+        self.N = N
+        self.seed = seed
+        self.label_functional = get_label_functional(label_fn, label_params)
+        self.omega_range = omega_range
+        self.k_coupling = k_coupling
+        self.dt = dt
+        self.n_exogenous = n_exogenous
+        self._rng = np.random.default_rng(seed)
+        self.graph = _sample_graph(self.k, self.L, self.sparsity, self._rng)
+        for i in range(max(0, self.k - self.n_exogenous), self.k):
+            self.graph[i, :, :] = 0.0
+        omega = self._rng.uniform(self.omega_range[0], self.omega_range[1], size=self.k)
+        # Natural frequency sign is arbitrary; randomize sign per oscillator
+        # so pacemakers don't all drift the same direction.
+        omega *= self._rng.choice([-1.0, 1.0], size=self.k)
+        self.mechanism = KuramotoMechanism(
+            self.graph, omega=omega, k_coupling=self.k_coupling, dt=self.dt
+        )
+
+    # ------------------------------------------------------------------
+    # Public API
+    # ------------------------------------------------------------------
+
+    def generate(self, burn_in: int = 100) -> dict:
+        """Generate a full Kuramoto dataset (same contract as :class:`NlinearSCMT`)."""
+        total_T = self.T + burn_in
+        X_full = np.zeros((self.N, total_T, self.k))
+        self._roll(X_full, np.arange(self.N), total_T)
+
+        X = X_full[:, burn_in:, :]
+        Y = _apply_label(X, self.label_functional)
+
+        return {
+            "X": X,
+            "Y": Y,
+            "graph": self.graph,
+            "mechanism": self.mechanism,
+        }
+
+    # ------------------------------------------------------------------
+    # Private helpers
+    # ------------------------------------------------------------------
+
+    def _roll(self, X_full: np.ndarray, rows: np.ndarray, total_T: int) -> None:
+        rows = np.sort(np.asarray(rows))
+        n = int(rows.size)
+        if n == 0:
+            return
+        sub = np.zeros((n, total_T, self.k))
+        for lag in range(self.L):
+            sub[:, lag, :] = self._sample_noise(n, self.k) * 0.1
+        noise = self._sample_noise(n * total_T * self.k).reshape(n, total_T, self.k)
+        for t in range(self.L, total_T):
+            window = sub[:, t - self.L : t, :]
+            x_t = noise[:, t, :].copy()
+            x_t += self.mechanism.forward_numpy(window)
+            sub[:, t, :] = x_t
+        X_full[rows] = sub
+        if not np.isfinite(X_full[rows]).all():  # pragma: no cover - defensive
+            raise FloatingPointError(
+                "KuramotoSCMT produced non-finite values -- this should not "
+                "happen given bounded sin-coupling + additive noise; check "
+                "k_coupling/dt for an unexpectedly large step."
+            )
+
+    def _sample_noise(self, *shape) -> np.ndarray:
+        size = shape if len(shape) > 1 else shape[0]
+        if self.noise_type == "laplace":
+            return self._rng.laplace(loc=0.0, scale=0.1, size=size)
+        elif self.noise_type == "uniform":
+            return self._rng.uniform(low=-0.17, high=0.17, size=size)
+        else:  # gaussian
             return self._rng.normal(loc=0.0, scale=_GAUSSIAN_STD, size=size)
 
 

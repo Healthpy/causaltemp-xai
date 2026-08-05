@@ -18,6 +18,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
+from causaltemp_xai.benchmarks.generator import KuramotoSCMT, SpringSCMT
 from causaltemp_xai.benchmarks.mechanisms import LinearMechanism
 from causaltemp_xai.benchmarks.structural_cf import structural_counterfactual
 from causaltemp_xai.metrics.pns import (
@@ -38,6 +39,20 @@ def _make_scm(k=4, L=1, T=30, seed=0, noise_scale=0.05):
             x[t] += A @ x[t - lag]
         x[t] += noise[t]
     return x, LinearMechanism(A_list)
+
+
+def _make_spring(n_particles=3, T=30, seed=0):
+    """(x, mechanism) from a small SpringSCMT (M4c)."""
+    gen = SpringSCMT(n_particles=n_particles, T=T, N=1, seed=seed)
+    data = gen.generate(burn_in=20)
+    return data["X"][0], data["mechanism"]
+
+
+def _make_kuramoto(k=3, T=30, seed=0):
+    """(x, mechanism) from a small KuramotoSCMT (M4c)."""
+    gen = KuramotoSCMT(k=k, T=T, N=1, seed=seed)
+    data = gen.generate(burn_in=20)
+    return data["X"][0], data["mechanism"]
 
 
 class _AlwaysTarget:
@@ -178,6 +193,41 @@ class TestPNSAdversarial:
             CFs.append(c)
         out = pns_direction(X, np.stack(CFs), _AlwaysTarget(), mech, 0.0, target_class=1)
         assert out["delta_total"] == pytest.approx(out["delta_trajectory"] + out["delta_outcome"])
+
+
+# ---------------------------------------------------------------------------
+# M4c: PNS adversarial tests on the two new non-dissipative families (R6).
+# ---------------------------------------------------------------------------
+
+
+class TestPNSAdversarialNewFamilies:
+    @pytest.mark.parametrize("make_scm", [_make_spring, _make_kuramoto], ids=["spring", "kuramoto"])
+    def test_oracle_cf_has_zero_gap(self, make_scm):
+        x, mech = make_scm(seed=4)
+        theta = 0.0
+        t0 = 10
+        oracle = structural_counterfactual(x, mech, t0, [0], [x[t0, 0] + 2.0], noiseless=False)
+        model = _ThresholdModel(theta)
+        out = pns_direction(np.stack([x]), np.stack([oracle]), model, mech, theta, target_class=1)
+        assert out["n_scorable"] == 1
+        assert out["delta_trajectory"] == pytest.approx(0.0)
+        assert out["delta_outcome"] == pytest.approx(0.0)
+        assert out["delta_total"] == pytest.approx(0.0)
+
+    @pytest.mark.parametrize("make_scm", [_make_spring, _make_kuramoto], ids=["spring", "kuramoto"])
+    def test_flags_model_artifact_cf(self, make_scm):
+        x, mech = make_scm(seed=5)
+        t0 = 10
+        x_cf = x.copy()
+        x_cf[t0, 0] += 1e-3  # a real but tiny intervention
+        x_cf[t0 + 1 :] += 50.0  # trajectory displaced by something else entirely
+        theta = 10.0
+        out = pns_direction(
+            np.stack([x]), np.stack([x_cf]), _AlwaysTarget(), mech, theta, target_class=1
+        )
+        assert out["A_model_proposed"] == 1.0, "model claims a successful flip"
+        assert out["C_world_oracle"] == 0.0, "world says the intervention does nothing"
+        assert out["delta_total"] == pytest.approx(1.0), "the over-claim must be flagged"
 
 
 class TestPNSCombination:

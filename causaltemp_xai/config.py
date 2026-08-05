@@ -20,6 +20,19 @@ design, pre-registered expected direction, and smoke-scale preliminary
 finding for each. **No full-scale variant of any of these three presets
 exists or is planned as part of this work.**
 
+Two further M4c presets (`DECISIONS.md` 2026-08-05) add **non-dissipative**
+mechanism families, testing H8b in the regime where causal effects persist
+rather than decay -- ``SMOKE_SPRING`` (``mechanism_type="spring"``, ``k=10``
+exposed channels = position+velocity for 5 particles,
+:class:`~causaltemp_xai.benchmarks.generator.SpringSCMT`, adopted from Bahri
+et al. IEEE BigData 2025) and ``SMOKE_KURAMOTO``
+(``mechanism_type="kuramoto"``, ``k=5`` phase oscillators,
+:class:`~causaltemp_xai.benchmarks.generator.KuramotoSCMT`, adopted from
+Kipf et al. NRI). Unlike every other preset in this module, these two are
+**not** contractive by design -- see each generator class's docstring. No
+full-scale variant exists yet; smoke-scale verification is M4c's first DoD
+gate.
+
 Two **label-site presets** are registered for H8c (M2b, 2026-08-03):
 ``SMOKE_INTERIOR_LABEL`` and ``FULL_INTERIOR_LABEL``. They vary exactly one
 field from ``SMOKE``/``FULL`` — ``label_fn="interior_threshold"``, which reads
@@ -399,6 +412,59 @@ SMOKE_REGIME_HMM = BenchmarkConfig(
 )
 
 
+#: M4c non-dissipative ablation: SpringSCM-T. ``k=10`` is the *exposed*
+#: channel count (``2 * n_particles`` -- position and velocity per particle,
+#: see ``benchmarks.generator.SpringSCMT``/``benchmarks.mechanisms.SpringMechanism``),
+#: not a literal particle count; ``data_io.build_generator`` derives
+#: ``n_particles = k // 2``. ``sparsity`` is a *particle-level* coupling
+#: probability here, not a per-channel one. ``n_exogenous=2`` guarantees
+#: particles p4/p5 (0-indexed 3/4) have no incoming spring coupling,
+#: matching M4c's own DoD naming (`DECISIONS.md` 2026-08-05).
+_SPRING_HYPERPARAMS: dict = {
+    "k_spring": 0.3,
+    "dt": 0.1,
+    "n_exogenous": 2,
+}
+
+SMOKE_SPRING = BenchmarkConfig(
+    k=10,
+    L=1,
+    sparsity=0.3,
+    noise_type="laplace",
+    T=30,
+    N=500,
+    seed=0,
+    name="smoke_spring",
+    mechanism_type="spring",
+    nonlinear=dict(_SPRING_HYPERPARAMS),
+)
+
+#: M4c non-dissipative ablation: KuramotoSCM-T. ``k=5`` oscillators (matches
+#: every other ``smoke_*`` preset's channel-count convention directly --
+#: unlike spring, one channel per oscillator, no doubling). ``n_exogenous=2``
+#: guarantees oscillators o4/o5 (0-indexed 3/4) are pacemakers with no
+#: incoming coupling (`DECISIONS.md` 2026-08-05).
+_KURAMOTO_HYPERPARAMS: dict = {
+    "omega_range": (0.5, 1.5),
+    "k_coupling": 0.5,
+    "dt": 0.1,
+    "n_exogenous": 2,
+}
+
+SMOKE_KURAMOTO = BenchmarkConfig(
+    k=5,
+    L=1,
+    sparsity=0.3,
+    noise_type="laplace",
+    T=30,
+    N=500,
+    seed=0,
+    name="smoke_kuramoto",
+    mechanism_type="kuramoto",
+    nonlinear=dict(_KURAMOTO_HYPERPARAMS),
+)
+
+
 #: Registry of all named configs.
 CONFIGS: dict[str, BenchmarkConfig] = {
     "smoke": SMOKE,
@@ -413,6 +479,8 @@ CONFIGS: dict[str, BenchmarkConfig] = {
     "smoke_interior_label": SMOKE_INTERIOR_LABEL,
     "full_interior_label": FULL_INTERIOR_LABEL,
     "full_interior_label_late": FULL_INTERIOR_LABEL_LATE,
+    "smoke_spring": SMOKE_SPRING,
+    "smoke_kuramoto": SMOKE_KURAMOTO,
 }
 
 

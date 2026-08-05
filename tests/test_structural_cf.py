@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from causaltemp_xai.benchmarks.generator import NlinearSCMT
+from causaltemp_xai.benchmarks.generator import KuramotoSCMT, NlinearSCMT, SpringSCMT
 from causaltemp_xai.benchmarks.structural_cf import (
     _window,
     abduct_noise,
@@ -30,6 +30,20 @@ from causaltemp_xai.metrics.cf_faith import CFfaith
 def _make_nlinear(k: int = 3, L: int = 2, T: int = 25, seed: int = 7):
     """Return (x_original, graph, mechanism) from a SMOKE-scale NlinearSCMT."""
     gen = NlinearSCMT(k=k, L=L, T=T, N=4, seed=seed, hidden=8)
+    data = gen.generate(burn_in=20)
+    return data["X"][0], data["graph"], data["mechanism"]
+
+
+def _make_spring(n_particles: int = 3, T: int = 25, seed: int = 7):
+    """Return (x_original, graph, mechanism) from a small SpringSCMT (M4c)."""
+    gen = SpringSCMT(n_particles=n_particles, T=T, N=4, seed=seed)
+    data = gen.generate(burn_in=20)
+    return data["X"][0], data["graph"], data["mechanism"]
+
+
+def _make_kuramoto(k: int = 3, T: int = 25, seed: int = 7):
+    """Return (x_original, graph, mechanism) from a small KuramotoSCMT (M4c)."""
+    gen = KuramotoSCMT(k=k, T=T, N=4, seed=seed)
     data = gen.generate(burn_in=20)
     return data["X"][0], data["graph"], data["mechanism"]
 
@@ -56,6 +70,41 @@ class TestAbduction:
         eps = abduct_noise(x_orig, mechanism)
         x_rec = _reconstruct(eps, mechanism)
         assert np.abs(x_rec - x_orig).max() < 1e-6
+
+    def test_abduction_reconstructs_factual_spring(self):
+        """M4c: SpringMechanism abduction is exact too (additive noise, L=1)."""
+        x_orig, _, mechanism = _make_spring()
+        eps = abduct_noise(x_orig, mechanism)
+        x_rec = _reconstruct(eps, mechanism)
+        assert np.abs(x_rec - x_orig).max() < 1e-6
+
+    def test_abduction_reconstructs_factual_kuramoto(self):
+        """M4c: KuramotoMechanism abduction is exact too (unwrapped phase, L=1)."""
+        x_orig, _, mechanism = _make_kuramoto()
+        eps = abduct_noise(x_orig, mechanism)
+        x_rec = _reconstruct(eps, mechanism)
+        assert np.abs(x_rec - x_orig).max() < 1e-6
+
+
+class TestNullIntervention:
+    """M4c DoD: 'assert the oracle reproduces the factual under a null
+    intervention' -- do(x[t0, node] = x_orig[t0, node]) reuses the abducted
+    factual noise and re-imposes the *same* value already there, so the
+    entire oracle trajectory (not just the abducted noise) must equal
+    x_orig exactly, on both new mechanism families.
+    """
+
+    def test_null_intervention_reproduces_factual_spring(self):
+        x_orig, _, mechanism = _make_spring()
+        t0, node = 6, 0
+        x_cf = structural_counterfactual(x_orig, mechanism, t0, node, x_orig[t0, node])
+        assert np.abs(x_cf - x_orig).max() < 1e-6
+
+    def test_null_intervention_reproduces_factual_kuramoto(self):
+        x_orig, _, mechanism = _make_kuramoto()
+        t0, node = 6, 0
+        x_cf = structural_counterfactual(x_orig, mechanism, t0, node, x_orig[t0, node])
+        assert np.abs(x_cf - x_orig).max() < 1e-6
 
 
 # ---------------------------------------------------------------------------

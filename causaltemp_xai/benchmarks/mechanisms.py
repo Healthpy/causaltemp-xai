@@ -432,6 +432,232 @@ class MLPMechanism(Mechanism):
         )
 
 
+class SpringMechanism(Mechanism):
+    """Additive-noise spring-coupled particle system (M4c, non-dissipative).
+
+    ``n_particles`` particles, each exposed as **two** channels (position,
+    velocity), so ``k = 2 * n_particles``, ``L=1``. Channel layout:
+    ``history[..., 0:n_particles]`` = positions, ``history[..., n_particles:]``
+    = velocities. One symplectic-Euler step per timestep::
+
+        a_i(x_{t-1})   =  -sum_j K[i, j] * (x_{t-1}^i - x_{t-1}^j)   (graph neighbors j)
+        mean(v_t^i)    =  v_{t-1}^i + dt * a_i(x_{t-1})
+        mean(x_t^i)    =  x_{t-1}^i + dt * v_{t-1}^i               (position uses the
+                                                                      *previous* velocity,
+                                                                      per symplectic Euler)
+
+    **Velocity is a genuine exposed state channel, not reconstructed by
+    finite-differencing noisy position history.** An earlier design (``L=2``,
+    ``v ~= (x_{t-1}-x_{t-2})/dt``) was rejected after a smoke-scale test
+    showed it amplifies each step's additive noise by ``1/dt`` and compounds
+    over the trajectory -- a controlled test isolated this precisely: the
+    deterministic integrator alone stayed bounded (``max|x| = 0.01`` over 130
+    steps from a ``0.01`` initial kick), but adding per-step ``Laplace(0,
+    0.1)`` noise blew the same run up to ``max|x| > 160`` by step 129. This
+    design avoids that failure mode entirely: each channel's own noise is
+    added once per step, never re-differentiated.
+
+    Deliberately **no damping term** -- the coupling is a directed SCM
+    influence (``graph[vel_i, pos_j, 0]`` = "particle j's position causes
+    particle i's velocity"), not a literal symmetric physical spring network,
+    and the only source of energy drift is symplectic Euler's own
+    finite-``dt`` error. That drift is exactly what
+    ``causaltemp_xai.benchmarks.diagnostics.empirical_contraction_rate`` is
+    for measuring empirically (M4c DoD: "do not assume rho ~= 1").
+
+    ``graph`` encodes only **cross-particle** coupling: ``graph[vel_i, pos_j,
+    0] = 1`` for spring-neighbors ``j != i``. The internal position<-velocity
+    relationship (every particle's position is driven by its own velocity)
+    and each particle's own position term in its own acceleration are both
+    treated as baseline/structural, not graph-worthy -- the same convention
+    :class:`MLPMechanism` uses for its ``decay_i * x_{t-1}^i`` term. A
+    consequence: **every** position channel has zero in-degree by
+    construction (its only true dependency is its own velocity, deliberately
+    excluded from `graph`), so :func:`exogenous_channels` on the full
+    ``2 * n_particles``-channel graph is not directly "uninfluenced
+    particle" -- only the **velocity** half of its output identifies M4c's
+    "particles p4/p5" (an isolated particle's velocity has no incoming
+    graph edge; every particle's position never does, non-informatively).
+    See ``SpringSCMT`` for the particle-level wrapper.
+
+    Mass is fixed at 1 for every particle (minimal viable design, matching
+    this codebase's convention elsewhere of keeping ablation families to one
+    or two free scalars).
+    """
+
+    def __init__(
+        self,
+        graph: np.ndarray,
+        k_spring: float,
+        dt: float,
+    ) -> None:
+        self.graph = np.asarray(graph, dtype=float)
+        self.k, _, self.L = self.graph.shape
+        if self.L != 1:
+            raise ValueError(f"SpringMechanism requires L=1, got L={self.L}")
+        if self.k % 2 != 0:
+            raise ValueError(f"SpringMechanism requires an even k (2*n_particles), got k={self.k}")
+        self.n_particles = self.k // 2
+        self.k_spring = float(k_spring)
+        self.dt = float(dt)
+        p = self.n_particles
+        # Directed coupling K[i, j]: influence of particle j's position on
+        # particle i's acceleration, read from the velocity-row / position-col
+        # block of `graph` (graph[p+i, j, 0] = 1 iff j couples into i).
+        self.K = self.k_spring * self.graph[p : 2 * p, 0:p, 0]
+
+    # ------------------------------------------------------------------
+    # Forward evaluation
+    # ------------------------------------------------------------------
+
+    def forward_numpy(self, history: np.ndarray) -> np.ndarray:
+        history = np.asarray(history, dtype=float)
+        single = history.ndim == 2
+        if single:
+            history = history[None]  # (1, L, k)
+        p = self.n_particles
+        state = history[:, -1, :]  # (N, 2p)
+        pos, vel = state[:, :p], state[:, p:]  # (N, p) each
+        diff = pos[:, :, None] - pos[:, None, :]  # (N, p, p): [n,i,j] = x_i - x_j
+        accel = -np.einsum("ij,nij->ni", self.K, diff)  # (N, p)
+        new_pos = pos + self.dt * vel  # symplectic Euler: position uses OLD velocity
+        new_vel = vel + self.dt * accel
+        result = np.concatenate([new_pos, new_vel], axis=1)  # (N, 2p)
+        return result[0] if single else result
+
+    def forward_torch(self, history):
+        single = history.ndim == 2
+        if single:
+            history = history.unsqueeze(0)
+        p = self.n_particles
+        K = torch.as_tensor(self.K, dtype=history.dtype, device=history.device)
+        state = history[:, -1, :]
+        pos, vel = state[:, :p], state[:, p:]
+        diff = pos.unsqueeze(2) - pos.unsqueeze(1)  # (N, p, p)
+        accel = -torch.einsum("ij,nij->ni", K, diff)
+        new_pos = pos + self.dt * vel
+        new_vel = vel + self.dt * accel
+        result = torch.cat([new_pos, new_vel], dim=1)
+        return result.squeeze(0) if single else result
+
+    # ------------------------------------------------------------------
+    # Serialization
+    # ------------------------------------------------------------------
+
+    def state_dict(self) -> dict:
+        return {
+            "__type__": "spring",
+            "graph": np.asarray(self.graph, dtype=float),
+            "k_spring": float(self.k_spring),
+            "dt": float(self.dt),
+        }
+
+    @classmethod
+    def from_state_dict(cls, d: dict) -> SpringMechanism:
+        return cls(
+            graph=np.asarray(d["graph"], dtype=float),
+            k_spring=float(np.asarray(d["k_spring"]).item()),
+            dt=float(np.asarray(d["dt"]).item()),
+        )
+
+
+class KuramotoMechanism(Mechanism):
+    """Additive-noise coupled-phase-oscillator system (M4c, non-dissipative).
+
+    ``k`` oscillators, ``L=1`` (phase coupling needs only the current phase,
+    no finite-difference issue). Standard sparse-graph Kuramoto update,
+    discretized with step ``dt``::
+
+        mean_i(theta_t) = theta_{t-1}^i + dt * (omega_i + (K/deg_i) * sum_j A[i,j] sin(theta_{t-1}^j - theta_{t-1}^i))
+
+    summed over ``graph`` neighbors ``j`` only (not fully connected -- the
+    sparse graph is what makes this an SCM rather than a mean-field model).
+    ``deg_i = max(sum_j A[i,j], 1)`` avoids dividing by zero for a
+    zero-in-degree oscillator, and is a no-op there anyway since the sum
+    itself is zero (a "pacemaker" -- M4c's o4/o5 -- evolves purely at its own
+    ``omega_i`` plus noise).
+
+    Phase is tracked **unwrapped** (a plain, unbounded real number, never
+    reduced ``mod 2*pi``) as the SCM state. This is the design choice that
+    keeps Pearl abduction exact regardless of periodicity: ``eps = x_t -
+    f(parents)`` is a plain subtraction here exactly as it is for every other
+    mechanism in this benchmark, so wrapping (if ever wanted) is purely a
+    downstream reporting/plotting concern and must never be baked into the
+    generative model itself -- doing so would make ``eps`` ambiguous modulo
+    ``2*pi`` and break exact abduction.
+    """
+
+    def __init__(
+        self,
+        graph: np.ndarray,
+        omega: np.ndarray,
+        k_coupling: float,
+        dt: float,
+    ) -> None:
+        self.graph = np.asarray(graph, dtype=float)
+        self.k, _, self.L = self.graph.shape
+        if self.L != 1:
+            raise ValueError(f"KuramotoMechanism requires L=1, got L={self.L}")
+        self.omega = np.asarray(omega, dtype=float).reshape(self.k)
+        self.k_coupling = float(k_coupling)
+        self.dt = float(dt)
+        A = self.graph[:, :, 0]  # (k, k): A[i, j] = 1 if j couples into i
+        deg = np.maximum(A.sum(axis=1), 1.0)  # (k,)
+        self.A = A
+        self.inv_deg = 1.0 / deg  # (k,)
+
+    # ------------------------------------------------------------------
+    # Forward evaluation
+    # ------------------------------------------------------------------
+
+    def forward_numpy(self, history: np.ndarray) -> np.ndarray:
+        history = np.asarray(history, dtype=float)
+        single = history.ndim == 2
+        if single:
+            history = history[None]  # (1, L, k)
+        theta = history[:, -1, :]  # (N, k)
+        # sin(theta_j - theta_i) for every (i, j) pair, masked by A.
+        diff = theta[:, None, :] - theta[:, :, None]  # (N, k, k): [n,i,j] = theta_j - theta_i
+        coupling = np.einsum("ij,nij->ni", self.A, np.sin(diff)) * self.inv_deg  # (N, k)
+        result = theta + self.dt * (self.omega + self.k_coupling * coupling)
+        return result[0] if single else result
+
+    def forward_torch(self, history):
+        single = history.ndim == 2
+        if single:
+            history = history.unsqueeze(0)
+        A = torch.as_tensor(self.A, dtype=history.dtype, device=history.device)
+        inv_deg = torch.as_tensor(self.inv_deg, dtype=history.dtype, device=history.device)
+        omega = torch.as_tensor(self.omega, dtype=history.dtype, device=history.device)
+        theta = history[:, -1, :]
+        diff = theta.unsqueeze(1) - theta.unsqueeze(2)  # (N, k, k): [n,i,j] = theta_j - theta_i
+        coupling = torch.einsum("ij,nij->ni", A, torch.sin(diff)) * inv_deg
+        result = theta + self.dt * (omega + self.k_coupling * coupling)
+        return result.squeeze(0) if single else result
+
+    # ------------------------------------------------------------------
+    # Serialization
+    # ------------------------------------------------------------------
+
+    def state_dict(self) -> dict:
+        return {
+            "__type__": "kuramoto",
+            "graph": np.asarray(self.graph, dtype=float),
+            "omega": np.asarray(self.omega, dtype=float),
+            "k_coupling": float(self.k_coupling),
+            "dt": float(self.dt),
+        }
+
+    @classmethod
+    def from_state_dict(cls, d: dict) -> KuramotoMechanism:
+        return cls(
+            graph=np.asarray(d["graph"], dtype=float),
+            omega=np.asarray(d["omega"], dtype=float),
+            k_coupling=float(np.asarray(d["k_coupling"]).item()),
+            dt=float(np.asarray(d["dt"]).item()),
+        )
+
+
 def mechanism_from_state_dict(d: dict) -> Mechanism:
     """Dispatch on the ``"__type__"`` discriminator to the right subclass.
 
@@ -447,4 +673,8 @@ def mechanism_from_state_dict(d: dict) -> Mechanism:
         return LinearMechanism.from_state_dict(d)
     if mech_type == "mlp":
         return MLPMechanism.from_state_dict(d)
+    if mech_type == "spring":
+        return SpringMechanism.from_state_dict(d)
+    if mech_type == "kuramoto":
+        return KuramotoMechanism.from_state_dict(d)
     raise ValueError(f"unknown mechanism __type__: {mech_type!r}")

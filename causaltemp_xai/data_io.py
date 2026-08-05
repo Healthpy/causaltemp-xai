@@ -38,9 +38,11 @@ import numpy as np
 
 from causaltemp_xai.benchmarks.generator import (
     HMMRegimeSwitchNlinearSCMT,
+    KuramotoSCMT,
     LinearSCMT,
     NlinearSCMT,
     RegimeSwitchNlinearSCMT,
+    SpringSCMT,
 )
 from causaltemp_xai.benchmarks.mechanisms import mechanism_from_state_dict
 from causaltemp_xai.config import (
@@ -186,9 +188,43 @@ def build_generator(config: BenchmarkConfig):
             p_stay=nl.get("p_stay", 0.9),
             regimes=regimes,
         )
+    if config.mechanism_type == "spring":
+        nl = dict(config.nonlinear or {})
+        # config.k is the exposed channel count (2 * n_particles), matching
+        # every other family's "config.k == X.shape[-1]" convention --
+        # SpringSCMT itself takes n_particles, so it's derived here.
+        if config.k % 2 != 0:
+            raise ValueError(f"'spring' mechanism_type requires an even config.k, got {config.k}")
+        return SpringSCMT(
+            n_particles=config.k // 2,
+            sparsity=config.sparsity,
+            noise_type=config.noise_type,
+            T=config.T,
+            N=config.N,
+            seed=config.seed,
+            label_fn=config.label_fn,
+            label_params=config.label_params,
+            **nl,
+        )
+    if config.mechanism_type == "kuramoto":
+        nl = dict(config.nonlinear or {})
+        if "omega_range" in nl:
+            nl["omega_range"] = tuple(nl["omega_range"])
+        return KuramotoSCMT(
+            k=config.k,
+            sparsity=config.sparsity,
+            noise_type=config.noise_type,
+            T=config.T,
+            N=config.N,
+            seed=config.seed,
+            label_fn=config.label_fn,
+            label_params=config.label_params,
+            **nl,
+        )
     raise ValueError(
         f"unknown mechanism_type {config.mechanism_type!r}; "
-        "expected 'linear', 'mlp', 'mlp_regime_switch', or 'mlp_regime_hmm'"
+        "expected 'linear', 'mlp', 'mlp_regime_switch', 'mlp_regime_hmm', "
+        "'spring', or 'kuramoto'"
     )
 
 
