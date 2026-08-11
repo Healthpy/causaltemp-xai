@@ -110,6 +110,33 @@ class TestGraphAUCAdversarial:
         truth = np.zeros((3, 3), dtype=int)  # no positive edges
         assert np.isnan(graph_auc(truth, np.random.default_rng(0).normal(size=(3, 3))))
 
+    @pytest.mark.xfail(
+        strict=True,
+        reason="P0-4 (docs/pi_reevaluation_2026-08-11.md): graph_auc guards a "
+        "degenerate y_true but not a constant y_score, so a method that ranks "
+        "nothing scores the sklearn convention 0.5 -- indistinguishable from a "
+        "real chance-level ranking. This is how Kuramoto posted AUC = 0.500 "
+        "+/- 0.000 for BOTH discovery methods across 3 seeds in "
+        "results/tier1_suite/table_method_suitability.csv: DYNOTEARS recovers "
+        "only self-loops, which inferred_graph zeroes, leaving an identically-"
+        "zero score matrix. Remove this marker when graph_auc returns NaN.",
+    )
+    @pytest.mark.parametrize("constant", [0.0, 1.0, -3.5])
+    def test_constant_scores_are_nan(self, constant):
+        """A score matrix with no variation expresses no ranking at all.
+
+        Returning 0.5 launders "this method produced nothing" into "this method
+        performed at chance", which is a substantive empirical claim the data
+        does not support. NaN is the honest answer: the metric is undefined,
+        not satisfied-at-chance.
+        """
+        truth = self._truth()  # both classes present, so y_true is not the issue
+        scores = np.full(truth.shape, constant, dtype=float)
+        assert np.isnan(graph_auc(truth, scores)), (
+            f"constant score matrix (all {constant}) must be NaN, "
+            f"got {graph_auc(truth, scores)}"
+        )
+
 
 # ---------------------------------------------------------------------------
 # Residual dependence — unexplained association between non-adjacent channels

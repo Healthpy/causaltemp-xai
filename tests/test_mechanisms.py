@@ -312,3 +312,149 @@ class TestMLPNonmonotonicActivation:
         rng = np.random.default_rng(49)
         history = rng.normal(size=(mech.L, mech.k))
         np.testing.assert_array_equal(mech.forward_numpy(history), restored.forward_numpy(history))
+
+
+# ---------------------------------------------------------------------------
+# P0-1 acceptance gate for the M4/P0-2 mechanism redesign
+# ---------------------------------------------------------------------------
+
+
+def _shipped_nl_dataset(config_name: str = "smoke_nl"):
+    """Generate the *shipped* nonlinear config, not a hand-built toy.
+
+    The claim under test is about the benchmark tier researchers actually run,
+    so the hyperparameters must come from ``config.py`` rather than this
+    module's ``_random_mlp`` defaults -- a toy mechanism could pass thresholds
+    the shipped preset fails.
+    """
+    from causaltemp_xai.config import get_config
+    from causaltemp_xai.data_io import build_generator
+
+    result = build_generator(get_config(config_name)).generate()
+    return result["X"], result["mechanism"]
+
+
+def _histories(X: np.ndarray, L: int) -> np.ndarray:
+    """Every length-``L`` window in ``X``, flattened to ``(N*(T-L), L, k)``."""
+    windows = [X[:, t - L : t, :] for t in range(L, X.shape[1])]
+    return np.stack(windows, axis=1).reshape(-1, L, X.shape[2])
+
+
+class TestMLPMechanismIsMeasurablyNonlinear:
+    """P0-1 gate for P0-2 (`docs/pi_reevaluation_2026-08-11.md`).
+
+    Instrumentation on 2026-08-11 showed ``NlinearSCM-T`` is a linear VAR(1):
+    hidden pre-activations sit at ``|z| ~ 0.015`` where ``tanh`` is the
+    identity, an affine fit reproduces the mechanism at ``R^2 = 1.000000``, and
+    the graph-carrying MLP branch holds ~1% of output variance against ~99% for
+    the ``decay_i * x_{t-1}^i`` self-term -- which is *not* an edge in ``graph``.
+
+    Every assertion below is a P0-2 acceptance target. They are expected to fail
+    until the mechanism is reparameterised; remove the ``xfail`` markers then.
+    A passing suite must not be read as "the nonlinear tier is nonlinear".
+    """
+
+    @pytest.mark.xfail(
+        strict=True,
+        reason="P0-2: nonlinear component is ~5800x below the innovation-noise "
+        "floor (affine fit R^2 = 1.000000). Remove marker when >= 5%.",
+    )
+    def test_nonlinear_share_of_variance_is_at_least_5_percent(self):
+        """An affine map must NOT be able to reproduce the mechanism.
+
+        ``1 - R^2`` of the best least-squares affine fit to the mechanism's own
+        conditional mean is the fraction of its behaviour that is genuinely
+        nonlinear. If that is ~0, the family is a VAR wearing an MLP costume and
+        no "carries over from linear to nonlinear" claim is supported.
+        """
+        X, mech = _shipped_nl_dataset()
+        hist = _histories(X, mech.L)
+        mu = mech.forward_numpy(hist)
+
+        design = np.concatenate([hist.reshape(len(hist), -1), np.ones((len(hist), 1))], axis=1)
+        coef, *_ = np.linalg.lstsq(design, mu, rcond=None)
+        residual = mu - design @ coef
+        ss_res = (residual**2).sum(axis=0)
+        ss_tot = ((mu - mu.mean(axis=0)) ** 2).sum(axis=0)
+        r_squared = float(np.mean(1.0 - ss_res / ss_tot))
+        nonlinear_share = 1.0 - r_squared  # the part no affine map can reach
+
+        assert nonlinear_share >= 0.05, (
+            f"affine fit reproduces the mechanism at R^2 = {r_squared:.8f} "
+            f"(nonlinear share {nonlinear_share:.2e}); the 'nonlinear' tier is a "
+            f"linear VAR"
+        )
+
+    @pytest.mark.xfail(
+        strict=True,
+        reason="P0-2: the graph-carrying MLP branch holds ~1% of output "
+        "variance; the decay self-term (not a graph edge) holds ~99%. "
+        "Remove marker when the MLP branch reaches >= 40%.",
+    )
+    def test_graph_carrying_branch_holds_at_least_40_percent_of_variance(self):
+        """The branch the causal graph flows through must not be a rounding error.
+
+        ``mean_i = decay_i * x_{t-1}^i + gain * tanh(MLP_i(masked parents))``.
+        Only the second term touches ``graph`` at all, so its share of output
+        variance bounds how much of the data the ground-truth causal structure
+        can explain. At ~1% the benchmark scores counterfactuals against a
+        process the graph barely participates in.
+        """
+        X, mech = _shipped_nl_dataset()
+        hist = _histories(X, mech.L)
+        mu = mech.forward_numpy(hist)
+
+        decay_branch = mech.decay * hist[:, -1, :]
+        mlp_branch = mu - decay_branch  # the gain * tanh(MLP(...)) term
+        mlp_share = float(mlp_branch.var() / (decay_branch.var() + mlp_branch.var()))
+
+        assert mlp_share >= 0.40, (
+            f"graph-carrying MLP branch holds only {mlp_share:.4f} of output "
+            f"variance; the remaining {1 - mlp_share:.4f} flows through decay_i, "
+            f"which is not an edge in graph (trace(graph[:, :, 0]) == 0)"
+        )
+
+    @pytest.mark.xfail(
+        strict=True,
+        reason="P0-2: swapping tanh->sin moves the data by a relative 5.6e-05 "
+        "(labels identical), so SMOKE_NONMONOTONIC is vacuous as H5 evidence "
+        "(ii). Remove marker when the swap exceeds the innovation-noise std.",
+    )
+    def test_nonmonotonic_swap_exceeds_innovation_noise(self):
+        """The H5(ii) ablation must actually ablate something.
+
+        ``SMOKE_NONMONOTONIC`` swaps the hidden activation ``tanh`` -> ``sin``.
+        If that swap moves the conditional mean by less than one innovation-noise
+        standard deviation, the ablation is undetectable in the generated data
+        and cannot support or refute any hypothesis about non-monotonicity.
+        """
+        X, mech_tanh = _shipped_nl_dataset("smoke_nl")
+        hist = _histories(X, mech_tanh.L)
+
+        mu_tanh = mech_tanh.forward_numpy(hist)
+        # Same weights, only the hidden activation differs -- isolates the swap
+        # from any change in the sampled parameters.
+        mech_sin = MLPMechanism(
+            graph=mech_tanh.graph,
+            hidden=mech_tanh.hidden,
+            decay=mech_tanh.decay,
+            gain=mech_tanh.gain,
+            W1=mech_tanh.W1,
+            b1=mech_tanh.b1,
+            W2=mech_tanh.W2,
+            b2=mech_tanh.b2,
+            activation="nonmonotonic",
+        )
+        mu_sin = mech_sin.forward_numpy(hist)
+
+        swap_effect = float(np.abs(mu_tanh - mu_sin).mean())
+        # Innovation noise: what the additive-noise SCM adds on top of the mean.
+        innovation_std = float(
+            (X[:, mech_tanh.L :, :] - mu_tanh.reshape(X.shape[0], -1, X.shape[2])).std()
+        )
+
+        assert swap_effect > innovation_std, (
+            f"tanh->sin moves the conditional mean by {swap_effect:.3e}, below "
+            f"the innovation-noise std {innovation_std:.3e} -- the ablation is "
+            f"invisible in the generated data"
+        )
