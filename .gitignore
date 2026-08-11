@@ -72,9 +72,7 @@ MANIFEST
 
 AAAI_Position_Paper.pdf
 Improving_*.pdf
-
-# results/ versioning policy (DECISIONS.md 2026-07-23): commit small
-# JSON/CSV summaries, tables, and figures under results/; .npy array
-# blobs regenerate deterministically from seed + config and are not
-# source-of-truth artifacts (see results/README.md).
+docs/reviews/*
+manuscript/*
 results/**/*.npy
+docs/metrics*

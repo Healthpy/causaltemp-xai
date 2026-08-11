@@ -7,6 +7,13 @@ graph, no CF-faith, no PNS** -- those all need a known oracle mechanism,
 which real data doesn't have (`ROADMAP.md` M4b DoD: "discovered-graph
 CF-faith scoring is explicitly out").
 
+**M4g addendum (`DECISIONS.md` 2026-08-06):** this phase now also persists
+``X_sel.npy``/``X_cf_<Method>.npy`` under ``results/real_<name>/lstm/cf/``
+(mirroring Phase 03's on-disk contract), which did not exist before this
+change. That is purely a prerequisite for M4g's *separate* discovered-graph
+CF-faith scorer (`experiments/07b_discovered_graph_real.py`) to read from --
+this phase's own scope (no graph, no CF-faith) is unchanged.
+
 **Why this is not a per-horizon sweep like Phase 06.** Phase 06 re-generates
 CARLA-family CFs at each swept ``t0`` because ``CARLARecourse``/
 ``PearlCARLARecourse`` take ``t0`` as a constructor argument. Both need a
@@ -137,6 +144,17 @@ def run(
     X_sel = X_test[sel_idx]
     print(f"[06b] {len(X_sel)} flip candidates (target_class={target_class})")
 
+    # M4g (`DECISIONS.md` 2026-08-06): persist X_sel + per-method CF arrays,
+    # mirroring Phase 03's on-disk contract exactly (`cf/X_sel.npy`,
+    # `cf/X_cf_<Method>.npy`). Nothing wrote these before -- only aggregate
+    # summary.json/per_instance.csv existed -- so there was nothing for a
+    # discovered-graph CF-faith scorer to read. This does not change anything
+    # about M4b's own "no causal graph" scope; it only makes the raw CFs
+    # available for M4g's separate scoring pass.
+    cf_dir = ROOT / "results" / f"real_{name}" / "lstm" / "cf"
+    cf_dir.mkdir(parents=True, exist_ok=True)
+    np.save(cf_dir / "X_sel.npy", X_sel)
+
     bin_edges = [max(1, round(f * T)) for f in HORIZON_BIN_FRACTIONS]
 
     methods = build_methods(X_train, Y_train, target_class)
@@ -150,6 +168,7 @@ def run(
 
     for method_name, method in methods.items():
         cfs = np.asarray(method.generate_batch(X_sel, clf), dtype=np.float32)
+        np.save(cf_dir / f"X_cf_{method_name}.npy", cfs)
         ood_scores = ood_plausibility(X_train, cfs)  # one IsolationForest fit, whole batch
 
         n_no_op = 0

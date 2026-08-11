@@ -34,6 +34,7 @@ dependencies = [
     # timeshap imports `shap.explainers._kernel.Kernel`, removed in shap>=0.44;
     # pin to the last compatible release. Nothing else in the repo uses shap.
     "shap==0.42.1",
+    "tigramite>=5.2.10.1",
 ]
 
 [project.optional-dependencies]

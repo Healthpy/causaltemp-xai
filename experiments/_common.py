@@ -661,7 +661,7 @@ def build_masked_mechanism(mechanism, inferred_adj: np.ndarray):
     Keeps the mechanism's learned weights/decay/gain but swaps in a different
     ``(k, k, L)`` parent structure. Used by the Axis-A graph-error decomposition
     (Phase 07): rolling the oracle structural CF through a mechanism that only
-    propagates along the CITRIS-*inferred* edges — instead of the true edges —
+    propagates along the method's *inferred* edges — instead of the true edges —
     isolates how much CF-faith is lost to graph-estimation error (vs. the
     propagation error a real CF method would additionally incur).
 

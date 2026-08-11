@@ -10,7 +10,7 @@ main pipeline.
 
 Selected with ``--method``; each writes its own distinct report:
 
-* ``dynotears`` / ``citris`` -> ``results/<config>/<method>/graph_error.json``
+* ``dynotears`` / ``pcmciplus`` -> ``results/<config>/<method>/graph_error.json``
   **Self-graphing + Axis-A graph-error decomposition (H3).** Fits a
   self-graphing method on a *nonlinear* (MLP-mechanism) benchmark, reads off
   its inferred lag-1 causal graph, and reports:
@@ -28,15 +28,31 @@ Selected with ``--method``; each writes its own distinct report:
   ``dynotears`` (default) is DYNOTEARS (Pamfil et al., 2020, vendored McKinsey
   CausalNex): a classical temporal causal-discovery baseline that recovers the
   benchmark's near-linear lag-1 structure from **observational** data (AUC
-  ~0.9). This is the load-bearing graph-aware method that gives the Axis-A
-  decomposition real dynamic range and H3 a genuine, non-circular positive.
-  ``citris`` is genuine vendored CITRIS (representation learning; needs
-  intervention-labeled data) -- an honest *secondary* method: it does not
-  identify at smoke scale (see ``methods/causal/citris.py``).
+  ~0.9) via continuous-optimization NOTEARS-style structure learning. This is
+  the load-bearing graph-aware method that gives the Axis-A decomposition real
+  dynamic range and H3 a genuine, non-circular positive. ``pcmciplus`` is
+  PCMCIplus (Runge et al., 2020; `tigramite` package, installed as a normal
+  PyPI dependency 2026-08-06, M4h) -- constraint-based/conditional-
+  independence-testing causal discovery, structurally different from
+  DYNOTEARS's continuous optimization. Also **observational**. Wired
+  specifically as the second, different-model-class method
+  ``docs/risk_register.md`` RISK-22 names for a DYNOTEARS-vs-PCMCIplus
+  cross-method agreement check (``--cross-method-check``, below).
 
   Only nonlinear presets (``mechanism_type == "mlp"``, e.g. ``smoke_nl`` /
   ``full_nl``) are supported -- the decomposition needs an
   :class:`MLPMechanism` to build the inferred-graph rollout.
+
+* ``cross_method_agreement`` -> ``results/<config>/cross_method_agreement/
+  graph_agreement.json`` **Cross-method agreement check (M4h).** Fits both
+  DYNOTEARS and PCMCIplus on the same data and reports the SHD between their
+  independently inferred, density-matched graphs, plus each method's own
+  AUC-vs-true-graph (Tier 1 synthetic data only -- no ground truth exists on
+  real data, so the real-data case reports SHD-between-methods alone, labeled
+  as structural agreement only, no correctness claim). Agreement alone is not
+  reassuring if both methods share a bias; reporting both AUCs alongside the
+  agreement number lets a reader tell "they agree and are both right" apart
+  from "they agree and are both wrong."
 
 **Removed 2026-08-03** (``DECISIONS.md``): ``--method ivae``, the decoder-based
 Axis-A ICC, went with ``causaltemp_xai/methods/concept/``. Concept-based methods
@@ -44,10 +60,17 @@ were descoped 2026-07-29 and no axis here scores them. ``metrics/axis_a.py``
 itself is retained -- Axis A is paused, not disproven -- and stays covered by
 ``tests/test_axis_a_latent.py`` / ``tests/test_icc_latent.py``.
 
+**Removed 2026-08-06** (M4h, ``DECISIONS.md``): ``--method citris`` and the
+CITRIS-only ``--intervention-prob``/``--epochs`` flags. CITRIS (representation
+learning; needed intervention-labeled data, never identified above chance at
+smoke scale) is fully deleted, including its vendored submodule. PCMCIplus
+replaces it as the second self-graphing method.
+
 Usage
 -----
     uv run python experiments/07_auxiliary_methods.py --config smoke_nl --method dynotears
-    uv run python experiments/07_auxiliary_methods.py --config smoke_nl --method citris
+    uv run python experiments/07_auxiliary_methods.py --config smoke_nl --method pcmciplus
+    uv run python experiments/07_auxiliary_methods.py --config smoke_nl --method cross_method_agreement
 
 """
 
@@ -62,14 +85,11 @@ import numpy as np
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from causaltemp_xai.benchmarks.interventional import (  # noqa: E402
-    generate_interventional_sequences,
-)
 from causaltemp_xai.benchmarks.structural_cf import structural_counterfactual  # noqa: E402
 from causaltemp_xai.classifiers import LSTMClassifier  # noqa: E402
 from causaltemp_xai.config import CONFIGS, get_config, seeded_variant  # noqa: E402
 from causaltemp_xai.data_io import DEFAULT_OUT_DIR, load_dataset  # noqa: E402
-from causaltemp_xai.methods.causal import CITRIS, DYNOTEARS  # noqa: E402
+from causaltemp_xai.methods.causal import DYNOTEARS, PCMCIPlus  # noqa: E402
 from causaltemp_xai.metrics.axis_a import compute_axis_a  # noqa: E402
 from causaltemp_xai.metrics.cf_faith import CFfaith  # noqa: E402
 from causaltemp_xai.scm.intervention import (  # noqa: E402
@@ -86,17 +106,11 @@ from experiments._common import (  # noqa: E402
     set_run_context,
 )
 
-GRAPH_METHODS = ("dynotears", "citris")
-
-#: Per-method training-epoch defaults. ``--epochs`` defaults to None and
-#: resolves here, so a shared flag cannot silently retune a method that did not
-#: ask for it. (Formerly also carried iVAE's 50; that method was removed
-#: 2026-08-03 -- see the module docstring.)
-DEFAULT_EPOCHS = {"citris": 80}
+GRAPH_METHODS = ("dynotears", "pcmciplus")
 
 
 # ---------------------------------------------------------------------------
-# Report 1: self-graphing + Axis-A graph-error decomposition (dynotears/citris)
+# Report 1: self-graphing + Axis-A graph-error decomposition (dynotears/pcmciplus)
 # ---------------------------------------------------------------------------
 
 
@@ -278,23 +292,17 @@ def _graph_quality_sweep(
     the mechanism family's contraction rate, not a general one -- report it
     with that family's measured rho, not as a standalone number.
     """
-    from causaltemp_xai.metrics.axis_a import graph_auc, shd
+    from causaltemp_xai.metrics.axis_a import graph_auc
 
     true_bin = (graph > 0).astype(int)
     rng = np.random.default_rng(seed)
     rows = []
 
     def _point(label, adj, auc):
-        cf_inf, frac_vac = _inferred_cf_faith(graph, mech, adj, X_sel, oracle_ints, rollout)
         rows.append(
-            {
-                "label": label,
-                "graph_auc": (None if auc is None else float(auc)),
-                "shd": float(shd(true_bin, adj)),
-                "cf_faith_inferred": cf_inf,
-                "graph_error": float(cf_faith_gt - cf_inf),
-                "frac_vacuous": frac_vac,
-            }
+            _score_graph_point(
+                graph, mech, X_sel, oracle_ints, rollout, cf_faith_gt, label, adj, auc
+            )
         )
 
     # Controlled ladder: true -> increasingly corrupted -> random.
@@ -307,16 +315,231 @@ def _graph_quality_sweep(
     return rows
 
 
+def _score_graph_point(
+    graph, mech, X_sel, oracle_ints, rollout, cf_faith_gt, label, adj, auc
+) -> dict:
+    """One ``_graph_quality_sweep`` row: score a single candidate graph ``adj``
+    (a corruption-ladder point, or a real/ensemble-member inferred graph)
+    against the true mechanism.
+
+    Extracted 2026-08-06 (M4f, `DECISIONS.md`) from what was previously a
+    closure (``_point``) defined inside :func:`_graph_quality_sweep`, so the
+    new DYNOTEARS ensemble path (:func:`_graph_quality_sweep_ensemble`) can
+    call it directly -- once per ensemble member -- without duplicating this
+    scoring logic or depending on ``_graph_quality_sweep``'s internal closure.
+    :func:`_graph_quality_sweep` itself is unchanged in behavior: it now calls
+    this function instead of a local closure, but produces byte-identical
+    output (regression-tested).
+    """
+    from causaltemp_xai.metrics.axis_a import shd
+
+    true_bin = (graph > 0).astype(int)
+    cf_inf, frac_vac = _inferred_cf_faith(graph, mech, adj, X_sel, oracle_ints, rollout)
+    return {
+        "label": label,
+        "graph_auc": (None if auc is None else float(auc)),
+        "shd": float(shd(true_bin, adj)),
+        "cf_faith_inferred": cf_inf,
+        "graph_error": float(cf_faith_gt - cf_inf),
+        "frac_vacuous": frac_vac,
+    }
+
+
+def _fit_graph_method_ensemble(
+    X_all, k, L, n_true, B, method: str = "dynotears", seed=0
+) -> list[np.ndarray]:
+    """Fit a `GRAPH_METHODS` member ``B`` times, each on an independent
+    bootstrap resample of ``X_all``'s N-axis (M4f, `DECISIONS.md` 2026-08-06;
+    generalized beyond DYNOTEARS-only 2026-08-06, M4h, to also accept
+    ``pcmciplus``).
+
+    Trajectories in ``X_all`` are i.i.d. draws from the SCM, so resampling
+    *which* trajectories feed a given fit is the statistically valid
+    bootstrap unit here -- never resample within one trajectory's own
+    timesteps, which would break the lag structure both methods need (each
+    consumes the panel per-sequence; nothing about that changes for this to
+    work, since it is the caller's array being resampled, not the fitting
+    logic).
+
+    Returns ``B`` density-matched binary adjacency arrays (same convention as
+    :func:`run_graph_method`'s single-fit ``adj_pred``), one per ensemble
+    member.
+    """
+    from causaltemp_xai.stats import bootstrap_resample_indices
+
+    idx = bootstrap_resample_indices(n=X_all.shape[0], n_boot=B, seed=seed)
+    members = []
+    for b in range(B):
+        if method == "dynotears":
+            model = DYNOTEARS(k=k, p=L).fit(X_all[idx[b]])
+        elif method == "pcmciplus":
+            model = PCMCIPlus(k=k, tau_max=L).fit(X_all[idx[b]])
+        else:
+            raise ValueError(f"_fit_graph_method_ensemble: unknown method {method!r}")
+        _, scores = model.inferred_graph(max_lag=L)
+        members.append(_density_matched_adjacency(scores, n_true))
+    return members
+
+
+def _graph_quality_sweep_ensemble(
+    graph, mech, X_sel, oracle_ints, rollout, cf_faith_gt, ensemble_adjs, method_label, seed=0
+) -> dict:
+    """Ensemble extension of :func:`_graph_quality_sweep` (M4f,
+    `DECISIONS.md` 2026-08-06): scores each of the ``B`` ensemble-member
+    graphs (produced by :func:`_fit_dynotears_ensemble`) as its own
+    real-method anchor point, then reports the ensemble's **spread**
+    alongside the point estimate -- never collapsed to one number, per this
+    project's standing design stance against opaque composites
+    (`docs/general_plan.md` §7, RISK-12/17/18/20).
+
+    The corruption ladder itself is *not* recomputed here: it corrupts the
+    true graph, which does not depend on DYNOTEARS at all, so it is identical
+    across every ensemble member and is computed exactly once by the existing
+    :func:`_graph_quality_sweep` call this function's caller also makes.
+
+    Returns
+    -------
+    dict with:
+        ``ensemble_anchor_points``: one :func:`_score_graph_point` row per
+            ensemble member.
+        ``graph_error_ensemble``: ``{mean, ci_lo, ci_hi, n}`` -- a percentile
+            bootstrap CI (:func:`causaltemp_xai.stats.bootstrap_ci`) treating
+            the ``B`` ensemble members' ``graph_error`` values themselves as
+            the i.i.d. sample being resampled (legitimate: they are ``B``
+            independent draws). Collapses to an exact point when every member
+            agrees (including the ``B`` identical-resample degenerate case).
+        ``mean_pairwise_shd``: mean SHD across all ``C(B,2)`` pairs of the
+            ensemble's *own* inferred graphs (not against the true graph) --
+            the ground-truth-free inter-graph disagreement reading.
+        ``ensemble_b``: ``B``.
+    """
+    from causaltemp_xai.metrics.axis_a import graph_auc, shd
+    from causaltemp_xai.stats import bootstrap_ci
+
+    true_bin = (graph > 0).astype(int)
+    anchor_points = [
+        _score_graph_point(
+            graph,
+            mech,
+            X_sel,
+            oracle_ints,
+            rollout,
+            cf_faith_gt,
+            f"{method_label}_b{b}",
+            adj,
+            graph_auc(true_bin, adj.astype(float)),
+        )
+        for b, adj in enumerate(ensemble_adjs)
+    ]
+
+    graph_errors = [row["graph_error"] for row in anchor_points]
+    ci = bootstrap_ci(graph_errors, seed=seed)
+
+    B = len(ensemble_adjs)
+    pairwise_shd = [
+        shd(ensemble_adjs[i], ensemble_adjs[j]) for i in range(B) for j in range(i + 1, B)
+    ]
+    mean_pairwise_shd = float(np.mean(pairwise_shd)) if pairwise_shd else 0.0
+
+    return {
+        "ensemble_anchor_points": anchor_points,
+        "graph_error_ensemble": {"mean": ci.mean, "ci_lo": ci.ci_lo, "ci_hi": ci.ci_hi, "n": ci.n},
+        "mean_pairwise_shd": mean_pairwise_shd,
+        "ensemble_b": B,
+    }
+
+
+def run_cross_method_agreement(cfg, out_dir, pc_alpha: float = 0.05) -> None:
+    """DYNOTEARS-vs-PCMCIplus cross-method agreement check (M4h, 2026-08-06,
+    `DECISIONS.md`) -- the concrete RISK-22 mitigation.
+
+    Works on **any** Tier-1 synthetic config, including `linear` (VAR)
+    -- unlike `run_graph_method`'s CF-faith decomposition (restricted to
+    `mlp`/`spring`/`kuramoto`, since it calls `build_masked_mechanism`, which
+    `LinearMechanism` genuinely cannot support), this function never masks a
+    mechanism -- it only fits both methods and compares raw adjacencies, which
+    is mechanism-type-agnostic. Guard dropped 2026-08-06 (M4i, `DECISIONS.md`)
+    after confirming it was never load-bearing here.
+
+    Fits both methods independently on the same observational data, density-
+    matches each to the true edge count, and reports:
+
+    - ``shd_between_methods``: SHD between the two methods' own inferred
+      graphs (needs no ground truth -- the pure structural-agreement number,
+      the only one available on real data).
+    - ``dynotears_auc`` / ``pcmciplus_auc``: each method's own AUC against
+      the *true* graph (Tier 1 synthetic data only, since ground truth exists
+      here).
+    - ``dynotears_shd_to_true`` / ``pcmciplus_shd_to_true``: same idea, SHD
+      form.
+
+    **Agreement alone is not reassuring.** If DYNOTEARS and PCMCIplus shared
+    the same bias, a low ``shd_between_methods`` would look reassuring while
+    both were confidently wrong in the same way -- exactly the failure mode
+    within-model bootstrap resampling (M4f) cannot detect (`docs/
+    risk_register.md` RISK-22). Reporting each method's own AUC-vs-true-graph
+    alongside the agreement number lets a reader tell "they agree and are
+    both right" apart from "they agree and are both wrong." Two structurally
+    different model classes (DYNOTEARS's continuous optimisation vs.
+    PCMCIplus's conditional-independence testing) agreeing is evidence
+    against shared bias, not proof against it.
+    """
+    from causaltemp_xai.metrics.axis_a import graph_auc, shd
+
+    data = load_dataset(cfg.name, out_dir=out_dir)
+    graph = data["graph"]
+    k, _, L = graph.shape
+    X_all = data["X_train"]
+    true_bin = (graph > 0).astype(int)
+    n_true = int(true_bin.sum())
+
+    print(f"[07] cross-method agreement: fitting DYNOTEARS on {X_all.shape[0]} sequences ...")
+    dyn_model = DYNOTEARS(k=k, p=L).fit(X_all)
+    _, dyn_scores = dyn_model.inferred_graph(max_lag=L)
+    dyn_adj = _density_matched_adjacency(dyn_scores, n_true)
+
+    print(f"[07] cross-method agreement: fitting PCMCIplus on {X_all.shape[0]} sequences ...")
+    pcmci_model = PCMCIPlus(k=k, tau_max=L, pc_alpha=pc_alpha).fit(X_all)
+    _, pcmci_scores = pcmci_model.inferred_graph(max_lag=L)
+    pcmci_adj = _density_matched_adjacency(pcmci_scores, n_true)
+
+    out = {
+        "provenance": {"config": cfg.as_dict(), "pc_alpha": pc_alpha},
+        "shd_between_methods": float(shd(dyn_adj, pcmci_adj)),
+        "dynotears_auc": float(graph_auc(true_bin, dyn_scores)),
+        "pcmciplus_auc": float(graph_auc(true_bin, pcmci_scores)),
+        "dynotears_shd_to_true": float(shd(true_bin, dyn_adj)),
+        "pcmciplus_shd_to_true": float(shd(true_bin, pcmci_adj)),
+        "note": (
+            "shd_between_methods (structural agreement) does not by itself imply "
+            "correctness -- see dynotears_auc/pcmciplus_auc for each method's own "
+            "accuracy against the true graph. RISK-22 (docs/risk_register.md): "
+            "agreement between two differently-biased model classes is evidence "
+            "against shared bias, not proof against it."
+        ),
+    }
+    out_dir_res = config_dir(cfg.name, "cross_method_agreement")
+    out_dir_res.mkdir(parents=True, exist_ok=True)
+    dump_json(out_dir_res / "graph_agreement.json", out)
+
+    print(
+        f"[07] cross-method agreement: SHD(dynotears,pcmciplus)="
+        f"{out['shd_between_methods']:.0f} dynotears_AUC={out['dynotears_auc']:.3f} "
+        f"pcmciplus_AUC={out['pcmciplus_auc']:.3f}"
+    )
+    print(f"[07] wrote {out_dir_res / 'graph_agreement.json'}")
+
+
 def run_graph_method(
     cfg,
     out_dir,
     method: str,
     n_cf: int = 40,
-    epochs: int = 80,
-    intervention_prob: float = 0.3,
     sweep: bool = False,
+    ensemble_b: int = 0,
+    pc_alpha: float = 0.05,
 ) -> None:
-    """Self-graphing + Axis-A graph-error decomposition for ``dynotears``/``citris``."""
+    """Self-graphing + Axis-A graph-error decomposition for ``dynotears``/``pcmciplus``."""
     # Families whose mechanism `build_masked_mechanism` can restrict to an
     # inferred graph. Spring/Kuramoto were added 2026-08-05 specifically to test
     # the dissipation hypothesis for M4e's near-flat graph-quality ladder: the
@@ -328,10 +551,10 @@ def run_graph_method(
             f"restricted to an inferred graph {_MASKABLE}; {cfg.name!r} is "
             f"mechanism_type={cfg.mechanism_type!r}. Try --config smoke_nl."
         )
-    if cfg.mechanism_type != "mlp" and method == "citris":
+    if ensemble_b > 0 and not sweep:
         raise SystemExit(
-            f"[07] citris is only wired for mlp configs; {cfg.name!r} is "
-            f"{cfg.mechanism_type!r}. Use --method dynotears."
+            "[07] --ensemble-b requires --sweep (M4f): the ensemble's spread is only "
+            "meaningful alongside the graph-quality sweep it extends."
         )
 
     data = load_dataset(cfg.name, out_dir=out_dir)
@@ -341,41 +564,31 @@ def run_graph_method(
     # 1. Fit the self-graphing method and read off its inferred lag-1 graph.
     #    DYNOTEARS (default) is a classical temporal causal-discovery baseline
     #    that recovers the benchmark's near-linear structure from OBSERVATIONAL
-    #    data -- the load-bearing graph-aware method for Axis A / H3. CITRIS is
-    #    an honest secondary (representation-learning) method that needs
-    #    intervention-labeled data and does not identify at smoke scale (see
-    #    methods/causal/citris.py).
+    #    data via continuous-optimization NOTEARS-style structure learning --
+    #    the load-bearing graph-aware method for Axis A / H3. PCMCIplus (M4h,
+    #    2026-08-06) is constraint-based/conditional-independence-testing
+    #    discovery, structurally different from DYNOTEARS, wired specifically
+    #    for the cross-method agreement check (RISK-22).
     X_all = data["X_train"]
-    citris_meta = None
+    pcmciplus_meta = None
     if method == "dynotears":
         print(f"[07] fitting DYNOTEARS on {X_all.shape[0]} sequences (k={k}, p={L}) ...")
         model = DYNOTEARS(k=k, p=L).fit(X_all)
         _, scores = model.inferred_graph(max_lag=L)
-    else:  # citris -- the only other member of GRAPH_METHODS
-        ds = generate_interventional_sequences(
-            mech,
-            k=k,
-            L=L,
-            T=X_all.shape[1],
-            N=X_all.shape[0],
-            seed=cfg.seed,
-            intervention_prob=intervention_prob,
-            mode="single",
-        )
+    elif method == "pcmciplus":
         print(
-            f"[07] fitting CITRIS on {ds.X.shape[0]} interventional sequences "
-            f"(k={k}, epochs={epochs}) ..."
+            f"[07] fitting PCMCIplus on {X_all.shape[0]} sequences "
+            f"(k={k}, tau_max={L}, pc_alpha={pc_alpha}) ..."
         )
-        model = CITRIS(k=k, max_epochs=epochs, seed=0).fit(ds.X, ds.targets)
+        model = PCMCIPlus(k=k, tau_max=L, pc_alpha=pc_alpha).fit(X_all)
         _, scores = model.inferred_graph(max_lag=L)
-        citris_meta = {
-            "source": "third_party/citris_repo (github.com/phlippe/CITRIS)",
-            "epochs": epochs,
-            "intervention_prob": intervention_prob,
-            "intervention_mode": "single",
-            "num_latents": int(model.model.num_latents),
-            "n_train_sequences": int(ds.X.shape[0]),
+        pcmciplus_meta = {
+            "source": "tigramite (github.com/jakobrunge/tigramite), PyPI dependency",
+            "tau_max": L,
+            "pc_alpha": pc_alpha,
         }
+    else:
+        raise SystemExit(f"[07] unknown graph method {method!r}; use one of {GRAPH_METHODS}")
 
     # Density-matched binarisation: keep the top-|E_true| off-diagonal edges by
     # score (standard fair graph-recovery practice -- a fixed score threshold is
@@ -443,6 +656,30 @@ def run_graph_method(
             seed=cfg.seed,
         )
 
+    # 6. Uncertainty-aware ensemble (M4f, optional): B independent DYNOTEARS
+    #    refits, each on a bootstrap resample of X_all's N-axis, scored the
+    #    same way as the real-method anchor above, with the ensemble's spread
+    #    reported alongside -- see _graph_quality_sweep_ensemble's docstring.
+    #    Additive: the plain single-fit "graph_quality_sweep" key above is
+    #    always still written, so nothing reading it breaks.
+    ensemble_result = None
+    if ensemble_b > 0:
+        print(f"[07] fitting {method} ensemble (B={ensemble_b}) ...")
+        ensemble_adjs = _fit_graph_method_ensemble(
+            X_all, k, L, n_true, ensemble_b, method=method, seed=cfg.seed
+        )
+        ensemble_result = _graph_quality_sweep_ensemble(
+            graph,
+            mech,
+            X_sel,
+            oracle_ints,
+            rollout,
+            cf_faith_gt,
+            ensemble_adjs,
+            method_label=method,
+            seed=cfg.seed,
+        )
+
     out = {
         "provenance": {
             "config": cfg.as_dict(),
@@ -458,7 +695,7 @@ def run_graph_method(
                 if method == "dynotears"
                 else None
             ),
-            "citris": citris_meta,
+            "pcmciplus": pcmciplus_meta,
         },
         "axis_a": axis_a,
         "oracle_decomposition": {
@@ -469,6 +706,7 @@ def run_graph_method(
         },
         "methods": method_rows,
         "graph_quality_sweep": sweep_rows,
+        "graph_quality_sweep_ensemble": ensemble_result,
         "inferred_edges": int(adj_pred.sum()),
         "true_edges": int((graph > 0).sum()),
     }
@@ -719,20 +957,19 @@ def run(
     out_dir,
     method: str = "dynotears",
     n_cf: int = 40,
-    epochs: int | None = None,
-    intervention_prob: float = 0.3,
     sweep: bool = False,
     seed: int | None = None,
     with_pn: bool = False,
     methods_filter=None,
     schedule: bool = False,
+    ensemble_b: int = 0,
+    pc_alpha: float = 0.05,
 ) -> None:
     """Dispatch to the auxiliary-method family selected by ``method``."""
     cfg = get_config(config_name)
     if seed is not None:
         cfg = seeded_variant(cfg, seed)
     set_run_context(seed=cfg.seed, config=cfg.name)
-    n_epochs = epochs if epochs is not None else DEFAULT_EPOCHS.get(method, 80)
 
     if method in GRAPH_METHODS:
         run_graph_method(
@@ -740,10 +977,12 @@ def run(
             out_dir,
             method=method,
             n_cf=n_cf,
-            epochs=n_epochs,
-            intervention_prob=intervention_prob,
             sweep=sweep,
+            ensemble_b=ensemble_b,
+            pc_alpha=pc_alpha,
         )
+    elif method == "cross_method_agreement":
+        run_cross_method_agreement(cfg, out_dir, pc_alpha=pc_alpha)
     elif method == "pns":
         run_pns(
             cfg,
@@ -755,40 +994,38 @@ def run(
         )
     else:
         raise SystemExit(
-            f"[07] unknown --method {method!r}; use one of " f"{', '.join((*GRAPH_METHODS, 'pns'))}"
+            f"[07] unknown --method {method!r}; use one of "
+            f"{', '.join((*GRAPH_METHODS, 'cross_method_agreement', 'pns'))}"
         )
 
 
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(
         description="Phase 07: auxiliary causal methods -- self-graphing (DYNOTEARS / "
-        "CITRIS) with the Axis-A graph-error decomposition (H3), or "
-        "or the necessity/sufficiency audit (pns).",
+        "PCMCIplus) with the Axis-A graph-error decomposition (H3), a "
+        "DYNOTEARS-vs-PCMCIplus cross-method agreement check, or "
+        "the necessity/sufficiency audit (pns).",
     )
     parser.add_argument("--config", required=True, choices=sorted(CONFIGS))
     parser.add_argument("--out-dir", default=str(DEFAULT_OUT_DIR))
     parser.add_argument(
         "--method",
         default="dynotears",
-        choices=(*GRAPH_METHODS, "pns"),
+        choices=(*GRAPH_METHODS, "cross_method_agreement", "pns"),
         help="dynotears (default) -- the load-bearing graph-aware baseline; "
-        "citris -- the honest secondary self-graphing method; "
+        "pcmciplus -- constraint-based second self-graphing method (M4h); "
+        "cross_method_agreement -- fits both and reports their SHD + AUCs (RISK-22); "
         "pns -- necessity/sufficiency gap (model vs world).",
     )
     parser.add_argument(
         "--n-cf", type=int, default=40, help="instances for the decomposition (graph methods only)"
     )
     parser.add_argument(
-        "--epochs",
-        type=int,
-        default=None,
-        help="training epochs; default 80 (citris). Unused by dynotears.",
-    )
-    parser.add_argument(
-        "--intervention-prob",
+        "--pc-alpha",
         type=float,
-        default=0.3,
-        help="interventional-sequence rate (citris only)",
+        default=0.05,
+        help="pcmciplus / cross_method_agreement only: PCMCIplus's PC-stage "
+        "significance threshold.",
     )
     parser.add_argument(
         "--methods",
@@ -824,19 +1061,28 @@ def main(argv=None) -> int:
         default=None,
         help="Multi-seed replicate (M2): override the config seed via seeded_variant.",
     )
+    parser.add_argument(
+        "--ensemble-b",
+        type=int,
+        default=0,
+        help="dynotears --sweep only (M4f): fit B independent DYNOTEARS models, each on "
+        "an N-axis bootstrap resample of the observational dataset, and report the "
+        "ensemble's spread (graph_error CI, mean pairwise SHD) alongside the existing "
+        "single-fit point estimate. 0 (default) = off, byte-identical to current behavior.",
+    )
     args = parser.parse_args(argv)
     run(
         args.config,
         args.out_dir,
         method=args.method,
         n_cf=args.n_cf,
-        epochs=args.epochs,
-        intervention_prob=args.intervention_prob,
         sweep=args.sweep,
         seed=args.seed,
         with_pn=args.with_pn,
         methods_filter=args.methods,
         schedule=args.schedule,
+        ensemble_b=args.ensemble_b,
+        pc_alpha=args.pc_alpha,
     )
     return 0
 

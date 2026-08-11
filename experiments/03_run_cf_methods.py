@@ -3,7 +3,7 @@
 Loads the dataset + LSTM checkpoint for one config, selects the flip
 candidates (test instances not already predicted as ``TARGET_CLASS``), runs
 every registered CF method (CARLA + PearlCARLA + cfts-backed Wachter/COMTE/
-CONFETTI/CounTS/CELS), and persists the raw counterfactual arrays. Also
+CONFETTI/CounTS/CELS + TSCausalCF), and persists the raw counterfactual arrays. Also
 computes every CF method's Shift-VR-lite robustness metric (Axis B), which
 needs live method/model access and so belongs here rather than in the
 metrics-only Phase 04.
@@ -65,13 +65,13 @@ from causaltemp_xai.data_io import DEFAULT_OUT_DIR, generate_and_save, load_data
 from causaltemp_xai.eval import shift_vr  # noqa: E402
 from causaltemp_xai.methods import (  # noqa: E402  # noqa: E402
     CARLARecourse,
-    CausalFeasibilityCF,
     CftsCelsCF,
     CftsCOMTECF,
     CftsConfetiCF,
     CftsCountsCF,
     CftsWachterCF,
     PearlCARLARecourse,
+    TSCausalCF,
 )
 from causaltemp_xai.methods.counterfactual.cfts_methods import _DatasetAdapter  # noqa: E402
 from experiments._common import (  # noqa: E402
@@ -94,32 +94,6 @@ def build_methods(X_train, y_train, target_class: int = TARGET_CLASS) -> dict:
     method set aimed the *other* way (target -> non-target). Nothing in phases
     01-05 passes it; the main pipeline's behaviour is unchanged.
 
-    ``n_steps`` decision for ``PearlCARLA`` (M2 gap-closure, see
-    ``docs/archive/m2_multiseed_and_pearl_carla.md`` S3 "Wiring PearlCARLA into the
-    phase-03 registry" for the full rationale): ``CARLA`` below overrides
-    ``n_steps=300`` (its class default is 500) purely for pipeline speed.
-    ``PearlCARLA`` deliberately does **not** override ``n_steps`` here, so it
-    runs at its own class default of 500 -- matching exactly the step count
-    its ``lam_prox=0.1`` default was empirically validated at (doc S2.3:
-    "full n_steps=500 ... not the reduced value used only for the diagnostic
-    hyperparameter sweep"). Silently mirroring CARLA's 300 would move
-    PearlCARLA off its one validated operating point with no new evidence
-    that its default still behaves the same way there. The resulting
-    asymmetry (CARLA@300 vs PearlCARLA@500) is intentional, not an oversight,
-    and costs little at smoke scale (k=5, T=30) -- it would need revisiting
-    before any full-scale run given full_nl's much longer horizon (see the
-    same doc section's note on `lam_prox` needing to shrink further there).
-
-    ``CausalFeasibilityCF`` (M3 priority baseline, added 2026-08-04 -- see
-    ``DECISIONS.md``) is registered at its class defaults, not tuned for
-    pipeline speed the way ``CARLA``'s ``n_steps`` is above: unlike CARLA it
-    has no full-scale timing data yet to justify an override, and unlike
-    ``CftsCounts`` (registered but excluded from full-scale ``--methods``
-    lists by explicit PI decision, 2026-07-29) no such exclusion decision has
-    been made for it either. Whether it runs in a given invocation is decided
-    at run time via ``--methods``, the same mechanism ``CftsCounts`` already
-    uses -- this registration makes it *available*, not a claim that it has
-    been validated at ``full``/``full_nl`` scale.
     """
     ds = _DatasetAdapter(X_train, y_train)
     tc = target_class
@@ -131,7 +105,7 @@ def build_methods(X_train, y_train, target_class: int = TARGET_CLASS) -> dict:
         "CftsConfeti": CftsConfetiCF(target_class=tc, dataset=ds),
         "CftsCounts": CftsCountsCF(target_class=tc, dataset=ds),
         "CftsCels": CftsCelsCF(target_class=tc, dataset=ds),
-        "CausalFeasibility": CausalFeasibilityCF(target_class=tc),
+        "TSCausal": TSCausalCF(target_class=tc),
     }
 
 
