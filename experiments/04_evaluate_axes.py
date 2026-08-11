@@ -45,6 +45,7 @@ from causaltemp_xai.data_io import DEFAULT_OUT_DIR, load_dataset  # noqa: E402
 from causaltemp_xai.eval import evaluate_method  # noqa: E402
 from causaltemp_xai.metrics.taxonomy import AXIS_METRICS  # noqa: E402
 from experiments._common import (  # noqa: E402
+    CF_METHOD_KEYS,
     RESULTS_DIR,
     TABLES_DIR,
     append_table,
@@ -87,6 +88,19 @@ def run(config_name: str, out_dir, seed: int | None = None) -> None:
     summary, all_instance_rows, table_rows = [], [], []
     for cf_path in cf_paths:
         method_name = cf_path.stem[len("X_cf_") :]
+        # Method discovery is filename-driven, so a CF array left behind by a
+        # renamed or removed method would otherwise be re-scored forever as if
+        # it were live -- double-counting one method under two names. Skip
+        # loudly rather than silently: a stale array must not block the run, but
+        # it must never reach per_instance.csv or the cross-run tables.
+        if method_name not in CF_METHOD_KEYS:
+            print(
+                f"[04] SKIP {method_name!r}: not in the CF method registry "
+                f"({sorted(CF_METHOD_KEYS)}). Stale array from a renamed or "
+                f"removed method -- delete {cf_path.name} to silence this.",
+                file=sys.stderr,
+            )
+            continue
         cfs = np.load(cf_path)
         rec = evaluate_method(clf, X_sel, cfs, data["X_train"], graph, mech, target_class=1)
         rec["method"] = method_name

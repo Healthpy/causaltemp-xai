@@ -751,6 +751,38 @@ def axis_a_benchmark_diagnostic(graph: np.ndarray, X: np.ndarray, mechanism=None
 
 
 # ---------------------------------------------------------------------------
+# Canonical CF-method roster
+# ---------------------------------------------------------------------------
+
+#: The canonical registry keys written by ``03_run_cf_methods.build_methods()``.
+#:
+#: Phase 04 discovers methods by globbing ``cf/X_cf_*.npy`` and taking the
+#: filename stem, so **any** stale array on disk is silently re-scored as a live
+#: method on every re-run. That is not hypothetical: the M3 rename of
+#: ``CausalFeasibility`` -> ``TSCausal`` (2026-08-04) left the pre-rename arrays
+#: in place, and phase 04 kept emitting a duplicate ``eval_CausalFeasibility.json``
+#: plus a full set of duplicate ``per_instance.csv`` rows -- the same method
+#: double-counted under two names in every affected table.
+#:
+#: ``tests/test_experiment_registry.py`` asserts this set equals
+#: ``build_methods()``'s keys, so adding a method to the registry without
+#: updating this constant fails the suite rather than silently dropping the new
+#: method from evaluation.
+CF_METHOD_KEYS: frozenset[str] = frozenset(
+    {
+        "CARLA",
+        "PearlCARLA",
+        "CftsWachter",
+        "CftsCOMTE",
+        "CftsConfeti",
+        "CftsCounts",
+        "CftsCels",
+        "TSCausal",
+    }
+)
+
+
+# ---------------------------------------------------------------------------
 # Multi-seed + bootstrap-CI aggregation (M2, O2)
 # ---------------------------------------------------------------------------
 

@@ -33,6 +33,7 @@ from causaltemp_xai.methods import (
     PearlCARLARecourse,
     TSCausalCF,
 )
+from experiments._common import CF_METHOD_KEYS
 
 _phase03 = importlib.import_module("experiments.03_run_cf_methods")
 
@@ -90,6 +91,21 @@ def test_full_registry_has_no_silent_gaps(methods):
     assert not missing, f"missing from build_methods(): {missing}"
     for name, cls in EXPECTED_REGISTRY.items():
         assert isinstance(methods[name], cls), f"{name} is not a {cls.__name__}"
+
+
+def test_phase04_key_guard_matches_registry(methods):
+    """Phase 04 discovers methods by globbing ``cf/X_cf_*.npy`` filenames, and
+    guards that discovery against ``CF_METHOD_KEYS``. If the guard drifts from
+    the real registry, one of two silent failures follows: a live method is
+    skipped from evaluation entirely, or a stale array from a renamed method is
+    re-scored as live (the M3 ``CausalFeasibility`` -> ``TSCausal`` duplicate).
+    Both are silent in the output tables, so they are pinned here."""
+    assert set(CF_METHOD_KEYS) == set(methods), (
+        "experiments/_common.py::CF_METHOD_KEYS has drifted from "
+        "build_methods(): "
+        f"guard-only={sorted(set(CF_METHOD_KEYS) - set(methods))}, "
+        f"registry-only={sorted(set(methods) - set(CF_METHOD_KEYS))}"
+    )
 
 
 class TestSkipAux:
