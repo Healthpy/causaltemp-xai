@@ -43,9 +43,11 @@ uses structural causal models to *penalise* counterfactuals; nobody uses them to
   exclusive semantics (`noiseless_rollout`, `pearl_delta`). A single CF cannot
   be hard-faithful under both; the contrast is itself a result. It is not a
   ranking axis — see [`docs/general_plan.md`](docs/general_plan.md) §7.
-- **Six wired CF methods** — `CARLARecourse` (causal noiseless-rollout
+- **Seven wired CF methods** — `CARLARecourse` (causal noiseless-rollout
   recourse) plus five reference methods backed by the vendored `cfts` repo
-  (Wachter, COMTE, CONFETI, CounTS, CELS), all behind a uniform interface.
+  (Wachter, COMTE, CONFETI, CounTS, CELS) and `TSCausalCF` (SCM-regularised,
+  Bahri et al. 2025; wired into the default full-scale set 2026-08-06), all
+  behind a uniform interface.
 
 Findings are established on the synthetic tier, which is the **only** tier with
 a ground-truth mechanism and therefore the only one where a metric can be shown
@@ -99,8 +101,9 @@ uv run python -m causaltemp_xai.classifiers.lstm --config full --train --patienc
 # 3. run the harness: CF methods x Axis-C + both CF-faith metrics
 #    + Shift-VR-lite -> results/full/<classifier>/...
 #    CftsCounts excluded from the current default run (PI decision, 2026-07-29)
+#    TSCausalCF (was CausalFeasibilityCF) wired into the default set 2026-08-06
 uv run python experiments/03_run_cf_methods.py --config full --n-cf 100 \
-    --methods CARLA PearlCARLA CftsWachter CftsCOMTE CftsConfeti CftsCels
+    --methods CARLA PearlCARLA CftsWachter CftsCOMTE CftsConfeti CftsCels TSCausal
 uv run python experiments/04_evaluate_axes.py --config full
 
 # 4. render the 3 publication figures -> results/figures/
@@ -132,7 +135,7 @@ uv run python experiments/08_aggregate_and_report.py figures                    
 uv run python experiments/08_aggregate_and_report.py seeds --config smoke --seeds 0 1 2 # -> results/tables/ (multi-seed + bootstrap CIs)
 
 # phase 7 — auxiliary method families outside the main 01-05 pipeline
-uv run python experiments/07_auxiliary_methods.py --config smoke_nl --method dynotears  # self-graphing + H3 graph-error split (nonlinear configs); --method citris for the secondary
+uv run python experiments/07_auxiliary_methods.py --config smoke_nl --method dynotears  # self-graphing + H3 graph-error split (nonlinear configs); --method pcmciplus for the second method; --method cross_method_agreement compares both
 
 # model-vs-world audit + do-complexity (M2b). --schedule audits the whole
 # multi-timestep intervention a CF implies rather than the single do() at t0.
@@ -277,12 +280,11 @@ causaltemp-xai/
 │   └── methods/
 │       ├── counterfactual/
 │       │   ├── carla.py               # CARLARecourse / PearlCARLARecourse (causal recourse, positive controls)
-│       │   ├── causal_feasibility.py  # CausalFeasibilityCF (Bahri et al. 2025, FISTA, SCM-regularised)
+│       │   ├── causal_feasibility.py  # TSCausalCF (was CausalFeasibilityCF; Bahri et al. 2025, FISTA, SCM-regularised)
 │       │   └── cfts_methods.py        # cfts-backed Wachter/COMTE/CONFETI/CounTS/CELS/NativeGuide
-│       └── causal/              # DYNOTEARS + CITRIS (genuine, vendored)
+│       └── causal/              # DYNOTEARS (vendored) + PCMCIplus (tigramite, PyPI)
 ├── third_party/cfts_repo/       # vendored cfts reference implementations
 ├── third_party/dynamask_repo/   # vendored official Dynamask
-├── third_party/citris_repo/     # vendored official CITRIS (github.com/phlippe/CITRIS)
 ├── third_party/causalnex_repo/  # vendored McKinsey CausalNex (DYNOTEARS solver)
 ├── experiments/
 │   ├── 01_generate_benchmarks.py    # phase 1: generate + persist datasets
@@ -292,7 +294,11 @@ causaltemp-xai/
 │   ├── 05_run_oracle_control.py     # phase 5: oracle structural-CF positive control (any config)
 │   ├── 06_horizon_sweep.py          # phase 6: sweep t0, so the horizon claim is plotted not asserted
 │   ├── 07_auxiliary_methods.py      # phase 7: self-graphing (Axis A) | PNS model-vs-world audit
+│   ├── 07b_discovered_graph_real.py # phase 7b: discovered-graph CF-faith + cross-method agreement, Tier 2 (M4g/M4i)
 │   ├── 08_aggregate_and_report.py   # phase 8: multi-seed pooling + bootstrap CIs | figures
+│   ├── 09_tier1_synthetic_suite.py  # phase 9: Tier-1 suite, all 4 synthetic families x smoke/full (M4i)
+│   ├── 10_tier2_real_suite.py       # phase 10: Tier-2 suite, 3 UCR/UEA real datasets (M4i)
+│   ├── 11_tier3_real_suite.py       # phase 11: Tier-3 generic scaffold, known/discover/domain graph source (M4i)
 │   └── _common.py                   # shared paths/loading for the phased pipeline
 ├── results/                     # figures + tables written by the phased pipeline
 ├── docs/general_plan.md         # the scientific claim, contributions, protocol
