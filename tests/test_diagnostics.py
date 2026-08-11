@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from causaltemp_xai.benchmarks.diagnostics import empirical_contraction_rate
-from causaltemp_xai.benchmarks.generator import KuramotoSCMT, NlinearSCMT, SpringSCMT
+from causaltemp_xai.benchmarks.generator import NlinearSCMT, SpringSCMT
 
 
 class TestEmpiricalContractionRate:
@@ -23,16 +23,13 @@ class TestEmpiricalContractionRate:
     def test_known_dissipative_mechanism_contracts_more_than_new_families(self):
         """MLPMechanism is contractive by design (decay + spectral-capped
         tanh branch) -- its measured rate must be clearly more negative than
-        both M4c non-dissipative families, which is the whole point of this
+        the M4c non-dissipative family, which is the whole point of this
         diagnostic (M4c DoD: measure, don't assume rho ~= 1)."""
         gen_mlp = NlinearSCMT(k=5, L=1, T=10, N=2, seed=0, hidden=16)
         gen_spring = SpringSCMT(n_particles=5, T=10, N=2, seed=0)
-        gen_kuramoto = KuramotoSCMT(k=5, T=10, N=2, seed=0)
 
         r_mlp = empirical_contraction_rate(gen_mlp.mechanism, T=50, n_pairs=30, seed=1)
         r_spring = empirical_contraction_rate(gen_spring.mechanism, T=50, n_pairs=30, seed=1)
-        r_kuramoto = empirical_contraction_rate(gen_kuramoto.mechanism, T=50, n_pairs=30, seed=1)
 
         assert r_mlp["rate"] < -0.1, "known-dissipative MLP should contract clearly"
         assert r_spring["rate"] > r_mlp["rate"]
-        assert r_kuramoto["rate"] > r_mlp["rate"]

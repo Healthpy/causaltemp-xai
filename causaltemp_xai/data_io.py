@@ -38,7 +38,6 @@ import numpy as np
 
 from causaltemp_xai.benchmarks.generator import (
     HMMRegimeSwitchNlinearSCMT,
-    KuramotoSCMT,
     LinearSCMT,
     NlinearSCMT,
     RegimeSwitchNlinearSCMT,
@@ -206,25 +205,10 @@ def build_generator(config: BenchmarkConfig):
             label_params=config.label_params,
             **nl,
         )
-    if config.mechanism_type == "kuramoto":
-        nl = dict(config.nonlinear or {})
-        if "omega_range" in nl:
-            nl["omega_range"] = tuple(nl["omega_range"])
-        return KuramotoSCMT(
-            k=config.k,
-            sparsity=config.sparsity,
-            noise_type=config.noise_type,
-            T=config.T,
-            N=config.N,
-            seed=config.seed,
-            label_fn=config.label_fn,
-            label_params=config.label_params,
-            **nl,
-        )
     raise ValueError(
         f"unknown mechanism_type {config.mechanism_type!r}; "
         "expected 'linear', 'mlp', 'mlp_regime_switch', 'mlp_regime_hmm', "
-        "'spring', or 'kuramoto'"
+        "or 'spring'"
     )
 
 

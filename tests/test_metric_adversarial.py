@@ -32,7 +32,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from causaltemp_xai.benchmarks.generator import KuramotoSCMT, SpringSCMT
+from causaltemp_xai.benchmarks.generator import SpringSCMT
 from causaltemp_xai.benchmarks.mechanisms import LinearMechanism
 from causaltemp_xai.benchmarks.structural_cf import structural_counterfactual
 from causaltemp_xai.eval import MIN_VALIDITY_BASE_FOR_RATIO, evaluate_method, shift_vr
@@ -111,13 +111,6 @@ def _pearl_cf(x, mechanism, t0, pert):
 def _make_spring(n_particles=3, T=30, seed=0):
     """(x_original, graph, mechanism) from a small SpringSCMT (M4c)."""
     gen = SpringSCMT(n_particles=n_particles, T=T, N=1, seed=seed)
-    data = gen.generate(burn_in=20)
-    return data["X"][0], data["graph"], data["mechanism"]
-
-
-def _make_kuramoto(k=3, T=30, seed=0):
-    """(x_original, graph, mechanism) from a small KuramotoSCMT (M4c)."""
-    gen = KuramotoSCMT(k=k, T=T, N=1, seed=seed)
     data = gen.generate(burn_in=20)
     return data["X"][0], data["graph"], data["mechanism"]
 
@@ -280,7 +273,7 @@ class TestCFfaithAdversarial:
 
 
 class TestCFfaithAdversarialNewFamilies:
-    @pytest.mark.parametrize("make_scm", [_make_spring, _make_kuramoto], ids=["spring", "kuramoto"])
+    @pytest.mark.parametrize("make_scm", [_make_spring], ids=["spring"])
     def test_flags_retroactive_violator_both_semantics(self, make_scm):
         x, graph, mech = make_scm(seed=1)
         t0 = 12
@@ -290,7 +283,7 @@ class TestCFfaithAdversarialNewFamilies:
             r = CFfaith(semantics=sem).score(x, cf, t0, graph, mech)
             assert r == {"hard": 0.0, "soft": 0.0}, f"{sem} must flag retro edit"
 
-    @pytest.mark.parametrize("make_scm", [_make_spring, _make_kuramoto], ids=["spring", "kuramoto"])
+    @pytest.mark.parametrize("make_scm", [_make_spring], ids=["spring"])
     def test_flags_scm_ignorant_cf(self, make_scm):
         x, graph, mech = make_scm(seed=2)
         t0 = 10
@@ -301,7 +294,7 @@ class TestCFfaithAdversarialNewFamilies:
             r = CFfaith(semantics=sem).score(x, cf, t0, graph, mech)
             assert r["hard"] == 0.0, f"{sem} must flag an SCM-ignorant CF"
 
-    @pytest.mark.parametrize("make_scm", [_make_spring, _make_kuramoto], ids=["spring", "kuramoto"])
+    @pytest.mark.parametrize("make_scm", [_make_spring], ids=["spring"])
     def test_passes_noiseless_rollout_oracle(self, make_scm):
         x, graph, mech = make_scm(seed=3)
         t0 = 10
@@ -310,7 +303,7 @@ class TestCFfaithAdversarialNewFamilies:
         assert r["hard"] == 1.0
         assert r["soft"] > 0.99
 
-    @pytest.mark.parametrize("make_scm", [_make_spring, _make_kuramoto], ids=["spring", "kuramoto"])
+    @pytest.mark.parametrize("make_scm", [_make_spring], ids=["spring"])
     def test_passes_pearl_oracle(self, make_scm):
         x, graph, mech = make_scm(seed=4)
         t0 = 10

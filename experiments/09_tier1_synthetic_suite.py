@@ -1,17 +1,19 @@
 """Phase 09: Tier-1 orchestration suite (M4i, `DECISIONS.md` 2026-08-06).
 
 Runs the full/smoke experiment sequence (phases 01-04, then both
-causal-discovery methods) across **all 4 synthetic families** -- linear (VAR),
-nonlinear (MLP), spring, kuramoto -- so "which discovery method recovers which
-kind of data best, compared against ground truth" is answerable from one file
-rather than manually assembling per-config commands.
+causal-discovery methods) across **all 3 synthetic families** -- linear (VAR),
+nonlinear (MLP), spring -- so "which discovery method recovers which kind of
+data best, compared against ground truth" is answerable from one file rather
+than manually assembling per-config commands.
 
-Family -> preset table (spring/kuramoto have no full-scale preset yet):
+The kuramoto family was removed 2026-08-11 (`DECISIONS.md`); three synthetic
+families are enough, and it was the worst-conditioned of the four.
+
+Family -> preset table (spring has no full-scale preset yet):
 
     linear    mechanism_type="linear"    smoke -> "smoke"       full -> "full"
     mlp       mechanism_type="mlp"       smoke -> "smoke_nl"    full -> "full_nl"
     spring    mechanism_type="spring"    smoke -> "smoke_spring" full -> none
-    kuramoto  mechanism_type="kuramoto"  smoke -> "smoke_kuramoto" full -> none
 
 Per `(family, scale)` config, per seed:
 
@@ -19,11 +21,11 @@ Per `(family, scale)` config, per seed:
    established multi-run reuse point -- no reimplementation of the phase
    sequence).
 2. `dynotears`/`pcmciplus` (`experiments.07_auxiliary_methods.run_graph_method`,
-   the CF-faith graph-error decomposition) -- **only** for `mlp`/`spring`/
-   `kuramoto`. `linear` is skipped and the reason recorded: `LinearMechanism`
+   the CF-faith graph-error decomposition) -- **only** for `mlp`/`spring`.
+   `linear` is skipped and the reason recorded: `LinearMechanism`
    has no masking support (`build_masked_mechanism`), so the decomposition is
    genuinely not computable, not merely omitted.
-3. `cross_method_agreement` (`run_cross_method_agreement`) -- **all 4
+3. `cross_method_agreement` (`run_cross_method_agreement`) -- **all 3
    families, including linear**. This is the one behavior change M4i makes to
    existing code: the function's `_MASKABLE` guard was dropped 2026-08-06
    after confirming its body never calls `build_masked_mechanism` (it only
@@ -70,9 +72,8 @@ _FAMILY_CONFIGS = {
     "linear": {"smoke": "smoke", "full": "full"},
     "mlp": {"smoke": "smoke_nl", "full": "full_nl"},
     "spring": {"smoke": "smoke_spring", "full": None},
-    "kuramoto": {"smoke": "smoke_kuramoto", "full": None},
 }
-_MASKABLE_FAMILIES = ("mlp", "spring", "kuramoto")
+_MASKABLE_FAMILIES = ("mlp", "spring")
 ALL_FAMILIES = tuple(_FAMILY_CONFIGS)
 
 _LINEAR_SKIP_REASON = (

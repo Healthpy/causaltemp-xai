@@ -18,7 +18,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from causaltemp_xai.benchmarks.generator import KuramotoSCMT, SpringSCMT
+from causaltemp_xai.benchmarks.generator import SpringSCMT
 from causaltemp_xai.benchmarks.mechanisms import LinearMechanism
 from causaltemp_xai.benchmarks.structural_cf import structural_counterfactual
 from causaltemp_xai.metrics.pns import (
@@ -44,13 +44,6 @@ def _make_scm(k=4, L=1, T=30, seed=0, noise_scale=0.05):
 def _make_spring(n_particles=3, T=30, seed=0):
     """(x, mechanism) from a small SpringSCMT (M4c)."""
     gen = SpringSCMT(n_particles=n_particles, T=T, N=1, seed=seed)
-    data = gen.generate(burn_in=20)
-    return data["X"][0], data["mechanism"]
-
-
-def _make_kuramoto(k=3, T=30, seed=0):
-    """(x, mechanism) from a small KuramotoSCMT (M4c)."""
-    gen = KuramotoSCMT(k=k, T=T, N=1, seed=seed)
     data = gen.generate(burn_in=20)
     return data["X"][0], data["mechanism"]
 
@@ -201,7 +194,7 @@ class TestPNSAdversarial:
 
 
 class TestPNSAdversarialNewFamilies:
-    @pytest.mark.parametrize("make_scm", [_make_spring, _make_kuramoto], ids=["spring", "kuramoto"])
+    @pytest.mark.parametrize("make_scm", [_make_spring], ids=["spring"])
     def test_oracle_cf_has_zero_gap(self, make_scm):
         x, mech = make_scm(seed=4)
         theta = 0.0
@@ -214,7 +207,7 @@ class TestPNSAdversarialNewFamilies:
         assert out["delta_outcome"] == pytest.approx(0.0)
         assert out["delta_total"] == pytest.approx(0.0)
 
-    @pytest.mark.parametrize("make_scm", [_make_spring, _make_kuramoto], ids=["spring", "kuramoto"])
+    @pytest.mark.parametrize("make_scm", [_make_spring], ids=["spring"])
     def test_flags_model_artifact_cf(self, make_scm):
         x, mech = make_scm(seed=5)
         t0 = 10

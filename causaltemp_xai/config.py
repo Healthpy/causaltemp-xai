@@ -22,19 +22,20 @@ design, pre-registered expected direction, and smoke-scale preliminary
 finding for each. **No full-scale variant of any of these three presets
 exists or is planned as part of this work.**
 
-Two further M4c presets (`DECISIONS.md` 2026-08-05) add **non-dissipative**
-mechanism families, testing H4 evidence (i) (renumbered 2026-08-06, was H8b)
-in the regime where causal effects persist
-rather than decay -- ``SMOKE_SPRING`` (``mechanism_type="spring"``, ``k=10``
-exposed channels = position+velocity for 5 particles,
+One further M4c preset (`DECISIONS.md` 2026-08-05) adds a **non-dissipative**
+mechanism family, testing H4 evidence (i) (renumbered 2026-08-06, was H8b)
+in the regime where causal effects persist rather than decay --
+``SMOKE_SPRING`` (``mechanism_type="spring"``, ``k=10`` exposed channels =
+position+velocity for 5 particles,
 :class:`~causaltemp_xai.benchmarks.generator.SpringSCMT`, adopted from Bahri
-et al. IEEE BigData 2025) and ``SMOKE_KURAMOTO``
-(``mechanism_type="kuramoto"``, ``k=5`` phase oscillators,
-:class:`~causaltemp_xai.benchmarks.generator.KuramotoSCMT`, adopted from
-Kipf et al. NRI). Unlike every other preset in this module, these two are
-**not** contractive by design -- see each generator class's docstring. No
+et al. IEEE BigData 2025). Unlike every other preset in this module it is
+**not** contractive by design -- see the generator class's docstring. No
 full-scale variant exists yet; smoke-scale verification is M4c's first DoD
 gate.
+
+``SMOKE_KURAMOTO`` was **removed 2026-08-11** (`DECISIONS.md`) -- three
+synthetic families are enough, and Kuramoto was the worst-conditioned of the
+four (the graph carried 2.1% of its per-step increment).
 
 Two **label-site presets** are registered for H4 evidence (ii) (renumbered
 2026-08-06, was H8c; M2b, 2026-08-03):
@@ -480,39 +481,6 @@ SMOKE_SPRING = BenchmarkConfig(
     nonlinear=dict(_SPRING_HYPERPARAMS),
 )
 
-#: M4c non-dissipative ablation: KuramotoSCM-T. ``k=5`` oscillators (matches
-#: every other ``smoke_*`` preset's channel-count convention directly --
-#: unlike spring, one channel per oscillator, no doubling). ``n_exogenous=2``
-#: guarantees oscillators o4/o5 (0-indexed 3/4) are pacemakers with no
-#: incoming coupling (`DECISIONS.md` 2026-08-05).
-#: ``k_coupling`` raised 0.5 -> 5.0 on 2026-08-11 (P0-2). At 0.5 the graph
-#: carried **2.1%** of the per-step increment: ``dt * omega_i`` (each
-#: oscillator's own natural frequency, not a graph edge) swamped
-#: ``dt * k_coupling * sin(...)``, making Kuramoto the worst-conditioned family
-#: in the suite. Measured at 5.0 over 5 seeds: graph share of the increment
-#: **0.46-0.67**, contraction rate **~0.001** -- i.e. still conserved, which is
-#: this family's *intended* non-dissipative design (M4c), not a stability
-#: regression. ``k_coupling=20`` was rejected: the rate drifts positive (0.053).
-_KURAMOTO_HYPERPARAMS: dict = {
-    "omega_range": (0.5, 1.5),
-    "k_coupling": 5.0,
-    "dt": 0.1,
-    "n_exogenous": 2,
-}
-
-SMOKE_KURAMOTO = BenchmarkConfig(
-    k=5,
-    L=1,
-    sparsity=0.3,
-    noise_type="laplace",
-    T=30,
-    N=500,
-    seed=0,
-    name="smoke_kuramoto",
-    mechanism_type="kuramoto",
-    nonlinear=dict(_KURAMOTO_HYPERPARAMS),
-)
-
 
 #: Registry of all named configs.
 CONFIGS: dict[str, BenchmarkConfig] = {
@@ -529,7 +497,6 @@ CONFIGS: dict[str, BenchmarkConfig] = {
     "full_interior_label": FULL_INTERIOR_LABEL,
     "full_interior_label_late": FULL_INTERIOR_LABEL_LATE,
     "smoke_spring": SMOKE_SPRING,
-    "smoke_kuramoto": SMOKE_KURAMOTO,
 }
 
 

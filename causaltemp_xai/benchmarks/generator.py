@@ -58,7 +58,6 @@ import numpy as np
 
 from causaltemp_xai.benchmarks.labels import LabelFunctional, get_label_functional
 from causaltemp_xai.benchmarks.mechanisms import (
-    KuramotoMechanism,
     LinearMechanism,
     MLPMechanism,
     SpringMechanism,
@@ -1165,128 +1164,6 @@ class SpringSCMT:
         finite = np.isfinite(X_full).all(axis=(1, 2))
         bounded = np.abs(np.nan_to_num(X_full, nan=np.inf)).max(axis=(1, 2)) <= self.clip
         return ~(finite & bounded)
-
-    def _sample_noise(self, *shape) -> np.ndarray:
-        size = shape if len(shape) > 1 else shape[0]
-        if self.noise_type == "laplace":
-            return self._rng.laplace(loc=0.0, scale=0.1, size=size)
-        elif self.noise_type == "uniform":
-            return self._rng.uniform(low=-0.17, high=0.17, size=size)
-        else:  # gaussian
-            return self._rng.normal(loc=0.0, scale=_GAUSSIAN_STD, size=size)
-
-
-class KuramotoSCMT:
-    """Coupled-phase-oscillator system generator (M4c, non-dissipative).
-
-    Shares :class:`NlinearSCMT`'s graph sampling, noise distributions,
-    burn-in and label-threshold rule, but the mechanism is
-    :class:`~causaltemp_xai.benchmarks.mechanisms.KuramotoMechanism`
-    (``L=1``, sparse-graph phase coupling, **unwrapped** phase state — see
-    that class's docstring for why wrapping would break exact abduction).
-    Adopted from Kipf et al. (NRI); see ``docs/method_provenance.md`` (a
-    benchmark SCM family, not a method reimplementation — R3 does not
-    apply).
-
-    Two oscillators (default: the last two, indices ``k-2, k-1`` — M4c's
-    "pacemaker oscillators o4/o5") are forced to zero incoming coupling
-    edges, same rationale as :class:`SpringSCMT`'s forced exogenous
-    channels.
-
-    **No divergence/clip guard.** Unlike every other family, unbounded phase
-    growth (``theta ~ omega * t``) is the *expected*, not pathological,
-    behaviour — a magnitude-based clip would truncate normal drift and
-    silently corrupt the model. Only a finite-value check guards against
-    genuine NaN/Inf (which additive Laplace/Gaussian/Uniform noise on a
-    ``sin``-bounded coupling term should never produce).
-    """
-
-    def __init__(
-        self,
-        k: int = 5,
-        sparsity: float = 0.3,
-        noise_type: Literal["laplace", "uniform", "gaussian"] = "laplace",
-        T: int = 50,
-        N: int = 200,
-        seed: Optional[int] = 42,
-        label_fn: str | None = None,
-        label_params: dict | None = None,
-        omega_range: tuple[float, float] = (0.5, 1.5),
-        k_coupling: float = 0.5,
-        dt: float = 0.1,
-        n_exogenous: int = 2,
-    ) -> None:
-        if noise_type not in _NOISE_TYPES:
-            raise ValueError(f"noise_type must be one of {_NOISE_TYPES}, got {noise_type!r}")
-        self.k = k
-        self.L = 1  # KuramotoMechanism's fixed requirement
-        self.sparsity = sparsity
-        self.noise_type = noise_type
-        self.T = T
-        self.N = N
-        self.seed = seed
-        self.label_functional = get_label_functional(label_fn, label_params)
-        self.omega_range = omega_range
-        self.k_coupling = k_coupling
-        self.dt = dt
-        self.n_exogenous = n_exogenous
-        self._rng = np.random.default_rng(seed)
-        self.graph = _sample_graph(self.k, self.L, self.sparsity, self._rng)
-        for i in range(max(0, self.k - self.n_exogenous), self.k):
-            self.graph[i, :, :] = 0.0
-        omega = self._rng.uniform(self.omega_range[0], self.omega_range[1], size=self.k)
-        # Natural frequency sign is arbitrary; randomize sign per oscillator
-        # so pacemakers don't all drift the same direction.
-        omega *= self._rng.choice([-1.0, 1.0], size=self.k)
-        self.mechanism = KuramotoMechanism(
-            self.graph, omega=omega, k_coupling=self.k_coupling, dt=self.dt
-        )
-
-    # ------------------------------------------------------------------
-    # Public API
-    # ------------------------------------------------------------------
-
-    def generate(self, burn_in: int = 100) -> dict:
-        """Generate a full Kuramoto dataset (same contract as :class:`NlinearSCMT`)."""
-        total_T = self.T + burn_in
-        X_full = np.zeros((self.N, total_T, self.k))
-        self._roll(X_full, np.arange(self.N), total_T)
-
-        X = X_full[:, burn_in:, :]
-        Y = _apply_label(X, self.label_functional)
-
-        return {
-            "X": X,
-            "Y": Y,
-            "graph": self.graph,
-            "mechanism": self.mechanism,
-        }
-
-    # ------------------------------------------------------------------
-    # Private helpers
-    # ------------------------------------------------------------------
-
-    def _roll(self, X_full: np.ndarray, rows: np.ndarray, total_T: int) -> None:
-        rows = np.sort(np.asarray(rows))
-        n = int(rows.size)
-        if n == 0:
-            return
-        sub = np.zeros((n, total_T, self.k))
-        for lag in range(self.L):
-            sub[:, lag, :] = self._sample_noise(n, self.k) * 0.1
-        noise = self._sample_noise(n * total_T * self.k).reshape(n, total_T, self.k)
-        for t in range(self.L, total_T):
-            window = sub[:, t - self.L : t, :]
-            x_t = noise[:, t, :].copy()
-            x_t += self.mechanism.forward_numpy(window)
-            sub[:, t, :] = x_t
-        X_full[rows] = sub
-        if not np.isfinite(X_full[rows]).all():  # pragma: no cover - defensive
-            raise FloatingPointError(
-                "KuramotoSCMT produced non-finite values -- this should not "
-                "happen given bounded sin-coupling + additive noise; check "
-                "k_coupling/dt for an unexpectedly large step."
-            )
 
     def _sample_noise(self, *shape) -> np.ndarray:
         size = shape if len(shape) > 1 else shape[0]

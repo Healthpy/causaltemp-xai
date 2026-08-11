@@ -589,103 +589,6 @@ class SpringMechanism(Mechanism):
         )
 
 
-class KuramotoMechanism(Mechanism):
-    """Additive-noise coupled-phase-oscillator system (M4c, non-dissipative).
-
-    ``k`` oscillators, ``L=1`` (phase coupling needs only the current phase,
-    no finite-difference issue). Standard sparse-graph Kuramoto update,
-    discretized with step ``dt``::
-
-        mean_i(theta_t) = theta_{t-1}^i + dt * (omega_i + (K/deg_i) * sum_j A[i,j] sin(theta_{t-1}^j - theta_{t-1}^i))
-
-    summed over ``graph`` neighbors ``j`` only (not fully connected -- the
-    sparse graph is what makes this an SCM rather than a mean-field model).
-    ``deg_i = max(sum_j A[i,j], 1)`` avoids dividing by zero for a
-    zero-in-degree oscillator, and is a no-op there anyway since the sum
-    itself is zero (a "pacemaker" -- M4c's o4/o5 -- evolves purely at its own
-    ``omega_i`` plus noise).
-
-    Phase is tracked **unwrapped** (a plain, unbounded real number, never
-    reduced ``mod 2*pi``) as the SCM state. This is the design choice that
-    keeps Pearl abduction exact regardless of periodicity: ``eps = x_t -
-    f(parents)`` is a plain subtraction here exactly as it is for every other
-    mechanism in this benchmark, so wrapping (if ever wanted) is purely a
-    downstream reporting/plotting concern and must never be baked into the
-    generative model itself -- doing so would make ``eps`` ambiguous modulo
-    ``2*pi`` and break exact abduction.
-    """
-
-    def __init__(
-        self,
-        graph: np.ndarray,
-        omega: np.ndarray,
-        k_coupling: float,
-        dt: float,
-    ) -> None:
-        self.graph = np.asarray(graph, dtype=float)
-        self.k, _, self.L = self.graph.shape
-        if self.L != 1:
-            raise ValueError(f"KuramotoMechanism requires L=1, got L={self.L}")
-        self.omega = np.asarray(omega, dtype=float).reshape(self.k)
-        self.k_coupling = float(k_coupling)
-        self.dt = float(dt)
-        A = self.graph[:, :, 0]  # (k, k): A[i, j] = 1 if j couples into i
-        deg = np.maximum(A.sum(axis=1), 1.0)  # (k,)
-        self.A = A
-        self.inv_deg = 1.0 / deg  # (k,)
-
-    # ------------------------------------------------------------------
-    # Forward evaluation
-    # ------------------------------------------------------------------
-
-    def forward_numpy(self, history: np.ndarray) -> np.ndarray:
-        history = np.asarray(history, dtype=float)
-        single = history.ndim == 2
-        if single:
-            history = history[None]  # (1, L, k)
-        theta = history[:, -1, :]  # (N, k)
-        # sin(theta_j - theta_i) for every (i, j) pair, masked by A.
-        diff = theta[:, None, :] - theta[:, :, None]  # (N, k, k): [n,i,j] = theta_j - theta_i
-        coupling = np.einsum("ij,nij->ni", self.A, np.sin(diff)) * self.inv_deg  # (N, k)
-        result = theta + self.dt * (self.omega + self.k_coupling * coupling)
-        return result[0] if single else result
-
-    def forward_torch(self, history):
-        single = history.ndim == 2
-        if single:
-            history = history.unsqueeze(0)
-        A = torch.as_tensor(self.A, dtype=history.dtype, device=history.device)
-        inv_deg = torch.as_tensor(self.inv_deg, dtype=history.dtype, device=history.device)
-        omega = torch.as_tensor(self.omega, dtype=history.dtype, device=history.device)
-        theta = history[:, -1, :]
-        diff = theta.unsqueeze(1) - theta.unsqueeze(2)  # (N, k, k): [n,i,j] = theta_j - theta_i
-        coupling = torch.einsum("ij,nij->ni", A, torch.sin(diff)) * inv_deg
-        result = theta + self.dt * (omega + self.k_coupling * coupling)
-        return result.squeeze(0) if single else result
-
-    # ------------------------------------------------------------------
-    # Serialization
-    # ------------------------------------------------------------------
-
-    def state_dict(self) -> dict:
-        return {
-            "__type__": "kuramoto",
-            "graph": np.asarray(self.graph, dtype=float),
-            "omega": np.asarray(self.omega, dtype=float),
-            "k_coupling": float(self.k_coupling),
-            "dt": float(self.dt),
-        }
-
-    @classmethod
-    def from_state_dict(cls, d: dict) -> KuramotoMechanism:
-        return cls(
-            graph=np.asarray(d["graph"], dtype=float),
-            omega=np.asarray(d["omega"], dtype=float),
-            k_coupling=float(np.asarray(d["k_coupling"]).item()),
-            dt=float(np.asarray(d["dt"]).item()),
-        )
-
-
 def mechanism_from_state_dict(d: dict) -> Mechanism:
     """Dispatch on the ``"__type__"`` discriminator to the right subclass.
 
@@ -703,6 +606,4 @@ def mechanism_from_state_dict(d: dict) -> Mechanism:
         return MLPMechanism.from_state_dict(d)
     if mech_type == "spring":
         return SpringMechanism.from_state_dict(d)
-    if mech_type == "kuramoto":
-        return KuramotoMechanism.from_state_dict(d)
     raise ValueError(f"unknown mechanism __type__: {mech_type!r}")

@@ -961,7 +961,6 @@ def fig5_horizon_decay(tables_dir: Path, out_path) -> bool:
 _GRAPH_QUALITY_STYLE = {
     "full_nl": ("#999999", "o"),  # dissipative baseline -- grey, deliberately unremarkable
     "smoke_spring": ("#2166AC", "s"),  # non-dissipative (M4c)
-    "smoke_kuramoto": ("#B2182B", "^"),  # non-dissipative (M4c)
 }
 
 

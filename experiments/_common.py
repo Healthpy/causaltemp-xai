@@ -671,31 +671,23 @@ def build_masked_mechanism(mechanism, inferred_adj: np.ndarray):
     the standing explanation is that a *dissipative* mechanism attenuates the
     oracle shift before parent-set differences can propagate. Testing that
     requires running the same ladder on a family where effects persist
-    (``rho ~ 1``), so ``SpringMechanism`` and ``KuramotoMechanism`` are
-    supported here. Masking is arguably more direct for them than for the MLP:
-    both take ``graph`` as an explicit coupling structure, so restricting it
-    zeroes the corresponding couplings and nothing else -- the springs' stiffness
-    ``k_spring``/``dt`` and the oscillators' ``omega``/``k_coupling``/``dt`` are
-    carried through unchanged.
+    (``rho ~ 1``), so ``SpringMechanism`` is supported here. Masking is arguably
+    more direct for it than for the MLP: it takes ``graph`` as an explicit
+    coupling structure, so restricting it zeroes the corresponding couplings and
+    nothing else -- the springs' stiffness ``k_spring``/``dt`` is carried through
+    unchanged.
 
-    Note for Kuramoto: its update normalizes by in-degree
-    (``deg_i = max(sum_j A[i,j], 1)``), so a masked graph changes the
-    normalization as well as the neighbour set. That is faithful -- it is what
-    the mechanism would do with that graph -- but it means the masked mechanism
-    is not simply "the true one with terms deleted".
+    ``KuramotoMechanism`` was supported here until 2026-08-11, when the Kuramoto
+    family was removed from the project (`DECISIONS.md`).
 
     Raises ``TypeError`` for any other mechanism family.
     """
-    from causaltemp_xai.benchmarks.mechanisms import (
-        KuramotoMechanism,
-        MLPMechanism,
-        SpringMechanism,
-    )
+    from causaltemp_xai.benchmarks.mechanisms import MLPMechanism, SpringMechanism
 
-    if not isinstance(mechanism, (MLPMechanism, SpringMechanism, KuramotoMechanism)):
+    if not isinstance(mechanism, (MLPMechanism, SpringMechanism)):
         raise TypeError(
-            "graph-error decomposition requires an MLPMechanism, SpringMechanism "
-            f"or KuramotoMechanism; got {type(mechanism).__name__}"
+            "graph-error decomposition requires an MLPMechanism or "
+            f"SpringMechanism; got {type(mechanism).__name__}"
         )
     inferred_adj = np.asarray(inferred_adj, dtype=float)
     if inferred_adj.shape != mechanism.graph.shape:
@@ -705,13 +697,6 @@ def build_masked_mechanism(mechanism, inferred_adj: np.ndarray):
         )
     if isinstance(mechanism, SpringMechanism):
         return SpringMechanism(graph=inferred_adj, k_spring=mechanism.k_spring, dt=mechanism.dt)
-    if isinstance(mechanism, KuramotoMechanism):
-        return KuramotoMechanism(
-            graph=inferred_adj,
-            omega=mechanism.omega,
-            k_coupling=mechanism.k_coupling,
-            dt=mechanism.dt,
-        )
     return MLPMechanism(
         graph=inferred_adj,
         hidden=mechanism.hidden,

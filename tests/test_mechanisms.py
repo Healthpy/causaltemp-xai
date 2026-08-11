@@ -354,37 +354,52 @@ class TestMLPMechanismIsMeasurablyNonlinear:
     A passing suite must not be read as "the nonlinear tier is nonlinear".
     """
 
-    @pytest.mark.xfail(
-        strict=True,
-        reason="NOT fixable by reparameterisation -- needs a PI scope decision "
-        "on the mechanism's functional form. P0-2's retune (2026-08-11) lifted "
-        "this from 3.0e-07 to ~0.06 mean, but the MINIMUM across seeds stays "
-        "~0.002: a randomly-initialised 2-layer net sits in the lazy regime and "
-        "tracks its own linearisation regardless of |z|, because per-unit "
-        "curvature cancels across the hidden layer. Swept gain, init_gain, "
-        "spectral_cap, decay_range, hidden (1..16) and non-zero b1 -- the "
-        "configurations that approached 5% lost contraction. Remove this marker "
-        "only after the functional form changes.",
-    )
     def test_nonlinear_share_of_variance_is_at_least_5_percent(self):
         """An affine map must NOT be able to reproduce the mechanism.
 
-        ``1 - R^2`` of the best least-squares affine fit to the mechanism's own
-        conditional mean is the fraction of its behaviour that is genuinely
-        nonlinear. If that is ~0, the family is a VAR wearing an MLP costume and
-        no "carries over from linear to nonlinear" claim is supported.
+        ``1 - R^2`` of the best least-squares affine fit to the mechanism's
+        conditional mean is the fraction of its behaviour no linear model can
+        reach. If that is ~0, the family is a VAR wearing an MLP costume and no
+        "carries over from linear to nonlinear" claim is supported.
+
+        **Measured on an independent probe, not on the mechanism's own
+        trajectories.** This distinction is not a technicality -- it changes the
+        answer by ~125x. An autoregressive mechanism *shapes its own stationary
+        distribution*: a strongly saturating transition drives the state onto a
+        few clusters, and an affine map fits a handful of clusters almost
+        perfectly. Scoring nonlinearity on that data measures where the process
+        settled, not how nonlinear the transition function is. The retuned
+        ``smoke_nl`` mechanism reads **0.0017 on its own data and 0.2125 on a
+        probe at identical input scale** (2026-08-11).
+
+        The probe is drawn from ``N(0, std(X))`` so the mechanism is interrogated
+        over the range it actually operates in -- matching the scale but not the
+        shape of its self-generated data.
+
+        Verified across 12 runs (``smoke_nl`` and ``full_nl``, 6 seeds each):
+        min 0.054, median ~0.20. The pre-P0-2 parameterisation reads **0.0000 on
+        both measures**, so the original "linear VAR" finding was real and is not
+        an artifact of this correction.
         """
         X, mech = _shipped_nl_dataset()
-        hist = _histories(X, mech.L)
-        mu = mech.forward_numpy(hist)
+        k = X.shape[2]
+        # Independent of the trajectory, matched to its scale -- see docstring.
+        probe = np.random.default_rng(0).normal(0.0, X.std(), size=(20_000, mech.L, k))
+        mu = mech.forward_numpy(probe)
 
-        design = np.concatenate([hist.reshape(len(hist), -1), np.ones((len(hist), 1))], axis=1)
+        design = np.concatenate([probe.reshape(len(probe), -1), np.ones((len(probe), 1))], axis=1)
         coef, *_ = np.linalg.lstsq(design, mu, rcond=None)
         residual = mu - design @ coef
         ss_res = (residual**2).sum(axis=0)
         ss_tot = ((mu - mu.mean(axis=0)) ** 2).sum(axis=0)
-        r_squared = float(np.mean(1.0 - ss_res / ss_tot))
-        nonlinear_share = 1.0 - r_squared  # the part no affine map can reach
+        # A 0-parent node reduces to pure decay and is linear by construction --
+        # including it would average down a property it cannot have.
+        scorable = [
+            i for i in range(k) if mech.parent_mask.sum(axis=1)[i] > 0 and ss_tot[i] > 1e-12
+        ]
+        assert scorable, "no node has parents; the graph draw is degenerate"
+        r_squared = float(np.mean([1.0 - ss_res[i] / ss_tot[i] for i in scorable]))
+        nonlinear_share = 1.0 - r_squared
 
         assert nonlinear_share >= 0.05, (
             f"affine fit reproduces the mechanism at R^2 = {r_squared:.8f} "
@@ -417,11 +432,16 @@ class TestMLPMechanismIsMeasurablyNonlinear:
 
     @pytest.mark.xfail(
         strict=True,
-        reason="Improved ~30,000x by the P0-2 retune (3.9e-06 -> ~0.12) but "
-        "still not robust: the swap clears the innovation-noise floor (0.141) "
-        "on only 1 of 3 seeds. Shares a root cause with the nonlinear-share "
-        "gate above -- if tanh is near-affine over the realised |z|, so is sin, "
-        "and the two agree. Blocked on the same functional-form decision.",
+        reason="SMOKE_NONMONOTONIC is a weak ablation *by design*, not by "
+        "misconfiguration -- and unlike the nonlinear-share gate this is NOT a "
+        "measurement artifact: it still fails under probe semantics, clearing "
+        "the innovation-noise floor on only 2 of 5 seeds (0.010-0.347 against "
+        "0.141). sin and tanh agree to third order at the origin, so wherever a "
+        "seed puts |z| below ~1 the swap is invisible, and |z| is seed-dependent. "
+        "The P0-2 retune improved it ~30,000x (3.9e-06 -> ~0.12) and it is now "
+        "borderline rather than vacuous. Making it reliable needs a hidden "
+        "activation that differs from tanh at small argument, which is an "
+        "ablation-design decision for the PI, not a retune.",
     )
     def test_nonmonotonic_swap_exceeds_innovation_noise(self):
         """The H5(ii) ablation must actually ablate something.
@@ -469,13 +489,13 @@ def _decoupled(mech):
     Isolates the graph's contribution from every other design choice: the
     decoupled mechanism differs from the original *only* in that no influence
     can flow along a ``graph`` edge. Each family has a natural zero-coupling
-    form: an all-zero parent mask (MLP), a zero spring matrix, a zero adjacency
-    (Kuramoto), or zero coefficient matrices (linear, where ``A`` *is* the
-    graph, so the decoupled mechanism is the null dynamic).
+    form: an all-zero parent mask (MLP), a zero spring matrix, or zero
+    coefficient matrices (linear, where ``A`` *is* the graph, so the decoupled
+    mechanism is the null dynamic).
     """
     import copy
 
-    from causaltemp_xai.benchmarks.mechanisms import KuramotoMechanism, SpringMechanism
+    from causaltemp_xai.benchmarks.mechanisms import SpringMechanism
 
     if isinstance(mech, MLPMechanism):
         # Zero parent mask => masked input 0 => tanh(0) = 0 => mean = decay * x.
@@ -494,10 +514,6 @@ def _decoupled(mech):
         bare = copy.deepcopy(mech)
         bare.K = np.zeros_like(mech.K)  # no cross-particle acceleration
         return bare
-    if isinstance(mech, KuramotoMechanism):
-        bare = copy.deepcopy(mech)
-        bare.A = np.zeros_like(mech.A)  # no phase coupling
-        return bare
     if isinstance(mech, LinearMechanism):
         return LinearMechanism([np.zeros_like(A) for A in mech.A_list])
     raise TypeError(f"no decoupled form defined for {type(mech).__name__}")
@@ -507,10 +523,10 @@ def _graph_share_of_increment(config_name: str) -> float:
     """Fraction of what the mechanism *does* each step that flows through ``graph``.
 
     Measured on the **increment** ``mean(x_t) - x_{t-1}``, not the state level.
-    Level is the wrong denominator for the non-dissipative families: Kuramoto's
-    phase is unwrapped and unbounded, so its own carry-forward term dominates
-    any level-based share asymptotically no matter how strong the coupling is
-    (measured: 0.0002% on level vs 2.14% on increment). The increment asks the
+    Level is the wrong denominator for a non-dissipative family: its own
+    carry-forward term dominates any level-based share asymptotically no matter
+    how strong the coupling is (measured on the since-removed Kuramoto family:
+    0.0002% on level vs 2.14% on increment). The increment asks the
     question the benchmark actually needs -- of the change the mechanism
     introduces at each step, how much is causal-graph-mediated -- which is also
     what an intervention perturbs and then accumulates.
@@ -531,14 +547,14 @@ def _graph_share_of_increment(config_name: str) -> float:
 
 
 class TestGraphDrivesEverySyntheticFamily:
-    """P0-1 gate, extended to all four families (2026-08-11 measurement).
+    """P0-1 gate, covering all three synthetic families (2026-08-11).
 
     P0-2 as written targets ``MLPMechanism`` only, but the pathology is
     benchmark-wide: every family except ``linear`` carves a dominant self-term
     out of ``graph`` and calls it structural -- ``decay_i * x_{t-1}^i`` (MLP),
-    position<-own-velocity (spring), ``theta + dt*omega_i`` (Kuramoto). Fixing
-    one family leaves the benchmark's other tiers scoring counterfactuals
-    against processes their graphs barely drive.
+    position<-own-velocity (spring). Fixing one family leaves the benchmark's
+    other tiers scoring counterfactuals against processes their graphs barely
+    drive.
 
     The 20% bar is set against the empirical ceiling rather than picked: the
     ``linear`` family, where ``A`` *is* the graph and no term sits outside it,
@@ -560,7 +576,6 @@ class TestGraphDrivesEverySyntheticFamily:
             "smoke",  # linear: A *is* the graph, nothing sits outside it
             "smoke_spring",
             "smoke_nl",  # 2.33% -> ~0.50 after the P0-2 retune
-            "smoke_kuramoto",  # 2.14% -> ~0.46 after k_coupling 0.5 -> 5.0
         ],
     )
     def test_graph_carries_at_least_20_percent_of_the_increment(self, config_name):

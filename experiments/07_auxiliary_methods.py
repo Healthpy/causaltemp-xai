@@ -281,11 +281,12 @@ def _graph_quality_sweep(
 
     **Dissipation hypothesis CONFIRMED (2026-08-05, `b56d0d8`).** The above
     explanation was "unverified" pending a non-dissipative test; it no longer
-    is. Run on ``smoke_spring``/``smoke_kuramoto`` (M4c, rho ~ +0.02 / ~0,
-    vs. `full_nl`'s rho ~ -0.29), 3 seeds each: ``graph_error`` reaches
-    0.09-0.54 on Spring and 0.06-0.16 on Kuramoto across the same corruption
-    ladder that produced 0.0018-0.0040 on `full_nl` -- 45x-123x the dynamic
-    range, non-overlapping across seeds. Graph quality is near-irrelevant
+    is. Run on ``smoke_spring`` (M4c, rho ~ +0.02, vs. `full_nl`'s rho ~ -0.29),
+    3 seeds: ``graph_error`` reaches 0.09-0.54 across the same corruption
+    ladder that produced 0.0018-0.0040 on `full_nl`. **Caveat (2026-08-11):**
+    the ratio is scale-confounded -- ``graph_error`` is in raw state units and
+    sigma differs across families, so the headline "45x-123x" overstates it.
+    Graph quality is near-irrelevant
     when effects attenuate before parent-set differences propagate
     (dissipative), and bites hard once effects persist (non-dissipative).
     ``graph_error`` is therefore a graph-quality measure **conditional on**
@@ -455,7 +456,7 @@ def run_cross_method_agreement(cfg, out_dir, pc_alpha: float = 0.05) -> None:
 
     Works on **any** Tier-1 synthetic config, including `linear` (VAR)
     -- unlike `run_graph_method`'s CF-faith decomposition (restricted to
-    `mlp`/`spring`/`kuramoto`, since it calls `build_masked_mechanism`, which
+    `mlp`/`spring`, since it calls `build_masked_mechanism`, which
     `LinearMechanism` genuinely cannot support), this function never masks a
     mechanism -- it only fits both methods and compares raw adjacencies, which
     is mechanism-type-agnostic. Guard dropped 2026-08-06 (M4i, `DECISIONS.md`)
@@ -541,10 +542,11 @@ def run_graph_method(
 ) -> None:
     """Self-graphing + Axis-A graph-error decomposition for ``dynotears``/``pcmciplus``."""
     # Families whose mechanism `build_masked_mechanism` can restrict to an
-    # inferred graph. Spring/Kuramoto were added 2026-08-05 specifically to test
-    # the dissipation hypothesis for M4e's near-flat graph-quality ladder: the
+    # inferred graph. Spring was added 2026-08-05 specifically to test the
+    # dissipation hypothesis for M4e's near-flat graph-quality ladder: the
     # ladder needs a NON-dissipative family (rho ~ 1) as its comparison arm.
-    _MASKABLE = ("mlp", "spring", "kuramoto")
+    # (Kuramoto was the other such family; removed 2026-08-11, DECISIONS.md.)
+    _MASKABLE = ("mlp", "spring")
     if cfg.mechanism_type not in _MASKABLE:
         raise SystemExit(
             f"[07] self-graphing graph-error needs a config whose mechanism can be "

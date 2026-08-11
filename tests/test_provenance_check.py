@@ -138,7 +138,7 @@ class TestPrintProvenanceWarning:
 
 
 class TestMaskedMechanismM4c:
-    """`build_masked_mechanism` gained Spring/Kuramoto support so the
+    """`build_masked_mechanism` gained Spring support so the
     graph-quality ladder can be run on a NON-dissipative family. The ladder is
     nearly flat on `full_nl` and the standing explanation is dissipation; that
     hypothesis is only testable if masking works on a family where effects
@@ -168,34 +168,18 @@ class TestMaskedMechanismM4c:
         assert m.graph.sum() == 2, "the original must not be mutated"
         assert masked.k_spring == m.k_spring and masked.dt == m.dt
 
-    def test_kuramoto_masking_changes_the_coupling(self):
-        import numpy as np
-
-        from causaltemp_xai.benchmarks.mechanisms import KuramotoMechanism
-
-        g = self._graph()
-        m = KuramotoMechanism(graph=g, omega=np.ones(4), k_coupling=1.0, dt=0.1)
-        masked = _common.build_masked_mechanism(m, np.zeros_like(g))
-        assert masked.graph.sum() == 0
-        assert m.graph.sum() == 2
-        assert masked.k_coupling == m.k_coupling and masked.dt == m.dt
-        assert np.array_equal(masked.omega, m.omega)
-
     def test_masking_actually_changes_the_rollout(self):
         """The real requirement: a masked mechanism must PREDICT differently.
         Equal parameters with an unused graph would pass the checks above and
         still make the ladder meaningless."""
         import numpy as np
 
-        from causaltemp_xai.benchmarks.mechanisms import KuramotoMechanism, SpringMechanism
+        from causaltemp_xai.benchmarks.mechanisms import SpringMechanism
 
         g = self._graph()
         rng = np.random.default_rng(0)
         window = rng.normal(size=(1, 4))
-        for m in (
-            SpringMechanism(graph=g, k_spring=5.0, dt=0.1),
-            KuramotoMechanism(graph=g, omega=np.ones(4), k_coupling=5.0, dt=0.1),
-        ):
+        for m in (SpringMechanism(graph=g, k_spring=5.0, dt=0.1),):
             masked = _common.build_masked_mechanism(m, np.zeros_like(g))
             assert not np.allclose(
                 m.forward_numpy(window), masked.forward_numpy(window)

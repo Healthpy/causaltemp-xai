@@ -17,41 +17,40 @@ _phase09 = importlib.import_module("experiments.09_tier1_synthetic_suite")
 
 
 class TestResolveJobs:
-    def test_all_four_families_smoke_all_resolve(self):
+    def test_all_three_families_smoke_all_resolve(self):
         jobs, skipped = _phase09._resolve_jobs(list(_phase09.ALL_FAMILIES), ["smoke"])
-        assert len(jobs) == 4
+        assert len(jobs) == 3
         assert skipped == []
         resolved = {family: config for family, _scale, config in jobs}
         assert resolved == {
             "linear": "smoke",
             "mlp": "smoke_nl",
             "spring": "smoke_spring",
-            "kuramoto": "smoke_kuramoto",
         }
 
-    def test_full_scale_skips_spring_and_kuramoto(self):
-        """Spring/kuramoto have no full-scale preset -- skipped and recorded,
-        not silently dropped."""
+    def test_full_scale_skips_spring(self):
+        """Spring has no full-scale preset -- skipped and recorded, not
+        silently dropped."""
         jobs, skipped = _phase09._resolve_jobs(list(_phase09.ALL_FAMILIES), ["full"])
         resolved_families = {family for family, _scale, _config in jobs}
         assert resolved_families == {"linear", "mlp"}
         skipped_families = {s["family"] for s in skipped}
-        assert skipped_families == {"spring", "kuramoto"}
+        assert skipped_families == {"spring"}
         for s in skipped:
             assert "no full-scale preset" in s["reason"]
 
-    def test_both_scales_yields_six_jobs_two_skips(self):
+    def test_both_scales_yields_five_jobs_one_skip(self):
         jobs, skipped = _phase09._resolve_jobs(list(_phase09.ALL_FAMILIES), ["smoke", "full"])
-        assert len(jobs) == 6  # 4 smoke + 2 full (linear, mlp)
-        assert len(skipped) == 2  # spring/full, kuramoto/full
+        assert len(jobs) == 5  # 3 smoke + 2 full (linear, mlp)
+        assert len(skipped) == 1  # spring/full
 
     def test_empty_job_list_raises(self):
         with pytest.raises(SystemExit):
-            _phase09._resolve_jobs(["spring", "kuramoto"], ["full"])
+            _phase09._resolve_jobs(["spring"], ["full"])
 
     def test_maskable_families_exclude_linear(self):
         assert "linear" not in _phase09._MASKABLE_FAMILIES
-        assert set(_phase09._MASKABLE_FAMILIES) == {"mlp", "spring", "kuramoto"}
+        assert set(_phase09._MASKABLE_FAMILIES) == {"mlp", "spring"}
 
 
 class TestPoolSuitability:
