@@ -6,7 +6,7 @@ The full method collections are available in the subpackages:
                                              TSCausalCF, cfts_*)
   - causaltemp_xai.methods.causal          (DYNOTEARS, PCMCIPlus)
 
-The native from-scratch ``WachterCF`` was removed 2026-08-05 (`DECISIONS.md`):
+The native from-scratch ``WachterCF`` was removed 2026-08-05:
 ``CftsWachterCF`` wraps the genuine vendored ``cfts`` implementation and was
 already what the pipeline used, so the from-scratch reimplementation was
 redundant duplication, not a distinct method.

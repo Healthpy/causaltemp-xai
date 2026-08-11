@@ -8,7 +8,7 @@ both directions, and the benchmark's own results show each:
 * CARLA on ``full``: CF-faith(rollout) = 1.00 and validity = 1.00, yet the
   intervention's effect on the final timestep is ~2.6e-04. The label flip comes
   from the noiseless rollout discarding the abducted noise, not from the
-  intervention (2026-07-30 diagnosis, ``DECISIONS.md``). This module is the
+  intervention (2026-07-30 diagnosis). This module is the
   metric that catches that.
 * CARLA on ``full_nl``: CF-faith = 1.00, validity = 0.00 — perfectly faithful,
   causally inert.
@@ -78,7 +78,7 @@ as a ``do()`` makes the oracle reproduce ``x_cf`` exactly, so
 opposite directions, so the benchmark reports the bracket:
 :func:`do_complexity` counts how many timesteps a proposal must declare as
 actions before the mechanism can produce it, and is published beside
-``delta_trajectory`` in both modes (RISK-18, ``ROADMAP.md`` M2b).
+``delta_trajectory`` in both modes (RISK-18, M2b).
 
 Prior work: necessity/sufficiency for explanation is **not** new (LEWIS,
 Galhotra et al. 2021; Watson et al. 2021). What is specific here is the

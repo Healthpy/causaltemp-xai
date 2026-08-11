@@ -215,7 +215,7 @@ class DYNOTEARS:
         """Build a :class:`~causaltemp_xai.benchmarks.mechanisms.LinearMechanism`
         from this model's own **signed** learned inter-slice weights.
 
-        M4g (`DECISIONS.md` 2026-08-06), built for Tier 2 (real data, no true
+        M4g (2026-08-06), built for Tier 2 (real data, no true
         mechanism to mask): unlike ``build_masked_mechanism``
         (``experiments/_common.py``), which always keeps a *known-true*
         mechanism's real coefficients and only restricts its edge support,

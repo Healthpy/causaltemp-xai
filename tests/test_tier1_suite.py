@@ -1,4 +1,4 @@
-"""Tests for `experiments/09_tier1_synthetic_suite.py` (M4i, `DECISIONS.md`
+"""Tests for `experiments/09_tier1_synthetic_suite.py` (M4i,
 2026-08-06).
 
 Fast, deterministic unit tests of the pure helper logic (job resolution,

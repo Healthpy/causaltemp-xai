@@ -1,6 +1,6 @@
 """The metric → axis map. Every reported metric belongs to exactly one axis.
 
-Three axes, fixed 2026-08-03 (``DECISIONS.md``):
+Three axes, fixed 2026-08-03:
 
 ======  ==========================  =================
 axis    scope                       unit of analysis
@@ -52,7 +52,7 @@ AXIS_METRICS: dict[str, tuple[str, ...]] = {
         "residual_dependence",
         "graph_error",
         "propagation_error",
-        # uncertainty-aware DYNOTEARS ensemble (M4f, DECISIONS.md 2026-08-06) —
+        # uncertainty-aware DYNOTEARS ensemble (M4f, 2026-08-06) —
         # spread of graph_error/inter-graph disagreement across B independent
         # inferred graphs; extends graph_error above, same axis (per-dataset)
         "graph_error_ensemble_mean",
@@ -99,7 +99,7 @@ AXIS_METRICS: dict[str, tuple[str, ...]] = {
         "do_complexity_median",
         "do_complexity_stability",
         # discovered-graph CF-faith on Tier 2, uncertainty-quantified (M4g,
-        # DECISIONS.md 2026-08-06) — deliberately distinct keys from
+        # 2026-08-06) — deliberately distinct keys from
         # cf_faith_rollout_hard/soft above: those are exact, against the
         # KNOWN true mechanism (Tier 1); these are against an INFERRED,
         # uncertainty-quantified approximate mechanism (Tier 2, no true
@@ -134,5 +134,5 @@ def axis_of(metric: str) -> str:
         raise KeyError(
             f"metric {metric!r} belongs to no axis. Every reported metric must be "
             f"assigned in AXIS_METRICS (causaltemp_xai/metrics/taxonomy.py); see "
-            f"DECISIONS.md 2026-08-03."
+            f"2026-08-03."
         ) from None

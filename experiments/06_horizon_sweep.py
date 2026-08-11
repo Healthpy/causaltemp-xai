@@ -9,7 +9,7 @@ the horizon at which validity collapses become measurable.
 
 **What this phase does not do.** It does not change ``t0_fractions``. That
 default stays ``(0.25, 0.5)`` and changing it is recorded as *rejected, not
-deferred* (`ROADMAP.md` Descoped Items, 2026-07-31): PearlCARLA's
+deferred* (Descoped Items, 2026-07-31): PearlCARLA's
 ``validity = 0.00`` under the default **is** the result, so moving ``t0`` later
 would select the regime where the method succeeds and delete the finding. This
 phase is purely additive — it writes to ``results/<config>/horizon/`` and

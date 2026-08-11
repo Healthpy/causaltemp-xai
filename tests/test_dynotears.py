@@ -77,7 +77,7 @@ class TestDYNOTEARS:
 
 
 class TestToLinearMechanism:
-    """M4g (`DECISIONS.md` 2026-08-06): building a rollout-usable mechanism
+    """M4g (2026-08-06): building a rollout-usable mechanism
     from DYNOTEARS's own signed learned weights, for Tier 2 (no true
     mechanism to mask)."""
 

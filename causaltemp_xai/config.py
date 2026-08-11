@@ -22,7 +22,7 @@ design, pre-registered expected direction, and smoke-scale preliminary
 finding for each. **No full-scale variant of any of these three presets
 exists or is planned as part of this work.**
 
-One further M4c preset (`DECISIONS.md` 2026-08-05) adds a **non-dissipative**
+One further M4c preset (2026-08-05) adds a **non-dissipative**
 mechanism family, testing H4 evidence (i) (renumbered 2026-08-06, was H8b)
 in the regime where causal effects persist rather than decay --
 ``SMOKE_SPRING`` (``mechanism_type="spring"``, ``k=10`` exposed channels =
@@ -32,10 +32,6 @@ et al. IEEE BigData 2025). Unlike every other preset in this module it is
 **not** contractive by design -- see the generator class's docstring. No
 full-scale variant exists yet; smoke-scale verification is M4c's first DoD
 gate.
-
-``SMOKE_KURAMOTO`` was **removed 2026-08-11** (`DECISIONS.md`) -- three
-synthetic families are enough, and Kuramoto was the worst-conditioned of the
-four (the graph carried 2.1% of its per-step increment).
 
 Two **label-site presets** are registered for H4 evidence (ii) (renumbered
 2026-08-06, was H8c; M2b, 2026-08-03):
@@ -225,7 +221,7 @@ FULL_NL = BenchmarkConfig(
 # Each varies exactly one field from its base preset: `label_fn`. The
 # trajectory, the SCM, the noise and the seed are all unchanged, so a
 # difference in the horizon curve is attributable to the label *site* and
-# nothing else -- which is the whole point (RISK-19, DECISIONS.md 2026-08-03).
+# nothing else -- which is the whole point (RISK-19, 2026-08-03).
 #
 # `interior_threshold` reads channel 0 at `int(0.6 * T)` instead of at `T - 1`,
 # while the trajectory still runs to `T`. So `t_label - t0` is much shorter
@@ -461,7 +457,7 @@ SMOKE_REGIME_HMM = BenchmarkConfig(
 #: ``n_particles = k // 2``. ``sparsity`` is a *particle-level* coupling
 #: probability here, not a per-channel one. ``n_exogenous=2`` guarantees
 #: particles p4/p5 (0-indexed 3/4) have no incoming spring coupling,
-#: matching M4c's own DoD naming (`DECISIONS.md` 2026-08-05).
+#: matching M4c's own DoD naming (2026-08-05).
 _SPRING_HYPERPARAMS: dict = {
     "k_spring": 0.3,
     "dt": 0.1,

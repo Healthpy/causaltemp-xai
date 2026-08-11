@@ -8,7 +8,7 @@ single per-element threshold they share.
 
 A ported ``Intervention`` dataclass and ``apply_intervention()`` also lived here
 until 2026-08-03. Their only consumer was ``scm/counterfactual.py``, deleted the
-same day as a duplicate of ``benchmarks/structural_cf.py`` (``DECISIONS.md``);
+same day as a duplicate of ``benchmarks/structural_cf.py``;
 the do-operator's live implementation is that module's ``structural_counterfactual``
 / ``structural_counterfactual_schedule``.
 """
@@ -53,7 +53,7 @@ INTERVENTION_TOL = 1e-3
 #:
 #: **Opt-in.** Every consumer defaults to ``rel_tol=None`` (absolute), so this
 #: changes no committed number. Flipping the default is a separate decision
-#: (``DECISIONS.md`` 2026-08-03).
+#: (2026-08-03).
 RELATIVE_INTERVENTION_TOL = 0.005
 
 #: Floor on a per-channel threshold, so a (near-)constant channel does not get a

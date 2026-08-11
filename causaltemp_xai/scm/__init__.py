@@ -1,7 +1,7 @@
 """SCM sub-package: intervention-time derivation and the shared "is this changed?" predicate.
 
 Reduced to :mod:`~causaltemp_xai.scm.intervention` on 2026-08-03
-(``DECISIONS.md``). The package previously also carried a ported
+. The package previously also carried a ported
 ``causal_tscf_bench`` cluster — ``operators``, ``abduction``, ``counterfactual``,
 ``dag``, ``tscm`` — which was a **second, untested implementation of the
 benchmark's ground truth**, unimported from outside this package and

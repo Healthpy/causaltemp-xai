@@ -9,7 +9,7 @@ needs live method/model access and so belongs here rather than in the
 metrics-only Phase 04.
 
 **Attribution and Axis-A were removed from this phase 2026-08-03**
-(``DECISIONS.md``) along with ``causaltemp_xai/methods/attribution/``. Those
+ along with ``causaltemp_xai/methods/attribution/``. Those
 method families were descoped 2026-07-29 and no axis here scores them, but the
 code stayed wired in, so every run paid for work no contribution claims.
 
@@ -19,7 +19,7 @@ of selected CF methods -- no method is singled out or excluded from an
 applicable axis. Wachter is the cfts-backed gradient implementation
 (``CftsWachterCF``, wrapping the genuine vendored ``cfts`` library); the
 native from-scratch ``WachterCF`` reimplementation was removed 2026-08-05
-(``DECISIONS.md``) as redundant with it.
+ as redundant with it.
 
 Nonlinear configs (``smoke_nl``/``full_nl``) are supported here too, given a
 trained classifier (Phase 02 now trains on any config -- see its docstring).
@@ -87,7 +87,7 @@ def build_methods(X_train, y_train, target_class: int = TARGET_CLASS) -> dict:
     """The full set of selected CF methods -- every axis below runs on all of
     them. ``CftsWachter`` is the cfts-backed Wachter implementation; the
     native from-scratch ``WachterCF`` was removed 2026-08-05 as a redundant
-    duplicate (``DECISIONS.md``).
+    duplicate.
 
     ``target_class`` defaults to the pipeline-wide ``TARGET_CLASS`` and is
     parameterised only so Phase 07's necessity direction can build the same

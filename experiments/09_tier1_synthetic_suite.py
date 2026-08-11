@@ -1,4 +1,4 @@
-"""Phase 09: Tier-1 orchestration suite (M4i, `DECISIONS.md` 2026-08-06).
+"""Phase 09: Tier-1 orchestration suite (M4i, 2026-08-06).
 
 Runs the full/smoke experiment sequence (phases 01-04, then both
 causal-discovery methods) across **all 3 synthetic families** -- linear (VAR),
@@ -6,7 +6,7 @@ nonlinear (MLP), spring -- so "which discovery method recovers which kind of
 data best, compared against ground truth" is answerable from one file rather
 than manually assembling per-config commands.
 
-The kuramoto family was removed 2026-08-11 (`DECISIONS.md`); three synthetic
+The kuramoto family was removed 2026-08-11; three synthetic
 families are enough, and it was the worst-conditioned of the four.
 
 Family -> preset table (spring has no full-scale preset yet):

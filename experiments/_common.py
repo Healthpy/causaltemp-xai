@@ -678,7 +678,7 @@ def build_masked_mechanism(mechanism, inferred_adj: np.ndarray):
     unchanged.
 
     ``KuramotoMechanism`` was supported here until 2026-08-11, when the Kuramoto
-    family was removed from the project (`DECISIONS.md`).
+    family was removed from the project.
 
     Raises ``TypeError`` for any other mechanism family.
     """

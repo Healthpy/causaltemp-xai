@@ -12,7 +12,7 @@
               dependency, not vendored). Conditional-independence-testing
               approach (`ParCorr`), structurally unlike DYNOTEARS's
               continuous-optimization NOTEARS formulation. Wired 2026-08-06
-              (M4h, `DECISIONS.md`) specifically as the second,
+              (M4h) specifically as the second,
               different-model-class causal-discovery method
               `docs/risk_register.md` RISK-22 names as the mitigation for
               "bootstrap-ensemble variance is not model-misspecification
@@ -24,7 +24,7 @@
               discovered-mechanism CF-faith pipeline.
 
 CITRIS (Lippe et al., ICML 2022) was vendored here through 2026-08-06 and was
-deleted that day (M4h, `DECISIONS.md`) along with its vendored submodule and
+deleted that day (M4h) along with its vendored submodule and
 `benchmarks/interventional.py` — it required intervention-target-labeled data
 with no real-data analogue, and its own docstring already conceded near-chance
 graph recovery on this identity-mixing synthetic benchmark. PCMCIplus replaces

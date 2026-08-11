@@ -212,7 +212,7 @@ class TestTSCausalCFHelpers:
 
     def test_masks_no_typing_is_all_causal(self):
         """U_s and U_d both empty (this benchmark's actual full/full_nl case,
-        DECISIONS.md 2026-08-04): every cell is causal, the proximal step is
+        2026-08-04): every cell is causal, the proximal step is
         a structural no-op everywhere."""
         prox_mask, causal_mask, thresh = _build_loss_masks(
             T=4, k=3, u_s=[], u_d=[], lam_s=1.0, lam_d=13.0
@@ -305,7 +305,7 @@ class TestTSCausalCF:
     def test_typing_uses_the_benchmark_exogenous_channels(self, trained):
         """Whatever :func:`exogenous_channels` reports for this fixture's
         graph is exactly what ends up proximity-only at t=0 -- the one place
-        this benchmark's U_s/U_d/V decision (DECISIONS.md 2026-08-04) is
+        this benchmark's U_s/U_d/V decision (2026-08-04) is
         exercised end-to-end, not just in the mask-construction unit tests
         below."""
         _clf, data = trained
@@ -357,7 +357,7 @@ class TestCftsWachter:
 
     def test_flips_at_least_one(self, trained, cfts_dataset):
         """Carried over from the removed native WachterCF's test (2026-08-05,
-        DECISIONS.md) -- CftsWachterCF is what the pipeline actually uses, so
+        -- CftsWachterCF is what the pipeline actually uses, so
         this is the one that should carry the invariant now."""
         clf, data = trained
         X = data["X"]

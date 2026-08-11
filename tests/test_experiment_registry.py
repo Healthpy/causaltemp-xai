@@ -137,7 +137,7 @@ class TestSkipAux:
         src = inspect.getsource(_phase03.run)
         guard = src.index("if skip_aux:")
         # attribution_block / axis_a_block were removed 2026-08-03 with
-        # methods/attribution (DECISIONS.md); shift_vr is the surviving aux
+        # methods/attribution; shift_vr is the surviving aux
         # block. The invariant is unchanged: nothing expensive may run ahead of
         # the guard, or --skip-aux stops being a cheap CF-only path.
         for aux in ("shift_vr(",):

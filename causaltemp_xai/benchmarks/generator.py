@@ -164,11 +164,11 @@ def exogenous_channels(graph: np.ndarray) -> list[int]:
 
     This is the "dynamic exogenous" (``U_d``) half of the ``U_s``/``U_d``/``V``
     typing `TSCausalCF` (was `CausalFeasibilityCF`; Bahri et al., IEEE BigData 2025) needs (M3,
-    ``ROADMAP.md``). ``U_s`` (static exogenous) has no counterpart here -- this
+    milestone M3). ``U_s`` (static exogenous) has no counterpart here -- this
     benchmark has no channel held constant across ``t`` -- so it is always empty;
     every other channel is ``V`` (endogenous).
 
-    **Decided 2026-08-04 (`DECISIONS.md`) not to route around it:** at the
+    **Decided 2026-08-04 not to route around it:** at the
     sparsity the paper-scale presets actually use (0.2, ``k=10``), this returns
     ``[]`` for both ``full`` and ``full_nl`` -- every one of their 10 channels has
     at least one parent. ``smoke`` (``k=5``) returns one channel. The empty case
@@ -1039,7 +1039,7 @@ class SpringSCMT:
     guaranteeing at least two exogenous (``U_d``) particles regardless of the
     random sparsity draw — unlike :func:`exogenous_channels`'s general
     "accepted, not engineered away" stance for the dissipative families
-    (`DECISIONS.md` 2026-08-04), M4c's own DoD explicitly names p4/p5 as
+    (2026-08-04), M4c's own DoD explicitly names p4/p5 as
     required roots, so this family guarantees them by construction. See
     :meth:`exogenous_particles` for the particle-level (not raw
     per-channel) reading of ``U_d``.

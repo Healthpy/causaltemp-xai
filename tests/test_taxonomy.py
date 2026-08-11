@@ -1,4 +1,4 @@
-"""The taxonomy is enforced, not asserted (``DECISIONS.md`` 2026-08-03).
+"""The taxonomy is enforced, not asserted (2026-08-03).
 
 "No metric stands alone" is a claim about *every* metric the benchmark reports,
 so it has to be checked against what the pipeline actually emits rather than
@@ -144,7 +144,7 @@ class TestEveryEmittedMetricHasAnAxis:
         # / aggregate_method_row), not by evaluate_method, so name them rather
         # than silently exempting anything absent.
         from_experiments_layer = {"trsi", "scm_noise_plausibility"}
-        # M4g (`DECISIONS.md` 2026-08-06): discovered-graph CF-faith on Tier 2
+        # M4g (2026-08-06): discovered-graph CF-faith on Tier 2
         # is produced by experiments/07b_discovered_graph_real.py's
         # score_method_discovered, a real (numbered-module) phase, not by
         # evaluate_method/pns_direction either. Checked against that real

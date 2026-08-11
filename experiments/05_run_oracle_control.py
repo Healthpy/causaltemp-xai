@@ -157,7 +157,7 @@ def main(argv=None) -> int:
             "causaltemp_xai.config.seeded_variant, reading/writing under "
             "'<config>_seed<seed>'. Added 2026-08-04 -- until then the oracle "
             "control was the only phase that could not be replicated, so the "
-            "benchmark's anchor was reported without a CI (DECISIONS.md)."
+            "benchmark's anchor was reported without a CI."
         ),
     )
     args = parser.parse_args(argv)

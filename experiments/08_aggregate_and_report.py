@@ -727,7 +727,7 @@ def run_graph_quality_report(args) -> None:
     ``propagation_error`` (from the ``methods`` block) into a min/max span —
     the method-axis dynamic range that a flat graph-error curve must be shown
     against, or it reads as a null finding rather than a finding about
-    *dissipation* (`ROADMAP.md` M4e).
+    *dissipation* (M4e).
     """
     from causaltemp_xai.stats import bootstrap_ci
 
@@ -970,7 +970,7 @@ def fig6_graph_quality_curve(tables_dir: Path, out_path) -> bool:
     Two panels sharing a y-axis, because a flat `graph_error` curve alone
     reads as a null finding -- it is only a finding about *dissipation* once
     shown against the method-axis span the same decomposition produces
-    (`ROADMAP.md` M4e: "~54x more dynamic range across methods than across
+    (M4e: "~54x more dynamic range across methods than across
     graph quality" on `full_nl`). Left panel: `graph_error` against the
     controlled corruption fraction (0 = true graph, 1 = chance-level random
     graph of the same density) -- this, not raw SHD, is the x-axis, because

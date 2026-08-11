@@ -3,7 +3,7 @@
 M4b tests whether the horizon/decay result (H4, renumbered 2026-08-06, was H8)
 reproduces on real signal,
 with **no causal graph** -- discovered-graph CF-faith scoring is explicitly
-out of scope (`ROADMAP.md` M4b DoD). This module is therefore a **parallel**
+out of scope (M4b DoD). This module is therefore a **parallel**
 loader to :mod:`causaltemp_xai.data_io`, not a modification of it:
 :func:`load_real_dataset` mirrors ``data_io.load_dataset()``'s
 ``X_train/val/test`` + ``Y_train/val/test`` shape contract but omits
@@ -12,7 +12,7 @@ code must explicitly branch on their absence rather than silently loading a
 fake graph.
 
 ``.ts`` (sktime long-format) parsing is hand-rolled -- no sktime/aeon
-dependency exists in this repo (`DECISIONS.md` 2026-08-05) and the format is
+dependency exists in this repo (2026-08-05) and the format is
 simple: header lines starting ``@key value`` (metadata) followed by
 ``@data``, then one line per instance::
 

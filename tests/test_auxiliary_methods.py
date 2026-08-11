@@ -130,7 +130,7 @@ class TestGraphQualitySweepFracVacuous:
 
 
 class TestGraphQualitySweepEnsemble:
-    """M4f (`DECISIONS.md` 2026-08-06): the uncertainty-aware DYNOTEARS ensemble.
+    """M4f (2026-08-06): the uncertainty-aware DYNOTEARS ensemble.
 
     R6 adversarial gate for `graph_error_ensemble_*`/`mean_pairwise_shd`
     before either appears in any result table: a disagreement case (must show

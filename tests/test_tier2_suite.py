@@ -1,4 +1,4 @@
-"""Tests for `experiments/10_tier2_real_suite.py` (M4i, `DECISIONS.md`
+"""Tests for `experiments/10_tier2_real_suite.py` (M4i,
 2026-08-06).
 
 Fast, deterministic unit tests of the dataset-mapping/table-shaping logic --

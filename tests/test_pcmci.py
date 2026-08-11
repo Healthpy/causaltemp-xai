@@ -1,5 +1,5 @@
 """Tests for PCMCIplus (`tigramite`, installed as a PyPI dependency, M4h
-2026-08-06, `DECISIONS.md`) -- the second self-graphing method, wired
+2026-08-06) -- the second self-graphing method, wired
 specifically to answer `docs/risk_register.md` RISK-22's named gap.
 
 `TestPCMCIPlus` mirrors `tests/test_dynotears.py::TestDYNOTEARS`'s shape for
@@ -56,7 +56,7 @@ class TestPCMCIPlus:
         constraint-based, a structurally different method, not expected to
         match a continuous-optimisation method's recovery quality on this
         near-linear SCM. See the real smoke_nl reading recorded in
-        `DECISIONS.md` (M4h) for the actual measured number."""
+        the M4h decision entry for the actual measured number."""
         aucs = []
         for seed in range(3):
             g = NlinearSCMT(k=5, L=1, sparsity=0.3, T=25, N=400, seed=seed)

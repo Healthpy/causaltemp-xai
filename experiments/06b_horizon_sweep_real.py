@@ -4,10 +4,10 @@ Real-data sibling of ``experiments/06_horizon_sweep.py``, testing whether
 the horizon/decay result (H8: validity falls as intervention-to-outcome
 distance ``T - t0`` grows) reproduces outside synthetic SCMs. **No causal
 graph, no CF-faith, no PNS** -- those all need a known oracle mechanism,
-which real data doesn't have (`ROADMAP.md` M4b DoD: "discovered-graph
+which real data doesn't have (M4b DoD: "discovered-graph
 CF-faith scoring is explicitly out").
 
-**M4g addendum (`DECISIONS.md` 2026-08-06):** this phase now also persists
+**M4g addendum (2026-08-06):** this phase now also persists
 ``X_sel.npy``/``X_cf_<Method>.npy`` under ``results/real_<name>/lstm/cf/``
 (mirroring Phase 03's on-disk contract), which did not exist before this
 change. That is purely a prerequisite for M4g's *separate* discovered-graph
@@ -17,7 +17,7 @@ this phase's own scope (no graph, no CF-faith) is unchanged.
 **Why this is not a per-horizon sweep like Phase 06.** Phase 06 re-generates
 CARLA-family CFs at each swept ``t0`` because ``CARLARecourse``/
 ``PearlCARLARecourse`` take ``t0`` as a constructor argument. Both need a
-``mechanism`` and are therefore unusable here (`DECISIONS.md` 2026-08-05).
+``mechanism`` and are therefore unusable here (2026-08-05).
 The 5 graph-free methods used instead (``CftsWachter``, ``CftsCOMTE``,
 ``CftsCounts``, ``CftsConfeti``, ``CftsCels``) have **no** ``t0`` parameter
 at all -- they edit the trajectory freely and their intervention point is
@@ -144,7 +144,7 @@ def run(
     X_sel = X_test[sel_idx]
     print(f"[06b] {len(X_sel)} flip candidates (target_class={target_class})")
 
-    # M4g (`DECISIONS.md` 2026-08-06): persist X_sel + per-method CF arrays,
+    # M4g (2026-08-06): persist X_sel + per-method CF arrays,
     # mirroring Phase 03's on-disk contract exactly (`cf/X_sel.npy`,
     # `cf/X_cf_<Method>.npy`). Nothing wrote these before -- only aggregate
     # summary.json/per_instance.csv existed -- so there was nothing for a

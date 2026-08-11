@@ -210,9 +210,9 @@ class TestAcyclicity:
 
 
 class TestExogenousChannels:
-    """M3's U_s/U_d/V typing prerequisite (`TSCausalCF`, was `CausalFeasibilityCF`, `ROADMAP.md`).
+    """M3's U_s/U_d/V typing prerequisite (`TSCausalCF`, was `CausalFeasibilityCF`).
 
-    Decided 2026-08-04 (`DECISIONS.md`): a channel with zero incoming edges is
+    Decided 2026-08-04: a channel with zero incoming edges is
     this benchmark's ``U_d`` (dynamic exogenous); every other channel is ``V``.
     ``U_s`` has no counterpart here and is always empty. The decision was made
     *after* checking real data, not assumed -- these numbers pin that check so
@@ -240,7 +240,7 @@ class TestExogenousChannels:
     def test_full_and_full_nl_have_no_exogenous_channels_at_paper_scale(self):
         """The finding that shaped the M3 decision: U_d is empty where the
         DoD needs it. Sparsity 0.2 at k=10 leaves every channel a descendant
-        of at least one other -- not a bug to route around (`DECISIONS.md`)."""
+        of at least one other -- not a bug to route around."""
         for cfg, cls in ((FULL, LinearSCMT), (FULL_NL, NlinearSCMT)):
             scm = cls(k=cfg.k, L=cfg.L, sparsity=cfg.sparsity, seed=cfg.seed)
             assert exogenous_channels(scm.graph) == []

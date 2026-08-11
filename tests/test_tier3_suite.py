@@ -1,4 +1,4 @@
-"""Tests for `experiments/11_tier3_real_suite.py` (M4i, `DECISIONS.md`
+"""Tests for `experiments/11_tier3_real_suite.py` (M4i,
 2026-08-06).
 
 `known`/`domain` modes are exercised deterministically here, against a small

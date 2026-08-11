@@ -1,5 +1,5 @@
 """R6 adversarial tests for M4g's discovered-graph CF-faith on Tier 2
-(`DECISIONS.md` 2026-08-06).
+(2026-08-06).
 
 Genuine Tier 2 data has no ground truth, so nothing there can validate
 whether the discovered-graph pipeline behaves sanely. This file uses
@@ -9,7 +9,7 @@ faithfulness can be compared against what the discovered-graph pipeline
 (DYNOTEARS ensemble -> `to_linear_mechanism` -> `score_method_discovered`)
 reports for the *same* CF, scored only against the *inferred* mechanisms.
 
-Per R6 (`CLAUDE.md`): construct a CF that should pass and one that should
+Per R6: construct a CF that should pass and one that should
 fail, and verify the metric actually distinguishes them, before any table
 cites a `cf_faith_discovered_*` number.
 """

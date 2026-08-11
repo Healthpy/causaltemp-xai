@@ -164,7 +164,7 @@ class CARLARecourse:
         ``(0.25, 0.5)`` is the locked benchmark setting and is deliberately
         **not** tuned: PearlCARLA's ``validity = 0.00`` under it is the horizon
         result, not a misconfiguration, so changing this default would select
-        the regime where the method succeeds (`ROADMAP.md` Descoped Items,
+        the regime where the method succeeds (Descoped Items,
         2026-07-31).
     t0_steps : tuple[int, ...] | None
         **Absolute** candidate intervention timesteps. When given, takes

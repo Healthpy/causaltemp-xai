@@ -5,7 +5,7 @@ Reference / upstream
 Runge, J. (2020). "Discovering contemporaneous and lagged causal relations
 in autocorrelated nonlinear time series datasets." UAI 2020 (PCMCI+).
 Package: ``tigramite`` (https://github.com/jakobrunge/tigramite), installed
-as a normal PyPI dependency (2026-08-06, M4h, `DECISIONS.md`) — unlike
+as a normal PyPI dependency (2026-08-06, M4h) — unlike
 DYNOTEARS/CITRIS/``cfts``/``dynamask``, **not** vendored as a git submodule.
 This is a deliberate exception, confirmed directly with the user, not an
 inconsistency with this repo's usual vendoring convention.
@@ -20,7 +20,7 @@ exists here, so this adapter uses plain top-of-file imports; no
 
 Why PCMCIplus here
 -------------------
-Wired 2026-08-06 (M4h, `DECISIONS.md`) specifically as the second,
+Wired 2026-08-06 (M4h) specifically as the second,
 structurally different causal-discovery method `docs/risk_register.md`
 RISK-22 names as the missing mitigation for "bootstrap-ensemble variance is
 not model-misspecification bias" (M4f/M4g). PCMCIplus is a constraint-based /

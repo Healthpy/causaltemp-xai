@@ -1,4 +1,4 @@
-"""Phase 11: Tier-3 orchestration scaffold (M4i, `DECISIONS.md` 2026-08-06).
+"""Phase 11: Tier-3 orchestration scaffold (M4i, 2026-08-06).
 
 A **dataset-agnostic, graph-source-agnostic** orchestrator for a real dataset
 that may or may not have a known causal graph -- "ground truth if known can be
@@ -6,11 +6,11 @@ used, otherwise causal discovery methods or/and domain knowledge derived SCM
 and causal graph can be used."
 
 **Explicit scope boundary.** This does **not** commit to SepsisSim or
-MIMIC-IV. `ROADMAP.md` M5 (SepsisSim go/no-go) remains genuinely undecided --
+MIMIC-IV. M5 (SepsisSim go/no-go) remains genuinely undecided --
 no PI memo, no confirmed data access, zero existing sepsis code or data
-anywhere in this repo. Per `CLAUDE.md`'s standing rule ("Adding or removing
+anywhere in this repo. Per the standing scope rule ("Adding or removing
 any method, metric, experiment phase, or publication target requires a
-recorded PI decision in `ROADMAP.md` **before** code is written"), no code
+recorded PI decision **before** code is written"), no code
 here assumes MIMIC-IV/SepsisSim access is real. This file becomes
 SepsisSim-ready only once/if M5 is later resolved -- building it is not
 itself a Go/No-Go decision and does not pre-empt one.

@@ -3,7 +3,7 @@ Boubrahimi & Hamdi, *Improving Causal Feasibility in Counterfactual
 Explanations for Multivariate Time Series Classification*, IEEE BigData 2025,
 DOI 10.1109/BIGDATA66926.2025.11402392).
 
-**Class renamed 2026-08-06** (PI decision, `DECISIONS.md`) from
+**Class renamed 2026-08-06** (PI decision) from
 ``CausalFeasibilityCF`` to ``TSCausalCF``, and wired into the main
 experiment's default method list (previously opt-in only via
 ``--methods CausalFeasibility``). The rename is cosmetic -- the
@@ -11,11 +11,11 @@ implementation, faithfulness verification, and R3 status below are
 unchanged; the registry key is now ``"TSCausal"`` (was ``"CausalFeasibility"``).
 
 Read from the paper's own PDF (not a secondhand summary) before implementing
--- see ``DECISIONS.md`` 2026-08-04. That reading corrected an earlier
+-- see 2026-08-04. That reading corrected an earlier
 misreading in this project's own docs: there is **no intervention timestep**
 in this method. ``docs/risk_register.md`` RISK-15 had it right ("no do()
 operator, no intervention time, no abduction"); an earlier draft of the
-``ROADMAP.md`` M3 formula used the notation ``U_d@t0`` in a way that read like
+M3 formula used the notation ``U_d@t0`` in a way that read like
 this benchmark's own do()-abduction moment, which the paper does not have.
 "t0" in the paper's own equations means the literal first observed timestep
 ``t=0``, nothing more.
@@ -46,7 +46,7 @@ The method (their eq. 5), reproduced exactly::
   R3 rule means an Adam-with-L1-folded-into-the-loss stand-in would not have
   earned this class the paper's name.
 
-U_s/U_d/V typing (``DECISIONS.md`` 2026-08-04): ``U_d`` =
+U_s/U_d/V typing (2026-08-04): ``U_d`` =
 :func:`causaltemp_xai.benchmarks.generator.exogenous_channels` (channels with
 no incoming edge at any lag); ``U_s`` is always empty -- this benchmark's
 ``(T, k)`` tensor has no separate static-covariate slot, matching the paper's
@@ -56,7 +56,7 @@ just held constant. On ``full``/``full_nl`` (paper-scale, k=10, sparsity=0.2)
 degenerates to ``L_pred + lambda * L_causal(all channels, every t)`` with no
 proximal step ever firing (nothing sits in ``U_s`` union ``U_d@t=0`` to
 shrink). This is accepted, not routed around: it is what this benchmark's
-paper-scale graph density honestly produces, and per ``ROADMAP.md`` M3 this
+paper-scale graph density honestly produces, and per M3 this
 method is a third-party foil being critiqued (``docs/risk_register.md``
 RISK-16), not one this benchmark owes a maximally favourable partition.
 ``smoke`` has one exogenous channel, so the proximal step is exercised there.
@@ -72,7 +72,7 @@ proximity/feasibility trade-off study, Table/Fig. 4) are this class's
 defaults. This is a **third-party baseline to critique, not a positive
 control** -- unlike ``CARLARecourse``/``PearlCARLARecourse``, its faithfulness
 under this benchmark's own CF-faith metric is not true by construction, and
-that is the point (``ROADMAP.md`` M3, ``docs/risk_register.md`` RISK-16: its
+that is the point (M3, ``docs/risk_register.md`` RISK-16: its
 own causal-likelihood criterion cannot see intervention-level failure, so
 ``Delta_outcome`` and CF-faith scored on it are the headline third-party
 test).

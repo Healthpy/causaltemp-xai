@@ -54,13 +54,13 @@ Selected with ``--method``; each writes its own distinct report:
   agreement number lets a reader tell "they agree and are both right" apart
   from "they agree and are both wrong."
 
-**Removed 2026-08-03** (``DECISIONS.md``): ``--method ivae``, the decoder-based
+**Removed 2026-08-03**: ``--method ivae``, the decoder-based
 Axis-A ICC, went with ``causaltemp_xai/methods/concept/``. Concept-based methods
 were descoped 2026-07-29 and no axis here scores them. ``metrics/axis_a.py``
 itself is retained -- Axis A is paused, not disproven -- and stays covered by
 ``tests/test_axis_a_latent.py`` / ``tests/test_icc_latent.py``.
 
-**Removed 2026-08-06** (M4h, ``DECISIONS.md``): ``--method citris`` and the
+**Removed 2026-08-06** (M4h): ``--method citris`` and the
 CITRIS-only ``--intervention-prob``/``--epochs`` flags. CITRIS (representation
 learning; needed intervention-labeled data, never identified above chance at
 smoke scale) is fully deleted, including its vendored submodule. PCMCIplus
@@ -323,7 +323,7 @@ def _score_graph_point(
     (a corruption-ladder point, or a real/ensemble-member inferred graph)
     against the true mechanism.
 
-    Extracted 2026-08-06 (M4f, `DECISIONS.md`) from what was previously a
+    Extracted 2026-08-06 (M4f) from what was previously a
     closure (``_point``) defined inside :func:`_graph_quality_sweep`, so the
     new DYNOTEARS ensemble path (:func:`_graph_quality_sweep_ensemble`) can
     call it directly -- once per ensemble member -- without duplicating this
@@ -350,7 +350,7 @@ def _fit_graph_method_ensemble(
     X_all, k, L, n_true, B, method: str = "dynotears", seed=0
 ) -> list[np.ndarray]:
     """Fit a `GRAPH_METHODS` member ``B`` times, each on an independent
-    bootstrap resample of ``X_all``'s N-axis (M4f, `DECISIONS.md` 2026-08-06;
+    bootstrap resample of ``X_all``'s N-axis (M4f, 2026-08-06;
     generalized beyond DYNOTEARS-only 2026-08-06, M4h, to also accept
     ``pcmciplus``).
 
@@ -386,7 +386,7 @@ def _graph_quality_sweep_ensemble(
     graph, mech, X_sel, oracle_ints, rollout, cf_faith_gt, ensemble_adjs, method_label, seed=0
 ) -> dict:
     """Ensemble extension of :func:`_graph_quality_sweep` (M4f,
-    `DECISIONS.md` 2026-08-06): scores each of the ``B`` ensemble-member
+    2026-08-06): scores each of the ``B`` ensemble-member
     graphs (produced by :func:`_fit_dynotears_ensemble`) as its own
     real-method anchor point, then reports the ensemble's **spread**
     alongside the point estimate -- never collapsed to one number, per this
@@ -452,14 +452,14 @@ def _graph_quality_sweep_ensemble(
 
 def run_cross_method_agreement(cfg, out_dir, pc_alpha: float = 0.05) -> None:
     """DYNOTEARS-vs-PCMCIplus cross-method agreement check (M4h, 2026-08-06,
-    `DECISIONS.md`) -- the concrete RISK-22 mitigation.
+    -- the concrete RISK-22 mitigation.
 
     Works on **any** Tier-1 synthetic config, including `linear` (VAR)
     -- unlike `run_graph_method`'s CF-faith decomposition (restricted to
     `mlp`/`spring`, since it calls `build_masked_mechanism`, which
     `LinearMechanism` genuinely cannot support), this function never masks a
     mechanism -- it only fits both methods and compares raw adjacencies, which
-    is mechanism-type-agnostic. Guard dropped 2026-08-06 (M4i, `DECISIONS.md`)
+    is mechanism-type-agnostic. Guard dropped 2026-08-06 (M4i)
     after confirming it was never load-bearing here.
 
     Fits both methods independently on the same observational data, density-
@@ -545,7 +545,7 @@ def run_graph_method(
     # inferred graph. Spring was added 2026-08-05 specifically to test the
     # dissipation hypothesis for M4e's near-flat graph-quality ladder: the
     # ladder needs a NON-dissipative family (rho ~ 1) as its comparison arm.
-    # (Kuramoto was the other such family; removed 2026-08-11, DECISIONS.md.)
+    # (Kuramoto was the other such family; removed 2026-08-11.)
     _MASKABLE = ("mlp", "spring")
     if cfg.mechanism_type not in _MASKABLE:
         raise SystemExit(

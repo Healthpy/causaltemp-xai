@@ -1,5 +1,5 @@
 """Phase 07b: discovered-graph CF-faith on Tier 2 real data, uncertainty-
-quantified (M4g, `DECISIONS.md` 2026-08-06).
+quantified (M4g, 2026-08-06).
 
 **Reopens part of the 2026-07-31 M4b decision** that discovered-graph
 CF-faith scoring on real data "stays descoped." M4f (2026-08-06) built a
@@ -73,7 +73,7 @@ LIMITATION_NOTE = (
     "ensemble member shares DYNOTEARS's linear structural-equation assumption; if that "
     "assumption is wrong for this real (plausibly nonlinear) data, all B members can agree "
     "tightly while being systematically wrong together. A tight ensemble does not rule this "
-    "out. See docs/risk_register.md RISK-22 and ROADMAP.md M4g."
+    "out. See docs/risk_register.md RISK-22 and M4g."
 )
 
 
@@ -228,7 +228,7 @@ def run_cross_method_agreement_real(
     seed: int = 0,
 ) -> None:
     """DYNOTEARS-vs-PCMCIplus cross-method agreement check on real Tier-2 data
-    (M4i, `DECISIONS.md` 2026-08-06) -- the real-data counterpart of
+    (M4i, 2026-08-06) -- the real-data counterpart of
     `07_auxiliary_methods.run_cross_method_agreement` (Tier 1, synthetic).
 
     Real data has **no ground truth graph**, so unlike the Tier-1 version this

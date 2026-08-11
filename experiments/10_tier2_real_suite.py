@@ -1,4 +1,4 @@
-"""Phase 10: Tier-2 orchestration suite (M4i, `DECISIONS.md` 2026-08-06).
+"""Phase 10: Tier-2 orchestration suite (M4i, 2026-08-06).
 
 Runs the full/smoke Tier-2 real-data sequence across 3 UCR/UEA multivariate
 datasets meeting `docs/general_plan.md` §6's selection criteria (k >= 3

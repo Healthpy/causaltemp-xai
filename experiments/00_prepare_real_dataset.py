@@ -11,7 +11,7 @@ shape ``causaltemp_xai.real_data.load_real_dataset`` expects -- but with
 ``"graph": null`` in ``meta.json`` rather than a placeholder graph (M4b has
 none, by design).
 
-Default target is BasicMotions (`DECISIONS.md` 2026-08-05): 6 channels, 4
+Default target is BasicMotions (2026-08-05): 6 channels, 4
 classes, 40 train / 40 test, T=100 -- small, clean, matches this repo's
 smoke-scale culture.
 
