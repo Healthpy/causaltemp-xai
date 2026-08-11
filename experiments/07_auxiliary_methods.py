@@ -462,6 +462,21 @@ def run_cross_method_agreement(cfg, out_dir, pc_alpha: float = 0.05) -> None:
     is mechanism-type-agnostic. Guard dropped 2026-08-06 (M4i)
     after confirming it was never load-bearing here.
 
+    **Reference-graph caveat for ``spring`` (P0-4, 2026-08-11).**
+    ``SpringMechanism``'s ``graph`` deliberately excludes the position<-velocity
+    coupling every particle's own dynamics depend on -- see the class
+    docstring's "not graph-worthy" convention, the same one ``MLPMechanism``
+    uses for its ``decay_i`` self-term. That coupling is the strongest single
+    dependency in the system (measured: 3x any true cross-particle edge). A
+    discovery method that recovers it is recovering a real, dominant
+    dependency and is scored *wrong* for doing so, because ``true_bin`` here
+    omits it. A below-chance ``dynotears_auc``/``pcmciplus_auc`` on ``spring``
+    is therefore not necessarily evidence the method failed to find structure
+    -- it may be evidence the method found structure this function's reference
+    graph does not credit. Read spring's AUC alongside its ``shd_between_methods``
+    (structural agreement, which needs no reference) before concluding either
+    method is worse than the other on this family.
+
     Fits both methods independently on the same observational data, density-
     matches each to the true edge count, and reports:
 

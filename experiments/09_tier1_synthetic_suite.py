@@ -15,6 +15,15 @@ Family -> preset table (spring has no full-scale preset yet):
     mlp       mechanism_type="mlp"       smoke -> "smoke_nl"    full -> "full_nl"
     spring    mechanism_type="spring"    smoke -> "smoke_spring" full -> none
 
+**spring's discovery AUC caveat (P0-4, 2026-08-11):** ``SpringMechanism``'s
+``graph`` deliberately omits the position<-velocity coupling every particle's
+own dynamics depend on -- the strongest single dependency in the system. A
+discovery method scored against it can read below-chance AUC for recovering
+real structure the reference graph does not credit. See
+``run_cross_method_agreement``'s docstring in ``07_auxiliary_methods.py`` for
+the full reasoning; do not read spring's AUC column in
+``table_method_suitability.csv`` without it.
+
 Per `(family, scale)` config, per seed:
 
 1. Phases 01->04 via `experiments.08_aggregate_and_report.run_seed` (the

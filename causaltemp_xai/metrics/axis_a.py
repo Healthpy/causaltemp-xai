@@ -70,11 +70,25 @@ def graph_auc(adj_true: np.ndarray, score_matrix: np.ndarray) -> float:
 
     Returns
     -------
-    float in [0, 1]
+    float in [0, 1], or NaN if undefined (see below)
+
+    Notes
+    -----
+    Returns NaN both when ``y_true`` is degenerate (sklearn's own guard) and
+    when ``y_score`` is constant (P0-4, 2026-08-11). A discovery method that
+    produces a constant score matrix has ranked nothing -- ``roc_auc_score``
+    returns the ties-broken-at-chance convention 0.5 in that case, which is
+    indistinguishable from a method that genuinely ranks at chance. That
+    laundering is how the pre-removal Kuramoto family posted
+    ``AUC = 0.500 +/- 0.000`` for two different discovery methods across 3
+    seeds: DYNOTEARS recovered only self-loops, which ``inferred_graph``
+    zeroes, leaving an identically-zero score matrix. NaN is the honest
+    answer -- the metric is undefined, not satisfied-at-chance. See
+    ``tests/test_axis_a.py::TestGraphAUCAdversarial::test_constant_scores_are_nan``.
     """
     y_true = adj_true.flatten().astype(int)
     y_score = score_matrix.flatten().astype(float)
-    if len(np.unique(y_true)) < 2:
+    if len(np.unique(y_true)) < 2 or len(np.unique(y_score)) < 2:
         return float("nan")
     return float(roc_auc_score(y_true, y_score))
 
