@@ -458,3 +458,129 @@ class TestMLPMechanismIsMeasurablyNonlinear:
             f"the innovation-noise std {innovation_std:.3e} -- the ablation is "
             f"invisible in the generated data"
         )
+
+
+def _decoupled(mech):
+    """Return ``mech`` with all graph-mediated coupling removed, weights intact.
+
+    Isolates the graph's contribution from every other design choice: the
+    decoupled mechanism differs from the original *only* in that no influence
+    can flow along a ``graph`` edge. Each family has a natural zero-coupling
+    form: an all-zero parent mask (MLP), a zero spring matrix, a zero adjacency
+    (Kuramoto), or zero coefficient matrices (linear, where ``A`` *is* the
+    graph, so the decoupled mechanism is the null dynamic).
+    """
+    import copy
+
+    from causaltemp_xai.benchmarks.mechanisms import KuramotoMechanism, SpringMechanism
+
+    if isinstance(mech, MLPMechanism):
+        # Zero parent mask => masked input 0 => tanh(0) = 0 => mean = decay * x.
+        return MLPMechanism(
+            graph=np.zeros_like(mech.graph),
+            hidden=mech.hidden,
+            decay=mech.decay,
+            gain=mech.gain,
+            W1=mech.W1,
+            b1=mech.b1,
+            W2=mech.W2,
+            b2=mech.b2,
+            activation=mech.activation,
+        )
+    if isinstance(mech, SpringMechanism):
+        bare = copy.deepcopy(mech)
+        bare.K = np.zeros_like(mech.K)  # no cross-particle acceleration
+        return bare
+    if isinstance(mech, KuramotoMechanism):
+        bare = copy.deepcopy(mech)
+        bare.A = np.zeros_like(mech.A)  # no phase coupling
+        return bare
+    if isinstance(mech, LinearMechanism):
+        return LinearMechanism([np.zeros_like(A) for A in mech.A_list])
+    raise TypeError(f"no decoupled form defined for {type(mech).__name__}")
+
+
+def _graph_share_of_increment(config_name: str) -> float:
+    """Fraction of what the mechanism *does* each step that flows through ``graph``.
+
+    Measured on the **increment** ``mean(x_t) - x_{t-1}``, not the state level.
+    Level is the wrong denominator for the non-dissipative families: Kuramoto's
+    phase is unwrapped and unbounded, so its own carry-forward term dominates
+    any level-based share asymptotically no matter how strong the coupling is
+    (measured: 0.0002% on level vs 2.14% on increment). The increment asks the
+    question the benchmark actually needs -- of the change the mechanism
+    introduces at each step, how much is causal-graph-mediated -- which is also
+    what an intervention perturbs and then accumulates.
+    """
+    from causaltemp_xai.config import get_config
+    from causaltemp_xai.data_io import build_generator
+
+    result = build_generator(get_config(config_name)).generate()
+    X, mech = result["X"], result["mechanism"]
+    hist = _histories(X, mech.L)
+    last = hist[:, -1, :]
+
+    bare = _decoupled(mech)
+    bare_mu = bare.forward_numpy(hist)
+    graph_part = mech.forward_numpy(hist) - bare_mu
+    ungraphed_increment = bare_mu - last
+    return float(graph_part.var() / (graph_part.var() + ungraphed_increment.var()))
+
+
+class TestGraphDrivesEverySyntheticFamily:
+    """P0-1 gate, extended to all four families (2026-08-11 measurement).
+
+    P0-2 as written targets ``MLPMechanism`` only, but the pathology is
+    benchmark-wide: every family except ``linear`` carves a dominant self-term
+    out of ``graph`` and calls it structural -- ``decay_i * x_{t-1}^i`` (MLP),
+    position<-own-velocity (spring), ``theta + dt*omega_i`` (Kuramoto). Fixing
+    one family leaves the benchmark's other tiers scoring counterfactuals
+    against processes their graphs barely drive.
+
+    The 20% bar is set against the empirical ceiling rather than picked: the
+    ``linear`` family, where ``A`` *is* the graph and no term sits outside it,
+    reaches 47.9%. 20% therefore asks each family to clear roughly 40% of what
+    a fully graph-driven mechanism achieves -- demanding, but demonstrably
+    attainable, and spring already passes at 30.6%.
+
+    Passing this gate does **not** clear spring's separate defect: its strongest
+    coupling (every position on its own velocity) is deliberately excluded from
+    ``graph``, so its discovery AUC is scored against an incomplete reference
+    graph. That is tracked separately under P0-4.
+    """
+
+    MIN_GRAPH_SHARE = 0.20
+
+    @pytest.mark.parametrize(
+        "config_name",
+        [
+            "smoke",  # linear: A *is* the graph, nothing sits outside it
+            "smoke_spring",
+            pytest.param(
+                "smoke_nl",
+                marks=pytest.mark.xfail(
+                    strict=True,
+                    reason="P0-2: 2.33% -- decay_i dominates the increment. "
+                    "Remove marker when the MLP branch is reparameterised.",
+                ),
+            ),
+            pytest.param(
+                "smoke_kuramoto",
+                marks=pytest.mark.xfail(
+                    strict=True,
+                    reason="P0-2: 2.14% -- dt*omega_i (own natural frequency, "
+                    "not a graph edge) dominates dt*k_coupling*sin(...). Worst "
+                    "family in the suite. Remove marker when k_coupling is "
+                    "raised and contraction re-verified.",
+                ),
+            ),
+        ],
+    )
+    def test_graph_carries_at_least_20_percent_of_the_increment(self, config_name):
+        share = _graph_share_of_increment(config_name)
+        assert share >= self.MIN_GRAPH_SHARE, (
+            f"{config_name}: only {share:.2%} of the per-step increment flows "
+            f"through graph edges; the rest is a self-term the ground-truth "
+            f"graph does not contain, so counterfactuals are scored against a "
+            f"process the causal structure barely drives"
+        )
