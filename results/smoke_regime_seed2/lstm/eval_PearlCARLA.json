@@ -1,8 +1,8 @@
 {
   "seed": 2,
   "config": "smoke_regime_seed2",
-  "git_commit": "253e0d27f5c5e21c884e94d02e20bdd48733123c",
-  "git_dirty": true,
+  "git_commit": "ac6c24af2153bd9a776371d398534b6838f194e8",
+  "git_dirty": false,
   "n": 20,
   "validity": 0.2,
   "proximity_l1": 9.480596695477516,
