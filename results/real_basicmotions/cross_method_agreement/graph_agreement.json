@@ -1,0 +1,15 @@
+{
+  "seed": 0,
+  "config": "real_basicmotions",
+  "git_commit": "d99f4146b7be05a97e81ac91b9d001676b5da473",
+  "git_dirty": true,
+  "provenance": {
+    "dataset": "basicmotions",
+    "pc_alpha": 0.05,
+    "threshold": 0.1,
+    "lag_order_L": 1,
+    "n_fit": 40
+  },
+  "shd_between_methods": 8.0,
+  "note": "structural agreement only, no correctness claim possible without ground truth -- real data has no true graph to compare either method against. See docs/risk_register.md RISK-22 and the Tier-1 version of this check (experiments/07_auxiliary_methods.py::run_cross_method_agreement) for the AUC-vs-truth comparison this cannot provide."
+}

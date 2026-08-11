@@ -1,0 +1,33 @@
+{
+  "seed": 2,
+  "config": "smoke_spring_seed2",
+  "git_commit": "d99f4146b7be05a97e81ac91b9d001676b5da473",
+  "git_dirty": true,
+  "provenance": {
+    "config": {
+      "k": 10,
+      "L": 1,
+      "sparsity": 0.3,
+      "noise_type": "laplace",
+      "T": 30,
+      "N": 500,
+      "seed": 2,
+      "name": "smoke_spring_seed2",
+      "mechanism_type": "spring",
+      "nonlinear": {
+        "k_spring": 0.3,
+        "dt": 0.1,
+        "n_exogenous": 2
+      },
+      "label_fn": "terminal_threshold",
+      "label_params": null
+    },
+    "pc_alpha": 0.05
+  },
+  "shd_between_methods": 4.0,
+  "dynotears_auc": 0.45789473684210524,
+  "pcmciplus_auc": 0.6421052631578947,
+  "dynotears_shd_to_true": 10.0,
+  "pcmciplus_shd_to_true": 10.0,
+  "note": "shd_between_methods (structural agreement) does not by itself imply correctness -- see dynotears_auc/pcmciplus_auc for each method's own accuracy against the true graph. RISK-22 (docs/risk_register.md): agreement between two differently-biased model classes is evidence against shared bias, not proof against it."
+}

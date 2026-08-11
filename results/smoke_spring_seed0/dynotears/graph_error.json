@@ -1,8 +1,8 @@
 {
   "seed": 0,
   "config": "smoke_spring_seed0",
-  "git_commit": "b78d97e6b2d510452cfe181e5c43747530fea499",
-  "git_dirty": false,
+  "git_commit": "d99f4146b7be05a97e81ac91b9d001676b5da473",
+  "git_dirty": true,
   "provenance": {
     "config": {
       "k": 10,
@@ -23,14 +23,14 @@
       "label_params": null
     },
     "method": "dynotears",
-    "n_cf": 40,
+    "n_cf": 20,
     "dynotears": {
       "source": "third_party/causalnex_repo (github.com/mckinsey/causalnex)",
       "lambda_a": 0.01,
       "lambda_w": 0.01,
       "p": 1
     },
-    "citris": null
+    "pcmciplus": null
   },
   "axis_a": {
     "SHD": 10.0,
@@ -38,14 +38,14 @@
     "LagF1": 0.0,
     "AUC": 0.45789473684210524,
     "cf_faith_gt": 1.0,
-    "cf_faith_inferred": 0.7311871353724809,
-    "graph_error": 0.2688128646275191,
+    "cf_faith_inferred": 0.7649341509422267,
+    "graph_error": 0.23506584905777328,
     "propagation_error": 0.0
   },
   "oracle_decomposition": {
     "cf_faith_gt": 1.0,
-    "cf_faith_inferred": 0.7311871353724809,
-    "graph_error": 0.2688128646275191,
+    "cf_faith_inferred": 0.7649341509422267,
+    "graph_error": 0.23506584905777328,
     "propagation_error": 0.0
   },
   "methods": [
@@ -79,17 +79,17 @@
     },
     {
       "method": "CftsConfeti",
-      "cf_faith_gt": 0.0815636145846823,
-      "propagation_error": 0.9184363854153177,
-      "cf_faith_pearl_gt": 0.10697790273481672,
-      "propagation_error_pearl": 0.8930220972651832
+      "cf_faith_gt": 0.049398903816283375,
+      "propagation_error": 0.9506010961837166,
+      "cf_faith_pearl_gt": 0.06562272873343879,
+      "propagation_error_pearl": 0.9343772712665612
     },
     {
       "method": "CftsCounts",
-      "cf_faith_gt": 0.4466369773577103,
-      "propagation_error": 0.5533630226422896,
-      "cf_faith_pearl_gt": 0.371610674140357,
-      "propagation_error_pearl": 0.628389325859643
+      "cf_faith_gt": 0.44818656990247385,
+      "propagation_error": 0.5518134300975261,
+      "cf_faith_pearl_gt": 0.3646043409867616,
+      "propagation_error_pearl": 0.6353956590132384
     },
     {
       "method": "CftsWachter",
@@ -104,58 +104,17 @@
       "propagation_error": 0.2843527641824213,
       "cf_faith_pearl_gt": 0.9999995911323369,
       "propagation_error_pearl": 4.088676630598087e-07
+    },
+    {
+      "method": "TSCausal",
+      "cf_faith_gt": 0.2399423802834358,
+      "propagation_error": 0.7600576197165642,
+      "cf_faith_pearl_gt": 0.22664196127196537,
+      "propagation_error_pearl": 0.7733580387280347
     }
   ],
-  "graph_quality_sweep": [
-    {
-      "label": "corrupt_frac=0",
-      "graph_auc": 1.0,
-      "shd": 0.0,
-      "cf_faith_inferred": 1.0,
-      "graph_error": 0.0,
-      "frac_vacuous": 0.0
-    },
-    {
-      "label": "corrupt_frac=0.25",
-      "graph_auc": 0.8947368421052632,
-      "shd": 2.0,
-      "cf_faith_inferred": 0.6002237840936909,
-      "graph_error": 0.3997762159063091,
-      "frac_vacuous": 0.0
-    },
-    {
-      "label": "corrupt_frac=0.5",
-      "graph_auc": 0.7894736842105263,
-      "shd": 4.0,
-      "cf_faith_inferred": 0.8099870565596895,
-      "graph_error": 0.1900129434403105,
-      "frac_vacuous": 0.0
-    },
-    {
-      "label": "corrupt_frac=0.75",
-      "graph_auc": 0.5789473684210525,
-      "shd": 8.0,
-      "cf_faith_inferred": 0.7643243424803625,
-      "graph_error": 0.23567565751963748,
-      "frac_vacuous": 0.0
-    },
-    {
-      "label": "corrupt_frac=1",
-      "graph_auc": 0.4736842105263158,
-      "shd": 10.0,
-      "cf_faith_inferred": 0.5160043769212598,
-      "graph_error": 0.4839956230787402,
-      "frac_vacuous": 0.0
-    },
-    {
-      "label": "dynotears",
-      "graph_auc": 0.45789473684210524,
-      "shd": 10.0,
-      "cf_faith_inferred": 0.7311871353724809,
-      "graph_error": 0.2688128646275191,
-      "frac_vacuous": 0.0
-    }
-  ],
+  "graph_quality_sweep": null,
+  "graph_quality_sweep_ensemble": null,
   "inferred_edges": 5,
   "true_edges": 5
 }

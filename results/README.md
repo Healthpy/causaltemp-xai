@@ -24,7 +24,7 @@ results/<config>/oracle/         oracle positive control, any config          (P
     summary.json                 oracle CF is correct by construction
 
 results/<config>/<method>/       nonlinear configs only; method in            (Phase 07)
-                                 {dynotears (default), citris}
+                                 {dynotears (default), pcmciplus}
     graph_error.json             self-graphing Axis-A recovery (SHD/LagAcc/AUC)
                                  of the inferred lag-1 graph; `oracle_decomposition`
                                  (perfect-propagator reference, propagation_error
@@ -35,14 +35,63 @@ results/<config>/<method>/       nonlinear configs only; method in            (P
                                  `propagation_error_pearl` = pearl_delta (so
                                  rollout-faithful CARLA and pearl-faithful
                                  PearlCARLA are each scored fairly under their
-                                 own semantics). DYNOTEARS (default) recovers the
-                                 graph (AUC ~0.9); CITRIS is the honest secondary
-                                 (~chance at smoke scale).
+                                 own semantics). DYNOTEARS (default, continuous
+                                 optimisation) recovers the graph (AUC ~0.92 on
+                                 smoke_nl, 2026-08-06); PCMCIplus (constraint-based,
+                                 `tigramite`, M4h) is the structurally different
+                                 second method (AUC ~0.86 on smoke_nl, 2026-08-06)
+                                 -- not a secondary/fallback, but the deliberate
+                                 cross-check RISK-22 needs.
                                  With `--sweep`, also `graph_quality_sweep[]` =
                                  graph_error across a controlled true→random graph
                                  ladder (+ the method's real graph), showing the
                                  decomposition rises monotonically as recovery
                                  degrades (H3a dynamic-range demonstration).
+
+results/<config>/cross_method_agreement/   **any** Tier-1 config, including     (Phase 07,
+    graph_agreement.json         `linear` since 2026-08-06 (M4i)  DYNOTEARS-vs- M4h/M4i)
+                                 PCMCIplus cross-method agreement check
+                                 (RISK-22): `shd_between_methods` (SHD between
+                                 the two methods' own inferred graphs, no
+                                 ground truth needed) + `dynotears_auc` /
+                                 `pcmciplus_auc` (each method's own accuracy
+                                 against the true graph). Agreement alone does
+                                 not imply correctness -- read both AUCs
+                                 alongside the agreement number.
+
+results/real_<name>/cross_method_agreement/   real (Tier 2) data            (Phase 07b,
+    graph_agreement.json         DYNOTEARS-vs-PCMCIplus structural agreement       M4i)
+                                 on real data -- `shd_between_methods` **only**,
+                                 no AUC (no ground truth exists on real data).
+                                 A materially weaker check than the synthetic
+                                 version above; the written note says so.
+
+results/real_<name>/tier3/<mode>/   <mode> in {known, discover, domain}      (Phase 11,
+    graph_agreement.json         M4i's dataset-agnostic, graph-source-              M4i)
+    cf_faith_discovered.json     agnostic scaffold. Does NOT commit to
+                                 SepsisSim/MIMIC-IV (M5 still undecided) --
+                                 any `discover`-mode run against an
+                                 already-wired Tier-2 dataset carries an
+                                 explicit "NOT a Tier-3 substance claim" note,
+                                 embedded in the file and printed.
+
+results/tier1_suite/             Tier-1 orchestration suite output            (Phase 09,
+    summary.json                 (all 4 synthetic families x smoke/full x         M4i)
+    table_method_suitability.csv seeds): per-family, per-method AUC/SHD vs
+                                 ground truth, pooled via bootstrap_ci --
+                                 answers "which method recovers which
+                                 synthetic family best."
+
+results/tier2_suite/             Tier-2 orchestration suite output            (Phase 10,
+    summary.json                 (3 real UCR/UEA datasets): per-dataset            M4i)
+    table_method_suitability.csv k/n_classes/test_acc, discovered-graph
+                                 CF-faith per method, cross-method SHD (no
+                                 AUC -- no ground truth).
+
+results/tier3_suite/             Tier-3 scaffold cross-invocation manifest    (Phase 11,
+    summary.json                 (one row per completed `--name`/`--mode`         M4i)
+                                 run so far -- Tier 3 runs one dataset/mode
+                                 per invocation, unlike 09/10's loops).
 
 results/tables/
     table_axis_c_cf_faith.csv    accumulated, one row per (benchmark, classifier, method) run
@@ -82,7 +131,7 @@ A beside B/C as a third per-method column is a category error
 |---|---|---|---|
 | **A** | SHD, lag accuracy, lagged-edge F1, graph AUC, residual dependence, graph-error decomposition | the **dataset** — no graph-discovery method is wired into the main pipeline, so this is a structural diagnostic of the benchmark's own graph, not a per-method score | Phase 01 (Phase 07 for DYNOTEARS self-graphing) |
 | **B** | Shift-VR: validity retention under a noise-distribution shift; input sensitivity | every selected CF **method** | Phase 03 |
-| **C** | validity, proximity, sparsity (flat + `sparsity_channels` / `sparsity_timepoints`), OOD, SCM-noise plausibility, TRSI (a mechanism-free edit-smoothness *descriptor*, not a faithfulness score), both CF-faith semantics + gate diagnostics, the model-vs-world audit, do-complexity, `frac_vacuous`, `frac_degenerate` | every selected CF **method** (CARLA, PearlCARLA, CftsWachter, CftsCOMTE, CftsConfeti, CftsCels, CausalFeasibility, OracleCF-\*) | Phase 04 (explainers) / 05 (oracle control) |
+| **C** | validity, proximity, sparsity (flat + `sparsity_channels` / `sparsity_timepoints`), OOD, SCM-noise plausibility, TRSI (a mechanism-free edit-smoothness *descriptor*, not a faithfulness score), both CF-faith semantics + gate diagnostics, the model-vs-world audit, do-complexity, `frac_vacuous`, `frac_degenerate` | every selected CF **method** (CARLA, PearlCARLA, CftsWachter, CftsCOMTE, CftsConfeti, CftsCels, TSCausal (was CausalFeasibility), OracleCF-\*) | Phase 04 (explainers) / 05 (oracle control) |
 
 Every axis that scores counterfactual explanations (Axis C incl. CF-faith, and
 Axis B's Shift-VR) runs over the **full** selected CF method set — no method is

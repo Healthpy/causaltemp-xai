@@ -1,0 +1,6 @@
+dataset,k,n_classes,test_acc,method,cf_faith_discovered_rollout_mean,shd_between_methods
+basicmotions,6,4,0.925,CftsCels,0.3266916899452143,8.0
+basicmotions,6,4,0.925,CftsCOMTE,0.13690560783822253,8.0
+basicmotions,6,4,0.925,CftsConfeti,0.08056261751675309,8.0
+basicmotions,6,4,0.925,CftsCounts,0.4689334420369093,8.0
+basicmotions,6,4,0.925,CftsWachter,0.18638993341261095,8.0

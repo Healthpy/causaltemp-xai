@@ -1,8 +1,8 @@
 {
   "seed": 0,
   "config": "smoke_spring_seed0",
-  "git_commit": "de28ec09ece7fed88a43694248a25dbc64c2abfd",
-  "git_dirty": false,
+  "git_commit": "d99f4146b7be05a97e81ac91b9d001676b5da473",
+  "git_dirty": true,
   "provenance": {
     "config": {
       "k": 10,
@@ -92,7 +92,7 @@
       "ood": 0.08156427856638097,
       "cf_faith_rollout_hard": 0.0,
       "cf_faith_rollout_soft": 0.5542824620262337,
-      "cf_faith_pearl_hard": 0.0,
+      "cf_faith_pearl_hard": 0.2,
       "cf_faith_pearl_soft": 0.8417292024343409,
       "n_cf_faith_scorable": 20,
       "frac_degenerate": 0.0,
@@ -137,17 +137,17 @@
     {
       "n": 20,
       "validity": 0.15,
-      "proximity_l1": 73.24591741149715,
-      "proximity_l2": 7.587311058100772,
-      "sparsity": 0.9231666666666667,
-      "frac_altered": 0.07683333333333331,
+      "proximity_l1": 70.62976145988338,
+      "proximity_l2": 7.61245992988656,
+      "sparsity": 0.9243333333333332,
+      "frac_altered": 0.07566666666666677,
       "sparsity_channels": 0.85,
       "sparsity_timepoints": 0.85,
-      "ood": 0.07909362350756696,
+      "ood": 0.07860723848114097,
       "cf_faith_rollout_hard": 0.0,
-      "cf_faith_rollout_soft": 0.0815636145846823,
+      "cf_faith_rollout_soft": 0.049398903816283375,
       "cf_faith_pearl_hard": 0.0,
-      "cf_faith_pearl_soft": 0.10697790273481672,
+      "cf_faith_pearl_soft": 0.06562272873343879,
       "n_cf_faith_scorable": 3,
       "frac_degenerate": 0.85,
       "n_vacuous": 17,
@@ -158,23 +158,23 @@
       "cf_faith_rollout_hard_valid": 0.0,
       "cf_faith_pearl_hard_valid": 0.0,
       "method": "CftsConfeti",
-      "scm_noise_plausibility": 0.8272414264106045,
-      "trsi": 1.3061610986207024
+      "scm_noise_plausibility": 0.8268217361626228,
+      "trsi": 1.31789247727696
     },
     {
       "n": 20,
       "validity": 0.0,
-      "proximity_l1": 661.4435132890654,
-      "proximity_l2": 51.568995835846806,
-      "sparsity": 0.0006666666666666668,
-      "frac_altered": 0.9993333333333333,
+      "proximity_l1": 661.1907445864482,
+      "proximity_l2": 52.286594537708446,
+      "sparsity": 0.0003333333333333334,
+      "frac_altered": 0.9996666666666667,
       "sparsity_channels": 0.0,
       "sparsity_timepoints": 0.0,
-      "ood": 0.1249495620360562,
+      "ood": 0.12543389859256449,
       "cf_faith_rollout_hard": 0.0,
-      "cf_faith_rollout_soft": 0.4466369773577103,
+      "cf_faith_rollout_soft": 0.44818656990247385,
       "cf_faith_pearl_hard": 0.0,
-      "cf_faith_pearl_soft": 0.371610674140357,
+      "cf_faith_pearl_soft": 0.3646043409867616,
       "n_cf_faith_scorable": 20,
       "frac_degenerate": 0.0,
       "n_vacuous": 0,
@@ -185,8 +185,8 @@
       "cf_faith_rollout_hard_valid": 0.0,
       "cf_faith_pearl_hard_valid": 0.0,
       "method": "CftsCounts",
-      "scm_noise_plausibility": 0.745217315736724,
-      "trsi": 0.10437707025424066
+      "scm_noise_plausibility": 0.7492944648612775,
+      "trsi": 0.09774358974187915
     },
     {
       "n": 20,
@@ -241,12 +241,39 @@
       "method": "PearlCARLA",
       "scm_noise_plausibility": 0.8960915528746487,
       "trsi": 0.10876221831272104
+    },
+    {
+      "n": 20,
+      "validity": 0.4,
+      "proximity_l1": 482.6121406090764,
+      "proximity_l2": 36.59245382466799,
+      "sparsity": 0.018833333333333334,
+      "frac_altered": 0.9811666666666666,
+      "sparsity_channels": 0.0,
+      "sparsity_timepoints": 0.0,
+      "ood": 0.05267245010536379,
+      "cf_faith_rollout_hard": 0.0,
+      "cf_faith_rollout_soft": 0.2399423802834358,
+      "cf_faith_pearl_hard": 0.0,
+      "cf_faith_pearl_soft": 0.22664196127196537,
+      "n_cf_faith_scorable": 20,
+      "frac_degenerate": 0.0,
+      "n_vacuous": 0,
+      "frac_vacuous": 0.0,
+      "do_complexity_mean": 30.0,
+      "do_complexity_median": 30.0,
+      "do_complexity_stability": 1.0,
+      "cf_faith_rollout_hard_valid": 0.0,
+      "cf_faith_pearl_hard_valid": 0.0,
+      "method": "TSCausal",
+      "scm_noise_plausibility": 0.11132970560830877,
+      "trsi": 0.579956261420422
     }
   ],
   "axis_a": {
     "seed": 0,
     "config": "smoke_spring_seed0",
-    "git_commit": "6c539ac23da543d4736fcb453f5b2f54e4573dce",
+    "git_commit": "d99f4146b7be05a97e81ac91b9d001676b5da473",
     "git_dirty": true,
     "SHD": 0.0,
     "LagAcc": 1.0,
@@ -254,5 +281,66 @@
     "ResidualDep": 0.017101604959215155,
     "note": "SHD/LagAcc computed against the graph itself (no graph-discovery method in this pipeline) -- trivially perfect; ResidualDep is the informative benchmark-structural diagnostic here."
   },
-  "shift_vr": null
+  "shift_vr": {
+    "seed": 0,
+    "config": "smoke_spring_seed0",
+    "git_commit": "d99f4146b7be05a97e81ac91b9d001676b5da473",
+    "git_dirty": true,
+    "CARLA": {
+      "validity_base": 0.2,
+      "validity_shift": 0.2,
+      "shift_vr": null,
+      "n_base": 20,
+      "n_shift": 20
+    },
+    "PearlCARLA": {
+      "validity_base": 0.4,
+      "validity_shift": 0.55,
+      "shift_vr": 1.375,
+      "n_base": 20,
+      "n_shift": 20
+    },
+    "CftsWachter": {
+      "validity_base": 1.0,
+      "validity_shift": 0.85,
+      "shift_vr": 0.85,
+      "n_base": 20,
+      "n_shift": 20
+    },
+    "CftsCOMTE": {
+      "validity_base": 1.0,
+      "validity_shift": 1.0,
+      "shift_vr": 1.0,
+      "n_base": 20,
+      "n_shift": 20
+    },
+    "CftsConfeti": {
+      "validity_base": 0.15,
+      "validity_shift": 0.15,
+      "shift_vr": null,
+      "n_base": 20,
+      "n_shift": 20
+    },
+    "CftsCounts": {
+      "validity_base": 0.0,
+      "validity_shift": 0.05,
+      "shift_vr": null,
+      "n_base": 20,
+      "n_shift": 20
+    },
+    "CftsCels": {
+      "validity_base": 0.4,
+      "validity_shift": 0.35,
+      "shift_vr": 0.8749999999999999,
+      "n_base": 20,
+      "n_shift": 20
+    },
+    "TSCausal": {
+      "validity_base": 0.4,
+      "validity_shift": 0.55,
+      "shift_vr": 1.375,
+      "n_base": 20,
+      "n_shift": 20
+    }
+  }
 }

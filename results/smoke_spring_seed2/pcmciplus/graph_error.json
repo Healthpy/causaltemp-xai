@@ -1,0 +1,119 @@
+{
+  "seed": 2,
+  "config": "smoke_spring_seed2",
+  "git_commit": "d99f4146b7be05a97e81ac91b9d001676b5da473",
+  "git_dirty": true,
+  "provenance": {
+    "config": {
+      "k": 10,
+      "L": 1,
+      "sparsity": 0.3,
+      "noise_type": "laplace",
+      "T": 30,
+      "N": 500,
+      "seed": 2,
+      "name": "smoke_spring_seed2",
+      "mechanism_type": "spring",
+      "nonlinear": {
+        "k_spring": 0.3,
+        "dt": 0.1,
+        "n_exogenous": 2
+      },
+      "label_fn": "terminal_threshold",
+      "label_params": null
+    },
+    "method": "pcmciplus",
+    "n_cf": 20,
+    "dynotears": null,
+    "pcmciplus": {
+      "source": "tigramite (github.com/jakobrunge/tigramite), PyPI dependency",
+      "tau_max": 1,
+      "pc_alpha": 0.05
+    }
+  },
+  "axis_a": {
+    "SHD": 10.0,
+    "LagAcc": 0.0,
+    "LagF1": 0.0,
+    "AUC": 0.6421052631578947,
+    "cf_faith_gt": 1.0,
+    "cf_faith_inferred": 0.6698923582551577,
+    "graph_error": 0.3301076417448423,
+    "propagation_error": 0.0
+  },
+  "oracle_decomposition": {
+    "cf_faith_gt": 1.0,
+    "cf_faith_inferred": 0.6698923582551577,
+    "graph_error": 0.3301076417448423,
+    "propagation_error": 0.0
+  },
+  "methods": [
+    {
+      "method": "CARLA",
+      "cf_faith_gt": 0.9999995140564242,
+      "propagation_error": 4.859435758231001e-07,
+      "cf_faith_pearl_gt": 0.7347923924331459,
+      "propagation_error_pearl": 0.26520760756685413
+    },
+    {
+      "method": "CausalFeasibility",
+      "cf_faith_gt": 0.24829068034220075,
+      "propagation_error": 0.7517093196577993,
+      "cf_faith_pearl_gt": 0.24728794579113766,
+      "propagation_error_pearl": 0.7527120542088623
+    },
+    {
+      "method": "CftsCels",
+      "cf_faith_gt": 0.6079362186123553,
+      "propagation_error": 0.39206378138764475,
+      "cf_faith_pearl_gt": 0.8376476452104237,
+      "propagation_error_pearl": 0.16235235478957633
+    },
+    {
+      "method": "CftsCOMTE",
+      "cf_faith_gt": 0.11401805052793686,
+      "propagation_error": 0.8859819494720631,
+      "cf_faith_pearl_gt": 0.11543143809126144,
+      "propagation_error_pearl": 0.8845685619087386
+    },
+    {
+      "method": "CftsConfeti",
+      "cf_faith_gt": 0.11720996670214459,
+      "propagation_error": 0.8827900332978554,
+      "cf_faith_pearl_gt": 0.12000269935627624,
+      "propagation_error_pearl": 0.8799973006437237
+    },
+    {
+      "method": "CftsCounts",
+      "cf_faith_gt": 0.4267551483613782,
+      "propagation_error": 0.5732448516386218,
+      "cf_faith_pearl_gt": 0.3666142051706508,
+      "propagation_error_pearl": 0.6333857948293492
+    },
+    {
+      "method": "CftsWachter",
+      "cf_faith_gt": 0.4366362403744707,
+      "propagation_error": 0.5633637596255293,
+      "cf_faith_pearl_gt": 0.3683430551104864,
+      "propagation_error_pearl": 0.6316569448895136
+    },
+    {
+      "method": "PearlCARLA",
+      "cf_faith_gt": 0.7242979336746066,
+      "propagation_error": 0.2757020663253934,
+      "cf_faith_pearl_gt": 0.9999995526724661,
+      "propagation_error_pearl": 4.4732753390341884e-07
+    },
+    {
+      "method": "TSCausal",
+      "cf_faith_gt": 0.24829068034220075,
+      "propagation_error": 0.7517093196577993,
+      "cf_faith_pearl_gt": 0.24728794579113766,
+      "propagation_error_pearl": 0.7527120542088623
+    }
+  ],
+  "graph_quality_sweep": null,
+  "graph_quality_sweep_ensemble": null,
+  "inferred_edges": 5,
+  "true_edges": 5
+}

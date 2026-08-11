@@ -1,0 +1,16 @@
+{
+  "seed": 0,
+  "config": "real_epilepsy",
+  "git_commit": "d99f4146b7be05a97e81ac91b9d001676b5da473",
+  "git_dirty": true,
+  "provenance": {
+    "dataset": "epilepsy",
+    "mode": "discover",
+    "ensemble_b": 3,
+    "pc_alpha": 0.05,
+    "threshold": 0.1
+  },
+  "shd_between_methods": 2.0,
+  "graph_agreement_note": "structural agreement only, no correctness claim possible without ground truth -- real data has no true graph to compare either method against. See docs/risk_register.md RISK-22 and the Tier-1 version of this check (experiments/07_auxiliary_methods.py::run_cross_method_agreement) for the AUC-vs-truth comparison this cannot provide.",
+  "stand_in_note": "Tier-3 machinery demonstrated against a Tier-2 dataset (no known graph exists for it either); this is NOT a Tier-3 substance claim."
+}

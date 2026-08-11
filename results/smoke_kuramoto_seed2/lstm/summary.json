@@ -1,8 +1,8 @@
 {
   "seed": 2,
   "config": "smoke_kuramoto_seed2",
-  "git_commit": "de28ec09ece7fed88a43694248a25dbc64c2abfd",
-  "git_dirty": false,
+  "git_commit": "d99f4146b7be05a97e81ac91b9d001676b5da473",
+  "git_dirty": true,
   "provenance": {
     "config": {
       "k": 5,
@@ -141,17 +141,17 @@
     {
       "n": 20,
       "validity": 1.0,
-      "proximity_l1": 939.1392730549476,
-      "proximity_l2": 131.83905700459263,
-      "sparsity": 0.49833333333333335,
-      "frac_altered": 0.5016666666666667,
+      "proximity_l1": 918.4621260157417,
+      "proximity_l2": 129.524269369111,
+      "sparsity": 0.49400000000000005,
+      "frac_altered": 0.506,
       "sparsity_channels": 0.0,
-      "sparsity_timepoints": 0.025000000000000005,
-      "ood": -0.0484144138140161,
+      "sparsity_timepoints": 0.03166666666666666,
+      "ood": -0.05034993304765092,
       "cf_faith_rollout_hard": 0.0,
-      "cf_faith_rollout_soft": 0.00023102589231846835,
+      "cf_faith_rollout_soft": 0.0003400638982615735,
       "cf_faith_pearl_hard": 0.0,
-      "cf_faith_pearl_soft": 0.00024758840782927353,
+      "cf_faith_pearl_soft": 0.00035910329559438306,
       "n_cf_faith_scorable": 20,
       "frac_degenerate": 0.0,
       "n_vacuous": 0,
@@ -162,8 +162,8 @@
       "cf_faith_rollout_hard_valid": 0.0,
       "cf_faith_pearl_hard_valid": 0.0,
       "method": "CftsConfeti",
-      "scm_noise_plausibility": 0.01572768428416397,
-      "trsi": 0.9908064610579638
+      "scm_noise_plausibility": 0.0158644875686487,
+      "trsi": 1.0017576390958032
     },
     {
       "n": 20,
@@ -245,12 +245,39 @@
       "method": "PearlCARLA",
       "scm_noise_plausibility": 0.8981043697850492,
       "trsi": 0.0663361867534654
+    },
+    {
+      "n": 20,
+      "validity": 0.0,
+      "proximity_l1": 1071.3722469579147,
+      "proximity_l2": 107.24143436669699,
+      "sparsity": 0.011333333333333332,
+      "frac_altered": 0.9886666666666667,
+      "sparsity_channels": 0.0,
+      "sparsity_timepoints": 0.0,
+      "ood": -0.13441594386806646,
+      "cf_faith_rollout_hard": 0.0,
+      "cf_faith_rollout_soft": 0.20309940240008956,
+      "cf_faith_pearl_hard": 0.0,
+      "cf_faith_pearl_soft": 0.1981695756242102,
+      "n_cf_faith_scorable": 20,
+      "frac_degenerate": 0.0,
+      "n_vacuous": 0,
+      "frac_vacuous": 0.0,
+      "do_complexity_mean": 30.0,
+      "do_complexity_median": 30.0,
+      "do_complexity_stability": 1.0,
+      "cf_faith_rollout_hard_valid": 0.0,
+      "cf_faith_pearl_hard_valid": 0.0,
+      "method": "TSCausal",
+      "scm_noise_plausibility": 0.10542187209342999,
+      "trsi": 0.13181410200633725
     }
   ],
   "axis_a": {
     "seed": 2,
     "config": "smoke_kuramoto_seed2",
-    "git_commit": "6c539ac23da543d4736fcb453f5b2f54e4573dce",
+    "git_commit": "d99f4146b7be05a97e81ac91b9d001676b5da473",
     "git_dirty": true,
     "SHD": 0.0,
     "LagAcc": 1.0,
@@ -258,5 +285,66 @@
     "ResidualDep": 0.023171441114966718,
     "note": "SHD/LagAcc computed against the graph itself (no graph-discovery method in this pipeline) -- trivially perfect; ResidualDep is the informative benchmark-structural diagnostic here."
   },
-  "shift_vr": null
+  "shift_vr": {
+    "seed": 2,
+    "config": "smoke_kuramoto_seed2",
+    "git_commit": "d99f4146b7be05a97e81ac91b9d001676b5da473",
+    "git_dirty": true,
+    "CARLA": {
+      "validity_base": 0.9,
+      "validity_shift": 1.0,
+      "shift_vr": 1.1111111111111112,
+      "n_base": 20,
+      "n_shift": 20
+    },
+    "PearlCARLA": {
+      "validity_base": 0.95,
+      "validity_shift": 1.0,
+      "shift_vr": 1.0526315789473684,
+      "n_base": 20,
+      "n_shift": 20
+    },
+    "CftsWachter": {
+      "validity_base": 1.0,
+      "validity_shift": 1.0,
+      "shift_vr": 1.0,
+      "n_base": 20,
+      "n_shift": 20
+    },
+    "CftsCOMTE": {
+      "validity_base": 1.0,
+      "validity_shift": 1.0,
+      "shift_vr": 1.0,
+      "n_base": 20,
+      "n_shift": 20
+    },
+    "CftsConfeti": {
+      "validity_base": 1.0,
+      "validity_shift": 1.0,
+      "shift_vr": 1.0,
+      "n_base": 20,
+      "n_shift": 20
+    },
+    "CftsCounts": {
+      "validity_base": 0.0,
+      "validity_shift": 0.0,
+      "shift_vr": null,
+      "n_base": 20,
+      "n_shift": 20
+    },
+    "CftsCels": {
+      "validity_base": 0.6,
+      "validity_shift": 0.55,
+      "shift_vr": 0.9166666666666667,
+      "n_base": 20,
+      "n_shift": 20
+    },
+    "TSCausal": {
+      "validity_base": 0.0,
+      "validity_shift": 0.0,
+      "shift_vr": null,
+      "n_base": 20,
+      "n_shift": 20
+    }
+  }
 }

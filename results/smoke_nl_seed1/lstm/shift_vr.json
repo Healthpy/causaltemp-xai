@@ -1,8 +1,8 @@
 {
   "seed": 1,
   "config": "smoke_nl_seed1",
-  "git_commit": "ae51bb41e64d210972d222573e2925730a6cfa19",
-  "git_dirty": false,
+  "git_commit": "d99f4146b7be05a97e81ac91b9d001676b5da473",
+  "git_dirty": true,
   "CARLA": {
     "validity_base": 1.0,
     "validity_shift": 1.0,
@@ -52,7 +52,7 @@
     "n_base": 20,
     "n_shift": 20
   },
-  "CausalFeasibility": {
+  "TSCausal": {
     "validity_base": 0.85,
     "validity_shift": 0.85,
     "shift_vr": 1.0,

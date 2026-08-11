@@ -1,8 +1,8 @@
 {
   "seed": 1,
   "config": "smoke_spring_seed1",
-  "git_commit": "de28ec09ece7fed88a43694248a25dbc64c2abfd",
-  "git_dirty": false,
+  "git_commit": "d99f4146b7be05a97e81ac91b9d001676b5da473",
+  "git_dirty": true,
   "provenance": {
     "config": {
       "k": 10,
@@ -136,30 +136,30 @@
     },
     {
       "n": 20,
-      "validity": 0.1,
-      "proximity_l1": 54.462935212049274,
-      "proximity_l2": 5.713970797595049,
-      "sparsity": 0.9483333333333335,
-      "frac_altered": 0.05166666666666653,
-      "sparsity_channels": 0.9,
-      "sparsity_timepoints": 0.9,
-      "ood": 0.07808639891761635,
+      "validity": 0.05,
+      "proximity_l1": 19.576086160406334,
+      "proximity_l2": 2.145824194988646,
+      "sparsity": 0.9766666666666666,
+      "frac_altered": 0.023333333333333428,
+      "sparsity_channels": 0.95,
+      "sparsity_timepoints": 0.95,
+      "ood": 0.07976954326702128,
       "cf_faith_rollout_hard": 0.0,
-      "cf_faith_rollout_soft": 0.03658801410125483,
+      "cf_faith_rollout_soft": 0.09227264451647625,
       "cf_faith_pearl_hard": 0.0,
-      "cf_faith_pearl_soft": 0.043978084553319224,
-      "n_cf_faith_scorable": 2,
-      "frac_degenerate": 0.9,
-      "n_vacuous": 18,
-      "frac_vacuous": 0.9,
-      "do_complexity_mean": 3.0,
+      "cf_faith_pearl_soft": 0.0864473262688883,
+      "n_cf_faith_scorable": 1,
+      "frac_degenerate": 0.95,
+      "n_vacuous": 19,
+      "frac_vacuous": 0.95,
+      "do_complexity_mean": 1.5,
       "do_complexity_median": 0.0,
       "do_complexity_stability": 1.0,
       "cf_faith_rollout_hard_valid": 0.0,
       "cf_faith_pearl_hard_valid": 0.0,
       "method": "CftsConfeti",
-      "scm_noise_plausibility": 0.858365510657829,
-      "trsi": 1.3402455795790085
+      "scm_noise_plausibility": 0.9025591006226088,
+      "trsi": 1.3688647738552762
     },
     {
       "n": 20,
@@ -241,12 +241,39 @@
       "method": "PearlCARLA",
       "scm_noise_plausibility": 0.9289258884245468,
       "trsi": 0.10502362038909951
+    },
+    {
+      "n": 20,
+      "validity": 0.2,
+      "proximity_l1": 538.7858319916788,
+      "proximity_l2": 41.80099541613249,
+      "sparsity": 0.02,
+      "frac_altered": 0.98,
+      "sparsity_channels": 0.0,
+      "sparsity_timepoints": 0.0,
+      "ood": 0.05883118935397217,
+      "cf_faith_rollout_hard": 0.0,
+      "cf_faith_rollout_soft": 0.24615017903108619,
+      "cf_faith_pearl_hard": 0.0,
+      "cf_faith_pearl_soft": 0.23875810607754158,
+      "n_cf_faith_scorable": 20,
+      "frac_degenerate": 0.0,
+      "n_vacuous": 0,
+      "frac_vacuous": 0.0,
+      "do_complexity_mean": 30.0,
+      "do_complexity_median": 30.0,
+      "do_complexity_stability": 1.0,
+      "cf_faith_rollout_hard_valid": 0.0,
+      "cf_faith_pearl_hard_valid": 0.0,
+      "method": "TSCausal",
+      "scm_noise_plausibility": 0.11278693055031715,
+      "trsi": 0.4973798081551375
     }
   ],
   "axis_a": {
     "seed": 1,
     "config": "smoke_spring_seed1",
-    "git_commit": "6c539ac23da543d4736fcb453f5b2f54e4573dce",
+    "git_commit": "d99f4146b7be05a97e81ac91b9d001676b5da473",
     "git_dirty": true,
     "SHD": 0.0,
     "LagAcc": 1.0,
@@ -254,5 +281,66 @@
     "ResidualDep": 0.01625265505451058,
     "note": "SHD/LagAcc computed against the graph itself (no graph-discovery method in this pipeline) -- trivially perfect; ResidualDep is the informative benchmark-structural diagnostic here."
   },
-  "shift_vr": null
+  "shift_vr": {
+    "seed": 1,
+    "config": "smoke_spring_seed1",
+    "git_commit": "d99f4146b7be05a97e81ac91b9d001676b5da473",
+    "git_dirty": true,
+    "CARLA": {
+      "validity_base": 0.1,
+      "validity_shift": 0.05,
+      "shift_vr": null,
+      "n_base": 20,
+      "n_shift": 20
+    },
+    "PearlCARLA": {
+      "validity_base": 0.15,
+      "validity_shift": 0.35,
+      "shift_vr": null,
+      "n_base": 20,
+      "n_shift": 20
+    },
+    "CftsWachter": {
+      "validity_base": 0.7,
+      "validity_shift": 0.8,
+      "shift_vr": 1.142857142857143,
+      "n_base": 20,
+      "n_shift": 20
+    },
+    "CftsCOMTE": {
+      "validity_base": 1.0,
+      "validity_shift": 1.0,
+      "shift_vr": 1.0,
+      "n_base": 20,
+      "n_shift": 20
+    },
+    "CftsConfeti": {
+      "validity_base": 0.05,
+      "validity_shift": 0.05,
+      "shift_vr": null,
+      "n_base": 20,
+      "n_shift": 20
+    },
+    "CftsCounts": {
+      "validity_base": 0.05,
+      "validity_shift": 0.05,
+      "shift_vr": null,
+      "n_base": 20,
+      "n_shift": 20
+    },
+    "CftsCels": {
+      "validity_base": 0.2,
+      "validity_shift": 0.2,
+      "shift_vr": null,
+      "n_base": 20,
+      "n_shift": 20
+    },
+    "TSCausal": {
+      "validity_base": 0.2,
+      "validity_shift": 0.4,
+      "shift_vr": null,
+      "n_base": 20,
+      "n_shift": 20
+    }
+  }
 }

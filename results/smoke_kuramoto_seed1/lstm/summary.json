@@ -1,8 +1,8 @@
 {
   "seed": 1,
   "config": "smoke_kuramoto_seed1",
-  "git_commit": "de28ec09ece7fed88a43694248a25dbc64c2abfd",
-  "git_dirty": false,
+  "git_commit": "d99f4146b7be05a97e81ac91b9d001676b5da473",
+  "git_dirty": true,
   "provenance": {
     "config": {
       "k": 5,
@@ -96,7 +96,7 @@
       "ood": 0.05970712387000958,
       "cf_faith_rollout_hard": 0.0,
       "cf_faith_rollout_soft": 0.6452457373447198,
-      "cf_faith_pearl_hard": 0.0,
+      "cf_faith_pearl_hard": 0.05,
       "cf_faith_pearl_soft": 0.8512651677891471,
       "n_cf_faith_scorable": 20,
       "frac_degenerate": 0.0,
@@ -141,29 +141,29 @@
     {
       "n": 20,
       "validity": 1.0,
-      "proximity_l1": 647.2477966711692,
-      "proximity_l2": 103.89437794125031,
-      "sparsity": 0.506,
-      "frac_altered": 0.494,
+      "proximity_l1": 636.2562040392778,
+      "proximity_l2": 102.50638003533092,
+      "sparsity": 0.5043333333333334,
+      "frac_altered": 0.4956666666666666,
       "sparsity_channels": 0.0,
-      "sparsity_timepoints": 0.023333333333333334,
-      "ood": -0.053780814005005353,
+      "sparsity_timepoints": 0.028333333333333332,
+      "ood": -0.0481793949558431,
       "cf_faith_rollout_hard": 0.0,
-      "cf_faith_rollout_soft": 0.006958886141441271,
+      "cf_faith_rollout_soft": 0.00819004461797533,
       "cf_faith_pearl_hard": 0.0,
-      "cf_faith_pearl_soft": 0.007441557633244181,
+      "cf_faith_pearl_soft": 0.00875186524241024,
       "n_cf_faith_scorable": 20,
       "frac_degenerate": 0.0,
       "n_vacuous": 0,
       "frac_vacuous": 0.0,
-      "do_complexity_mean": 29.95,
+      "do_complexity_mean": 29.9,
       "do_complexity_median": 30.0,
       "do_complexity_stability": 1.0,
       "cf_faith_rollout_hard_valid": 0.0,
       "cf_faith_pearl_hard_valid": 0.0,
       "method": "CftsConfeti",
-      "scm_noise_plausibility": 0.021141756500958432,
-      "trsi": 1.0422753628261452
+      "scm_noise_plausibility": 0.022118711830701375,
+      "trsi": 1.0492777789377201
     },
     {
       "n": 20,
@@ -245,12 +245,39 @@
       "method": "PearlCARLA",
       "scm_noise_plausibility": 0.8421957354010784,
       "trsi": 0.08060042712145801
+    },
+    {
+      "n": 20,
+      "validity": 1.0,
+      "proximity_l1": 758.782847597627,
+      "proximity_l2": 86.46719818692661,
+      "sparsity": 0.018,
+      "frac_altered": 0.982,
+      "sparsity_channels": 0.0,
+      "sparsity_timepoints": 0.0,
+      "ood": -0.08135989248977268,
+      "cf_faith_rollout_hard": 0.0,
+      "cf_faith_rollout_soft": 0.22183318508309183,
+      "cf_faith_pearl_hard": 0.0,
+      "cf_faith_pearl_soft": 0.21470602187626664,
+      "n_cf_faith_scorable": 20,
+      "frac_degenerate": 0.0,
+      "n_vacuous": 0,
+      "frac_vacuous": 0.0,
+      "do_complexity_mean": 30.0,
+      "do_complexity_median": 30.0,
+      "do_complexity_stability": 1.0,
+      "cf_faith_rollout_hard_valid": 0.0,
+      "cf_faith_pearl_hard_valid": 0.0,
+      "method": "TSCausal",
+      "scm_noise_plausibility": 0.1118735066561752,
+      "trsi": 0.15798083969300541
     }
   ],
   "axis_a": {
     "seed": 1,
     "config": "smoke_kuramoto_seed1",
-    "git_commit": "6c539ac23da543d4736fcb453f5b2f54e4573dce",
+    "git_commit": "d99f4146b7be05a97e81ac91b9d001676b5da473",
     "git_dirty": true,
     "SHD": 0.0,
     "LagAcc": 1.0,
@@ -258,5 +285,66 @@
     "ResidualDep": 0.014188223668787968,
     "note": "SHD/LagAcc computed against the graph itself (no graph-discovery method in this pipeline) -- trivially perfect; ResidualDep is the informative benchmark-structural diagnostic here."
   },
-  "shift_vr": null
+  "shift_vr": {
+    "seed": 1,
+    "config": "smoke_kuramoto_seed1",
+    "git_commit": "d99f4146b7be05a97e81ac91b9d001676b5da473",
+    "git_dirty": true,
+    "CARLA": {
+      "validity_base": 0.45,
+      "validity_shift": 0.85,
+      "shift_vr": 1.8888888888888888,
+      "n_base": 20,
+      "n_shift": 20
+    },
+    "PearlCARLA": {
+      "validity_base": 0.7,
+      "validity_shift": 0.95,
+      "shift_vr": 1.3571428571428572,
+      "n_base": 20,
+      "n_shift": 20
+    },
+    "CftsWachter": {
+      "validity_base": 1.0,
+      "validity_shift": 1.0,
+      "shift_vr": 1.0,
+      "n_base": 20,
+      "n_shift": 20
+    },
+    "CftsCOMTE": {
+      "validity_base": 1.0,
+      "validity_shift": 1.0,
+      "shift_vr": 1.0,
+      "n_base": 20,
+      "n_shift": 20
+    },
+    "CftsConfeti": {
+      "validity_base": 1.0,
+      "validity_shift": 1.0,
+      "shift_vr": 1.0,
+      "n_base": 20,
+      "n_shift": 20
+    },
+    "CftsCounts": {
+      "validity_base": 1.0,
+      "validity_shift": 1.0,
+      "shift_vr": 1.0,
+      "n_base": 20,
+      "n_shift": 20
+    },
+    "CftsCels": {
+      "validity_base": 0.4,
+      "validity_shift": 0.95,
+      "shift_vr": 2.3749999999999996,
+      "n_base": 20,
+      "n_shift": 20
+    },
+    "TSCausal": {
+      "validity_base": 1.0,
+      "validity_shift": 1.0,
+      "shift_vr": 1.0,
+      "n_base": 20,
+      "n_shift": 20
+    }
+  }
 }
