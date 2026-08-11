@@ -3,8 +3,8 @@
 The top-level namespace re-exports the most commonly used classes.
 The full method collections are available in the subpackages:
   - causaltemp_xai.methods.counterfactual  (CARLARecourse, PearlCARLARecourse,
-                                             CausalFeasibilityCF, cfts_*)
-  - causaltemp_xai.methods.causal          (CITRIS)
+                                             TSCausalCF, cfts_*)
+  - causaltemp_xai.methods.causal          (DYNOTEARS, PCMCIPlus)
 
 The native from-scratch ``WachterCF`` was removed 2026-08-05 (`DECISIONS.md`):
 ``CftsWachterCF`` wraps the genuine vendored ``cfts`` implementation and was
@@ -16,9 +16,9 @@ redundant duplication, not a distinct method.
 from causaltemp_xai.scm.intervention import derive_intervention_t
 
 from .base import AttributionMethod, CFExplainer
-from .causal.citris import CITRIS
+from .causal.pcmci import PCMCIPlus
 from .counterfactual.carla import CARLARecourse, PearlCARLARecourse
-from .counterfactual.causal_feasibility import CausalFeasibilityCF
+from .counterfactual.causal_feasibility import TSCausalCF
 from .counterfactual.cfts_methods import (
     CftsCelsCF,
     CftsCOMTECF,
@@ -29,17 +29,17 @@ from .counterfactual.cfts_methods import (
 )
 
 __all__ = [
-    "CITRIS",
     "AttributionMethod",
     "CARLARecourse",
     "CFExplainer",
-    "CausalFeasibilityCF",
     "CftsCOMTECF",
     "CftsCelsCF",
     "CftsConfetiCF",
     "CftsCountsCF",
     "CftsNativeGuideCF",
     "CftsWachterCF",
+    "PCMCIPlus",
     "PearlCARLARecourse",
+    "TSCausalCF",
     "derive_intervention_t",
 ]

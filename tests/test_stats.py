@@ -11,7 +11,12 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from causaltemp_xai.stats import bootstrap_ci, collapse_horizon_ci, hierarchical_bootstrap_ci
+from causaltemp_xai.stats import (
+    bootstrap_ci,
+    bootstrap_resample_indices,
+    collapse_horizon_ci,
+    hierarchical_bootstrap_ci,
+)
 
 # ---------------------------------------------------------------------------
 # bootstrap_ci (flat, i.i.d.)
@@ -77,6 +82,42 @@ class TestBootstrapCI:
         r = bootstrap_ci([1.0, 2.0, 3.0], n_boot=100, seed=0)
         d = r.as_dict(prefix="validity_")
         assert set(d.keys()) == {"validity_mean", "validity_ci_lo", "validity_ci_hi", "validity_n"}
+
+
+# ---------------------------------------------------------------------------
+# bootstrap_resample_indices (raw-data resampling for a per-resample refit, M4f)
+# ---------------------------------------------------------------------------
+
+
+class TestBootstrapResampleIndices:
+    def test_shape(self):
+        idx = bootstrap_resample_indices(n=20, n_boot=7, seed=0)
+        assert idx.shape == (7, 20)
+
+    def test_values_in_range(self):
+        idx = bootstrap_resample_indices(n=15, n_boot=50, seed=0)
+        assert idx.min() >= 0
+        assert idx.max() < 15
+
+    def test_deterministic_given_same_seed(self):
+        idx1 = bootstrap_resample_indices(n=10, n_boot=5, seed=42)
+        idx2 = bootstrap_resample_indices(n=10, n_boot=5, seed=42)
+        assert np.array_equal(idx1, idx2)
+
+    def test_different_seeds_differ(self):
+        idx1 = bootstrap_resample_indices(n=10, n_boot=5, seed=1)
+        idx2 = bootstrap_resample_indices(n=10, n_boot=5, seed=2)
+        assert not np.array_equal(idx1, idx2)
+
+    def test_n_boot_one(self):
+        idx = bootstrap_resample_indices(n=6, n_boot=1, seed=0)
+        assert idx.shape == (1, 6)
+        assert idx.min() >= 0
+        assert idx.max() < 6
+
+    def test_dtype_is_integer(self):
+        idx = bootstrap_resample_indices(n=5, n_boot=3, seed=0)
+        assert np.issubdtype(idx.dtype, np.integer)
 
 
 # ---------------------------------------------------------------------------

@@ -30,6 +30,18 @@ flat i.i.d. sample (or matched paired samples), which is exactly the case
 Both estimators are deterministic given the same ``seed`` argument (a
 :class:`numpy.random.Generator` seed for the *resampling*, unrelated to any
 experiment seed).
+
+A third, structurally different primitive lives here too: :func:`bootstrap_resample_indices`
+(M4f, added 2026-08-06) generates row indices for resampling **raw data before
+a refit** (e.g. which trajectories of a ``(N, T, k)`` dataset feed one
+DYNOTEARS fit), rather than resampling already-computed scalar metric values.
+Neither :func:`bootstrap_ci` nor :func:`hierarchical_bootstrap_ci` can be
+reused for this: both take a ``statistic`` callable that reduces an array of
+*already-scored* values to a scalar, never a raw ``(N, T, k)`` array that
+needs a model refit per resample. The indices this function returns are the
+same primitive :func:`bootstrap_ci` builds inline
+(``rng.integers(0, n, size=(n_boot, n))``), pulled out because a caller doing
+model-refitting needs the indices themselves, not a recomputed statistic.
 """
 
 from __future__ import annotations
@@ -121,6 +133,48 @@ def bootstrap_ci(
     boot = np.array([statistic(arr[idx[b]]) for b in range(n_boot)], dtype=float)
     lo, hi = _percentile_ci(boot, ci)
     return BootstrapResult(mean=point, ci_lo=lo, ci_hi=hi, n=n, n_boot=n_boot)
+
+
+def bootstrap_resample_indices(n: int, n_boot: int, seed: int = 0) -> np.ndarray:
+    """Row indices for a nonparametric bootstrap over ``n`` i.i.d. units.
+
+    Returns an ``(n_boot, n)`` int array; row ``b`` is the ``b``-th resample's
+    indices into the original ``n`` units, drawn with replacement
+    (``rng.integers(0, n, size=(n_boot, n))`` -- the same primitive
+    :func:`bootstrap_ci` builds inline for its own resampling).
+
+    This exists separately from :func:`bootstrap_ci`/:func:`hierarchical_bootstrap_ci`
+    because those two resample **already-computed per-instance metric values**
+    and recompute a ``statistic`` over the resampled array; this function
+    instead hands back the **indices**, for a caller that needs to slice a raw
+    dataset (e.g. ``X_all[idx]``, shape ``(N, T, k)``) and refit a model once
+    per resample -- there is no scalar ``statistic`` to plug into their
+    ``Callable[[np.ndarray], float]`` signature for that use case.
+
+    Parameters
+    ----------
+    n:
+        Number of i.i.d. units to resample from (e.g. the dataset's N-axis).
+    n_boot:
+        Number of resamples to generate. Deliberately **required, no
+        default** -- unlike :func:`bootstrap_ci`'s ``n_boot=10000`` (cheap,
+        since it only recomputes a scalar statistic per resample), a caller
+        of this function typically refits an expensive model once per row of
+        the returned array, so silently reusing the 10,000 convention from
+        the other two functions would be a large, unintended cost multiplier.
+        Callers should pass a small, deliberate ensemble size instead (e.g.
+        M4f's DYNOTEARS ensemble uses B ~ 5-20).
+    seed:
+        Seed for the resampling RNG (deterministic given the same ``n``,
+        ``n_boot``, and ``seed``).
+
+    Returns
+    -------
+    np.ndarray
+        ``(n_boot, n)`` int array of indices in ``[0, n)``.
+    """
+    rng = np.random.default_rng(seed)
+    return rng.integers(0, n, size=(n_boot, n))
 
 
 def hierarchical_bootstrap_ci(

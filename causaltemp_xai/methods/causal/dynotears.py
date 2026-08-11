@@ -20,15 +20,19 @@ weight matrix ``A`` onto the benchmark's ``(k, k, L)`` adjacency convention.
 Why DYNOTEARS here
 ------------------
 DYNOTEARS is a *self-graphing* baseline that actually recovers the lag-1
-structure of this benchmark's near-linear SCM (unlike a causal-representation
-learner such as CITRIS, whose engine needs nonlinear mixing to have anything to
-identify — see ``citris.py``). It gives Axis B's graph-error decomposition real
-dynamic range and provides H3 a genuine, non-circular graph-aware method. It is
-**observational** — it needs no intervention targets, only the plain dataset.
+structure of this benchmark's near-linear SCM via continuous-optimization
+NOTEARS-style structure learning. It gives Axis B's graph-error decomposition
+real dynamic range and provides H3 a genuine, non-circular graph-aware method.
+It is **observational** — it needs no intervention targets, only the plain
+dataset.
 
 The class exposes the same ``inferred_graph(max_lag, threshold)`` interface as
-:class:`causaltemp_xai.methods.causal.CITRIS`, so the Axis-B pipeline
-(``experiments/07_auxiliary_methods.py``) can consume either interchangeably.
+:class:`causaltemp_xai.methods.causal.PCMCIPlus` (constraint-based discovery,
+structurally different from DYNOTEARS's continuous optimization — see
+``pcmci.py``), so the Axis-B pipeline (``experiments/07_auxiliary_methods.py``)
+can consume either interchangeably, and a DYNOTEARS-vs-PCMCIplus cross-method
+agreement check (M4h, `docs/risk_register.md` RISK-22) can compare their
+independently inferred graphs directly.
 """
 
 from __future__ import annotations
@@ -205,3 +209,65 @@ class DYNOTEARS:
             scores = scores / smax
         adj = (scores > threshold).astype(int)
         return adj, scores
+
+    # ------------------------------------------------------------------
+    def to_linear_mechanism(self, threshold: float = 0.1):
+        """Build a :class:`~causaltemp_xai.benchmarks.mechanisms.LinearMechanism`
+        from this model's own **signed** learned inter-slice weights.
+
+        M4g (`DECISIONS.md` 2026-08-06), built for Tier 2 (real data, no true
+        mechanism to mask): unlike ``build_masked_mechanism``
+        (``experiments/_common.py``), which always keeps a *known-true*
+        mechanism's real coefficients and only restricts its edge support,
+        there is no true mechanism here to mask. This method instead treats
+        DYNOTEARS's own fitted linear SEM as the mechanism itself — a
+        materially weaker construction: it is faithfulness relative to an
+        *inferred, linear, possibly-misspecified* approximation of the real
+        generating process, never the exact sense Tier 1's masked-true-
+        mechanism construction gives. Callers must not conflate the two.
+
+        Same signed-weight indexing as :meth:`inferred_graph`
+        (``A_list[l][i, j] = a_est_[l*k + j, i]``, i.e. edge ``j -> i`` at lag
+        ``l+1``), but **without** ``abs()`` -- :class:`LinearMechanism` needs
+        real rollout coefficients, not edge-presence scores -- and
+        **without** :meth:`inferred_graph`'s diagonal zeroing. That zeroing
+        encodes this *benchmark's own* synthetic ground truth having no
+        self-loops (`test_dynotears.py::test_no_instantaneous_edges_learned`);
+        real time series routinely have strong autoregressive self-terms, and
+        zeroing them here would discard real, fitted signal to match an
+        assumption that does not hold for real data. Off-diagonal and
+        diagonal entries alike are thresholded the same way (magnitude
+        relative to the max absolute weight), which is ordinary magnitude-
+        based sparsification, not a self-loop-specific exclusion.
+
+        **Discards intra-slice (instantaneous/contemporaneous) weights
+        (`w_est_`) entirely** -- :class:`LinearMechanism` has no
+        contemporaneous-effects term at all (`forward_numpy` consumes only
+        lagged history). If real data has meaningful within-timestep coupling
+        across channels, this construction cannot represent it, independent
+        of the lag-order question. Stated here as a limitation, not silently
+        assumed away -- see `docs/risk_register.md` RISK-22.
+
+        Parameters
+        ----------
+        threshold:
+            Same normalised-score threshold :meth:`inferred_graph` uses
+            (default matches it, for consistency between the mechanism's
+            implied structure and the reported/displayed adjacency).
+        """
+        from causaltemp_xai.benchmarks.mechanisms import LinearMechanism
+
+        if self.a_est_ is None:
+            raise RuntimeError("DYNOTEARS is not fitted; call .fit(X) first.")
+        k, p = self.k, self.p
+        raw = np.zeros((p, k, k))  # raw[l, i, j] = signed weight of j -> i at lag l+1
+        for l in range(p):
+            block = self.a_est_[l * k : (l + 1) * k, :]  # (k, k): [from, to]
+            for i in range(k):
+                for j in range(k):
+                    raw[l, i, j] = block[j, i]
+        smax = np.abs(raw).max()
+        if smax > 0:
+            raw = np.where(np.abs(raw) / smax > threshold, raw, 0.0)
+        A_list = [raw[l] for l in range(p)]
+        return LinearMechanism(A_list)

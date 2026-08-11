@@ -144,8 +144,24 @@ class TestEveryEmittedMetricHasAnAxis:
         # / aggregate_method_row), not by evaluate_method, so name them rather
         # than silently exempting anything absent.
         from_experiments_layer = {"trsi", "scm_noise_plausibility"}
+        # M4g (`DECISIONS.md` 2026-08-06): discovered-graph CF-faith on Tier 2
+        # is produced by experiments/07b_discovered_graph_real.py's
+        # score_method_discovered, a real (numbered-module) phase, not by
+        # evaluate_method/pns_direction either. Checked against that real
+        # producer in test_the_07b_discovered_graph_layer_emits_what_it_is_credited_with
+        # below, same discipline as the two exemptions above.
+        from_07b_discovered_graph = {
+            "cf_faith_discovered_rollout_mean",
+            "cf_faith_discovered_rollout_ci_lo",
+            "cf_faith_discovered_rollout_ci_hi",
+            "cf_faith_discovered_pearl_mean",
+            "cf_faith_discovered_pearl_ci_lo",
+            "cf_faith_discovered_pearl_ci_hi",
+        }
 
-        missing = set(AXIS_METRICS["C"]) - emitted - from_experiments_layer
+        missing = (
+            set(AXIS_METRICS["C"]) - emitted - from_experiments_layer - from_07b_discovered_graph
+        )
         assert not missing, f"declared on Axis C but never emitted: {sorted(missing)}"
 
     def test_the_experiments_layer_emits_what_it_is_credited_with(self):
@@ -170,6 +186,35 @@ class TestEveryEmittedMetricHasAnAxis:
         for key in ("trsi", "scm_noise_plausibility"):
             assert key in agg, f"{key} missing from aggregate_method_row"
             assert agg[key] is not None, f"{key} present but None"
+
+    def test_the_07b_discovered_graph_layer_emits_what_it_is_credited_with(self):
+        """M4g: ...and the discovered-graph exemption is checked against its
+        real producer too, same discipline as
+        test_the_experiments_layer_emits_what_it_is_credited_with above."""
+        import importlib
+
+        from causaltemp_xai.benchmarks.generator import NlinearSCMT
+        from causaltemp_xai.methods.causal import DYNOTEARS
+
+        _phase07b = importlib.import_module("experiments.07b_discovered_graph_real")
+
+        gen = NlinearSCMT(k=4, L=1, sparsity=0.3, T=20, N=60, seed=0)
+        X = gen.generate()["X"]
+        mechanisms = [
+            DYNOTEARS(k=4, p=1).fit(X).to_linear_mechanism(),
+            DYNOTEARS(k=4, p=1).fit(X).to_linear_mechanism(),
+        ]
+        row = _phase07b.score_method_discovered(X[:5], X[:5] + 0.4, mechanisms, seed=0)
+        for key in (
+            "cf_faith_discovered_rollout_mean",
+            "cf_faith_discovered_rollout_ci_lo",
+            "cf_faith_discovered_rollout_ci_hi",
+            "cf_faith_discovered_pearl_mean",
+            "cf_faith_discovered_pearl_ci_lo",
+            "cf_faith_discovered_pearl_ci_hi",
+        ):
+            assert key in row, f"{key} missing from score_method_discovered"
+            assert row[key] is not None, f"{key} present but None"
 
     def test_the_audit_metrics_live_on_axis_c(self):
         """CF-faith, the model-vs-world terms and do-complexity were previously

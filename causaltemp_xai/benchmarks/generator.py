@@ -164,7 +164,7 @@ def exogenous_channels(graph: np.ndarray) -> list[int]:
     incoming edges has no dependence on anything, including its own past.
 
     This is the "dynamic exogenous" (``U_d``) half of the ``U_s``/``U_d``/``V``
-    typing `CausalFeasibilityCF` (Bahri et al., IEEE BigData 2025) needs (M3,
+    typing `TSCausalCF` (was `CausalFeasibilityCF`; Bahri et al., IEEE BigData 2025) needs (M3,
     ``ROADMAP.md``). ``U_s`` (static exogenous) has no counterpart here -- this
     benchmark has no channel held constant across ``t`` -- so it is always empty;
     every other channel is ``V`` (endogenous).

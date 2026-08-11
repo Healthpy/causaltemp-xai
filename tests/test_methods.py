@@ -2,7 +2,7 @@
 
 Verifies output shapes/finiteness, that Wachter flips at least one label, that
 CARLA-causal has zero retroactive change and is CF-faith (rollout) hard=1 by
-construction, and that CausalFeasibilityCF's FISTA proximal step and
+construction, and that TSCausalCF's FISTA proximal step and
 causal-residual masking match the paper's equations cell-for-cell.
 """
 
@@ -16,13 +16,13 @@ from causaltemp_xai.benchmarks.generator import LinearSCMT, exogenous_channels
 from causaltemp_xai.classifiers import LSTMClassifier
 from causaltemp_xai.methods import (
     CARLARecourse,
-    CausalFeasibilityCF,
     CftsCelsCF,
     CftsCOMTECF,
     CftsConfetiCF,
     CftsCountsCF,
     CftsWachterCF,
     PearlCARLARecourse,
+    TSCausalCF,
     derive_intervention_t,
 )
 from causaltemp_xai.methods.counterfactual.carla import _resolve_t0_candidates
@@ -158,12 +158,12 @@ class TestPearlCARLA:
 
 
 # ---------------------------------------------------------------------------
-# CausalFeasibilityCF (M3, 2026-08-04) — SCM-regularised recourse
+# TSCausalCF (M3, 2026-08-04) — SCM-regularised recourse
 # (Bahri et al., IEEE BigData 2025)
 # ---------------------------------------------------------------------------
 
 
-class TestCausalFeasibilityHelpers:
+class TestTSCausalCFHelpers:
     """The FISTA building blocks, tested in isolation: soft-thresholding is a
     real proximal operator (not folded into the loss like Adam+L1 would be),
     and the lag-window construction matches
@@ -249,11 +249,11 @@ class TestCausalFeasibilityHelpers:
         assert (prox_mask.to(torch.int) + causal_mask.to(torch.int)).eq(1).all()
 
 
-class TestCausalFeasibilityCF:
+class TestTSCausalCF:
     def test_shape_and_finite(self, trained):
         clf, data = trained
         x = data["X"][0]
-        cf = CausalFeasibilityCF(target_class=1, n_steps=60).generate(
+        cf = TSCausalCF(target_class=1, n_steps=60).generate(
             x, clf, data["graph"], data["mechanism"]
         )
         assert cf.shape == x.shape
@@ -267,18 +267,18 @@ class TestCausalFeasibilityCF:
         X = data["X"]
         preds = clf.predict(X[:20])
         src = [i for i in range(20) if preds[i] == 0][:3] or list(range(3))
-        method = CausalFeasibilityCF(target_class=1, n_steps=150)
+        method = TSCausalCF(target_class=1, n_steps=150)
         flips = 0
         for i in src:
             cf = method.generate(X[i], clf, data["graph"], data["mechanism"])
             if clf.predict(cf) == 1:
                 flips += 1
-        assert flips >= 1, "CausalFeasibilityCF failed to flip any selected instance"
+        assert flips >= 1, "TSCausalCF failed to flip any selected instance"
 
     def test_generate_batch_shape(self, trained):
         clf, data = trained
         X = data["X"][:4]
-        cfs = CausalFeasibilityCF(target_class=1, n_steps=40).generate_batch(
+        cfs = TSCausalCF(target_class=1, n_steps=40).generate_batch(
             X, clf, data["graph"], data["mechanism"]
         )
         assert cfs.shape == X.shape
@@ -291,10 +291,10 @@ class TestCausalFeasibilityCF:
         that the causal term is genuinely additive, not silently always-on."""
         clf, data = trained
         x = data["X"][3]
-        cf_reg = CausalFeasibilityCF(target_class=1, n_steps=80, lam=13.0).generate(
+        cf_reg = TSCausalCF(target_class=1, n_steps=80, lam=13.0).generate(
             x, clf, data["graph"], data["mechanism"]
         )
-        cf_unreg = CausalFeasibilityCF(target_class=1, n_steps=80, lam=0.0).generate(
+        cf_unreg = TSCausalCF(target_class=1, n_steps=80, lam=0.0).generate(
             x, clf, data["graph"], data["mechanism"]
         )
         assert not np.allclose(cf_reg, cf_unreg, atol=1e-4), (

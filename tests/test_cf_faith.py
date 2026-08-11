@@ -248,6 +248,24 @@ class TestCFFaithPearl:
         assert rollout["hard"] == 1.0, f"rollout should accept, got {rollout}"
         assert pearl["hard"] == 0.0, f"pearl should reject, got {pearl}"
 
+    def test_mutual_exclusivity_holds_at_bare_default_tol(self):
+        """Same divergence pair as above, but with no explicit ``tol`` — the
+        production call sites (``eval.py``, ``experiments/_common.py``, ...)
+        never pass ``tol``, so they only ever exercise the bare default. Pins
+        that raising the default 1e-4 -> 1e-3 (2026-08-06) does not collapse
+        the contract for the code path actually used in the pipeline.
+        """
+        k, L, T = 3, 1, 25
+        x_orig, graph, mechanism = _make_simple_scm(k=k, L=L, T=T, seed=6)
+        t0 = 8
+        rng = np.random.default_rng(11)
+        x_cf = _noise_reinjected_cf(x_orig, mechanism, t0, rng.uniform(-0.4, 0.4, k))
+
+        pearl = CFfaith(semantics="pearl_delta").score(x_orig, x_cf, t0, graph, mechanism)
+        rollout = CFfaith(semantics="noiseless_rollout").score(x_orig, x_cf, t0, graph, mechanism)
+        assert pearl["hard"] == 1.0, f"pearl should accept, got {pearl}"
+        assert rollout["hard"] == 0.0, f"rollout should reject, got {rollout}"
+
     def test_retroactive_zero_in_both_modes(self):
         """A retroactive change is unfaithful under both semantics."""
         k, L, T = 3, 1, 20

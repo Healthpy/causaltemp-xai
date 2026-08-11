@@ -210,7 +210,7 @@ class TestAcyclicity:
 
 
 class TestExogenousChannels:
-    """M3's U_s/U_d/V typing prerequisite (`CausalFeasibilityCF`, `ROADMAP.md`).
+    """M3's U_s/U_d/V typing prerequisite (`TSCausalCF`, was `CausalFeasibilityCF`, `ROADMAP.md`).
 
     Decided 2026-08-04 (`DECISIONS.md`): a channel with zero incoming edges is
     this benchmark's ``U_d`` (dynamic exogenous); every other channel is ``V``.

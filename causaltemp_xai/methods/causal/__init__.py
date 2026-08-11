@@ -7,23 +7,31 @@
               graph-aware method: gives Axis B's graph-error decomposition real
               dynamic range and H3 a genuine, non-circular positive.
 
-  CITRIS — Causal Identifiability from Temporal Intervened Sequences
-           (Lippe et al., ICML 2022; genuine upstream modules, vendored).
-           Representation learner; needs intervention-target-labeled data.
-           An honest *secondary* method — its identifiability engine needs
-           nonlinear mixing to have anything to identify, so on this
-           identity-mixing benchmark it does not recover the graph at smoke
-           scale (see its class docstring).
+  PCMCIplus — Constraint-based causal discovery for time series (Runge et al.,
+              2020; `tigramite` package, installed as a normal PyPI
+              dependency, not vendored). Conditional-independence-testing
+              approach (`ParCorr`), structurally unlike DYNOTEARS's
+              continuous-optimization NOTEARS formulation. Wired 2026-08-06
+              (M4h, `DECISIONS.md`) specifically as the second,
+              different-model-class causal-discovery method
+              `docs/risk_register.md` RISK-22 names as the mitigation for
+              "bootstrap-ensemble variance is not model-misspecification
+              bias" — a DYNOTEARS-vs-PCMCIplus cross-method agreement check
+              is the concrete instrument. Observational-only (`fit(X)`, same
+              shape as DYNOTEARS); has no `to_linear_mechanism()` equivalent
+              (`ParCorr`'s test statistics are not rollout-usable regression
+              coefficients), so it does not participate in M4g's Tier-2
+              discovered-mechanism CF-faith pipeline.
 
-Note on iCITRIS: iCITRIS (Lippe et al., 2022) extends CITRIS with a causal
-discovery mechanism for *instantaneous* (lag-0) effects. CausalTemp-XAI's SCMs
-are purely time-lagged (graph over lags >= 1, no instantaneous edges), so
-iCITRIS's instantaneous-discovery component reduces to plain CITRIS on this
-benchmark and is deliberately not implemented as a redundant second model —
-see the class docstring of :class:`CITRIS`.
+CITRIS (Lippe et al., ICML 2022) was vendored here through 2026-08-06 and was
+deleted that day (M4h, `DECISIONS.md`) along with its vendored submodule and
+`benchmarks/interventional.py` — it required intervention-target-labeled data
+with no real-data analogue, and its own docstring already conceded near-chance
+graph recovery on this identity-mixing synthetic benchmark. PCMCIplus replaces
+it as the second self-graphing method.
 """
 
-from .citris import CITRIS
 from .dynotears import DYNOTEARS
+from .pcmci import PCMCIPlus
 
-__all__ = ["CITRIS", "DYNOTEARS"]
+__all__ = ["DYNOTEARS", "PCMCIPlus"]

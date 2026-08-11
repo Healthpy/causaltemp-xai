@@ -3,6 +3,13 @@ Boubrahimi & Hamdi, *Improving Causal Feasibility in Counterfactual
 Explanations for Multivariate Time Series Classification*, IEEE BigData 2025,
 DOI 10.1109/BIGDATA66926.2025.11402392).
 
+**Class renamed 2026-08-06** (PI decision, `DECISIONS.md`) from
+``CausalFeasibilityCF`` to ``TSCausalCF``, and wired into the main
+experiment's default method list (previously opt-in only via
+``--methods CausalFeasibility``). The rename is cosmetic -- the
+implementation, faithfulness verification, and R3 status below are
+unchanged; the registry key is now ``"TSCausal"`` (was ``"CausalFeasibility"``).
+
 Read from the paper's own PDF (not a secondhand summary) before implementing
 -- see ``DECISIONS.md`` 2026-08-04. That reading corrected an earlier
 misreading in this project's own docs: there is **no intervention timestep**
@@ -131,7 +138,7 @@ def _build_loss_masks(
     instead -- ``causal_mask`` is exactly the complement, not a separately
     reasoned-about set, so the two can never silently disagree about a cell.
 
-    Extracted from :meth:`CausalFeasibilityCF.generate` as a pure function
+    Extracted from :meth:`TSCausalCF.generate` as a pure function
     so the (t, channel) assignment can be tested directly, without depending
     on gradient/optimisation dynamics to observe it indirectly.
     """
@@ -151,7 +158,7 @@ def _build_loss_masks(
     return prox_mask, causal_mask, thresh
 
 
-class CausalFeasibilityCF:
+class TSCausalCF:
     """SCM-regularised counterfactual (Bahri et al., IEEE BigData 2025).
 
     Parameters
@@ -277,7 +284,7 @@ class CausalFeasibilityCF:
         self._mechanism = mechanism
 
     def fit(self, X_train, classifier) -> None:
-        """No-op -- CausalFeasibilityCF needs graph/mechanism, set via set_causal_info()."""
+        """No-op -- TSCausalCF needs graph/mechanism, set via set_causal_info()."""
         pass
 
     def explain(self, x, target_class: int, classifier) -> np.ndarray:

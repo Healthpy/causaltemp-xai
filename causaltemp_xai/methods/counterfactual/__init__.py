@@ -4,7 +4,7 @@ MOVED from methods/ top-level into this subdirectory.
 """
 
 from .carla import CARLARecourse, PearlCARLARecourse
-from .causal_feasibility import CausalFeasibilityCF
+from .causal_feasibility import TSCausalCF
 from .cfts_methods import (
     CftsCelsCF,
     CftsCOMTECF,
@@ -16,7 +16,6 @@ from .cfts_methods import (
 
 __all__ = [
     "CARLARecourse",
-    "CausalFeasibilityCF",
     "CftsCOMTECF",
     "CftsCelsCF",
     "CftsConfetiCF",
@@ -24,4 +23,5 @@ __all__ = [
     "CftsNativeGuideCF",
     "CftsWachterCF",
     "PearlCARLARecourse",
+    "TSCausalCF",
 ]

@@ -13,15 +13,18 @@ valid at ``L=1``).
 
 Additionally, three M4 benchmark-extension **ablation presets** are
 registered below, at the same smoke scale as ``SMOKE``/``SMOKE_NL`` (k=5,
-T=30, N=500, seed=0) -- ``SMOKE_GAUSSIAN`` (H5 negative control),
-``SMOKE_NONMONOTONIC`` (H6 non-monotonic mechanism), and ``SMOKE_REGIME`` (H7
+T=30, N=500, seed=0) -- ``SMOKE_GAUSSIAN`` (H5 evidence (i), renumbered
+2026-08-06, was H5, negative control),
+``SMOKE_NONMONOTONIC`` (H5 evidence (ii), was H6, non-monotonic mechanism),
+and ``SMOKE_REGIME`` (H5 evidence (iii), was H7
 regime-switching). See ``docs/archive/m4_ablation_presets_smoke.md`` for the full
 design, pre-registered expected direction, and smoke-scale preliminary
 finding for each. **No full-scale variant of any of these three presets
 exists or is planned as part of this work.**
 
 Two further M4c presets (`DECISIONS.md` 2026-08-05) add **non-dissipative**
-mechanism families, testing H8b in the regime where causal effects persist
+mechanism families, testing H4 evidence (i) (renumbered 2026-08-06, was H8b)
+in the regime where causal effects persist
 rather than decay -- ``SMOKE_SPRING`` (``mechanism_type="spring"``, ``k=10``
 exposed channels = position+velocity for 5 particles,
 :class:`~causaltemp_xai.benchmarks.generator.SpringSCMT`, adopted from Bahri
@@ -33,13 +36,15 @@ Kipf et al. NRI). Unlike every other preset in this module, these two are
 full-scale variant exists yet; smoke-scale verification is M4c's first DoD
 gate.
 
-Two **label-site presets** are registered for H8c (M2b, 2026-08-03):
+Two **label-site presets** are registered for H4 evidence (ii) (renumbered
+2026-08-06, was H8c; M2b, 2026-08-03):
 ``SMOKE_INTERIOR_LABEL`` and ``FULL_INTERIOR_LABEL``. They vary exactly one
 field from ``SMOKE``/``FULL`` — ``label_fn="interior_threshold"``, which reads
 the label at ``0.6 T`` while the trajectory still runs to ``T``. Their purpose
 is to separate "recourse validity decays in ``T - t0``" from "…decays in
 ``t_label - t0``", which are observationally identical under the default
-terminal label rule and therefore make H8 unfalsifiable (RISK-19).
+terminal label rule and therefore make H4 unfalsifiable without this control
+(RISK-19).
 """
 
 from __future__ import annotations
@@ -188,7 +193,8 @@ FULL_NL = BenchmarkConfig(
 
 
 # ---------------------------------------------------------------------------
-# M2b label-site presets (H8c) -- de-confounding the horizon result
+# M2b label-site presets (H4 evidence ii, renumbered 2026-08-06, was H8c) --
+# de-confounding the horizon result
 # ---------------------------------------------------------------------------
 #
 # Each varies exactly one field from its base preset: `label_fn`. The
@@ -201,7 +207,7 @@ FULL_NL = BenchmarkConfig(
 # than `T - t0` at the same `t0`, and H8's two readings -- "decay in T - t0"
 # vs "decay in t_label - t0" -- finally make different predictions.
 
-#: H8c at smoke scale: SMOKE with the label read at 0.6 T.
+#: H4 evidence (ii) (was H8c) at smoke scale: SMOKE with the label read at 0.6 T.
 SMOKE_INTERIOR_LABEL = BenchmarkConfig(
     k=5,
     L=1,
@@ -215,17 +221,18 @@ SMOKE_INTERIOR_LABEL = BenchmarkConfig(
     label_params={"frac": 0.6},
 )
 
-#: H8c at paper scale, **corrected** (2026-08-03): FULL with the label at 0.9 T
+#: H4 evidence (ii) (was H8c) at paper scale, **corrected** (2026-08-03): FULL
+#: with the label at 0.9 T
 #: (`t_label = 90`, `T = 100`), so the label's information must survive only 9
 #: contractive steps to reach the LSTM's terminal readout instead of 39.
 #:
-#: `FULL_INTERIOR_LABEL` below (`frac = 0.6`) is **not usable for H8c at this
-#: scale**: its classifier trains to 0.501 test accuracy — chance — because the
+#: `FULL_INTERIOR_LABEL` below (`frac = 0.6`) is **not usable for this
+#: evidence at this scale**: its classifier trains to 0.501 test accuracy — chance — because the
 #: same contraction that produces the horizon result also destroys the label
 #: signal before the readout can see it. Measured carry distance vs accuracy:
 #: 0 steps -> 0.996 (`full`) / 0.920 (`smoke`), 11 steps -> 0.790
 #: (`smoke_interior_label`), 39 steps -> 0.501. Validity is undefined against a
-#: chance classifier, so no H8c verdict can come from that config; it is kept
+#: chance classifier, so no verdict for this evidence can come from that config; it is kept
 #: registered because that failure is itself a recorded finding.
 #:
 #: 9 steps of separation is smaller than smoke's 11 but still separates
@@ -244,7 +251,7 @@ FULL_INTERIOR_LABEL_LATE = BenchmarkConfig(
     label_params={"frac": 0.9},
 )
 
-#: H8c at paper scale, first attempt: FULL with the label read at 0.6 T
+#: H4 evidence (ii) (was H8c) at paper scale, first attempt: FULL with the label read at 0.6 T
 #: (t_label = 60, T = 100). **Superseded by FULL_INTERIOR_LABEL_LATE** — see
 #: that preset's note. Retained so the negative result stays reproducible.
 FULL_INTERIOR_LABEL = BenchmarkConfig(
@@ -262,7 +269,8 @@ FULL_INTERIOR_LABEL = BenchmarkConfig(
 
 
 # ---------------------------------------------------------------------------
-# M4 benchmark-extension ablation presets (H5/H6/H7) -- SMOKE-SCALE ONLY
+# M4 benchmark-extension ablation presets (H5 evidence i/ii/iii, renumbered
+# 2026-08-06, were H5/H6/H7) -- SMOKE-SCALE ONLY
 # ---------------------------------------------------------------------------
 #
 # Each preset below varies exactly one field/hyperparameter-group from a
@@ -278,11 +286,12 @@ FULL_INTERIOR_LABEL = BenchmarkConfig(
 # full-scale ("full"/"full_nl"-analogue) variant of any of these three
 # presets exists or is planned as part of this work.**
 
-#: H5 negative control: SMOKE with Gaussian (instead of Laplace) innovation
+#: H5 evidence (i) (renumbered 2026-08-06, was H5): negative control: SMOKE
+#: with Gaussian (instead of Laplace) innovation
 #: noise, variance-matched to Laplace(scale=0.1) so the ablation isolates
 #: noise *shape*, not innovation scale (see generator._GAUSSIAN_STD).
 #: Pre-registered expected direction: weakens or nulls the validity/CF-faith
-#: divergence that is this project's core phenomenon (H5).
+#: divergence that is this project's core phenomenon.
 SMOKE_GAUSSIAN = BenchmarkConfig(
     k=SMOKE.k,
     L=SMOKE.L,
@@ -296,7 +305,7 @@ SMOKE_GAUSSIAN = BenchmarkConfig(
     nonlinear=dict(SMOKE.nonlinear) if SMOKE.nonlinear is not None else None,
 )
 
-#: H6 non-monotonic mechanism ablation: SMOKE_NL with the per-node MLP's
+#: H5 evidence (ii) (renumbered 2026-08-06, was H6): non-monotonic mechanism ablation: SMOKE_NL with the per-node MLP's
 #: hidden activation swapped from "tanh" (monotonic) to "nonmonotonic" (a
 #: bounded, odd `sin` activation -- see mechanisms._ACTIVATIONS_NP). The
 #: mechanism's **output** branch stays `gain*tanh(...)` regardless (see the
@@ -317,7 +326,7 @@ SMOKE_NONMONOTONIC = BenchmarkConfig(
     nonlinear=dict(_NL_HYPERPARAMS_NONMONOTONIC),
 )
 
-#: H7 regime-switching ablation: SMOKE_NL-scale dataset with a single
+#: H5 evidence (iii) (renumbered 2026-08-06, was H7): regime-switching ablation: SMOKE_NL-scale dataset with a single
 #: deterministic structural break at T/2
 #: (see ``causaltemp_xai.benchmarks.generator.RegimeSwitchNlinearSCMT``).
 #: Regime 1 is identical to `_NL_HYPERPARAMS` (the standard, un-ablated
@@ -359,7 +368,7 @@ SMOKE_REGIME = BenchmarkConfig(
     nonlinear=dict(_REGIME_NL_HYPERPARAMS),
 )
 
-#: H7 regime-switching ablation, **HMM variant**: SMOKE_NL-scale dataset with
+#: H5 evidence (iii) (renumbered 2026-08-06, was H7), **HMM variant**: SMOKE_NL-scale dataset with
 #: a genuine hidden Markov regime path (``R=3`` regimes, per-sequence random
 #: change-points) rather than SMOKE_REGIME's single deterministic T/2 break
 #: (see ``causaltemp_xai.benchmarks.generator.HMMRegimeSwitchNlinearSCMT``).
@@ -368,7 +377,7 @@ SMOKE_REGIME = BenchmarkConfig(
 #: exactly the HMM structure. `mechanism_type="mlp_regime_hmm"` is dispatched
 #: by `data_io.build_generator`. Kept alongside `smoke_regime` (not replacing
 #: it) so the deterministic-single-break vs. stochastic-multi-break contrast
-#: is a clean A/B for the H7 writeup.
+#: is a clean A/B for the H5 evidence (iii) writeup.
 _REGIME_HMM_HYPERPARAMS: dict = {
     "hidden": _NL_HYPERPARAMS["hidden"],
     "n_regimes": 3,

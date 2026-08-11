@@ -19,6 +19,7 @@ from __future__ import annotations
 import importlib
 
 import numpy as np
+import pytest
 
 _phase07 = importlib.import_module("experiments.07_auxiliary_methods")
 _mean_soft_cf_faith = _phase07._mean_soft_cf_faith
@@ -126,3 +127,164 @@ class TestGraphQualitySweepFracVacuous:
         # non-vacuous-by-construction intervention -- zero vacuous instances.
         true_row = next(r for r in rows if r["label"] == "corrupt_frac=0")
         assert true_row["frac_vacuous"] == 0.0
+
+
+class TestGraphQualitySweepEnsemble:
+    """M4f (`DECISIONS.md` 2026-08-06): the uncertainty-aware DYNOTEARS ensemble.
+
+    R6 adversarial gate for `graph_error_ensemble_*`/`mean_pairwise_shd`
+    before either appears in any result table: a disagreement case (must show
+    non-trivial spread), an agreement case (must not fabricate disagreement
+    that isn't there), and a degenerate regression anchor (identical members
+    must collapse to exactly zero spread).
+    """
+
+    def _make_scm(self, k=4, L=1, T=20, N=10, seed=0):
+        from causaltemp_xai.benchmarks.generator import NlinearSCMT
+
+        gen = NlinearSCMT(k=k, L=L, T=T, N=N, seed=seed, hidden=8)
+        data = gen.generate(burn_in=20)
+        return data["X"], data["graph"], data["mechanism"]
+
+    def _sweep_ensemble_args(self, X, graph, mech, n_cf=5):
+        from causaltemp_xai.metrics.cf_faith import CFfaith
+
+        build_oracle_interventions = _phase07.build_oracle_interventions
+        X_sel = X[:n_cf]
+        oracle_ints = build_oracle_interventions(X_sel, mech)
+        rollout = CFfaith(semantics="noiseless_rollout")
+        cf_faith_gt = 1.0  # oracle is faithful by construction
+        return graph, mech, X_sel, oracle_ints, rollout, cf_faith_gt
+
+    # -- surgical isolation: hand-built ensembles, no DYNOTEARS cost --------
+
+    def test_identical_resamples_give_zero_spread(self):
+        """B members built from the *same* graph must show exactly zero
+        disagreement -- the degenerate regression anchor."""
+        _graph_quality_sweep_ensemble = _phase07._graph_quality_sweep_ensemble
+
+        X, graph, mech = self._make_scm()
+        args = self._sweep_ensemble_args(X, graph, mech)
+        true_bin = (graph > 0).astype(int)
+        ensemble_adjs = [true_bin.copy() for _ in range(5)]
+
+        result = _graph_quality_sweep_ensemble(
+            *args, ensemble_adjs, method_label="dynotears", seed=0
+        )
+
+        assert result["mean_pairwise_shd"] == 0.0
+        ge = result["graph_error_ensemble"]
+        assert ge["ci_lo"] == pytest.approx(ge["mean"])
+        assert ge["ci_hi"] == pytest.approx(ge["mean"])
+        assert result["ensemble_b"] == 5
+        assert len(result["ensemble_anchor_points"]) == 5
+
+    def test_disagreeing_hand_built_ensemble_shows_nonzero_spread(self):
+        """Half the ensemble is the true graph, half is fully corrupted
+        (`_corrupt_graph(frac=1.0)`) -- must show large, not zero, spread.
+        Proves the spread metric tracks real instability by construction,
+        independent of DYNOTEARS's own fitting noise."""
+        _graph_quality_sweep_ensemble = _phase07._graph_quality_sweep_ensemble
+        _corrupt_graph = _phase07._corrupt_graph
+
+        X, graph, mech = self._make_scm()
+        args = self._sweep_ensemble_args(X, graph, mech)
+        true_bin = (graph > 0).astype(int)
+        rng = np.random.default_rng(0)
+        corrupted = _corrupt_graph(true_bin, frac=1.0, rng=rng)
+        ensemble_adjs = [true_bin.copy(), true_bin.copy(), corrupted, corrupted]
+
+        result = _graph_quality_sweep_ensemble(
+            *args, ensemble_adjs, method_label="dynotears", seed=0
+        )
+
+        assert result["mean_pairwise_shd"] > 0.0
+        ge = result["graph_error_ensemble"]
+        assert ge["ci_hi"] - ge["ci_lo"] > 0.0
+
+    def test_pairwise_shd_matches_direct_computation(self):
+        """`mean_pairwise_shd` is the mean SHD across all C(B,2) pairs of the
+        ensemble's own graphs (not against the true graph) -- verify against
+        a direct, independent computation."""
+        from causaltemp_xai.metrics.axis_a import shd
+
+        _graph_quality_sweep_ensemble = _phase07._graph_quality_sweep_ensemble
+
+        X, graph, mech = self._make_scm()
+        args = self._sweep_ensemble_args(X, graph, mech)
+        true_bin = (graph > 0).astype(int)
+        rng = np.random.default_rng(1)
+        _corrupt_graph = _phase07._corrupt_graph
+        ensemble_adjs = [
+            true_bin.copy(),
+            _corrupt_graph(true_bin, frac=0.5, rng=rng),
+            _corrupt_graph(true_bin, frac=1.0, rng=rng),
+        ]
+
+        result = _graph_quality_sweep_ensemble(
+            *args, ensemble_adjs, method_label="dynotears", seed=0
+        )
+
+        expected = np.mean(
+            [
+                shd(ensemble_adjs[0], ensemble_adjs[1]),
+                shd(ensemble_adjs[0], ensemble_adjs[2]),
+                shd(ensemble_adjs[1], ensemble_adjs[2]),
+            ]
+        )
+        assert result["mean_pairwise_shd"] == pytest.approx(expected)
+
+    # -- real end-to-end: _fit_graph_method_ensemble + DYNOTEARS refits -----
+
+    def test_fit_dynotears_ensemble_produces_b_distinct_shaped_graphs(self):
+        """Real bootstrap-resample-and-refit path: B independent DYNOTEARS
+        fits, each a valid density-matched adjacency of the right shape."""
+        _fit_graph_method_ensemble = _phase07._fit_graph_method_ensemble
+
+        X, graph, _mech = self._make_scm(k=4, L=1, T=20, N=60, seed=0)
+        k = graph.shape[0]
+        n_true = int((graph > 0).sum())
+
+        members = _fit_graph_method_ensemble(X, k=k, L=1, n_true=n_true, B=3, seed=0)
+
+        assert len(members) == 3
+        for adj in members:
+            assert adj.shape == graph.shape
+            assert adj.dtype == int
+            assert adj.sum() == n_true  # density-matched: same edge count every time
+
+    def test_fit_dynotears_ensemble_deterministic_given_seed(self):
+        _fit_graph_method_ensemble = _phase07._fit_graph_method_ensemble
+
+        X, graph, _mech = self._make_scm(k=4, L=1, T=20, N=60, seed=0)
+        k = graph.shape[0]
+        n_true = int((graph > 0).sum())
+
+        m1 = _fit_graph_method_ensemble(X, k=k, L=1, n_true=n_true, B=3, seed=7)
+        m2 = _fit_graph_method_ensemble(X, k=k, L=1, n_true=n_true, B=3, seed=7)
+
+        for a, b in zip(m1, m2):
+            assert np.array_equal(a, b)
+
+    def test_end_to_end_ensemble_self_consistent(self):
+        """Real DYNOTEARS-ensemble + sweep-aggregation, wired together end to
+        end. Not asserting a specific spread value (real fits are noisy at
+        test scale) -- only that the pipeline runs and every invariant the
+        surgical tests above establish by construction also holds for real
+        output: valid CI ordering, non-negative spread, correct B."""
+        _fit_graph_method_ensemble = _phase07._fit_graph_method_ensemble
+        _graph_quality_sweep_ensemble = _phase07._graph_quality_sweep_ensemble
+
+        X, graph, mech = self._make_scm(k=4, L=1, T=20, N=80, seed=0)
+        k = graph.shape[0]
+        n_true = int((graph > 0).sum())
+        args = self._sweep_ensemble_args(X, graph, mech)
+
+        members = _fit_graph_method_ensemble(X, k=k, L=1, n_true=n_true, B=3, seed=0)
+        result = _graph_quality_sweep_ensemble(*args, members, method_label="dynotears", seed=0)
+
+        assert result["ensemble_b"] == 3
+        assert result["mean_pairwise_shd"] >= 0.0
+        ge = result["graph_error_ensemble"]
+        assert ge["ci_lo"] <= ge["mean"] <= ge["ci_hi"]
+        assert len(result["ensemble_anchor_points"]) == 3

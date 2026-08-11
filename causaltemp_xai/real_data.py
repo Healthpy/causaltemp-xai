@@ -1,6 +1,7 @@
 """Loading for real (UEA/UCR) multivariate time series datasets (M4b).
 
-M4b tests whether the horizon/decay result (H8) reproduces on real signal,
+M4b tests whether the horizon/decay result (H4, renumbered 2026-08-06, was H8)
+reproduces on real signal,
 with **no causal graph** -- discovered-graph CF-faith scoring is explicitly
 out of scope (`ROADMAP.md` M4b DoD). This module is therefore a **parallel**
 loader to :mod:`causaltemp_xai.data_io`, not a modification of it:

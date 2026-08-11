@@ -83,7 +83,7 @@ class CFfaith:
 
     def __init__(
         self,
-        tol: float = 1e-4,
+        tol: float = 1e-3,
         scale: float = 1.0,
         semantics: str = "noiseless_rollout",
         retro_tol: float = INTERVENTION_TOL,
@@ -94,7 +94,10 @@ class CFfaith:
         ----------
         tol:
             Residual threshold for the binary ``hard`` score (forward
-            SCM-consistency check only).
+            SCM-consistency check only). Default matches ``retro_tol``/
+            :data:`~causaltemp_xai.scm.intervention.INTERVENTION_TOL` (raised
+            from ``1e-4``, 2026-08-06) — one coherent small tolerance instead
+            of two magic numbers; see ``docs/cf_faith_methodology.md`` §9.2.
         scale:
             Normalising scale in the ``soft`` score ``exp(-residual / scale)``.
         retro_tol:

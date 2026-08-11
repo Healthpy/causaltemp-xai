@@ -52,6 +52,13 @@ AXIS_METRICS: dict[str, tuple[str, ...]] = {
         "residual_dependence",
         "graph_error",
         "propagation_error",
+        # uncertainty-aware DYNOTEARS ensemble (M4f, DECISIONS.md 2026-08-06) —
+        # spread of graph_error/inter-graph disagreement across B independent
+        # inferred graphs; extends graph_error above, same axis (per-dataset)
+        "graph_error_ensemble_mean",
+        "graph_error_ensemble_ci_lo",
+        "graph_error_ensemble_ci_hi",
+        "mean_pairwise_shd",
     ),
     "B": (
         "shift_vr",
@@ -91,6 +98,20 @@ AXIS_METRICS: dict[str, tuple[str, ...]] = {
         "do_complexity_mean",
         "do_complexity_median",
         "do_complexity_stability",
+        # discovered-graph CF-faith on Tier 2, uncertainty-quantified (M4g,
+        # DECISIONS.md 2026-08-06) — deliberately distinct keys from
+        # cf_faith_rollout_hard/soft above: those are exact, against the
+        # KNOWN true mechanism (Tier 1); these are against an INFERRED,
+        # uncertainty-quantified approximate mechanism (Tier 2, no true
+        # mechanism exists). Estimation variance is quantified by the CI;
+        # model-misspecification bias is not (RISK-22) — never conflate the
+        # two epistemic statuses by reusing one metric name for both
+        "cf_faith_discovered_rollout_mean",
+        "cf_faith_discovered_rollout_ci_lo",
+        "cf_faith_discovered_rollout_ci_hi",
+        "cf_faith_discovered_pearl_mean",
+        "cf_faith_discovered_pearl_ci_lo",
+        "cf_faith_discovered_pearl_ci_hi",
     ),
 }
 

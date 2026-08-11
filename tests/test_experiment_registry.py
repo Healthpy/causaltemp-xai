@@ -25,13 +25,13 @@ import pytest
 
 from causaltemp_xai.methods import (
     CARLARecourse,
-    CausalFeasibilityCF,
     CftsCelsCF,
     CftsCOMTECF,
     CftsConfetiCF,
     CftsCountsCF,
     CftsWachterCF,
     PearlCARLARecourse,
+    TSCausalCF,
 )
 
 _phase03 = importlib.import_module("experiments.03_run_cf_methods")
@@ -45,7 +45,7 @@ EXPECTED_REGISTRY = {
     "CftsConfeti": CftsConfetiCF,
     "CftsCounts": CftsCountsCF,
     "CftsCels": CftsCelsCF,
-    "CausalFeasibility": CausalFeasibilityCF,
+    "TSCausal": TSCausalCF,
 }
 
 
