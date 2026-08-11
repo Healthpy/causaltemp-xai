@@ -154,12 +154,36 @@ FULL_SPARSE = BenchmarkConfig(
 # so ``as_dict()`` stays JSON-serialisable; the generator coerces it to a tuple.
 
 #: Default nonlinear MLP hyperparameters (mirrors NlinearSCMT's defaults).
+#: Retuned 2026-08-11 (P0-2, `docs/pi_reevaluation_2026-08-11.md`). The previous
+#: values (``gain=0.8``, ``decay_range=[0.3, 0.8]``, ``spectral_cap=0.9``,
+#: ``init_gain=0.7``) put hidden pre-activations at ``|z| ~ 0.015``, where
+#: ``tanh`` is the identity, and left the graph-carrying MLP branch with **1.6%**
+#: of output variance against 98.4% for the ``decay_i`` self-term -- which is not
+#: an edge in ``graph``. The benchmark was scoring counterfactuals against a
+#: process its own causal structure barely drove.
+#:
+#: Measured after retuning (5 seeds, smoke_nl scale): MLP-branch share of output
+#: variance **0.57-0.73** (was 0.016), graph share of the per-step increment
+#: **0.50-0.55** (was 0.022), ``|z| ~ 0.5-1.0``, contraction rate **-0.63 to
+#: -1.00** (still comfortably dissipative -- the retune must not buy coupling by
+#: losing stability, so this is re-measured, not assumed).
+#:
+#: **Two P0-2 targets remain unmet and are NOT fixable by reparameterisation**
+#: (see `TestMLPMechanismIsMeasurablyNonlinear`): the nonlinear share of variance
+#: and the ``tanh``->``sin`` swap magnitude. A randomly-initialised 2-layer net
+#: sits in the lazy regime -- it stays close to its own linearisation regardless
+#: of ``|z|``, because per-unit curvature cancels across the hidden layer. Swept
+#: over ``gain``, ``init_gain``, ``spectral_cap``, ``decay_range``, ``hidden``
+#: (1..16) and non-zero ``b1``: the *minimum* nonlinear share across seeds never
+#: reliably cleared 5%, and the configurations that came closest lost
+#: contraction. Reaching it requires a change to the mechanism's functional
+#: form, which is a scope decision for the PI, not a retune.
 _NL_HYPERPARAMS: dict = {
     "hidden": 16,
-    "gain": 0.8,
-    "decay_range": [0.3, 0.8],
-    "spectral_cap": 0.9,
-    "init_gain": 0.7,
+    "gain": 1.5,
+    "decay_range": [0.1, 0.4],
+    "spectral_cap": 6.0,
+    "init_gain": 3.0,
     "activation": "tanh",
 }
 
@@ -346,11 +370,19 @@ _REGIME_NL_HYPERPARAMS: dict = {
         "init_gain": _NL_HYPERPARAMS["init_gain"],
         "activation": _NL_HYPERPARAMS["activation"],
     },
+    # Retuned with regime 1 on 2026-08-11 (P0-2). Regime 1 tracks
+    # _NL_HYPERPARAMS, whose decay_range dropped [0.3, 0.8] -> [0.1, 0.4], which
+    # made the old [0.05, 0.25] overlap it and broke the *deterministic*
+    # separation this ablation depends on (regime 2's slowest decay must still
+    # be faster than regime 1's fastest -- see
+    # test_two_regimes_have_deterministically_different_parameters). The other
+    # three keep their original ~0.4-0.5x ratio to regime 1, so the contrast
+    # between regimes is preserved rather than merely restored to non-overlap.
     "regime2": {
-        "decay_range": [0.05, 0.25],
-        "gain": 0.35,
-        "spectral_cap": 0.5,
-        "init_gain": 0.35,
+        "decay_range": [0.01, 0.08],
+        "gain": 0.65,
+        "spectral_cap": 3.0,
+        "init_gain": 1.5,
         "activation": "tanh",
     },
 }
@@ -453,9 +485,17 @@ SMOKE_SPRING = BenchmarkConfig(
 #: unlike spring, one channel per oscillator, no doubling). ``n_exogenous=2``
 #: guarantees oscillators o4/o5 (0-indexed 3/4) are pacemakers with no
 #: incoming coupling (`DECISIONS.md` 2026-08-05).
+#: ``k_coupling`` raised 0.5 -> 5.0 on 2026-08-11 (P0-2). At 0.5 the graph
+#: carried **2.1%** of the per-step increment: ``dt * omega_i`` (each
+#: oscillator's own natural frequency, not a graph edge) swamped
+#: ``dt * k_coupling * sin(...)``, making Kuramoto the worst-conditioned family
+#: in the suite. Measured at 5.0 over 5 seeds: graph share of the increment
+#: **0.46-0.67**, contraction rate **~0.001** -- i.e. still conserved, which is
+#: this family's *intended* non-dissipative design (M4c), not a stability
+#: regression. ``k_coupling=20`` was rejected: the rate drifts positive (0.053).
 _KURAMOTO_HYPERPARAMS: dict = {
     "omega_range": (0.5, 1.5),
-    "k_coupling": 0.5,
+    "k_coupling": 5.0,
     "dt": 0.1,
     "n_exogenous": 2,
 }

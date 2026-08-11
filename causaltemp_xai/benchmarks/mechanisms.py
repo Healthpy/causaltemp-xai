@@ -237,9 +237,27 @@ class MLPMechanism(Mechanism):
     Notes
     -----
     The masked input of each node is scaled by ``1/√(max(n_active_parents, 1))``
-    so pre-activations land in ``tanh``'s curved region (genuine nonlinearity).
-    The ``max(·, 1)`` guard makes a 0-parent node reduce to pure decay
+    to keep the pre-activation scale independent of in-degree. The ``max(·, 1)``
+    guard makes a 0-parent node reduce to pure decay
     (``mean_i = decay_i · x_{t-1}^i``) instead of dividing by zero.
+
+    .. warning::
+
+       This normalisation does **not** by itself place pre-activations in
+       ``tanh``'s curved region -- an earlier version of this docstring claimed
+       it did, and instrumentation on 2026-08-11 refuted that: under the
+       then-shipped ``_NL_HYPERPARAMS`` the pre-activations sat at
+       ``|z| ~ 0.015``, where ``tanh`` is the identity to 4 decimal places, so
+       the "nonlinear" family was a linear VAR (affine fit ``R² = 1.000000``).
+       Where ``|z|`` lands is set by ``init_gain``/``spectral_cap`` against the
+       realised state scale, *not* by this term. See
+       ``causaltemp_xai/config.py::_NL_HYPERPARAMS`` for the retuned values and
+       the measured result, and ``tests/test_mechanisms.py`` for the gates.
+
+       Note also that a randomly-initialised 2-layer net is close to its own
+       linearisation regardless of ``|z|`` (the "lazy regime"): per-unit
+       curvature cancels across the hidden layer, so raising ``|z|`` alone
+       buys far less nonlinearity than it appears to.
     """
 
     def __init__(
@@ -297,8 +315,18 @@ class MLPMechanism(Mechanism):
         """Sample + stabilize a random per-node MLP mechanism.
 
         Weights use ``std = init_gain · √(1/fan_in)`` (bias 0) and each per-node
-        weight matrix is spectral-norm-capped at ``spectral_cap`` (Lipschitz < 1
-        for the nonlinear branch).
+        weight matrix is spectral-norm-capped at ``spectral_cap``.
+
+        ``spectral_cap < 1`` makes the nonlinear branch Lipschitz-contractive on
+        its own. The shipped ``_NL_HYPERPARAMS`` no longer satisfies that (it
+        uses ``6.0``, raised from ``0.9`` under P0-2 to lift pre-activations off
+        the origin), so **branch-level contraction is no longer implied by this
+        cap alone**. Whole-mechanism stability still holds -- the output branch
+        is ``gain · tanh(·)``, bounded by ``gain`` regardless of ``spectral_cap``,
+        and ``decay < 1`` -- but it is now an empirical property rather than a
+        constructive one, so it is measured directly with
+        :func:`~causaltemp_xai.benchmarks.diagnostics.empirical_contraction_rate`
+        (``-0.63`` to ``-1.00`` on the retuned values) rather than assumed.
         """
         graph = np.asarray(graph, dtype=float)
         k, _, L = graph.shape

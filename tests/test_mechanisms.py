@@ -356,8 +356,15 @@ class TestMLPMechanismIsMeasurablyNonlinear:
 
     @pytest.mark.xfail(
         strict=True,
-        reason="P0-2: nonlinear component is ~5800x below the innovation-noise "
-        "floor (affine fit R^2 = 1.000000). Remove marker when >= 5%.",
+        reason="NOT fixable by reparameterisation -- needs a PI scope decision "
+        "on the mechanism's functional form. P0-2's retune (2026-08-11) lifted "
+        "this from 3.0e-07 to ~0.06 mean, but the MINIMUM across seeds stays "
+        "~0.002: a randomly-initialised 2-layer net sits in the lazy regime and "
+        "tracks its own linearisation regardless of |z|, because per-unit "
+        "curvature cancels across the hidden layer. Swept gain, init_gain, "
+        "spectral_cap, decay_range, hidden (1..16) and non-zero b1 -- the "
+        "configurations that approached 5% lost contraction. Remove this marker "
+        "only after the functional form changes.",
     )
     def test_nonlinear_share_of_variance_is_at_least_5_percent(self):
         """An affine map must NOT be able to reproduce the mechanism.
@@ -385,12 +392,6 @@ class TestMLPMechanismIsMeasurablyNonlinear:
             f"linear VAR"
         )
 
-    @pytest.mark.xfail(
-        strict=True,
-        reason="P0-2: the graph-carrying MLP branch holds ~1% of output "
-        "variance; the decay self-term (not a graph edge) holds ~99%. "
-        "Remove marker when the MLP branch reaches >= 40%.",
-    )
     def test_graph_carrying_branch_holds_at_least_40_percent_of_variance(self):
         """The branch the causal graph flows through must not be a rounding error.
 
@@ -416,9 +417,11 @@ class TestMLPMechanismIsMeasurablyNonlinear:
 
     @pytest.mark.xfail(
         strict=True,
-        reason="P0-2: swapping tanh->sin moves the data by a relative 5.6e-05 "
-        "(labels identical), so SMOKE_NONMONOTONIC is vacuous as H5 evidence "
-        "(ii). Remove marker when the swap exceeds the innovation-noise std.",
+        reason="Improved ~30,000x by the P0-2 retune (3.9e-06 -> ~0.12) but "
+        "still not robust: the swap clears the innovation-noise floor (0.141) "
+        "on only 1 of 3 seeds. Shares a root cause with the nonlinear-share "
+        "gate above -- if tanh is near-affine over the realised |z|, so is sin, "
+        "and the two agree. Blocked on the same functional-form decision.",
     )
     def test_nonmonotonic_swap_exceeds_innovation_noise(self):
         """The H5(ii) ablation must actually ablate something.
@@ -556,24 +559,8 @@ class TestGraphDrivesEverySyntheticFamily:
         [
             "smoke",  # linear: A *is* the graph, nothing sits outside it
             "smoke_spring",
-            pytest.param(
-                "smoke_nl",
-                marks=pytest.mark.xfail(
-                    strict=True,
-                    reason="P0-2: 2.33% -- decay_i dominates the increment. "
-                    "Remove marker when the MLP branch is reparameterised.",
-                ),
-            ),
-            pytest.param(
-                "smoke_kuramoto",
-                marks=pytest.mark.xfail(
-                    strict=True,
-                    reason="P0-2: 2.14% -- dt*omega_i (own natural frequency, "
-                    "not a graph edge) dominates dt*k_coupling*sin(...). Worst "
-                    "family in the suite. Remove marker when k_coupling is "
-                    "raised and contraction re-verified.",
-                ),
-            ),
+            "smoke_nl",  # 2.33% -> ~0.50 after the P0-2 retune
+            "smoke_kuramoto",  # 2.14% -> ~0.46 after k_coupling 0.5 -> 5.0
         ],
     )
     def test_graph_carries_at_least_20_percent_of_the_increment(self, config_name):
