@@ -1,19 +1,19 @@
 {
   "seed": 2,
   "config": "smoke_regime_seed2",
-  "git_commit": "ad699ba6079202f49acbd95d338dd50dc6611da5",
+  "git_commit": "253e0d27f5c5e21c884e94d02e20bdd48733123c",
   "git_dirty": true,
   "CARLA": {
-    "validity_base": 1.0,
+    "validity_base": 0.95,
     "validity_shift": 1.0,
-    "shift_vr": 1.0,
+    "shift_vr": 1.0526315789473684,
     "n_base": 20,
     "n_shift": 20
   },
   "PearlCARLA": {
-    "validity_base": 0.4,
-    "validity_shift": 0.2,
-    "shift_vr": 0.5,
+    "validity_base": 0.2,
+    "validity_shift": 0.1,
+    "shift_vr": null,
     "n_base": 20,
     "n_shift": 20
   },
@@ -32,16 +32,16 @@
     "n_shift": 20
   },
   "CftsConfeti": {
-    "validity_base": 0.7,
-    "validity_shift": 0.7,
-    "shift_vr": 1.0,
+    "validity_base": 0.8,
+    "validity_shift": 0.25,
+    "shift_vr": 0.3125,
     "n_base": 20,
     "n_shift": 20
   },
   "CftsCounts": {
-    "validity_base": 0.6,
-    "validity_shift": 0.5,
-    "shift_vr": 0.8333333333333334,
+    "validity_base": 0.25,
+    "validity_shift": 0.2,
+    "shift_vr": null,
     "n_base": 20,
     "n_shift": 20
   },
@@ -52,10 +52,10 @@
     "n_base": 20,
     "n_shift": 20
   },
-  "CausalFeasibility": {
-    "validity_base": 0.7,
-    "validity_shift": 0.75,
-    "shift_vr": 1.0714285714285714,
+  "TSCausal": {
+    "validity_base": 0.65,
+    "validity_shift": 0.85,
+    "shift_vr": 1.3076923076923077,
     "n_base": 20,
     "n_shift": 20
   }
