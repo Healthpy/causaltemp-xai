@@ -738,6 +738,7 @@ def run_graph_quality_report(args) -> None:
     for config in args.configs:
         per_label: dict[str, dict[str, list]] = {}
         prop_errors: list[float] = []
+        prop_sigmas: list[float] = []
         n_seeds_found = 0
         for seed in seeds:
             name = config if seed is None else f"{config}_seed{seed}"
@@ -749,15 +750,23 @@ def run_graph_quality_report(args) -> None:
             payload = json.loads(path.read_text())
             for point in payload["graph_quality_sweep"]:
                 slot = per_label.setdefault(
-                    point["label"], {"graph_error": [], "frac_vacuous": [], "shd": []}
+                    point["label"],
+                    {"graph_error": [], "graph_error_sigma": [], "frac_vacuous": [], "shd": []},
                 )
                 slot["graph_error"].append(point["graph_error"])
                 slot["frac_vacuous"].append(point["frac_vacuous"])
                 slot["shd"].append(point["shd"])
-            for m in payload.get("methods", []):
+                # Absent in payloads written before the M4e re-derivation
+                # (2026-08-12); NaN keeps those rows readable instead of
+                # raising, and bootstrap_ci drops NaN and reports n honestly.
+                slot["graph_error_sigma"].append(point.get("graph_error_sigma", float("nan")))
+            for m in payload.get("methods") or []:
                 pe = m.get("propagation_error")
                 if pe is not None and pe == pe:  # exclude NaN (e.g. PearlCARLA/full_nl)
                     prop_errors.append(pe)
+                ps = m.get("propagation_error_sigma")
+                if ps is not None and ps == ps:
+                    prop_sigmas.append(ps)
 
         if not per_label:
             print(f"[08] no graph-quality sweep found for {config!r} — skipping")
@@ -765,6 +774,8 @@ def run_graph_quality_report(args) -> None:
 
         prop_lo = min(prop_errors) if prop_errors else float("nan")
         prop_hi = max(prop_errors) if prop_errors else float("nan")
+        prop_sig_lo = min(prop_sigmas) if prop_sigmas else float("nan")
+        prop_sig_hi = max(prop_sigmas) if prop_sigmas else float("nan")
 
         for label, cols in per_label.items():
             # The controlled ladder's label doubles as its exact corrupt_frac;
@@ -782,8 +793,10 @@ def run_graph_quality_report(args) -> None:
                 "shd_mean": float(np.mean(cols["shd"])),
                 "propagation_error_min": prop_lo,
                 "propagation_error_max": prop_hi,
+                "propagation_error_sigma_min": prop_sig_lo,
+                "propagation_error_sigma_max": prop_sig_hi,
             }
-            for col in ("graph_error", "frac_vacuous"):
+            for col in ("graph_error", "graph_error_sigma", "frac_vacuous"):
                 vals = cols[col]
                 res = bootstrap_ci(vals, n_boot=args.n_boot)
                 row[col], row[f"{col}_lo"], row[f"{col}_hi"] = res.mean, res.ci_lo, res.ci_hi
@@ -804,14 +817,42 @@ def run_graph_quality_report(args) -> None:
     print(f"[08] graph-quality pooled over {len(seeds)} seed(s)")
     print(
         f"{'config':<20}{'label':<18}{'shd':>6}"
-        f"{'graph_error [95% CI]':>26}{'method span [min,max]':>26}"
+        f"{'graph_error [95% CI]':>26}{'graph_err/sigma':>18}{'method span [min,max]':>26}"
     )
     for r in sorted(rows, key=lambda r: (r["config"], r["shd_mean"])):
         e, lo, hi = r["graph_error"], r["graph_error_lo"], r["graph_error_hi"]
         span = f"[{r['propagation_error_min']:.3f}, {r['propagation_error_max']:.3f}]"
+        gs = r["graph_error_sigma"]
+        gs_str = "n/a" if gs != gs else f"{gs:.5f}"
         print(
             f"{r['config']:<20}{r['label']:<18}{r['shd_mean']:>6.1f}"
-            f"{f'{e:.4f} [{lo:.4f}, {hi:.4f}]':>26}{span:>26}"
+            f"{f'{e:.4f} [{lo:.4f}, {hi:.4f}]':>26}{gs_str:>18}{span:>26}"
+        )
+
+    # The M4e headline is a *ratio* of two dynamic ranges. Print it in
+    # scale-free units only (2026-08-12 re-derivation): the raw-soft version
+    # divides two exp-compressed quantities that sit at different points on the
+    # exp curve in different mechanism families, so it is not comparable across
+    # configs -- which is exactly the comparison the dissipation claim makes.
+    print("[08] method-axis vs graph-axis dynamic range (sigma-normalised):")
+    for config in args.configs:
+        crows = [r for r in rows if r["config"] == config]
+        ladder = [
+            r["graph_error_sigma"]
+            for r in crows
+            if r["graph_error_sigma"] == r["graph_error_sigma"]
+        ]
+        if not ladder:
+            print(f"  {config:<20} no sigma-normalised columns (payload predates 2026-08-12)")
+            continue
+        graph_span = max(ladder) - min(ladder)
+        m_lo = crows[0]["propagation_error_sigma_min"]
+        m_hi = crows[0]["propagation_error_sigma_max"]
+        method_span = m_hi - m_lo
+        ratio = (method_span / graph_span) if graph_span > 0 else float("inf")
+        print(
+            f"  {config:<20} graph-axis span={graph_span:.5f}  "
+            f"method-axis span={method_span:.5f}  method/graph={ratio:.1f}x"
         )
     print(f"[08] wrote {out_path}")
 

@@ -109,6 +109,60 @@ from experiments._common import (  # noqa: E402
 GRAPH_METHODS = ("dynotears", "pcmciplus")
 
 
+def soft_to_residual(soft, scale: float = 1.0):
+    """Invert ``CFfaith``'s soft map ``soft = exp(-residual / scale)`` back to
+    the mean L1 ``residual`` it was built from, in **raw state units**.
+
+    Exact, not an approximation: the soft score is a bijection of the residual
+    on ``(0, 1]``. ``soft == 0`` is the retroactive-change branch (an infinite
+    penalty by construction, not a measured residual) and maps to ``inf``;
+    ``nan`` (the degeneracy gate) passes through as ``nan``.
+
+    Why this exists (2026-08-12, M4e re-derivation). ``graph_error`` and
+    ``propagation_error`` are differences of *soft* scores, and ``exp`` is
+    strongly compressive near ``residual = 0``: a family whose residuals sit at
+    1e-3 has its differences squashed toward zero, while a family whose
+    residuals sit near 1 does not. Comparing the two across mechanism families
+    -- which the dissipation claim does -- therefore mixes a real effect with an
+    artifact of where each family happens to land on the ``exp`` curve. The
+    residual is linear in state units, so residual differences normalised by the
+    family's own state ``sigma`` are comparable across families; soft
+    differences are not.
+    """
+    arr = np.asarray(soft, dtype=float)
+    with np.errstate(divide="ignore"):
+        out = -scale * np.log(arr)
+    return float(out) if out.ndim == 0 else out
+
+
+def _per_instance_soft(X_sel, cfs, graph, mechanism, scorer) -> np.ndarray:
+    """Per-instance soft CF-faith of ``cfs`` against ``(graph, mechanism)``.
+
+    Extracted 2026-08-12 (M4e re-derivation) from :func:`_mean_soft_cf_faith`,
+    which now aggregates this array. The per-instance values are needed because
+    the residual scale must be averaged in *residual* space -- ``mean(exp(-r))``
+    is not ``exp(-mean(r))``, so inverting an already-averaged soft score would
+    give a Jensen-biased residual rather than the mean residual.
+    """
+    vals = []
+    for x, x_cf in zip(np.asarray(X_sel, dtype=float), np.asarray(cfs, dtype=float)):
+        t = derive_intervention_t(x, x_cf)
+        vals.append(scorer.score(x, x_cf, t, graph, mechanism)["soft"])
+    return np.asarray(vals, dtype=float)
+
+
+def _mean_residual(soft_arr: np.ndarray, scale: float = 1.0) -> float:
+    """``nanmean`` of the residuals behind ``soft_arr`` (see
+    :func:`soft_to_residual`). Infinite residuals (the retroactive-change
+    branch) are dropped alongside NaN rather than poisoning the mean to
+    ``inf``: the count of those instances is already reported separately as
+    ``frac_vacuous`` / the hard-gate columns, and one retroactive CF must not
+    erase a whole method's measured scale."""
+    r = soft_to_residual(soft_arr, scale)
+    finite = r[np.isfinite(r)]
+    return float(finite.mean()) if finite.size else float("nan")
+
+
 # ---------------------------------------------------------------------------
 # Report 1: self-graphing + Axis-A graph-error decomposition (dynotears/pcmciplus)
 # ---------------------------------------------------------------------------
@@ -132,17 +186,13 @@ def _mean_soft_cf_faith(X_sel, cfs, graph, mechanism, scorer) -> float:
     (``causaltemp_xai/eval.py``, ``experiments/_common.py``) already treats a
     gated instance as an abstention via ``nanmean``, not a NaN result.
     """
-    vals = []
-    for x, x_cf in zip(np.asarray(X_sel, dtype=float), np.asarray(cfs, dtype=float)):
-        t = derive_intervention_t(x, x_cf)
-        vals.append(scorer.score(x, x_cf, t, graph, mechanism)["soft"])
-    if not vals:
+    arr = _per_instance_soft(X_sel, cfs, graph, mechanism, scorer)
+    if not arr.size:
         return float("nan")
-    arr = np.asarray(vals, dtype=float)
     return float(np.nanmean(arr)) if np.any(~np.isnan(arr)) else float("nan")
 
 
-def _per_method_propagation(cf_dir, graph, true_mech, rollout, pearl):
+def _per_method_propagation(cf_dir, graph, true_mech, rollout, pearl, sigma_x=None):
     """Propagation error of every persisted CF method's *actual* CFs.
 
     Each ``X_cf_<Method>.npy`` is scored against the **true** SCM; the method's
@@ -167,12 +217,16 @@ def _per_method_propagation(cf_dir, graph, true_mech, rollout, pearl):
     if not x_sel_path.exists():
         return []
     X_sel = np.load(x_sel_path)
+    if sigma_x is None:
+        sigma_x = float(np.std(X_sel))
     rows = []
     for cf_path in sorted(cf_dir.glob("X_cf_*.npy")):
         method = cf_path.stem[len("X_cf_") :]
         cfs = np.load(cf_path)
-        r_gt = _mean_soft_cf_faith(X_sel, cfs, graph, true_mech, rollout)
+        soft_roll = _per_instance_soft(X_sel, cfs, graph, true_mech, rollout)
+        r_gt = float(np.nanmean(soft_roll)) if np.any(~np.isnan(soft_roll)) else float("nan")
         p_gt = _mean_soft_cf_faith(X_sel, cfs, graph, true_mech, pearl)
+        resid = _mean_residual(soft_roll, rollout.scale)
         rows.append(
             {
                 "method": method,
@@ -180,6 +234,13 @@ def _per_method_propagation(cf_dir, graph, true_mech, rollout, pearl):
                 "propagation_error": float(1.0 - r_gt),
                 "cf_faith_pearl_gt": p_gt,
                 "propagation_error_pearl": float(1.0 - p_gt),
+                # Scale-free companion (M4e re-derivation, 2026-08-12): the mean
+                # L1 residual in units of the config's own state sigma. This is
+                # the column the cross-family dissipation comparison must use;
+                # ``propagation_error`` above is a difference of exp-compressed
+                # soft scores and is only comparable within a single family.
+                "propagation_residual": resid,
+                "propagation_error_sigma": float(resid / sigma_x),
             }
         )
     return rows
@@ -199,14 +260,20 @@ def _density_matched_adjacency(scores: np.ndarray, n_true: int) -> np.ndarray:
     return adj
 
 
-def _inferred_cf_faith(graph, mech, adj_pred, X_sel, oracle_ints, rollout) -> tuple[float, float]:
+def _inferred_cf_faith(
+    graph, mech, adj_pred, X_sel, oracle_ints, rollout
+) -> tuple[float, float, float]:
     """Mean soft rollout CF-faith of the oracle CF *derived from* ``adj_pred``
     (a masked mechanism restricted to the inferred edges), scored against the
     true mechanism, plus the fraction of those inferred CFs that are vacuous
     (RISK-17: a masked graph that makes the inferred intervention collapse to
     no-op is a different failure from one that mispropagates, and must not be
     invisible inside a low ``graph_error``). Lower CF-faith => more
-    graph-induced divergence."""
+    graph-induced divergence.
+
+    Returns ``(mean_soft, frac_vacuous, mean_residual)``. The third element
+    (added 2026-08-12, M4e re-derivation) is the same evidence in raw state
+    units rather than exp-compressed -- see :func:`soft_to_residual`."""
     inf_mech = build_masked_mechanism(mech, adj_pred)
     vals = []
     n_vacuous = 0
@@ -216,7 +283,12 @@ def _inferred_cf_faith(graph, mech, adj_pred, X_sel, oracle_ints, rollout) -> tu
         vals.append(rollout.score(x, inf_cf, t0, graph, mech)["soft"])
         if is_vacuous_intervention(x, inf_cf, inf_mech, t0=t0):
             n_vacuous += 1
-    return float(np.mean(vals)), float(n_vacuous) / len(oracle_ints)
+    arr = np.asarray(vals, dtype=float)
+    return (
+        float(np.mean(arr)),
+        float(n_vacuous) / len(oracle_ints),
+        _mean_residual(arr, rollout.scale),
+    )
 
 
 def _corrupt_graph(true_bin: np.ndarray, frac: float, rng: np.random.Generator) -> np.ndarray:
@@ -256,6 +328,8 @@ def _graph_quality_sweep(
     method_auc,
     method_label,
     seed=0,
+    residual_gt=None,
+    sigma_x=None,
 ) -> list[dict]:
     """Graph-error across a controlled graph-quality ladder.
 
@@ -302,7 +376,17 @@ def _graph_quality_sweep(
     def _point(label, adj, auc):
         rows.append(
             _score_graph_point(
-                graph, mech, X_sel, oracle_ints, rollout, cf_faith_gt, label, adj, auc
+                graph,
+                mech,
+                X_sel,
+                oracle_ints,
+                rollout,
+                cf_faith_gt,
+                label,
+                adj,
+                auc,
+                residual_gt=residual_gt,
+                sigma_x=sigma_x,
             )
         )
 
@@ -317,7 +401,17 @@ def _graph_quality_sweep(
 
 
 def _score_graph_point(
-    graph, mech, X_sel, oracle_ints, rollout, cf_faith_gt, label, adj, auc
+    graph,
+    mech,
+    X_sel,
+    oracle_ints,
+    rollout,
+    cf_faith_gt,
+    label,
+    adj,
+    auc,
+    residual_gt=None,
+    sigma_x=None,
 ) -> dict:
     """One ``_graph_quality_sweep`` row: score a single candidate graph ``adj``
     (a corruption-ladder point, or a real/ensemble-member inferred graph)
@@ -335,15 +429,27 @@ def _score_graph_point(
     from causaltemp_xai.metrics.axis_a import shd
 
     true_bin = (graph > 0).astype(int)
-    cf_inf, frac_vac = _inferred_cf_faith(graph, mech, adj, X_sel, oracle_ints, rollout)
-    return {
+    cf_inf, frac_vac, resid_inf = _inferred_cf_faith(graph, mech, adj, X_sel, oracle_ints, rollout)
+    if sigma_x is None:
+        sigma_x = float(np.std(X_sel))
+    row = {
         "label": label,
         "graph_auc": (None if auc is None else float(auc)),
         "shd": float(shd(true_bin, adj)),
         "cf_faith_inferred": cf_inf,
         "graph_error": float(cf_faith_gt - cf_inf),
         "frac_vacuous": frac_vac,
+        "residual_inferred": resid_inf,
     }
+    # Scale-free companion (M4e re-derivation, 2026-08-12). ``graph_error``
+    # above is a difference of exp-compressed soft scores and is comparable only
+    # within one mechanism family; ``graph_error_sigma`` is the same degradation
+    # in units of the config's own state sigma, which is what a cross-family
+    # dissipation comparison needs. See :func:`soft_to_residual`.
+    if residual_gt is not None and np.isfinite(residual_gt) and sigma_x > 0:
+        row["graph_error_residual"] = float(resid_inf - residual_gt)
+        row["graph_error_sigma"] = float((resid_inf - residual_gt) / sigma_x)
+    return row
 
 
 def _fit_graph_method_ensemble(
@@ -383,7 +489,17 @@ def _fit_graph_method_ensemble(
 
 
 def _graph_quality_sweep_ensemble(
-    graph, mech, X_sel, oracle_ints, rollout, cf_faith_gt, ensemble_adjs, method_label, seed=0
+    graph,
+    mech,
+    X_sel,
+    oracle_ints,
+    rollout,
+    cf_faith_gt,
+    ensemble_adjs,
+    method_label,
+    seed=0,
+    residual_gt=None,
+    sigma_x=None,
 ) -> dict:
     """Ensemble extension of :func:`_graph_quality_sweep` (M4f,
     2026-08-06): scores each of the ``B`` ensemble-member
@@ -429,6 +545,8 @@ def _graph_quality_sweep_ensemble(
             f"{method_label}_b{b}",
             adj,
             graph_auc(true_bin, adj.astype(float)),
+            residual_gt=residual_gt,
+            sigma_x=sigma_x,
         )
         for b, adj in enumerate(ensemble_adjs)
     ]
@@ -636,6 +754,15 @@ def run_graph_method(
     cf_faith_gt = float(np.mean(gt_soft))
     cf_faith_inferred = float(np.mean(inf_soft))
 
+    # Scale-free reference quantities for the M4e re-derivation (2026-08-12):
+    # the true-graph oracle's own mean residual (the floor every ladder point is
+    # measured against) and the config's state sigma (the unit that makes a
+    # residual comparable across mechanism families with different state
+    # magnitudes). Both are recorded in the payload so a reader can re-derive
+    # any normalised figure without re-running the phase.
+    residual_gt = _mean_residual(np.asarray(gt_soft, dtype=float), rollout.scale)
+    sigma_x = float(np.std(X_sel))
+
     # 3. Axis A (graph recovery + oracle decomposition) in one call. The oracle
     #    row is the perfect-propagator reference: propagation_error == 0, so its
     #    graph_error is the pure cost of the inferred graph.
@@ -653,7 +780,9 @@ def run_graph_method(
     #    graph-error is reported -- see _per_method_propagation's docstring.
     res_dir = config_dir(cfg.name, "lstm")
     pearl = CFfaith(semantics="pearl_delta")
-    method_rows = _per_method_propagation(res_dir / "cf", graph, mech, rollout, pearl)
+    method_rows = _per_method_propagation(
+        res_dir / "cf", graph, mech, rollout, pearl, sigma_x=sigma_x
+    )
 
     # 5. Graph-quality sweep (optional): show graph_error spans ~0 (good graph)
     #    to large (random graph), so the Axis-A decomposition is demonstrably
@@ -671,6 +800,8 @@ def run_graph_method(
             method_auc=axis_a.get("AUC"),
             method_label=method,
             seed=cfg.seed,
+            residual_gt=residual_gt,
+            sigma_x=sigma_x,
         )
 
     # 6. Uncertainty-aware ensemble (M4f, optional): B independent DYNOTEARS
@@ -695,6 +826,8 @@ def run_graph_method(
             ensemble_adjs,
             method_label=method,
             seed=cfg.seed,
+            residual_gt=residual_gt,
+            sigma_x=sigma_x,
         )
 
     out = {
@@ -721,6 +854,12 @@ def run_graph_method(
             "graph_error": axis_a["graph_error"],
             "propagation_error": axis_a["propagation_error"],
         },
+        # Normalisation constants for the scale-free M4e columns (2026-08-12):
+        # the true-graph oracle's own mean residual floor and the state sigma
+        # every residual is divided by. Recorded so any *_sigma figure can be
+        # re-derived (or re-normalised differently) without re-running Phase 07.
+        "residual_gt": residual_gt,
+        "sigma_x": sigma_x,
         "methods": method_rows,
         "graph_quality_sweep": sweep_rows,
         "graph_quality_sweep_ensemble": ensemble_result,
@@ -758,12 +897,18 @@ def run_graph_method(
             "per-method decomposition skipped"
         )
     if sweep_rows:
-        print("[07] graph-quality sweep (graph_error vs graph quality):")
-        print(f"       {'graph':<18} {'AUC':>6} {'SHD':>5} {'graph_error':>12}")
+        print(f"[07] graph-quality sweep (sigma_x={sigma_x:.4g}, residual_gt={residual_gt:.4g}):")
+        print(
+            f"       {'graph':<18} {'AUC':>6} {'SHD':>5} {'graph_error':>12} "
+            f"{'graph_error/sigma':>18}"
+        )
         for r in sweep_rows:
             auc = "  n/a" if r["graph_auc"] is None else f"{r['graph_auc']:.2f}"
+            gs = r.get("graph_error_sigma")
+            gs_str = "n/a" if gs is None else f"{gs:+.4f}"
             print(
-                f"       {r['label']:<18} {auc:>6} {r['shd']:>5.0f} " f"{r['graph_error']:>+12.3f}"
+                f"       {r['label']:<18} {auc:>6} {r['shd']:>5.0f} "
+                f"{r['graph_error']:>+12.3f} {gs_str:>18}"
             )
     print(f"[07] wrote {out_dir_res / 'graph_error.json'}")
 

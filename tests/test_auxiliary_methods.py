@@ -129,6 +129,122 @@ class TestGraphQualitySweepFracVacuous:
         assert true_row["frac_vacuous"] == 0.0
 
 
+class TestScaleFreeGraphError:
+    """R6 adversarial gate for ``graph_error_sigma`` / ``propagation_error_sigma``
+    (M4e re-derivation, 2026-08-12), before either appears in a result table.
+
+    The defect being fixed: ``graph_error`` is a difference of *soft* scores,
+    and ``soft = exp(-residual)`` is strongly compressive near ``residual = 0``.
+    Two mechanism families that degrade by the *same relative amount* therefore
+    post wildly different ``graph_error`` values purely because their states
+    live at different magnitudes -- which is exactly the cross-family
+    comparison the dissipation claim rests on. The adversarial case is a pure
+    rescaling: it changes nothing causal, so a scale-free metric must return
+    the identical number, and the old metric must be shown to fail it (else
+    the new column buys nothing).
+    """
+
+    #: Residual ladder for the "small-state" family: an oracle floor plus four
+    #: increasingly corrupted graph points, all in raw state units.
+    _RESIDUALS = (0.001, 0.0015, 0.002, 0.0035, 0.005)
+
+    def _ladder(self, c: float):
+        """The same ladder with every state magnitude multiplied by ``c``:
+        residuals scale by ``c`` (they are L1 distances in state units) and so
+        does sigma. Nothing about the causal degradation changes."""
+        soft = np.exp(-np.asarray(self._RESIDUALS) * c)
+        resid = _phase07.soft_to_residual(soft)
+        sigma = 1.0 * c
+        r_gt = resid[0]
+        graph_error = float(soft[0]) - soft  # the old, exp-compressed column
+        graph_error_sigma = (resid - r_gt) / sigma
+        return graph_error, graph_error_sigma
+
+    def test_soft_to_residual_is_the_exact_inverse(self):
+        r = np.array([1e-6, 0.001, 0.5, 3.0, 20.0])
+        assert _phase07.soft_to_residual(np.exp(-r)) == pytest.approx(r, rel=1e-9)
+
+    def test_soft_to_residual_handles_the_gate_and_retro_branches(self):
+        """``soft == 0`` is the retroactive-change branch (an infinite penalty
+        by construction, not a measurement); NaN is the degeneracy gate. Both
+        must survive the inversion as themselves, and ``_mean_residual`` must
+        drop both rather than returning inf or NaN for the whole method."""
+        assert _phase07.soft_to_residual(0.0) == float("inf")
+        assert np.isnan(_phase07.soft_to_residual(float("nan")))
+        arr = np.array([np.exp(-0.2), np.exp(-0.4), 0.0, np.nan])
+        assert _phase07._mean_residual(arr) == pytest.approx(0.3)
+        assert np.isnan(_phase07._mean_residual(np.array([0.0, np.nan])))
+
+    def test_rescaling_leaves_the_scale_free_column_invariant(self):
+        """The adversarial case. A 100x state rescaling is causally a no-op."""
+        _, sigma_small = self._ladder(1.0)
+        _, sigma_large = self._ladder(100.0)
+        assert sigma_large == pytest.approx(sigma_small, rel=1e-9)
+
+    def test_the_old_column_fails_the_same_case(self):
+        """The fix is only worth its column if the old metric demonstrably
+        breaks here. It does: the identical causal degradation reads ~100x
+        larger once the states are 100x bigger, because ``exp`` is no longer
+        near-linear at that residual scale."""
+        raw_small, _ = self._ladder(1.0)
+        raw_large, _ = self._ladder(100.0)
+        assert raw_large[-1] / raw_small[-1] > 50.0
+
+    def test_sweep_reports_a_scale_free_column_that_is_zero_at_the_true_graph(self):
+        """End-to-end through the real sweep: the column exists, the true graph
+        sits at exactly 0 (it is the normalisation's own baseline), and no
+        point is spuriously negative beyond float noise."""
+        from causaltemp_xai.benchmarks.generator import NlinearSCMT
+        from causaltemp_xai.metrics.cf_faith import CFfaith
+
+        data = NlinearSCMT(k=4, L=1, T=20, N=10, seed=0, hidden=8).generate(burn_in=20)
+        X, graph, mech = data["X"], data["graph"], data["mechanism"]
+        X_sel = X[:5]
+        rows = _phase07._graph_quality_sweep(
+            graph,
+            mech,
+            X_sel,
+            _phase07.build_oracle_interventions(X_sel, mech),
+            CFfaith(semantics="noiseless_rollout"),
+            1.0,
+            method_adj=(graph > 0).astype(int),
+            method_auc=1.0,
+            method_label="anchor",
+            seed=0,
+            residual_gt=0.0,
+            sigma_x=float(np.std(X_sel)),
+        )
+        assert all("graph_error_sigma" in r for r in rows)
+        true_row = next(r for r in rows if r["label"] == "corrupt_frac=0")
+        assert true_row["graph_error_sigma"] == pytest.approx(0.0, abs=1e-9)
+        assert all(r["graph_error_sigma"] >= -1e-9 for r in rows)
+
+    def test_scale_free_column_absent_without_a_baseline(self):
+        """No ``residual_gt`` means no defensible normalisation baseline, so
+        the key must be *omitted* rather than filled with a guess -- a reader
+        pooling these payloads must be able to tell "not computed" from
+        "computed as zero"."""
+        from causaltemp_xai.benchmarks.generator import NlinearSCMT
+        from causaltemp_xai.metrics.cf_faith import CFfaith
+
+        data = NlinearSCMT(k=4, L=1, T=20, N=10, seed=0, hidden=8).generate(burn_in=20)
+        X, graph, mech = data["X"], data["graph"], data["mechanism"]
+        X_sel = X[:3]
+        row = _phase07._score_graph_point(
+            graph,
+            mech,
+            X_sel,
+            _phase07.build_oracle_interventions(X_sel, mech),
+            CFfaith(semantics="noiseless_rollout"),
+            1.0,
+            "no-baseline",
+            (graph > 0).astype(int),
+            1.0,
+        )
+        assert "graph_error_sigma" not in row
+        assert "residual_inferred" in row
+
+
 class TestGraphQualitySweepEnsemble:
     """M4f (2026-08-06): the uncertainty-aware DYNOTEARS ensemble.
 
