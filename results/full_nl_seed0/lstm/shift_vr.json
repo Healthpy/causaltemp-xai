@@ -1,0 +1,55 @@
+{
+  "seed": 0,
+  "config": "full_nl_seed0",
+  "git_commit": "8243da84ffc0508ad42060928787c85bdba9f93b",
+  "git_dirty": false,
+  "CARLA": {
+    "validity_base": 0.01,
+    "validity_shift": 0.97,
+    "shift_vr": null,
+    "n_base": 100,
+    "n_shift": 100
+  },
+  "PearlCARLA": {
+    "validity_base": 0.02,
+    "validity_shift": 0.73,
+    "shift_vr": null,
+    "n_base": 100,
+    "n_shift": 100
+  },
+  "CftsWachter": {
+    "validity_base": 1.0,
+    "validity_shift": 1.0,
+    "shift_vr": 1.0,
+    "n_base": 100,
+    "n_shift": 100
+  },
+  "CftsCOMTE": {
+    "validity_base": 1.0,
+    "validity_shift": 1.0,
+    "shift_vr": 1.0,
+    "n_base": 100,
+    "n_shift": 100
+  },
+  "CftsConfeti": {
+    "validity_base": 1.0,
+    "validity_shift": 1.0,
+    "shift_vr": 1.0,
+    "n_base": 100,
+    "n_shift": 100
+  },
+  "CftsCels": {
+    "validity_base": 0.7,
+    "validity_shift": 1.0,
+    "shift_vr": 1.4285714285714286,
+    "n_base": 100,
+    "n_shift": 100
+  },
+  "TSCausal": {
+    "validity_base": 0.54,
+    "validity_shift": 0.48,
+    "shift_vr": 0.8888888888888888,
+    "n_base": 100,
+    "n_shift": 100
+  }
+}
