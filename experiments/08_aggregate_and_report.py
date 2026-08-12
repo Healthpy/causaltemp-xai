@@ -71,7 +71,11 @@ Five reports, one per subcommand:
   ``graph_error``/``frac_vacuous``, plus each config's per-CF-method
   ``propagation_error`` min/max (the "method-axis span" that makes a flat
   graph-error curve legible as a *contrast*, not a null result — see
-  ``fig6_graph_quality_curve``).
+  ``fig6_graph_quality_curve``). Each of those carries a ``*_sigma`` companion
+  (2026-08-12) in units of the config's own state sigma; the ``*_sigma``
+  columns are the ones any **between-config** comparison must use, since the
+  raw columns are differences of ``exp(-residual)`` scores whose sensitivity
+  depends on each mechanism family's state magnitude.
 
 ``all`` runs ``seeds`` then ``figures``, so the tables and the figures are
 generated from the same freshly-pooled results.
@@ -1008,22 +1012,31 @@ _GRAPH_QUALITY_STYLE = {
 def fig6_graph_quality_curve(tables_dir: Path, out_path) -> bool:
     """Graph-error vs. graph quality, dissipative vs. non-dissipative (M4e).
 
-    Two panels sharing a y-axis, because a flat `graph_error` curve alone
-    reads as a null finding -- it is only a finding about *dissipation* once
-    shown against the method-axis span the same decomposition produces
-    (M4e: "~54x more dynamic range across methods than across
-    graph quality" on `full_nl`). Left panel: `graph_error` against the
-    controlled corruption fraction (0 = true graph, 1 = chance-level random
-    graph of the same density) -- this, not raw SHD, is the x-axis, because
-    it is exact and comparable across configs of different graph size,
-    whereas absolute SHD scales with `k`. Right panel: each config's
-    per-CF-method `propagation_error` range as a vertical bar on the *same*
-    y-axis -- so whether the graph-quality curve's climb is small or large
-    relative to ordinary method-to-method variation is visible in one glance,
-    not left to a table lookup.
+    Two panels sharing a y-axis, because a flat graph-error curve alone reads
+    as a null finding -- it is only a finding about *dissipation* once shown
+    against the method-axis span the same decomposition produces. Left panel:
+    graph error against the controlled corruption fraction (0 = true graph,
+    1 = chance-level random graph of the same density) -- this, not raw SHD, is
+    the x-axis, because it is exact and comparable across configs of different
+    graph size, whereas absolute SHD scales with `k`. Right panel: each
+    config's per-CF-method propagation error as a vertical bar on the *same*
+    y-axis, so whether the graph-quality curve's climb is small or large
+    relative to ordinary method-to-method variation is visible in one glance.
+
+    **Both axes are plotted in `*_sigma` units** (2026-08-12, M4e
+    re-derivation), not the raw `graph_error` / `propagation_error` columns.
+    This figure's whole point is a *between-config* comparison, and the raw
+    columns are differences of `exp(-residual)` soft scores whose sensitivity
+    depends on where each mechanism family's residuals sit on the `exp` curve.
+    The families here differ in state magnitude by more than an order of
+    magnitude, so the raw version reports part of that scale gap as if it were
+    a dissipation effect. The `*_sigma` columns are residual differences in
+    units of each config's own state sigma and carry no such term. Configs
+    whose payloads predate the re-derivation have no `*_sigma` columns and are
+    dropped from the figure rather than silently mixed in.
 
     Returns ``False`` (writes nothing) if no `table_graph_quality_*.csv`
-    exists yet.
+    exists yet, or if no config in it carries the scale-free columns.
     """
     paths = sorted(tables_dir.glob("table_graph_quality_*.csv"))
     if not paths:
@@ -1037,13 +1050,30 @@ def fig6_graph_quality_curve(tables_dir: Path, out_path) -> bool:
     if not rows:
         return False
 
+    def _f(row, key):
+        """Float or NaN -- an absent column (pre-2026-08-12 payload) and an
+        empty cell both read as 'not computed', never as 0."""
+        v = row.get(key, "")
+        try:
+            return float(v)
+        except (TypeError, ValueError):
+            return float("nan")
+
+    rows = [r for r in rows if _f(r, "graph_error_sigma") == _f(r, "graph_error_sigma")]
+    if not rows:
+        print(
+            "[08] fig6: no config carries the scale-free (*_sigma) columns -- skipped. "
+            "Re-run Phase 07 --sweep to regenerate them."
+        )
+        return False
+
     configs = sorted(
         {r["config"] for r in rows},
         key=lambda c: list(_GRAPH_QUALITY_STYLE).index(c) if c in _GRAPH_QUALITY_STYLE else 99,
     )
     y_max = max(
-        max(float(r["graph_error_hi"]) for r in rows),
-        max(float(r["propagation_error_max"]) for r in rows),
+        max(_f(r, "graph_error_sigma_hi") for r in rows),
+        max(_f(r, "propagation_error_sigma_max") for r in rows),
     )
 
     fig, (ax_l, ax_r) = plt.subplots(
@@ -1056,9 +1086,9 @@ def fig6_graph_quality_curve(tables_dir: Path, out_path) -> bool:
             (
                 (
                     float(r["corrupt_frac"]),
-                    float(r["graph_error"]),
-                    float(r["graph_error_lo"]),
-                    float(r["graph_error_hi"]),
+                    _f(r, "graph_error_sigma"),
+                    _f(r, "graph_error_sigma_lo"),
+                    _f(r, "graph_error_sigma_hi"),
                 )
                 for r in rows
                 if r["config"] == config
@@ -1073,8 +1103,8 @@ def fig6_graph_quality_curve(tables_dir: Path, out_path) -> bool:
         ax_l.fill_between(xs, los, his, color=color, alpha=0.15, linewidth=0)
 
     ax_l.set_xlabel("Corruption fraction (0 = true graph, 1 = chance)")
-    ax_l.set_ylabel("graph_error (CF-faith lost to the wrong graph)")
-    ax_l.set_ylim(-0.02, y_max * 1.08)
+    ax_l.set_ylabel(r"Graph error (CF residual lost to the wrong graph, /$\sigma_x$)")
+    ax_l.set_ylim(-0.04 * y_max, y_max * 1.08)
     ax_l.legend(fontsize=7, frameon=False, loc="upper left")
     ax_l.grid(True, alpha=0.3)
     ax_l.set_title("Graph quality", fontsize=10)
@@ -1082,17 +1112,21 @@ def fig6_graph_quality_curve(tables_dir: Path, out_path) -> bool:
     bar_x = np.arange(len(configs))
     for i, config in enumerate(configs):
         color, _ = _GRAPH_QUALITY_STYLE.get(config, ("#333333", "x"))
-        lo = float(next(r["propagation_error_min"] for r in rows if r["config"] == config))
-        hi = float(next(r["propagation_error_max"] for r in rows if r["config"] == config))
+        crows = [r for r in rows if r["config"] == config]
+        lo = _f(crows[0], "propagation_error_sigma_min")
+        hi = _f(crows[0], "propagation_error_sigma_max")
         ax_r.bar(i, hi - lo, bottom=lo, color=color, alpha=0.8, width=0.6)
     ax_r.set_xticks(bar_x)
     ax_r.set_xticklabels(configs, fontsize=7, rotation=20, ha="right")
-    ax_r.set_ylim(-0.02, y_max * 1.08)
+    ax_r.set_ylim(-0.04 * y_max, y_max * 1.08)
     ax_r.set_yticklabels([])
-    ax_r.set_title("Method-axis span\n(propagation_error)", fontsize=9)
+    ax_r.set_title(r"Method-axis span" "\n" r"(propagation error, /$\sigma_x$)", fontsize=9)
     ax_r.grid(True, alpha=0.3, axis="y")
 
-    fig.suptitle("Graph quality bites only where effects persist (M4e)", fontsize=10)
+    # Title states what the re-derived data shows, not the retracted
+    # dissipation reading it replaced (2026-08-12) -- see
+    # `_graph_quality_sweep`'s docstring for the withdrawn verdict.
+    fig.suptitle("Graph quality and method choice both bite (M4e)", fontsize=10)
     fig.tight_layout()
     fig.savefig(out_path, format="pdf", bbox_inches="tight")
     plt.close(fig)

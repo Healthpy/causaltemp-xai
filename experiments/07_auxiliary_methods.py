@@ -339,33 +339,66 @@ def _graph_quality_sweep(
     reported as SHD-to-true and (for the corruption ladder) the corrupted
     fraction.
 
-    **Measured outcome, `full_nl`, 3 seeds (2026-08-05) — read this before
-    citing ``graph_error`` as a graph-quality measure.** This docstring
-    previously asserted that ``graph_error`` "must span ~0 for a good graph up
-    to large for a random graph". It does not, and the data wins (R5). The
-    ladder is monotone in the mean but has almost no dynamic range: destroying
-    the graph entirely (AUC 1.00 -> 0.39, SHD 0 -> 35) costs a mean
-    ``graph_error`` of **0.0033** (per-seed 0.0018 / 0.0040 / 0.0039).
+    **Measured outcome, re-derived 2026-08-12 (3 seeds per config). The
+    dissipation hypothesis this ladder was built to test is REFUTED; the
+    earlier CONFIRMED verdict recorded here is withdrawn.**
 
-    The insensitivity is specific to the *graph* axis, not to the metric: on
-    the same runs ``propagation_error`` spans 0.0000 (CARLA) to 0.1771
-    (CftsCOMTE), i.e. **~54x more dynamic range across methods than across
-    graph quality**. So the decomposition discriminates *methods* but not
-    *graphs* here.
+    History, because the retraction only makes sense with it. On the
+    *pre-P0-2* substrate this ladder was almost flat on ``full_nl``:
+    destroying the graph entirely cost a mean ``graph_error`` of 0.0033, while
+    ``propagation_error`` spanned 0.0000-0.1771 across methods -- "~54x more
+    dynamic range across methods than across graphs". ``smoke_spring`` (a
+    non-dissipative family) reached 0.09-0.54 on the same ladder, and the
+    contrast was read as confirmation that graph quality only bites where
+    effects persist.
 
-    **Dissipation hypothesis CONFIRMED (2026-08-05, `b56d0d8`).** The above
-    explanation was "unverified" pending a non-dissipative test; it no longer
-    is. Run on ``smoke_spring`` (M4c, rho ~ +0.02, vs. `full_nl`'s rho ~ -0.29),
-    3 seeds: ``graph_error`` reaches 0.09-0.54 across the same corruption
-    ladder that produced 0.0018-0.0040 on `full_nl`. **Caveat (2026-08-11):**
-    the ratio is scale-confounded -- ``graph_error`` is in raw state units and
-    sigma differs across families, so the headline "45x-123x" overstates it.
-    Graph quality is near-irrelevant
-    when effects attenuate before parent-set differences propagate
-    (dissipative), and bites hard once effects persist (non-dissipative).
-    ``graph_error`` is therefore a graph-quality measure **conditional on**
-    the mechanism family's contraction rate, not a general one -- report it
-    with that family's measured rho, not as a standalone number.
+    Two independent defects invalidated that reading, and fixing both reverses
+    it:
+
+    1. **The substrate was degenerate.** The pre-P0-2 MLP mechanism left the
+       ground-truth graph carrying 0.37% of observed variance, so ``full_nl``'s
+       flat ladder measured the benchmark's own degeneracy, not dissipation.
+       After the retune (graph share 91.13%) the same ladder spans a mean
+       ``graph_error`` of **0.7478** at full corruption -- ~226x its old value.
+    2. **The cross-family ratio was scale-confounded.** ``graph_error`` is a
+       difference of ``exp(-residual)`` soft scores; the families differ in
+       state sigma by ~6x (``full_nl`` ~1.26, ``smoke_spring`` ~7.3), so part
+       of the old gap was state magnitude. See :func:`soft_to_residual`.
+
+    Re-derived in scale-free units (``graph_error_sigma``, full corruption,
+    3 seeds):
+
+    ==============  ================  =================  ============
+    config          graph-axis span   method-axis span   method/graph
+    ==============  ================  =================  ============
+    ``full_nl``     1.119             2.171              1.9x
+    ``smoke_spring``0.082             0.982              12.0x
+    ==============  ================  =================  ============
+
+    The ordering is now **inverted**: the dissipative family is ~13.7x *more*
+    graph-sensitive than the non-dissipative one, and ``full_nl``'s
+    method-over-graph dominance collapses from ~54x to 1.9x.
+
+    The family classification itself is unchanged, and this is what makes the
+    refutation decisive rather than merely a wash. Re-measured on the retuned
+    substrate with the canonical
+    :func:`causaltemp_xai.benchmarks.diagnostics.empirical_contraction_rate`
+    (``n_pairs=30``, ``T=50``): ``full_nl`` **rho = -0.689**,
+    ``smoke_spring`` **rho = +0.024**. ``full_nl`` is not merely still
+    dissipative -- the P0-2 retune made it *more* so (rho was -0.372 before),
+    while ``smoke_spring`` is unmoved. The dissipation hypothesis predicts a
+    *flatter* ladder for a more strongly contracting family; the measured
+    ladder moved ~226x in the opposite direction. The premise survives and its
+    predicted consequence inverts, so dissipation is **not** the explanation
+    for a flat graph-quality ladder. A degenerate mechanism was.
+
+    Remaining confound, stated rather than resolved: ``smoke_spring``'s graph
+    is much smaller (8 true edges vs ``full_nl``'s ~35), so "full corruption"
+    is a smaller absolute structural change there. The corruption *fraction*
+    x-axis controls for graph size by construction, but the two configs also
+    differ in ``T`` (30 vs 100) and ``k``, so the cross-family span comparison
+    above is a contrast between two configured benchmarks, not a clean
+    one-variable manipulation of dissipation. Do not cite it as the latter.
     """
     from causaltemp_xai.metrics.axis_a import graph_auc
 
