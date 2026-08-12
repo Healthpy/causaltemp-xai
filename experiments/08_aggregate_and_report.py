@@ -952,7 +952,13 @@ def fig5_horizon_decay(tables_dir: Path, out_path) -> bool:
 
     configs = sorted({r["config"] for r in rows})
     methods = sorted({r["method"] for r in rows})
-    linestyles = {c: ls for c, ls in zip(configs, ["-", "--", ":", "-."])}
+    # Cycle rather than zip: zip() silently truncates against the style list, so
+    # a fifth config (e.g. smoke_interior_label) got no entry and the plot loop
+    # below raised KeyError -- which aborted run_figures_report before fig6 ever
+    # ran, leaving a stale fig6 PDF on disk. Repeated linestyles are a legibility
+    # cost; a crash is a correctness one.
+    _LS = ["-", "--", ":", "-."]
+    linestyles = {c: _LS[i % len(_LS)] for i, c in enumerate(configs)}
 
     fig, ax = plt.subplots(figsize=(6.5, 4.5))
     for method in methods:
