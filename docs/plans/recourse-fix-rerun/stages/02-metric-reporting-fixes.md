@@ -1,8 +1,7 @@
-# Stage 5: Metric reporting fixes
+# Stage 2: Metric reporting fixes
 
 **Goal**: Make every column of the shipped table mean exactly one thing.
-**Dependencies**: Stage 3 (the fixes are independent of it, but reruns of the local validation
-should exercise both together).
+**Dependencies**: Stage 1 (implementation is independent, but local validation exercises both).
 
 ---
 
@@ -91,8 +90,8 @@ spread. It is absent, and the run-1 table shows `n/a`.
    `Path(out_dir) / cfg.name / "lstm.pt"` using the same pattern as
    `experiments/04_evaluate_axes.py:83-86`. Fail loudly if it is absent. Pass the classifier to
    `score_and_collect()` and run the oracle arrays through `evaluate_method()` with
-   `data["X_train"]`, so both oracle rows carry raw validity, recourse validity, do-complexity,
-   OOD, joint faithfulness-validity, and conditional faithfulness-given-validity.
+   `data["X_train"]`, so both oracle rows carry classifier validity, do-complexity, OOD, joint
+   faithfulness-validity, and conditional faithfulness-given-validity.
    Oracle **construction and faithfulness remain classifier-independent**; loading the model
    adds outcome-quality metrics and does not redefine the positive control.
 2. Assert in a test that `OracleCF-Pearl`'s
@@ -116,7 +115,7 @@ spread. It is absent, and the run-1 table shows `n/a`.
 - [ ] Both explicit do-complexity variants and `n_do_scorable` are present; their relation uses
       `n_do_scorable/n`, never `1 - frac_vacuous`.
 - [ ] `OracleCF-Pearl` has `do_complexity_mean_pearl_scorable == 1.0` and both oracle rows carry
-      raw `validity` plus `recourse_validity`.
+      classifier `validity`.
 - [ ] `uv run pytest tests/ -q` passes.
 
 ---

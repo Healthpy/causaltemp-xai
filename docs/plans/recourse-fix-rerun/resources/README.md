@@ -3,8 +3,8 @@
 - **[commands.md](commands.md)** — local regeneration recipes, the mandatory Helios job preamble,
   the threading fix, the phase sequence, submission and monitoring, and the measured cost
   constants.
-- **[checklist.md](checklist.md)** — the 25-item defect checklist that gates whether a generated
-  table is usable. Run it in stage 7 (smoke tier) and again in stage 9 (full run).
+- **[checklist.md](checklist.md)** — the 23-item defect checklist that gates whether a generated
+  table is usable. Run it in stage 5 (smoke tier) and again in stage 7 (full run).
 
 ## Standing constraints
 

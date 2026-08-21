@@ -4,8 +4,8 @@
 
 The laptop's checked-in `data/scm_t/` is dated 2026-07-07/08 and carries the **pre-retune**
 nonlinear hyperparameters (`gain=0.8`, `decay_range=[0.3, 0.8]`, `spectral_cap=0.9`,
-`init_gain=0.7`). The delta-collapse bug **does not reproduce** on it — deltas reach 0.25-0.63,
-well above tolerance. Always regenerate before validating a fix.
+`init_gain=0.7`). Always regenerate before validating metric/reporting outputs against the
+current configuration.
 
 ```bash
 cd /Users/ofurman/pwr/causaltemp-xai
@@ -26,7 +26,7 @@ accuracies exactly (`smoke_nl`: train 0.96 / val 0.98 / test 0.96). If yours dif
   `results/<config>/lstm/`. Restore with `git checkout` afterwards.
 - Use `.venv/bin/python` directly. A bare `uv run` will resync the venv.
 
-## Local: the full smoke tier (stage 7)
+## Local: the full smoke tier (stage 5)
 
 ```bash
 METHODS="CARLA PearlCARLA CftsWachter CftsCOMTE CftsConfeti CftsCels TSCausal"
@@ -150,5 +150,5 @@ leaves the queue — recheck before declaring a job missing.
 | Run-1 elapsed | `full` 12:07:25, `full_nl` 12:05:35, reports 01:53:11; ~26 GPU-h total |
 | Per-method cost | CftsConfeti 84 s/instance, PearlCARLA 52, CARLA 32, TSCausal 17; Wachter/COMTE/Cels near-free |
 
-The stage-3 lambda backoff can multiply optimiser steps on hard instances. Re-measure in stage 7
-and re-size the walltimes before submitting.
+The stage-1 lambda backoff can multiply optimizer work on failed cases. Compare the stage-5
+smoke runtime with these constants and re-size walltimes before submission if needed.

@@ -1,8 +1,8 @@
-# Stage 8: Cluster preflight and submit
+# Stage 6: Cluster preflight and submit
 
 **Goal**: Verify the cluster is ready, then submit the chained jobs — **with explicit human
 authorisation**.
-**Dependencies**: Stage 7 fully green.
+**Dependencies**: Stage 5 fully green.
 
 ---
 
@@ -31,7 +31,7 @@ never treat a previous session's approval as covering this one.
 
 2. **Check the partition limits.** `sinfo -p plgrid-gpu-gh200 -o '%P %a %l %D %G'` and
    `scontrol show partition plgrid-gpu-gh200`. Confirm the `MaxTime` accommodates the walltimes
-   stage 7 sized. This was an open question during planning and has never been measured.
+   stage 5 sized. This was an open question during planning and has never been measured.
 
 3. **Check the environment survived.** Confirm `$HEAVY/envs/gh200` still exists and imports
    cleanly — submit `slurm/helios_import_check.sbatch` and wait for it. If the venv is gone,
@@ -44,7 +44,7 @@ never treat a previous session's approval as covering this one.
    - `import causaltemp_xai` hard-requires `tigramite` via `causaltemp_xai/methods/causal/pcmci.py`,
      so `pip install --no-deps -e .` is not sufficient.
 
-4. **Sync the code** with the tightened rsync from stage 6 (`--exclude '.env' --exclude 'results'
+4. **Sync the code** with the tightened rsync from stage 4 (`--exclude '.env' --exclude 'results'
    --exclude 'notebooks'`), then verify on the cluster that `.env` is absent and that
    `git status --porcelain -- ':!results' ':!notebooks' ':!slurm/logs'` is clean. This is the
    exact source-clean pathspec used by `experiments/_common.py::git_provenance()`.
@@ -58,7 +58,7 @@ never treat a previous session's approval as covering this one.
 
 6. **Run the smoke job first.** Submit `slurm/helios_smoke.sbatch` and confirm it completes
    `COMPLETED` with `ExitCode 0:0`, contains no `!!! FAILED` marker, and passes every hard
-   acceptance check before submitting the expensive chain. The Stage-6 wrapper must return
+   acceptance check before submitting the expensive chain. The Stage-4 wrapper must return
    non-zero if any phase failed; do not accept stale output files as evidence of this run.
 
 7. **STOP. Present to the human**: the grant balance, the partition `MaxTime`, the smoke job's

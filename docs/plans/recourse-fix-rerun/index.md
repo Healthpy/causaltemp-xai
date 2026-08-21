@@ -1,11 +1,10 @@
-# Plan: Recourse-layer fix and second Helios run
+# Plan: Recourse and metric fixes for the second Helios run
 
 **Date**: 2026-08-21
 **Branch**: `run-full-experiments`
 **Predecessors**: `docs/full_run_2026-08-18.md` (run 1 report), `docs/general_plan.md`
-**Goal**: Fix the shared delta-collapse bug in `CARLARecourse`/`PearlCARLARecourse`, make the
-shipped metric tables self-consistent, and re-run `full` + `full_nl` on Helios GH200 to
-produce a (dataset, method, metric) table whose every cell can be defended.
+**Goal**: Fix the CARLA/PearlCARLA delta-collapse, make the shipped metric tables
+self-consistent, harden the Helios harness, and rerun `full` + `full_nl` on Helios GH200.
 
 ---
 
@@ -117,6 +116,10 @@ is structural and `validity` reduces to "did you move `x[T-1,0]` across the medi
 Trustworthy fraction of the intended 1225-cell space: **~70% populated with a defensible
 number, under half supporting a ranking claim.**
 
+**Reduced scope (2026-08-21):** the run-1 errata/repository-hygiene stage and the separate
+full-scale reachability gate remain removed. The CARLA/PearlCARLA implementation stage has been
+restored and relies on the already-recorded regenerated `smoke_nl` reachability evidence.
+
 ### Harness state
 
 - The run-1 recipe exists **only as prose** in `docs/full_run_2026-08-18.md` section 3. No
@@ -142,30 +145,24 @@ number, under half supporting a ranking claim.**
 
 ## Strategy
 
-Four phases. Nothing touches the cluster until the fix is proven locally.
+Three phases. Nothing touches the cluster until the recourse and metric changes are proven locally.
 
-**Phase A — make the record honest (stage 1).** Publish an errata on the run-1 report before
-any code changes land, so no point in git history carries unretracted claims. Resolve the
-`results/` vs `results_helios/` split, close the `.npy` gitignore gap, retire the misleading
-sbatch, and commit the untracked scripts that run 1 actually used.
+**Phase A — fix recourse and metric semantics (stages 1-3).** Repair CARLA/PearlCARLA candidate
+selection and proximity scaling, expose failed searches separately from classifier validity,
+disambiguate do-complexity, add conditional faithfulness, expand oracle coverage, and lock all
+contracts with regression tests.
 
-**Phase B — prove the fix is possible, then make it (stages 2-5).** Stage 2 is a hard GO/NO-GO
-gate: measure whether the decision boundary is reachable at `full_nl` scale (75 contraction
-steps) as it demonstrably is at `smoke_nl` scale (22 steps). If it is not, no `lam_prox` fix
-helps and the benchmark config itself needs redesign — the plan branches rather than burning
-GPU-hours on an unreachable target. Stages 3-5 then fix the recourse layer, lock the fix in
-with regression tests and CI coverage, and repair the metric-reporting defects.
+**Phase B — make the run reproducible and validate locally (stages 4-5).** Turn the prose recipe
+into committed, `--test-only`-validated sbatch files carrying threading, provenance, and failure
+gates. Run the smoke tier end to end before spending grant hours.
 
-**Phase C — make the run reproducible (stages 6-7).** Turn the prose recipe into committed,
-`--test-only`-validated sbatch files carrying the threading fix and preflight gates. Then run
-the entire smoke tier locally end to end as the final gate before spending grant hours.
-
-**Phase D — run and report (stages 8-9).** Submit the chained Helios jobs, collect, rebuild the
-table, verify it against an explicit defect checklist, and write the superseding report.
+**Phase C — run and report (stages 6-7).** Submit the chained Helios jobs, collect, rebuild the
+table, verify it against the defect checklist, and document the corrected recourse and metric
+semantics.
 
 **Rerun shape (decided 2026-08-21):** repeat the run-1 shape — `full` + `full_nl` at
-`n_cf=100`, single seed, ~26 GPU-hours. This confirms the fix end to end at full scale for
-minimum cost. It does **not** address D2: the resulting table still has no error bars and no
+`n_cf=100`, single seed, ~26 GPU-hours. This validates the fixes at full scale for minimum cost.
+It does **not** address D2: the resulting table still has no error bars and no
 defence against the bimodality. That is an accepted, documented limitation of run 2, and the
 multi-seed campaign is recorded in the Backlog as the natural successor plan.
 
@@ -175,62 +172,50 @@ multi-seed campaign is recorded in the Backlog as the natural successor plan.
 
 | Metric | Baseline (run 1) | Target (run 2) | Rationale |
 |---|---|---|---|
-| CARLA `delta` at `t0`, `full_nl` | 6.4e-08 | > `INTERVENTION_TOL` (1e-3) on >= 90% of instances | Below tolerance the CF is not an intervention at all |
-| PearlCARLA `frac_degenerate`, `full_nl` | 1.00 | <= 0.10 | Degenerate CFs are unscorable; the method contributes nothing |
-| CARLA raw `validity`, `full_nl` | 0.000 | > 0.30 | Must clear `MIN_VALIDITY_BASE_FOR_RATIO` so the existing Axis B calculation is computable |
-| CARLA `recourse_validity`, `full_nl` | 0.000 | > 0.30 | Counts a classifier flip only when a real, non-vacuous intervention was found |
-| CARLA `frac_vacuous`, `full_nl` | 1.00 | <= 0.20 | A vacuous CF is mechanism continuation, not recourse |
-| CARLA at `delta=0`, `full` | raw validity flips 100/100 | `validity` may remain 1.0, but `recourse_validity == 0`, `no_cf_found == 1`, and the row earns no recourse credit | Preserve classifier validity while rejecting noise-deletion as recourse |
+| CARLA intervention delta, `full_nl` | 6.4e-08 | > `INTERVENTION_TOL` on >= 90% | Below tolerance there is no action |
+| CARLA `frac_vacuous`, `full_nl` | 1.00 | <= 0.20 | Reject the noiseless-continuation free pass |
+| PearlCARLA `frac_degenerate`, `full_nl` | 1.00 | <= 0.10 | Restore CF-faith scorable output |
+| CARLA classifier `validity`, `full_nl` | 0.000 | > 0.30 | Classifier outcome remains the standard validity metric |
+| CARLA `frac_no_cf_found`, `full_nl` | absent | <= 0.20 | Make optimizer failure explicit without redefining validity |
 | `do_complexity` naming collision | all-instance and Pearl-scorable values ship under near-identical names | `mean_all` + `mean_pearl_scorable`, with `n_do_scorable` and no claim tying them to `frac_vacuous` | D4 |
 | Conditional faithfulness on empty valid set | no separately named conditional metric | `*_hard_given_valid` is NaN and suppressed; existing `*_hard_valid` joint metric remains 0.0 | D5 |
-| Oracle metric coverage | 140/350 = 40% | raw `validity`, `recourse_validity`, both explicit do-complexity means and denominator diagnostics present for both oracles; `OracleCF-Pearl` Pearl-scorable mean == 1.0 | D8 |
-| Nonlinear path in CI | 0 tests | >= 1 regression test failing on a delta-collapse, running in CI | Prevents silent recurrence |
-| Run-1 report | claims 7.2 / 7.4 unretracted | dated errata block at the top | Honest git history |
+| Oracle metric coverage | 140/350 = 40% | raw `validity`, both explicit do-complexity means and denominator diagnostics present for both oracles; `OracleCF-Pearl` Pearl-scorable mean == 1.0 | D8 |
 | Reproducibility | recipe is prose only | committed sbatch, `sbatch --test-only` clean | Run 3 must be one command |
+| Publication scope | table auto-discovers retained summaries | final table contains exactly `full` and `full_nl` from run 2 | Prevent stale smoke/run-1 mixing |
+| Provenance | run 1 reports `git_dirty:true` | source-scoped `git_dirty:false`, unfiltered state recorded separately | Distinguish code dirt from generated results |
 
 ---
 
 ## Files That May Be Changed
 
-### Recourse layer (stages 3-4)
-- `causaltemp_xai/methods/counterfactual/carla.py` -- proximity-penalty scaling at `:288` and
-  `:511`; candidate tie-break at `:302` and `:525`; sub-tolerance no-op guard after both loops;
-  constructor defaults at `:181-184` and `:394-397`.
-- `causaltemp_xai/config.py` -- optional per-config recourse hyperparameters.
-- `experiments/03_run_cf_methods.py` -- `build_methods()` at `:86-109`, the sole call site that
-  overrides method hyperparameters; persist `no_cf_found_<Method>.npy` sidecars.
-- `experiments/04_evaluate_axes.py`, `experiments/_common.py` -- load no-CF sidecars, emit
-  `recourse_validity`, preserve the joint faithfulness-validity metrics, add the separately
-  named conditional metrics, and define code-clean provenance.
-- `tests/test_methods.py` -- add a nonlinear (`MLPMechanism`) fixture and regression tests.
-- `.github/workflows/ci.yml` -- add `smoke_nl` to the pipeline smoke harness at `:70-78`.
+### Recourse layer (stages 1 and 3)
+- `causaltemp_xai/methods/counterfactual/carla.py` -- candidate tie-break, bounded proximity
+  backoff, compatibility-preserving status API, and documentation.
+- `causaltemp_xai/config.py` -- optional explicit recourse defaults, only if needed.
+- `experiments/03_run_cf_methods.py`, `experiments/04_evaluate_axes.py` -- persist and validate
+  no-CF sidecars while preserving classifier-only validity.
+- `tests/test_methods.py` -- nonlinear recourse and legacy-API regressions.
 
-### Metric and reporting layer (stage 5)
+### Metric and reporting layer (stages 2-3)
 - `causaltemp_xai/eval.py` -- `evaluate_method()` conditional-metric NaN handling (D5),
   do-complexity dilution (D4).
+- `experiments/_common.py` -- preserve classifier validity and the joint metric; add conditional
+  metric aggregation and source-clean provenance.
 - `experiments/05_run_oracle_control.py` -- emit the missing oracle metrics (D8).
 - `experiments/make_final_table.py` -- preserve joint metrics, add conditional-metric
   suppression provenance, distinguish the two Pearl-semantic do-complexity denominators, and
   require explicit publication configs.
 - `tests/test_eval.py`, `tests/test_do_complexity.py` -- cover the new behaviour.
 - `tests/test_metric_adversarial.py` -- preserve the joint metric contract and cover the new
-  conditional metric and recourse-validity semantics.
+  conditional metric semantics.
 
-### Harness (stages 1, 6)
+### Harness (stage 4)
 - `slurm/helios_full_run.sbatch` (new), `slurm/helios_smoke.sbatch`,
   `slurm/helios_reports.sbatch` (new), `slurm/helios_setup_env.sbatch`,
   `slurm/helios_import_check.sbatch` -- commit + threading fix and accumulated failure status.
-- `slurm/full_pipeline_rerun.sbatch` -- retire.
-- `.gitignore` -- `.npy` coverage for any results tree.
 
-### Documentation (stages 1, 9)
-- `docs/full_run_2026-08-18.md` -- errata block only; body left as the historical record.
+### Documentation (stage 7)
 - `docs/full_run_2026-08-2X.md` (new) -- the superseding report.
-- `docs/risk_register.md` -- close RISK-17.
-
-### Deleted
-- `experiments/results.json`, `experiments/per_instance.csv`, `experiments/results_archive/` --
-  pre-retune artifacts carrying the superseded `gain=0.8` nonlinear hyperparameters.
 
 ---
 
@@ -238,15 +223,13 @@ multi-seed campaign is recorded in the Backlog as the natural successor plan.
 
 | # | Stage | Status | Notes | Commit |
 |---|-------|--------|-------|--------|
-| 1 | [Errata and repo hygiene](stages/01-errata-and-hygiene.md) | PENDING | | |
-| 2 | [Reachability gate (GO/NO-GO)](stages/02-reachability-gate.md) | PENDING | | |
-| 3 | [Fix the recourse layer](stages/03-fix-recourse-layer.md) | PENDING | | |
-| 4 | [Regression tests and CI coverage](stages/04-regression-tests-ci.md) | PENDING | | |
-| 5 | [Metric reporting fixes](stages/05-metric-reporting-fixes.md) | PENDING | | |
-| 6 | [Helios job scripts](stages/06-helios-job-scripts.md) | PENDING | | |
-| 7 | [Local full validation](stages/07-local-full-validation.md) | PENDING | | |
-| 8 | [Cluster preflight and submit](stages/08-cluster-submit.md) | PENDING | **HUMAN GATE** | |
-| 9 | [Collect, table, document](stages/09-collect-table-document.md) | PENDING | | |
+| 1 | [Fix the recourse layer](stages/01-fix-recourse-layer.md) | PENDING | | |
+| 2 | [Metric reporting fixes](stages/02-metric-reporting-fixes.md) | PENDING | | |
+| 3 | [Regression tests](stages/03-regression-tests.md) | PENDING | | |
+| 4 | [Helios job scripts](stages/04-helios-job-scripts.md) | PENDING | | |
+| 5 | [Local full validation](stages/05-local-full-validation.md) | PENDING | | |
+| 6 | [Cluster preflight and submit](stages/06-cluster-submit.md) | PENDING | **HUMAN GATE** | |
+| 7 | [Collect, table, document](stages/07-collect-table-document.md) | PENDING | | |
 
 Statuses: `PENDING` -> `IN_PROGRESS` -> `DONE` | `BLOCKED` | `SKIPPED`
 
@@ -254,7 +237,7 @@ Statuses: `PENDING` -> `IN_PROGRESS` -> `DONE` | `BLOCKED` | `SKIPPED`
 
 ## Execution Protocol
 
-This plan is built for **autonomous, unattended execution**, with two explicit exceptions
+This plan is built for **autonomous, unattended execution**, with one explicit exception
 noted below. The guiding principle is **keep making progress**: resolve problems in place when
 you can, defer them when you can't, and never halt the whole plan over a single fixable or
 deferrable issue.
@@ -284,15 +267,11 @@ Repeat until every stage is DONE or terminally deferred. After the last stage, *
 the Backlog**: attempt any items that are now resolvable, and leave the rest for a
 follow-up run.
 
-### Two mandatory stops
+### Mandatory stop
 
 These override the autonomy rule. They exist because the actions are costly and outward-facing.
 
-- **Stage 2 is a decision gate.** If the reachability probe returns NO-GO, do not proceed to
-  stage 3. Record the measurement, mark stages 3-9 BLOCKED, write the finding into the
-  Backlog, and stop. A NO-GO means the `full_nl` config is unreachable by any proximity-
-  penalised optimiser and needs redesign — a decision no autonomous run should make alone.
-- **Stage 8 requires explicit human authorisation before `sbatch`.** Submitting spends roughly
+- **Stage 6 requires explicit human authorisation before `sbatch`.** Submitting spends roughly
   26 GPU-hours of the `plgcountercontex-gpu-gh200` grant. Run every preflight check, print the
   exact commands and the `sbatch --test-only` output, then stop and wait. Never submit
   unattended.
@@ -339,9 +318,9 @@ unexpected runtime error:
 - **Never write submission metadata inside the cluster Git checkout.** Store run-2 job IDs at
   `$HEAVY/run2/run2.jobids` and copy them into this index; an untracked file under `slurm/`
   fails the dependent jobs' source-clean preflight.
-- Preserve raw classifier `validity`. Use `recourse_validity` for claims about successful
-  recourse, and preserve `cf_faith_*_hard_valid` as a joint rate rather than silently
-  redefining it as conditional.
+- Preserve classifier `validity` as the target-class rate. Preserve `no_cf_found`, `vacuous`,
+  and `frac_degenerate` as separate diagnostics; do not fold them into validity. Preserve
+  `cf_faith_*_hard_valid` as a joint rate rather than silently redefining it as conditional.
 - Phases 01 and 02 write into the repo's tracked `results/` regardless of `--out-dir`
   (`experiments/_common.py:64`, `RESULTS_DIR` is not env-overridable). Expect local
   experiments to dirty tracked files; restore with `git checkout` or work on a copy.
@@ -375,7 +354,7 @@ state the symptom, where it came from, and a concrete lead for resolving it.
 | 7 | `table_axis_c_cf_faith.csv` duplicates (D11) | planning | low | Cosmetic; run-1 report section 8.8 already flags it. 54 rows, 45 unique keys; the whole `full` block appears twice (n=3 profiling and n=100 production) with divergent values. | Truncate the table before run 2, or key `append_table` on `(benchmark, classifier, method, n)` so profiling rows cannot shadow production rows. | OPEN |
 | 8 | Config coverage regression (D13) | planning | med | Out of scope. 8 of 13 registered configs never ran on Helios: `real_basicmotions`, `real_epilepsy` (the only real-data evidence), `full_interior_label`, `full_interior_label_late` (the RISK-19 ablation `config.py:20-31` says exists to make H8 falsifiable), `smoke_gaussian`, `smoke_nonmonotonic`, `smoke_regime`, `smoke_regime_hmm`, `full_sparse`. Method `CausalFeasibility` and `CftsCounts` also absent. | Decide which are load-bearing for the paper and schedule a third run. The interior-label ablation shows the most extreme bimodality, so it needs multi-seed too. | OPEN |
 | 9 | The task is trivial by construction (D16) | planning | med | Design-level, not a bug. `terminal_threshold` labels on a median split of `x[T-1,0]`, and the LSTM head reads `hn[-1]` (`lstm.py:107-113`) — the classifier reads essentially the scalar the label is defined on. Test accuracy 0.94-0.9985, `full_nl` val = 1.0000. `validity` reduces to "did you move `x[T-1,0]` across the median". | Caps what any validity-based ranking can mean. Either say so plainly in the paper, or add an interior-label config to the headline set (see Backlog #8). | OPEN |
-| 10 | CPU/GPU ping-pong in the recourse loop | planning | low | Performance only, no correctness impact. `delta` (`carla.py:277`, `:500`), `mask`, `x_t` and `eps` are built on CPU with no `device=`; `torch_logits` then does `x.to(self.device)` (`lstm.py:425`) every one of 300-500 steps. Probable contributor to the phase-03 runtime. | Construct the whole rollout on `model.device`. ~6 LoC. Fold into stage 3 only if it costs nothing; otherwise a standalone perf change. | OPEN |
+| 10 | CPU/GPU ping-pong in the recourse loop | planning | low | Performance only, no correctness impact. `delta` (`carla.py:277`, `:500`), `mask`, `x_t` and `eps` are built on CPU with no `device=`; `torch_logits` then does `x.to(self.device)` every one of 300-500 steps. Probable contributor to phase-03 runtime. | Fold into stage 1 only if it is a trivial device-placement change; otherwise leave for a performance follow-up. | OPEN |
 
 Statuses: `OPEN` -> `IN_PROGRESS` -> `RESOLVED`. When an item is resolved, flip its
 status and summarize the fix in **Fixed Issues**. Heavy items may warrant their own
@@ -385,44 +364,20 @@ follow-up plan — link it here.
 
 ## Decisions
 
-**2026-08-21 — Scope: recourse layer plus reporting fixes.** Fix `carla.py` *and* the D4/D5/D8
-metric-reporting defects, rather than the recourse layer alone. Rationale: a table whose
-`do_complexity` column silently means two different things, and whose `*_hard_valid` column
-cannot distinguish "faithless" from "never valid", is not defensible even if every method
-produces a real counterfactual. Rejected: recourse-only (leaves the tables misleading); and
-recourse + reporting + restored coverage (D1 graph-quality, D6 PNS, D13 configs) — deferred to
-Backlog because it multiplies cluster cost before the primary fix is proven.
+**2026-08-21 — Reduced scope with CARLA fix restored.** The user removed the errata/repository-
+hygiene and reachability stages, then restored the CARLA/PearlCARLA implementation stage. The
+plan fixes recourse plus D4/D5/D8, tests those contracts, hardens the harness, and reruns. It uses
+the recorded regenerated `smoke_nl` reachability evidence instead of a separate full-scale gate.
 
 **2026-08-21 — Rerun shape: repeat the single-seed run-1 shape.** `full` + `full_nl`,
-`n_cf=100`, one seed, ~26 GPU-hours. Rationale: cheapest end-to-end confirmation that the fix
-works at full scale. Explicitly accepted cost: run 2 inherits D2 and produces no error bars.
+`n_cf=100`, one seed, ~26 GPU-hours. Rationale: cheapest end-to-end validation of the recourse
+and reporting fixes. Explicitly accepted cost: run 2 inherits D2 and produces no error bars.
 Rejected: 3 seeds (~40 GPU-h) and 10 seeds (~120 GPU-h) — both deferred to Backlog #1 as the
 successor plan, to run once the fix itself is known good.
 
-**2026-08-21 — Run-1 report: errata now, supersede later.** Add a dated errata block to
-`docs/full_run_2026-08-18.md` in stage 1, before any code changes, then write a fresh report in
-stage 9 and link the two. Rationale: the doc is already committed and pushed to
-`fork/run-full-experiments`; leaving sections 7.2 and 7.4 unretracted through the whole fix
-cycle would put unflagged false claims in the repo's history. The body stays intact as the
-historical record of run 1.
-
-**2026-08-21 — Stage 2 exists as a hard gate.** The reachability sweep that proved the boundary
-is crossable was run only at `smoke_nl` scale (22 contraction steps). `full_nl` has 75. Because
-the mechanism contracts per step, the delta required at full scale may exceed any sane
-proximity budget, in which case rescaling `lam_prox` cannot help and the config needs redesign.
-Measuring this costs minutes; discovering it after a 26 GPU-hour run costs a day.
-
-**2026-08-21 — Reachability is a joint-delta property.** A coordinate sweep remains as a
-reproducibility check, but it can never justify NO-GO by itself because both recourse methods
-optimise a joint `k`-dimensional delta. Stage 2 now requires an unpenalised joint search with
-multiple starts and persists the probe and output. NO-GO requires both probe families to fail.
-
-**2026-08-21 — Raw validity and recourse validity are separate.** Keep `validity` as the
-classifier's raw target-class rate. Add `recourse_validity`, which requires a classifier flip,
-an algorithm-level `no_cf_found=false`, and a non-vacuous intervention. A zero-delta noiseless
-rollout can remain classifier-valid because deleting noise changes the trajectory, but it earns
-zero recourse credit. CARLA/PearlCARLA persist their no-CF status in per-method sidecars so this
-decision survives Phase-03/04 serialization.
+**2026-08-21 — Validity remains classifier-only.** Keep `validity` as the classifier's
+target-class rate. Do not add a composite recourse-validity metric. `no_cf_found`, vacuity, and
+degeneracy remain separate diagnostics.
 
 **2026-08-21 — Preserve joint faithfulness-validity; add conditional faithfulness.** The existing
 `cf_faith_*_hard_valid` keys are the tested joint rate `P(hard-faithful AND valid)` and remain

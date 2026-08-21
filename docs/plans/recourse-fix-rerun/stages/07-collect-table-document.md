@@ -1,8 +1,8 @@
-# Stage 9: Collect, table, document
+# Stage 7: Collect, table, document
 
-**Goal**: Pull run 2, rebuild the table, verify it against the defect checklist, and write the
-report that supersedes run 1.
-**Dependencies**: Stage 8; all jobs finished.
+**Goal**: Pull run 2, rebuild the table, verify it against the defect checklist, and document
+the corrected recourse and metric/reporting outputs.
+**Dependencies**: Stage 6; all jobs finished.
 
 ---
 
@@ -27,28 +27,26 @@ report that supersedes run 1.
    .venv/bin/python experiments/make_final_table.py --configs full full_nl
    ```
    Confirm the provenance JSON names exactly those two configs and the run-2 commit. Never use
-   unfiltered auto-discovery here: Stage 1 preserves run-1 smoke artifacts, and mixing them into
-   the run-2 table violates C20. Stage-7 smoke tables remain separate validation diagnostics.
+   unfiltered auto-discovery here: mixing retained smoke artifacts into the run-2 table violates
+   the publication-scope check. Stage-5 smoke tables remain separate validation diagnostics.
 
 4. **Run the defect checklist** in `resources/checklist.md` against the new full table. This is
    the gate that decides whether run 2 is publishable. Every item passes or is waived in writing.
 
-5. **Verify each success criterion** from the index against the `full_nl` numbers specifically —
-   that is the config run 1 could not produce a usable answer for. Check raw `validity` and
-   `recourse_validity` separately; only the latter establishes that a classifier flip was earned
-   by a real intervention.
+5. **Verify each success criterion** from the index against the `full_nl` numbers specifically.
+   Keep `validity` classifier-only and inspect `frac_no_cf_found`, `frac_vacuous`, and
+   `frac_degenerate` as separate diagnostics of whether the CARLA fix produced real actions.
 
-6. **Diff run 2 against run 1** cell by cell, and attribute every material change to a specific
-   fix. Pay attention to the **linear `full` tier**: raw CARLA `validity` may remain high because
-   it reports classifier outcome only, but `recourse_validity` must exclude every noise-deletion
-   no-op. Report both; a lower recourse-validity value is the expected correction, not a
-   regression.
+6. **Diff run 2 against run 1** cell by cell, and attribute every material change to the metric,
+   oracle, table, or harness changes in this plan. Pay attention to the **linear `full` tier**:
+   CARLA `validity` may remain high because it reports classifier outcome only. Report
+   `frac_no_cf_found` and `frac_vacuous` beside it without redefining validity.
 
 7. **Write the superseding report**, `docs/full_run_<date>.md`. Follow the structure of
    `docs/full_run_2026-08-18.md` (provenance and caveats, compute, commands, datasets, method
    hyperparameters, results tables, findings, known limitations, next steps, artifacts) and
    its ASD-STE100 Simplified Technical English style. It must state plainly:
-   - What the delta-collapse bug was and what it invalidated in run 1.
+   - What the delta-collapse bug invalidated in run 1 and how stage 1 fixed it.
    - That run 2 is **single-seed** and therefore carries no error bars, and that validity is
      known to be bimodal across seeds (median seed-SD 0.110, p90 0.520) — so no ranking in this
      table should be read as established. Point at Backlog #1.
@@ -57,12 +55,8 @@ report that supersedes run 1.
    - That `cf_faith_*` is a semantics-admission gate, not a quality ranking (Backlog #3).
    - That Axis B is uncontrolled at one seed by the code's own stated requirement (Backlog #5).
 
-8. **Close the loop on the run-1 errata.** Update the errata block added in stage 1 to point at
-   the new report by name.
-
-9. **Update the memory notes** so a future session starts from the corrected picture: the
-   delta-collapse root cause and its fix, the corrected reading of the linear tier, and the
-   fact that run 2 is single-seed by decision rather than by oversight.
+8. **Update the memory notes** so a future session starts from the corrected recourse and metric
+   semantics and the fact that run 2 is single-seed by decision rather than by oversight.
 
 ---
 
@@ -77,7 +71,7 @@ report that supersedes run 1.
 - [ ] Every item in `resources/checklist.md` passes or is waived with a written reason.
 - [ ] Every success criterion in the index is met, or its miss is documented as a finding.
 - [ ] The run-1 vs run-2 diff is complete and every material change is attributed.
-- [ ] The new report exists, and `docs/full_run_2026-08-18.md`'s errata block links to it.
+- [ ] The new report exists and distinguishes classifier validity from no-CF and vacuity diagnostics.
 - [ ] The Backlog in the index is swept: any item now resolvable is attempted, the rest carried.
 
 ---

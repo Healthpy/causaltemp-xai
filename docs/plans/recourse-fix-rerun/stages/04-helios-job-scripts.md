@@ -1,8 +1,8 @@
-# Stage 6: Helios job scripts
+# Stage 4: Helios job scripts
 
 **Goal**: Turn the run-1 prose recipe into committed, `--test-only`-validated sbatch files that
 carry the threading fix and fail loudly at preflight.
-**Dependencies**: Stages 3-5 (the scripts should pin the code state they will run).
+**Dependencies**: Stages 1-3 (the scripts should pin the tested code state they will run).
 
 ---
 
@@ -26,9 +26,8 @@ about 16 wasted GPU-hours.
      `plgcountercontex-gpu-gh200`. Peak MaxRSS in run 1 was about 3 GB, so 24G is ample — do not
      over-request.
    - Walltime from run 1's measured elapsed plus headroom: `full` took 12:07:25 under a 16:00:00
-     budget, `full_nl` took 12:05:35 under 30:00:00. **Add headroom for the lambda backoff from
-     stage 3** — it can multiply optimiser steps on hard instances. Use stage 7's measured
-     smoke-tier delta to size it.
+     budget and `full_nl` took 12:05:35 under 30:00:00. Add headroom for the bounded lambda
+     backoff from stage 1 and use stage 5's measured smoke-tier delta to size it.
    - The mandatory preamble from `resources/commands.md` (project and heavy paths, cache
      variables, `module purge`, `module load ML-bundle/25.10`, venv activation).
    - **The threading fix, verbatim:**
@@ -118,7 +117,7 @@ about 16 wasted GPU-hours.
 - [ ] A harness test forces one `step()` failure and confirms the script's final status is
       non-zero after later steps still run.
 - [ ] Provenance tests distinguish `git_dirty` (source paths) from `git_worktree_dirty` (all paths).
-- [ ] `sbatch --test-only` is deferred to stage 8 (it needs the cluster). Note that here.
+- [ ] `sbatch --test-only` is deferred to stage 6 (it needs the cluster). Note that here.
 
 ---
 
