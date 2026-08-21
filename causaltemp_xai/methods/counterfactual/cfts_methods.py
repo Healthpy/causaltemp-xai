@@ -157,9 +157,9 @@ class CftsWachterCF:
         )
         cf, _ = wachter_gradient_cf(
             x,
-            ds,
             adapter,
-            target=self.target_class,
+            target_class=self.target_class,
+            dataset=ds,
             max_cfs=self.max_cfs,
             distance=self.distance,
         )
@@ -237,8 +237,9 @@ class CftsNativeGuideCF:
         adapter = _ChannelFirstAdapter(model)
         cf, _ = native_guide_uni_cf(
             x,
-            ds,
             adapter,
+            target_class=self.target_class,
+            dataset=ds,
             weight_function=GradientShap,
             sub_len=self.sub_len,
         )
@@ -303,7 +304,12 @@ class CftsCOMTECF:
             else _DatasetAdapter(*self.dataset)
         )
         adapter = _ChannelFirstAdapter(model)
-        cf, _ = comte_cf(x, ds, adapter, target_class=self.target_class)
+        cf, _ = comte_cf(
+            x,
+            adapter,
+            target_class=self.target_class,
+            dataset=ds,
+        )
         return (
             np.asarray(cf, dtype=np.float32) if cf is not None else np.asarray(x, dtype=np.float32)
         )
@@ -367,7 +373,7 @@ class CftsConfetiCF:
             x,
             adapter,
             reference_data=ref_cl,
-            target=self.target_class,
+            target_class=self.target_class,
             max_iterations=self.max_iterations,
             population_size=self.population_size,
             mutation_rate=self.mutation_rate,
@@ -440,9 +446,9 @@ class CftsCountsCF:
         with torch.backends.cudnn.flags(enabled=False):
             cf, _ = counts_cf_with_pretrained_model(
                 x,
-                ds,
                 adapter,
-                target=self.target_class,
+                target_class=self.target_class,
+                dataset=ds,
                 latent_dim=self.latent_dim,
                 hidden_dim=self.hidden_dim,
                 train_epochs=self.train_epochs,
@@ -513,7 +519,7 @@ class CftsCelsCF:
             adapter,
             X_train,
             y_train,
-            target=self.target_class,
+            target_class=self.target_class,
             max_iter=self.max_iter,
             learning_rate=self.learning_rate,
         )
