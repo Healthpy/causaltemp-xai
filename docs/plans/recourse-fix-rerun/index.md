@@ -230,7 +230,7 @@ multi-seed campaign is recorded in the Backlog as the natural successor plan.
 | 1 | [Fix the recourse layer](stages/01-fix-recourse-layer.md) | DONE | `smoke_nl` gates pass; canonical SCM-control classes and run-2 schema labels replace the misleading names; historical results remain unchanged; 577 passed, 1 xfailed. | `c4bcc16` + this commit |
 | 2 | [Metric reporting fixes](stages/02-metric-reporting-fixes.md) | DONE | D4/D5/D8 fixed; archived table rebuild byte-identical; real `smoke_nl` Pearl oracle anchor = 1.0; 587 passed, 1 xfailed. | this commit |
 | 3 | [Regression tests](stages/03-regression-tests.md) | DONE | Nonlinear recourse, status sidecars, metric denominators, conditional faithfulness, oracle coverage, publication filtering, and source-scoped provenance pinned; 605 passed, 1 xfailed. | this commit |
-| 4 | [Helios job scripts](stages/04-helios-job-scripts.md) | PENDING | | |
+| 4 | [Helios job scripts](stages/04-helios-job-scripts.md) | DONE | Fail-safe GH200 full/full_nl/reports chain, source-only sync, clean provenance gates, stale-output isolation, and executable failure accumulation; 614 passed, 1 xfailed. Cluster `sbatch --test-only` remains at the Stage-6 human gate. | this commit |
 | 5 | [Local full validation](stages/05-local-full-validation.md) | PENDING | | |
 | 6 | [Cluster preflight and submit](stages/06-cluster-submit.md) | PENDING | **HUMAN GATE** | |
 | 7 | [Collect, table, document](stages/07-collect-table-document.md) | PENDING | | |

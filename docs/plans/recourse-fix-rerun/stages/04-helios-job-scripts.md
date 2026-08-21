@@ -104,20 +104,20 @@ about 16 wasted GPU-hours.
 
 ## Verification
 
-- [ ] `bash -n slurm/*.sbatch` — every script parses.
-- [ ] `test -f slurm/helios_reports.sbatch`, and its body contains all four Job-C commands.
-- [ ] `grep -L 'SLURM_CPUS_PER_TASK' slurm/helios_*.sbatch` returns nothing: every Helios script
+- [x] `bash -n slurm/*.sbatch` — every script parses.
+- [x] `test -f slurm/helios_reports.sbatch`, and its body contains all four Job-C commands.
+- [x] `grep -L 'SLURM_CPUS_PER_TASK' slurm/helios_*.sbatch` returns nothing: every Helios script
       carries the threading fix.
-- [ ] `grep -rn 'OMP_NUM_THREADS=\$(nproc)' slurm/` returns nothing.
-- [ ] `grep -rn 'uv sync\|uv run' slurm/` returns nothing.
-- [ ] `grep -n "exclude '.env'\|exclude .env" ` finds the exclusion in the sync command.
-- [ ] The scripts name account `plgcountercontex-gpu-gh200` and partition `plgrid-gpu-gh200`,
+- [x] `grep -rn 'OMP_NUM_THREADS=\$(nproc)' slurm/` returns nothing.
+- [x] `grep -rn 'uv sync\|uv run' slurm/` returns nothing.
+- [x] `grep -n "exclude '.env'\|exclude .env" ` finds the exclusion in the sync command.
+- [x] The scripts name account `plgcountercontex-gpu-gh200` and partition `plgrid-gpu-gh200`,
       and no script references `tesr123566` or `gpu_a100`.
-- [ ] No command writes `slurm/run2.jobids`; the driver writes `$HEAVY/run2/run2.jobids`.
-- [ ] A harness test forces one `step()` failure and confirms the script's final status is
+- [x] No command writes `slurm/run2.jobids`; the driver writes `$HEAVY/run2/run2.jobids`.
+- [x] A harness test forces one `step()` failure and confirms the script's final status is
       non-zero after later steps still run.
-- [ ] Provenance tests distinguish `git_dirty` (source paths) from `git_worktree_dirty` (all paths).
-- [ ] `sbatch --test-only` is deferred to stage 6 (it needs the cluster). Note that here.
+- [x] Provenance tests distinguish `git_dirty` (source paths) from `git_worktree_dirty` (all paths).
+- [x] `sbatch --test-only` is deferred to stage 6 (it needs the cluster). Note that here.
 
 ---
 

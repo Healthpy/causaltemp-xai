@@ -110,6 +110,23 @@ price of Axis B.
 
 ## Helios: submission
 
+First sync only committed source state. The helper excludes `.env`, generated results,
+notebooks, logs, and heavy local data, while copying Git metadata so the remote checkout can
+prove the exact revision and source-clean state:
+
+```bash
+HELIOS_HOST=<ssh-host> slurm/sync_helios_code.sh
+```
+
+After the stage-6 human gate and remote `sbatch --test-only` checks, submit the sequential chain
+with the committed driver:
+
+```bash
+slurm/submit_helios_run2.sh
+```
+
+Equivalent commands, shown for diagnosis, are:
+
 ```bash
 HEAVY=/net/storage/pr3/plgrid/plggcfsgenwro/users/plgofurman/causaltemp-xai
 mkdir -p "$HEAVY/run2"
