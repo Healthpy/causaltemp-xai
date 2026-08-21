@@ -25,8 +25,8 @@ before spending grant hours.
    `experiments/make_final_table.py --configs smoke smoke_nl smoke_spring`. This is a local
    diagnostic table; Stage 7's publication table contains only `full` and `full_nl`.
 
-3. **Check every success criterion from the index that smoke scale can reach.** Confirm CARLA's
-   `frac_vacuous` and `frac_no_cf_found` and PearlCARLA's `frac_degenerate` have dropped from
+3. **Check every success criterion from the index that smoke scale can reach.** Confirm NoiselessSCMRecourse's
+   `frac_vacuous` and `frac_no_cf_found` and PearlSCMRecourse's `frac_degenerate` have dropped from
    their run-1 failure values. Also confirm both do-complexity means, the preserved joint metric,
    the new conditional metric, and expanded oracle rows. Keep `validity` classifier-only.
 
@@ -47,8 +47,8 @@ before spending grant hours.
 ## Verification
 
 - [ ] All three smoke configs complete phases 01-05 and 07 without error.
-- [ ] `smoke_nl`: CARLA `frac_vacuous <= 0.20`, `frac_no_cf_found <= 0.20`, and classifier
-      `validity > 0.30`; PearlCARLA `frac_degenerate <= 0.10`.
+- [ ] `smoke_nl`: NoiselessSCMRecourse `frac_vacuous <= 0.20`, `frac_no_cf_found <= 0.20`, and classifier
+      `validity > 0.30`; PearlSCMRecourse `frac_degenerate <= 0.10`.
 - [ ] The explicit do-complexity, conditional faithfulness, and oracle-coverage checks pass.
 - [ ] `validity` remains classifier-derived; no-CF, vacuity, and degeneracy remain separate.
 - [ ] Every item in `resources/checklist.md` passes or is waived with a recorded reason.

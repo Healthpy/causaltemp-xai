@@ -5,11 +5,11 @@ item passes, or is waived in writing in the index.
 
 ## Primary — the delta collapse
 
-- [ ] **C1** CARLA's intervention-row delta exceeds `INTERVENTION_TOL` on at least 90% of
+- [ ] **C1** NoiselessSCMRecourse's intervention-row delta exceeds `INTERVENTION_TOL` on at least 90% of
       instances for every config.
-- [ ] **C2** No CARLA row has `frac_vacuous > 0.20`.
-- [ ] **C3** No PearlCARLA row has `frac_degenerate > 0.10`.
-- [ ] **C4** `n_cf_faith_scorable > 0` for CARLA and PearlCARLA on every config.
+- [ ] **C2** No NoiselessSCMRecourse row has `frac_vacuous > 0.20`.
+- [ ] **C3** No PearlSCMRecourse row has `frac_degenerate > 0.10`.
+- [ ] **C4** `n_cf_faith_scorable > 0` for NoiselessSCMRecourse and PearlSCMRecourse on every config.
 - [ ] **C5** A forced zero-delta counterfactual may retain classifier `validity`, while
       `no_cf_found=1` and `vacuous=1` are reported separately. No composite validity metric is
       introduced.

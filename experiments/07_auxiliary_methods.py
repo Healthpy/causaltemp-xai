@@ -200,8 +200,8 @@ def _per_method_propagation(cf_dir, graph, true_mech, rollout, pearl, sigma_x=No
     respect the true mechanism (its own failure, independent of any inferred
     graph). Reported under **both** CF-faith semantics -- ``noiseless_rollout``
     and ``pearl_delta`` (``*_pearl`` keys) -- because recourse variants target
-    different semantics (``CARLARecourse`` is rollout-faithful by construction,
-    ``PearlCARLARecourse`` pearl-faithful), so a single-semantics column
+    different semantics (``NoiselessSCMRecourse`` is rollout-faithful by construction,
+    ``PearlSCMRecourse`` pearl-faithful), so a single-semantics column
     understates whichever targets the other.
 
     Note: a *per-method* graph-error term is intentionally NOT reported. A

@@ -2,7 +2,7 @@
 
 Loads the dataset + LSTM checkpoint for one config, selects the flip
 candidates (test instances not already predicted as ``TARGET_CLASS``), runs
-every registered CF method (CARLA + PearlCARLA + cfts-backed Wachter/COMTE/
+every registered CF method (NoiselessSCMRecourse + PearlSCMRecourse + cfts-backed Wachter/COMTE/
 CONFETTI/CounTS/CELS + TSCausalCF), and persists the raw counterfactual arrays. Also
 computes every CF method's Shift-VR-lite robustness metric (Axis B), which
 needs live method/model access and so belongs here rather than in the
@@ -27,9 +27,9 @@ This goes **beyond** the locked NlinearSCM-T plan's scope: real CF methods on
 the nonlinear mechanism were deferred to a collaborator's track and were never
 validated there (historical: ``docs/archive/plans/nlinearscm-t/``). It works
 mechanically because every method here is mechanism-generic -- the cfts-*
-methods never touch the SCM at all, and CARLA/Axis-A's oracle interventions
+methods never touch the SCM at all, and NoiselessSCMRecourse/Axis-A's oracle interventions
 route through ``mechanism.forward_torch``/``forward_numpy``, which
-``MLPMechanism`` implements just like ``LinearMechanism`` -- but CARLA's
+``MLPMechanism`` implements just like ``LinearMechanism`` -- but NoiselessSCMRecourse's
 recourse objective and the cfts baselines were only ever tuned/validated
 against the linear VAR mechanism, so treat nonlinear results here as
 exploratory, not a validated benchmark claim.
@@ -40,13 +40,13 @@ Outputs (under ``results/<config>/lstm/``)::
     cf/X_cf_<Method>.npy           one array per CF method, (n_cf, T, k)
     cf/no_cf_found_<Method>.npy    Boolean failed-search status, (n_cf,)
     cf/no_cf_found_provenance.json generated vs inferred status source per method
-    cf/recourse_diagnostics_*.json CARLA/PearlCARLA lambda-backoff diagnostics
+    cf/recourse_diagnostics_*.json NoiselessSCMRecourse/PearlSCMRecourse lambda-backoff diagnostics
     shift_vr.json                 Axis B: validity-retention under a noise shift, all CF methods
 
 Usage
 -----
     uv run python experiments/03_run_cf_methods.py --config smoke --n-cf 20
-    uv run python experiments/03_run_cf_methods.py --config full --n-cf 100 --methods CftsWachter CARLA
+    uv run python experiments/03_run_cf_methods.py --config full --n-cf 100 --methods CftsWachter NoiselessSCMRecourse
     uv run python experiments/03_run_cf_methods.py --config smoke_nl --n-cf 10   # exploratory
 """
 
@@ -67,13 +67,13 @@ from causaltemp_xai.config import CONFIGS, get_config, seeded_variant, shifted_c
 from causaltemp_xai.data_io import DEFAULT_OUT_DIR, generate_and_save, load_dataset  # noqa: E402
 from causaltemp_xai.eval import shift_vr  # noqa: E402
 from causaltemp_xai.methods import (  # noqa: E402  # noqa: E402
-    CARLARecourse,
     CftsCelsCF,
     CftsCOMTECF,
     CftsConfetiCF,
     CftsCountsCF,
     CftsWachterCF,
-    PearlCARLARecourse,
+    NoiselessSCMRecourse,
+    PearlSCMRecourse,
     TSCausalCF,
 )
 from causaltemp_xai.methods.counterfactual.cfts_methods import _DatasetAdapter  # noqa: E402
@@ -101,8 +101,10 @@ def build_methods(X_train, y_train, target_class: int = TARGET_CLASS) -> dict:
     ds = _DatasetAdapter(X_train, y_train)
     tc = target_class
     return {
-        "CARLA": CARLARecourse(target_class=tc, n_steps=300, t0_fractions=(0.25, 0.5)),
-        "PearlCARLA": PearlCARLARecourse(target_class=tc, t0_fractions=(0.25, 0.5)),
+        "NoiselessSCMRecourse": NoiselessSCMRecourse(
+            target_class=tc, n_steps=300, t0_fractions=(0.25, 0.5)
+        ),
+        "PearlSCMRecourse": PearlSCMRecourse(target_class=tc, t0_fractions=(0.25, 0.5)),
         "CftsWachter": CftsWachterCF(target_class=tc, dataset=ds, max_cfs=500),
         "CftsCOMTE": CftsCOMTECF(target_class=tc, dataset=ds),
         "CftsConfeti": CftsConfetiCF(target_class=tc, dataset=ds),

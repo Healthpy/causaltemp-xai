@@ -581,11 +581,11 @@ class RegimeSwitchNlinearSCMT:
     model of the world assumes.
 
     Downstream single-mechanism contract — read before using CF-faith /
-    oracle structural-CF / CARLA-style recourse on this preset
+    oracle structural-CF / NoiselessSCMRecourse-style recourse on this preset
     ---------------------------------------------------------------------
     Every other module in this codebase
     (:mod:`causaltemp_xai.metrics.cf_faith`,
-    :mod:`causaltemp_xai.benchmarks.structural_cf`, CARLA's on-manifold
+    :mod:`causaltemp_xai.benchmarks.structural_cf`, NoiselessSCMRecourse's on-manifold
     recourse) assumes **one** time-invariant
     :class:`~causaltemp_xai.benchmarks.mechanisms.Mechanism` per dataset —
     ``Mechanism.forward_numpy`` takes only a lag *window*, with no notion of
@@ -795,7 +795,7 @@ class HMMRegimeSwitchNlinearSCMT:
     Downstream single-mechanism contract
     -------------------------------------
     Identical in spirit to :class:`RegimeSwitchNlinearSCMT`: CF-faith,
-    oracle structural-CF, and CARLA-style recourse all assume **one**
+    oracle structural-CF, and NoiselessSCMRecourse-style recourse all assume **one**
     time-invariant mechanism per dataset. :meth:`generate` therefore returns
     regime 0 as the dataset's single ``"mechanism"`` — the *nominal* model —
     with the full regime set (``"mechanisms"``), the ``"transition_matrix"``,

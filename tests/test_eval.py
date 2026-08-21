@@ -28,7 +28,7 @@ class _AllTargetModel:
 
 def _noiseless_cf(x: np.ndarray, t0: int, delta: np.ndarray, mechanism) -> np.ndarray:
     """Build an SCM-faithful CF: x held before ``t0``, intervened at ``t0``,
-    noiseless VAR rollout after (mirrors CARLA's construction in numpy)."""
+    noiseless VAR rollout after (mirrors NoiselessSCMRecourse's construction in numpy)."""
     T, k = x.shape
     cf = x.copy().astype(float)
     cf[t0] = x[t0] + delta

@@ -1,13 +1,13 @@
 # Stage 3: Regression tests
 
-**Goal**: Pin the CARLA delta fix and corrected D4, D5, and D8 contracts.
+**Goal**: Pin the NoiselessSCMRecourse delta fix and corrected D4, D5, and D8 contracts.
 **Dependencies**: Stages 1-2.
 
 ---
 
 ## Steps
 
-1. **Pin the CARLA/PearlCARLA fix on nonlinear data.**
+1. **Pin the NoiselessSCMRecourse/PearlSCMRecourse fix on nonlinear data.**
    - File: `tests/test_methods.py`.
    - Build a small current-hyperparameter `NlinearSCMT` fixture.
    - Assert both methods produce an intervention-row delta above `INTERVENTION_TOL` on at least
@@ -15,7 +15,7 @@
    - Assert `generate_batch_with_status()` emits a Boolean status vector and marks a forced
      zero-delta failure without changing the ndarray-only legacy APIs.
    - Assert Phase 03 writes matching sidecars and Phase 04 rejects a missing, wrong-dtype, or
-     wrong-length CARLA/PearlCARLA sidecar while leaving classifier validity unchanged.
+     wrong-length NoiselessSCMRecourse/PearlSCMRecourse sidecar while leaving classifier validity unchanged.
 
 2. **Pin the two do-complexity denominators.**
    - Files: `tests/test_do_complexity.py`, `tests/test_metric_adversarial.py`.
@@ -23,7 +23,7 @@
      `do_complexity_mean_pearl_scorable` includes only non-empty Pearl schedules.
    - Assert `mean_all == mean_pearl_scorable * n_do_scorable / n` when scorable and NaN when
      `n_do_scorable == 0`.
-   - Include the `full_nl/CARLA` counterexample showing that noiseless `frac_vacuous` is not the
+   - Include the `full_nl/NoiselessSCMRecourse` counterexample showing that noiseless `frac_vacuous` is not the
      complement of the Pearl-scorable fraction.
 
 3. **Preserve joint faithfulness-validity and test the new conditional metric.**
@@ -57,4 +57,4 @@
 
 ## Commit
 
-`[test] pin the CARLA fix, metric semantics, and publication filtering`
+`[test] pin the NoiselessSCMRecourse fix, metric semantics, and publication filtering`

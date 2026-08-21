@@ -35,7 +35,7 @@ metric has no axis). **The axes are not parallel columns** — A scores the
 * **Axis C** (validity, proximity, sparsity, OOD, SCM-noise plausibility, TRSI,
   both CF-faith semantics and their gate diagnostics, the model-vs-world audit,
   do-complexity, ``frac_vacuous``, ``frac_degenerate``) — per **method**, every
-  CF-*generating* method (Wachter, CARLA, cfts-*, OracleCF-*). Axis C scores the
+  CF-*generating* method (Wachter, NoiselessSCMRecourse, cfts-*, OracleCF-*). Axis C scores the
   CF as an artifact; CF-faith scores it against the mechanism.
 
 The oracle interventions built here (:func:`build_oracle_interventions`,
@@ -794,8 +794,8 @@ def axis_a_benchmark_diagnostic(graph: np.ndarray, X: np.ndarray, mechanism=None
 #: method from evaluation.
 CF_METHOD_KEYS: frozenset[str] = frozenset(
     {
-        "CARLA",
-        "PearlCARLA",
+        "NoiselessSCMRecourse",
+        "PearlSCMRecourse",
         "CftsWachter",
         "CftsCOMTE",
         "CftsConfeti",

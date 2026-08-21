@@ -93,7 +93,7 @@ def derive_intervention_t(
     """Return the smallest ``t`` such that ``max_j |x_cf[t,j] - x[t,j]| > tol``.
 
     This is the benchmark's uniform heuristic: all CF methods (Wachter,
-    CARLA, cfts) are scored with the same intervention_t derived here so that
+    NoiselessSCMRecourse, cfts) are scored with the same intervention_t derived here so that
     CF-faith scores are comparable across methods.
 
     Parameters
@@ -153,7 +153,7 @@ def is_vacuous_intervention(
     The case this exists for is the **noiseless-rollout family with a zero
     perturbation**. Such a CF drops the factual exogenous noise from ``t0``
     onward, so it differs from ``x`` (often by a lot — mean ``prox_l1 = 96.06``
-    for CARLA on ``full_nl``) and clears every existing gate:
+    for NoiselessSCMRecourse on ``full_nl``) and clears every existing gate:
     ``derive_intervention_t`` finds a changed timestep, so the CF-faith
     degeneracy gate (``intervention_t >= T-1``) does not fire; the prefix is
     untouched, so the retroactive gate passes; and the CF *is* its own

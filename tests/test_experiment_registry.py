@@ -3,9 +3,9 @@ wired into ``experiments/03_run_cf_methods.py::build_methods()`` -- the one
 registry every phase-03/04/06 run reads from.
 
 This guards against exactly the gap found during the M2 pipeline-wiring
-review (see ``docs/archive/m2_multiseed_and_pearl_carla.md``, S3): ``PearlCARLARecourse``
-was fully implemented (``causaltemp_xai/methods/counterfactual/carla.py``) and
-unit-tested (``tests/test_methods.py::TestPearlCARLA``) but was absent from
+review (see ``docs/archive/m2_multiseed_and_pearl_carla.md``, S3): ``PearlSCMRecourse``
+was fully implemented (``causaltemp_xai/methods/counterfactual/scm_recourse.py``) and
+unit-tested (``tests/test_methods.py::TestPearlSCMRecourse``) but was absent from
 ``build_methods()``, so it had never flowed through a real experiment run
 despite looking "done" from the unit-test suite alone. A method can be
 correct and tested and still never actually run -- this test exists so that
@@ -23,14 +23,15 @@ import importlib
 import numpy as np
 import pytest
 
+import causaltemp_xai.methods as method_exports
 from causaltemp_xai.methods import (
-    CARLARecourse,
     CftsCelsCF,
     CftsCOMTECF,
     CftsConfetiCF,
     CftsCountsCF,
     CftsWachterCF,
-    PearlCARLARecourse,
+    NoiselessSCMRecourse,
+    PearlSCMRecourse,
     TSCausalCF,
 )
 from experiments._common import CF_METHOD_KEYS
@@ -39,8 +40,8 @@ _phase03 = importlib.import_module("experiments.03_run_cf_methods")
 
 #: method key -> expected class, mirroring build_methods()'s current roster.
 EXPECTED_REGISTRY = {
-    "CARLA": CARLARecourse,
-    "PearlCARLA": PearlCARLARecourse,
+    "NoiselessSCMRecourse": NoiselessSCMRecourse,
+    "PearlSCMRecourse": PearlSCMRecourse,
     "CftsWachter": CftsWachterCF,
     "CftsCOMTE": CftsCOMTECF,
     "CftsConfeti": CftsConfetiCF,
@@ -61,26 +62,26 @@ def methods():
     return _phase03.build_methods(X_train, y_train)
 
 
-def test_pearl_carla_is_registered(methods):
-    """The specific gap this test was written for: PearlCARLARecourse must be
+def test_pearl_scm_recourse_is_registered(methods):
+    """The specific gap this test was written for: PearlSCMRecourse must be
     present in the real experiment registry, not just importable/unit-tested."""
-    assert "PearlCARLA" in methods, (
-        "'PearlCARLA' missing from experiments/03_run_cf_methods.py::build_methods() -- "
+    assert "PearlSCMRecourse" in methods, (
+        "'PearlSCMRecourse' missing from experiments/03_run_cf_methods.py::build_methods() -- "
         "a fully-implemented, unit-tested method is not reachable by any real "
         "experiment run. See docs/archive/m2_multiseed_and_pearl_carla.md S3."
     )
-    assert isinstance(methods["PearlCARLA"], PearlCARLARecourse)
+    assert isinstance(methods["PearlSCMRecourse"], PearlSCMRecourse)
 
 
-def test_pearl_carla_uses_validated_n_steps(methods):
-    """Pinned design decision (S3 of the M2 doc): PearlCARLA must NOT silently
-    inherit CARLA's speed-motivated n_steps=300 override -- its lam_prox=0.1
+def test_pearl_scm_recourse_uses_validated_n_steps(methods):
+    """Pinned design decision (S3 of the M2 doc): PearlSCMRecourse must NOT silently
+    inherit NoiselessSCMRecourse's speed-motivated n_steps=300 override -- its lam_prox=0.1
     default was only empirically validated at n_steps=500 (its own class
     default). If this test starts failing because someone added an explicit
-    n_steps= override to the PearlCARLA entry, that is a deliberate parameter
+    n_steps= override to the PearlSCMRecourse entry, that is a deliberate parameter
     change that needs its own documented justification, not a silent drift.
     """
-    assert methods["PearlCARLA"].n_steps == 500
+    assert methods["PearlSCMRecourse"].n_steps == 500
 
 
 def test_full_registry_has_no_silent_gaps(methods):
@@ -106,6 +107,15 @@ def test_phase04_key_guard_matches_registry(methods):
         f"guard-only={sorted(set(CF_METHOD_KEYS) - set(methods))}, "
         f"registry-only={sorted(set(methods) - set(CF_METHOD_KEYS))}"
     )
+
+
+def test_legacy_carla_labels_are_not_future_schema_keys(methods):
+    """Run-1 labels stay only in historical artifacts, never new output schemas."""
+    legacy = {"CARLA", "PearlCARLA"}
+    assert legacy.isdisjoint(methods)
+    assert legacy.isdisjoint(CF_METHOD_KEYS)
+    assert not hasattr(method_exports, "CARLARecourse")
+    assert not hasattr(method_exports, "PearlCARLARecourse")
 
 
 class TestSkipAux:

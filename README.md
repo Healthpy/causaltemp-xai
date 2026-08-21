@@ -43,7 +43,7 @@ uses structural causal models to *penalise* counterfactuals; nobody uses them to
   exclusive semantics (`noiseless_rollout`, `pearl_delta`). A single CF cannot
   be hard-faithful under both; the contrast is itself a result. It is not a
   ranking axis — see [`docs/general_plan.md`](docs/general_plan.md) §7.
-- **Seven wired CF methods** — `CARLARecourse` (causal noiseless-rollout
+- **Seven wired CF methods** — `NoiselessSCMRecourse` (causal noiseless-rollout
   recourse) plus five reference methods backed by the vendored `cfts` repo
   (Wachter, COMTE, CONFETI, CounTS, CELS) and `TSCausalCF` (SCM-regularised,
   Bahri et al. 2025; wired into the default full-scale set 2026-08-06), all
@@ -103,7 +103,8 @@ uv run python -m causaltemp_xai.classifiers.lstm --config full --train --patienc
 #    CftsCounts excluded from the current default run (PI decision, 2026-07-29)
 #    TSCausalCF (was CausalFeasibilityCF) wired into the default set 2026-08-06
 uv run python experiments/03_run_cf_methods.py --config full --n-cf 100 \
-    --methods CARLA PearlCARLA CftsWachter CftsCOMTE CftsConfeti CftsCels TSCausal
+    --methods NoiselessSCMRecourse PearlSCMRecourse CftsWachter \
+    CftsCOMTE CftsConfeti CftsCels TSCausal
 uv run python experiments/04_evaluate_axes.py --config full
 
 # 4. render the 3 publication figures -> results/figures/
@@ -244,7 +245,7 @@ print("sparsity :", sparsity(x_orig, x_cf))
 | **Model-vs-world gap** | `pns_direction(...)` | `A`/`B`/`C` and the additive split `Δ_total = Δ_trajectory + Δ_outcome`. Always reported with `D`. |
 
 Two CF-faith *semantics* are reported side by side (`CFfaith(semantics=...)`):
-`"noiseless_rollout"` (default — what CARLA-causal is built to satisfy) and
+`"noiseless_rollout"` (default — what `NoiselessSCMRecourse` is built to satisfy) and
 `"pearl_delta"` (Pearl delta-recursion). A single CF cannot be `hard=1` under
 both; the contrast is itself a benchmark result.
 
@@ -279,7 +280,7 @@ causaltemp-xai/
 │   ├── classifiers/lstm.py      # LSTM + LSTMClassifier wrapper (+ train CLI)
 │   └── methods/
 │       ├── counterfactual/
-│       │   ├── carla.py               # CARLARecourse / PearlCARLARecourse (causal recourse, positive controls)
+│       │   ├── scm_recourse.py         # Noiseless/Pearl SCM recourse positive controls
 │       │   ├── causal_feasibility.py  # TSCausalCF (was CausalFeasibilityCF; Bahri et al. 2025, FISTA, SCM-regularised)
 │       │   └── cfts_methods.py        # cfts-backed Wachter/COMTE/CONFETI/CounTS/CELS/NativeGuide
 │       └── causal/              # DYNOTEARS (vendored) + PCMCIplus (tigramite, PyPI)

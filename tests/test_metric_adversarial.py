@@ -389,7 +389,7 @@ class TestCFfaithDegeneracy:
 
 
 # ---------------------------------------------------------------------------
-# Vacuous (zero-delta) interventions — the CARLA masking case
+# Vacuous (zero-delta) interventions — the NoiselessSCMRecourse masking case
 # ---------------------------------------------------------------------------
 
 
@@ -401,10 +401,10 @@ class TestVacuousIntervention:
     not fire, the prefix is untouched, and the CF *is* its own noiseless
     rollout, so ``CFfaith(noiseless_rollout)`` scores a perfect 1.0/1.0.
 
-    Located 2026-07-31 in the `full_nl` rerun: PearlCARLA's optimiser gradient
+    Located 2026-07-31 in the `full_nl` rerun: PearlSCMRecourse's optimiser gradient
     collapses to ~3e-9 (contractive MLP mechanism + a saturated LSTM), so its
     delta stays at 0 and it returns literal no-ops, which the degeneracy gate
-    correctly NaNs. CARLA's delta is *equally* stuck, but its noiseless rollout
+    correctly NaNs. NoiselessSCMRecourse's delta is *equally* stuck, but its noiseless rollout
     hides that: its saved `full_nl` CFs are bit-identical to a delta=0 rollout,
     so its reported ``prox_l1 = 96.059`` is 100% deleted noise and 0%
     intervention, published alongside ``rollout_hard = 1.00``.

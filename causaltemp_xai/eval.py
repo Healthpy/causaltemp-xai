@@ -11,7 +11,7 @@ timestep where ``|x_cf - x| > tol``), so CF-faith is comparable across methods
 that do not declare an intervention point themselves (e.g. Wachter).
 
 Both CF-faith metrics are reported per the plan's "keep both CF-faith metrics"
-decision: ``cf_faith_rollout_*`` (noiseless-rollout semantics, which CARLA is
+decision: ``cf_faith_rollout_*`` (noiseless-rollout semantics, which NoiselessSCMRecourse is
 built to satisfy) and ``cf_faith_pearl_*`` (Pearl delta-recursion). A single CF
 cannot be ``hard=1`` under both; the contrast is itself a benchmark result.
 """
@@ -282,7 +282,7 @@ MIN_VALIDITY_BASE_FOR_RATIO = 0.3
 def _generate_batch(method, X, model, graph, mechanism):
     """Call ``method.generate_batch`` with the right signature.
 
-    CARLA-style recourse needs ``graph``/``mechanism``; Wachter/cfts-* do not.
+    NoiselessSCMRecourse-style recourse needs ``graph``/``mechanism``; Wachter/cfts-* do not.
     We inspect the signature rather than special-casing class names.
     """
     params = inspect.signature(method.generate_batch).parameters
@@ -318,7 +318,7 @@ def shift_vr(
         The frozen base classifier (exposing ``predict`` / ``torch_logits``).
     methods:
         Mapping ``{name: cf_method}``; each value exposes ``generate_batch``
-        (Wachter/cfts-*: ``(X, model)``; CARLA: ``(X, model, graph, mechanism)``).
+        (Wachter/cfts-*: ``(X, model)``; NoiselessSCMRecourse: ``(X, model, graph, mechanism)``).
     X_base_test, X_shift_test:
         Test inputs ``(N, T, k)`` from the base and shifted environments.
     graph, mechanism:

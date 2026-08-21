@@ -147,8 +147,8 @@ _phase03 = importlib.import_module("experiments.03_run_cf_methods")
 _phase04 = importlib.import_module("experiments.04_evaluate_axes")
 
 COLORS = {
-    "CARLA": "#d62728",
-    "PearlCARLA": "#ff9896",
+    "NoiselessSCMRecourse": "#d62728",
+    "PearlSCMRecourse": "#ff9896",
     "CftsWachter": "#17becf",
     "CftsCOMTE": "#2ca02c",
     "CftsConfeti": "#9467bd",
@@ -766,7 +766,7 @@ def run_graph_quality_report(args) -> None:
                 slot["graph_error_sigma"].append(point.get("graph_error_sigma", float("nan")))
             for m in payload.get("methods") or []:
                 pe = m.get("propagation_error")
-                if pe is not None and pe == pe:  # exclude NaN (e.g. PearlCARLA/full_nl)
+                if pe is not None and pe == pe:  # exclude NaN (e.g. PearlSCMRecourse/full_nl)
                     prop_errors.append(pe)
                 ps = m.get("propagation_error_sigma")
                 if ps is not None and ps == ps:
@@ -930,7 +930,7 @@ def fig5_horizon_decay(tables_dir: Path, out_path) -> bool:
     reported with T - t0" -- none of fig1-4 carry a horizon axis. This is the
     one figure that should: it is the direct plot of H8/H8c's evidence, built
     from ``table_horizon_<configA>_vs_<configB>.csv`` (Phase 06 pooled across
-    seeds with bootstrap CIs), not recomputed here. Only the CARLA family is
+    seeds with bootstrap CIs), not recomputed here. Only the NoiselessSCMRecourse family is
     swept (Phase 06's own scope note: sweeping Wachter-style unconstrained
     edits on the same axis as single-``do()`` methods would conflate two
     different failure modes -- see ``06_horizon_sweep.py``).

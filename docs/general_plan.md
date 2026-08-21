@@ -6,6 +6,11 @@ evaluation protocol. Supersedes the deleted `01_vision.md`,
 **Last substantive revision:** 2026-08-12 (M4e re-derived, H2 refuted, H2′
 added).
 
+**Method naming revision (2026-08-21):** new APIs and result schemas use
+`NoiselessSCMRecourse` and `PearlSCMRecourse`. Run artifacts produced before this change retain
+the historical labels `CARLA` and `PearlCARLA`; those artifacts are evidence, not migration
+inputs, and are not rewritten.
+
 This document states *what the claim is* and *how it is measured*, and is
 written to stand alone. Pre-registration detail, thresholds, milestone status
 and venue strategy live in planning documents kept outside the repository;
@@ -85,7 +90,7 @@ does not track the true label rule".
 > parents at each `t` independently. It never propagates the intervention and
 > never abducts the factual noise. So a CF that is locally mechanism-consistent
 > at every timestep while its intervention has **no effect on the outcome**
-> scores perfectly. That is the CARLA pathology measured here on 2026-07-30
+> scores perfectly. That is the NoiselessSCMRecourse pathology measured here on 2026-07-30
 > (CF-faith 1.00, validity 1.00, intervention effect 2.6e-04): the strongest
 > published causal-CF criterion is structurally blind to the failure mode §4.1
 > measures.
@@ -164,8 +169,8 @@ mechanism can reproduce it, published beside `Δ_trajectory` (RISK-18).
 > Under the whole-proposal reading `Δ_trajectory` is 0.00 for every method and
 > `Δ_total` falls from 0.91–0.99 to 0.02–0.39. What replaces it is not weaker:
 > **methods buy their claimed validity by intervening almost everywhere.**
-> Pooled over 3 seeds on `full` (`T = 100`), `D` reads PearlCARLA **1.0**,
-> CftsCels 6.6, CARLA 69.7, CftsCOMTE 83.3, CftsWachter 96.4, CftsConfeti
+> Pooled over 3 seeds on `full` (`T = 100`), `D` reads PearlSCMRecourse **1.0**,
+> CftsCels 6.6, NoiselessSCMRecourse 69.7, CftsCOMTE 83.3, CftsWachter 96.4, CftsConfeti
 > **100.0** — every timestep declared an intervention, a rewrite rather than an
 > explanation. CftsWachter fails both readings (`D = 96.4` **and**
 > `Δ_total = 0.39`); `full_nl` reproduces the pattern. The positive control
@@ -191,7 +196,7 @@ where recourse **is** feasible.
 > confirmed 2026-08-03.** Every preset used to label terminally, so the evidence
 > could not distinguish the readings (RISK-19). `smoke_interior_label` moves the
 > label to `0.6 T` with SCM, `T`, noise and seed fixed: at `T − t0 = 2`,
-> PearlCARLA scores validity **1.00** with the label at `t = 29` and **0.10**
+> PearlSCMRecourse scores validity **1.00** with the label at `t = 29` and **0.10**
 > at `t = 18`. Under a "decays in `T − t0`" reading those cells must agree.
 > Interventions placed *after* the label site cannot move it, however close they
 > sit to the end. Not confounded by classifier quality (interior-label LSTM 0.79
@@ -447,15 +452,15 @@ limitation.
 # 7. Why CF-faith Is a Gate and `Δ_total` Is the Ranking Axis
 
 CF-faith (hard) is an **indicator**, and every method that is not a positive
-control fails it identically. On `full`, post-`d3c377d`, the column reads CARLA
-1.00, PearlCARLA NaN, every other method exactly 0.00 — and CARLA's 1.00 is
+control fails it identically. On `full`, post-`d3c377d`, the column reads NoiselessSCMRecourse
+1.00, PearlSCMRecourse NaN, every other method exactly 0.00 — and NoiselessSCMRecourse's 1.00 is
 tautological, since it emits the noiseless rollout it is scored against. A
 ranking statistic over that column measures "is this the oracle", not method
 quality; more seeds and methods produce a longer column of zeros with tighter
 CIs, not a finding.
 
 **PNS ranks at `smoke` scale and not at `full` — measured, not assumed.** At
-`T = 30` it separates the field (PearlCARLA 0.90 vs 0.10–0.15). At `T = 100`,
+`T = 30` it separates the field (PearlSCMRecourse 0.90 vs 0.10–0.15). At `T = 100`,
 both directions run (3 seeds, n_cf = 50), it separates nothing: **`PN_world` is
 0.00 [0.00, 0.00] for all six methods**, `PS_world` is 0.01–0.02 with every CI
 touching zero, combined PNS 0.00–0.01.
@@ -471,9 +476,9 @@ zero causal effect, not a small one.
 
 | method | `Δ_total` PN | `Δ_total` PS | `D` |
 |---|---|---|---|
-| PearlCARLA | **0.00** | 0.01 | **1.0** |
+| PearlSCMRecourse | **0.00** | 0.01 | **1.0** |
 | CftsCels | 0.83 | 0.76 | 7.4 |
-| CARLA | **1.00** | **0.21** | 75.0 |
+| NoiselessSCMRecourse | **1.00** | **0.21** | 75.0 |
 | CftsWachter | 0.94 | 0.91 | 99.7 |
 | CftsCOMTE | 1.00 | 0.99 | 85.5 |
 | CftsConfeti | 1.00 | 0.98 | 54.0 |
@@ -484,7 +489,7 @@ zero causal effect, not a small one.
 > The R3 naming hazard, observed on real data rather than argued in the
 > abstract.
 >
-> **CARLA is direction-asymmetric on `full`, seed-unstable on `full_nl`.** On
+> **NoiselessSCMRecourse is direction-asymmetric on `full`, seed-unstable on `full_nl`.** On
 > `full`, `Δ_total` PN = 1.00 on every seed against PS 0.00/0.62/0.00 — a stable
 > asymmetry, the only large PN/PS gap in the set. On `full_nl` the direction does
 > not hold: seeds 0 and 1 give PN 0.00 / PS 1.00, seed 2 gives PN 1.00 /
@@ -504,11 +509,11 @@ intervention-to-label distance conditions the interpretation of all of them.
 | Family | Methods |
 |---|---|
 | Counterfactual | Wachter, COMTE, CONFETI, CELS (vendored `cfts` repo) |
-| Causal recourse | CARLA (noiseless rollout), PearlCARLA (noise-reinjecting) |
+| Causal recourse | NoiselessSCMRecourse (noiseless rollout), PearlSCMRecourse (noise-reinjecting) |
 | SCM-regularised | `TSCausalCF` (was `CausalFeasibilityCF`, renamed 2026-08-06; Bahri et al. — the primary Related Work foil) |
 
 Target ≥ 8 CF explainers spanning instance substitution, evolutionary/heuristic,
-deep latent/generative, and causal recourse (M3). CARLA and PearlCARLA are
+deep latent/generative, and causal recourse (M3). NoiselessSCMRecourse and PearlSCMRecourse are
 **positive controls**, labelled as such wherever they appear. `TSCausalCF` is
 **not** — unlike them, its faithfulness under this benchmark's CF-faith metric
 is not true by construction; it is the third-party foil being critiqued (§3),
@@ -585,10 +590,10 @@ are left as historical record.
   never again be labelled the key finding.
 
 **Not a hypothesis — construction check.** The former H3b ("causal recourse
-attains CF-faith > 0.7") is entailed by definition: CARLA emits the noiseless
-rollout it is scored against, and PearlCARLA's `Δ_trajectory = 0` in both
+attains CF-faith > 0.7") is entailed by definition: NoiselessSCMRecourse emits the noiseless
+rollout it is scored against, and PearlSCMRecourse's `Δ_trajectory = 0` in both
 directions because the oracle is a Pearl rollout of the same intervention. This
-verifies the pipeline. The non-tautological quantity for PearlCARLA is `C` —
+verifies the pipeline. The non-tautological quantity for PearlSCMRecourse is `C` —
 whether the world delivers the outcome change — and only `C` may be cited.
 
 # 10. Scope Boundaries — What This Benchmark Does Not Address

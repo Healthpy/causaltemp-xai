@@ -1,49 +1,28 @@
-"""Causal noiseless/Pearl-rollout recourse -- this project's own construction,
-used as a **positive control** (its own faithfulness is true by definition,
-not an empirical finding). Not an implementation of any specific algorithm
-from the paper below -- see the naming disclosure and
-``docs/method_provenance.md``.
+"""SCM-rollout recourse controls implemented by this project.
 
-Reference (naming origin, not an implementation target)
----------------------------------------------------------
-Pawelczyk, M., Bielawski, S., van den Heuvel, J., Richter, T., & Kasneci, G.
-(2021). *CARLA: A Python Library to Benchmark Algorithmic Recourse and
-Counterfactual Explanation Algorithms.*  NeurIPS 2021 Datasets and Benchmarks.
+``NoiselessSCMRecourse`` and ``PearlSCMRecourse`` are positive controls whose
+respective rollout-faithfulness properties hold by construction. They are not
+implementations of a method from the external CARLA benchmarking library.
 
-**Naming disclosure (added 2026-08-05, while building the M3 provenance
-table):** this module's docstring previously called itself a "stub" citing
-the above paper as its "Reference" and said "the real implementation would
-train a generative model... The real implementation would" -- stale scaffold
-text from before this class was actually implemented and tested
-(``tests/test_methods.py::TestCARLA``/``TestPearlCARLA``). What is
-implemented is **not** an approximation of anything in Pawelczyk et al.'s
-CARLA toolkit -- CARLA is a *benchmarking library* hosting many third-party
-recourse algorithms, not itself a single method to approximate, and nothing
-here reuses code or a specific published algorithm from it. ``CARLARecourse``
-/ ``PearlCARLARecourse`` are this project's own noiseless-rollout /
-Pearl-abduction causal-recourse constructions, used throughout this
-benchmark's docs as **positive controls** (`docs/general_plan.md`: "CARLA and
-PearlCARLA are positive controls, labelled as such wherever they appear") --
-their faithfulness is true by construction against this benchmark's own
-CF-faith metric, not a claim about matching CARLA-the-library's behaviour.
-The class names predate this disclosure and are left unchanged here (a
-rename would ripple through every committed result column, table, and
-governance doc referencing "CARLA"/"PearlCARLA" -- out of scope for a
-documentation-accuracy pass); flagged in ``docs/method_provenance.md`` for a
-PI decision on whether to rename.
+Before 2026-08-21 these classes and result-schema labels used ``CARLARecourse``
+and ``PearlCARLARecourse`` / ``CARLA`` and ``PearlCARLA``. Those names were
+removed because they incorrectly implied an implementation of CARLA
+(Pawelczyk et al., 2021). Historical result artifacts retain the old labels so
+published run evidence remains byte-stable; all new APIs and result schemas
+use the SCM-specific names.
 
 Two recourse variants are provided, differing only in the forward-rollout
 semantics used to propagate the intervention past ``t0`` (see each class's
 docstring):
 
-* :class:`CARLARecourse` — **noiseless**
+* :class:`NoiselessSCMRecourse` — **noiseless**
   rollout: ``x_cf[t] = mechanism.forward_torch(window)`` for ``t > t0``. Scores
   ``cf_faith_rollout_hard == 1`` by construction
   (``CFfaith(semantics="noiseless_rollout")``), but the deterministic,
   noise-free continuation drifts off the noisy data manifold as the
   post-intervention horizon grows — the v0.1-documented long-horizon validity
   collapse (``docs/archive/hypotheses_assessment.md``).
-* :class:`PearlCARLARecourse` (M2, added 2026-07-08) — **Pearl** rollout:
+* :class:`PearlSCMRecourse` (M2, added 2026-07-08) — **Pearl** rollout:
   abducts the exogenous noise from the factual trajectory
   (``eps[t] = x_orig[t] - mechanism.forward_numpy(window)``, exact under
   additive noise) and reuses it when rolling the recourse forward,
@@ -54,9 +33,9 @@ docstring):
   by a resampled/zeroed noise term.
 
   **Empirical finding (smoke-scale, 2026-07-08, honestly reported — not the
-  naive expectation):** reinjecting noise does *not* unconditionally "fix"
-  CARLARecourse's long-horizon validity collapse; at CARLA's own default
-  ``lam_prox=0.5`` it makes the collapse *worse* (0.07 vs CARLA's 0.40 at the
+  naive expectation):** reinjecting noise does *not* unconditionally fix the
+  noiseless control's long-horizon validity collapse. At its default
+  ``lam_prox=0.5`` the Pearl variant performed worse (0.07 vs 0.40 at the
   longest smoke-scale horizon tested). The reason is structural, not a bug:
   the Pearl delta obeys the *homogeneous* recursion
   ``delta[t] = sum_l A_l @ delta[t-l]`` (the factual noise exactly cancels —
@@ -64,12 +43,12 @@ docstring):
   stability requirement (spectral radius < 1, ``generator._stabilise``) any
   one-shot intervention's effect decays geometrically and a proportionally
   *larger* ``delta[t0]`` is needed to survive to a long post-intervention
-  horizon than CARLA's noiseless variant needs (whose raw *value*, not
+  horizon than the noiseless variant needs (whose raw *value*, not
   *delta*, follows the same contraction toward a class-independent fixed
-  point that some instances land in "for free"). At CARLA's default
+  point that some instances land in "for free"). At the noiseless default
   ``lam_prox=0.5`` this larger ``delta[t0]`` is quadratically over-penalized.
   Lowering the default to ``lam_prox=0.1`` (this class's default; see
-  ``__init__``) closes most of the gap: validity matches CARLA at 3 of 4
+  ``__init__``) closes most of the gap: validity matches the noiseless variant at 3 of 4
   smoke-scale horizons tested and narrows the remaining gap at the most
   extreme one, while ``pearl_hard = 1.00`` holds at every horizon (by
   construction, unaffected by ``lam_prox``). See the M2 validation report for
@@ -108,7 +87,7 @@ def _resolve_t0_candidates(
     """Resolve the intervention-timestep candidate set for a ``(T, k)`` instance.
 
     ``t0_steps`` is an **absolute** step index and takes precedence over
-    ``t0_fractions`` when given. Both CARLA variants share this so a horizon
+    ``t0_fractions`` when given. Both SCM recourse variants share this so a horizon
     sweep cannot silently pin one variant and not the other.
 
     Absolute is the correct unit for a horizon sweep (M4d): the Pearl delta
@@ -139,7 +118,7 @@ def _resolve_t0_candidates(
     return [t0 for t0 in candidates if 0 < t0 < T - 1] or [T // 2]
 
 
-class CARLARecourse:
+class NoiselessSCMRecourse:
     """Causal noiseless-rollout recourse generator (this project's own
     construction -- see the module docstring's naming disclosure).
 
@@ -382,7 +361,7 @@ class CARLARecourse:
         self._mechanism = mechanism
 
     def fit(self, X_train, classifier) -> None:
-        """No-op — CARLA needs graph/mechanism, set via set_causal_info()."""
+        """No-op — NoiselessSCMRecourse needs graph/mechanism, set via set_causal_info()."""
         pass
 
     def explain(self, x, target_class: int, classifier) -> np.ndarray:
@@ -422,11 +401,11 @@ class CARLARecourse:
 # =============================================================================
 
 
-class PearlCARLARecourse:
+class PearlSCMRecourse:
     """Pearl-semantics causal recourse: noise-reinjecting counterfactual rollout.
 
     Same optimisation objective, actionability masking, and t0-candidate
-    search as :class:`CARLARecourse`, but the forward rollout reinjects the
+    search as :class:`NoiselessSCMRecourse`, but the forward rollout reinjects the
     **abducted exogenous noise** from the factual trajectory
     (``eps[t] = x_orig[t] - mechanism.forward_numpy(window)``, exact under
     additive noise — identical construction to
@@ -440,30 +419,30 @@ class PearlCARLARecourse:
     the base class's ``noiseless_rollout`` semantics) — targeting the
     v0.1-documented long-horizon validity collapse of the noiseless variant.
 
-    **``lam_prox`` starts lower than ``CARLARecourse`` (0.1 vs 0.5).** The
+    **``lam_prox`` starts lower than ``NoiselessSCMRecourse`` (0.1 vs 0.5).** The
     Pearl delta obeys the homogeneous recursion
     ``delta[t] = sum_l A_l @ delta[t-l]`` (factual noise cancels exactly), so
     under this benchmark's stability requirement (spectral radius < 1) any
     one-shot intervention decays geometrically and needs a proportionally
-    larger ``delta[t0]`` to still matter at a long horizon. CARLA's default
+    larger ``delta[t0]`` to still matter at a long horizon. NoiselessSCMRecourse's default
     ``lam_prox=0.5`` quadratically over-penalized that larger delta and,
     empirically (smoke-scale, 2026-07-08), turns a partial long-horizon
-    validity problem into a near-total one (0.07 vs CARLA's 0.40 at the
+    validity problem into a near-total one (0.07 vs NoiselessSCMRecourse's 0.40 at the
     longest tested horizon). The current implementation preserves 0.1 as the
     first attempt, then applies the same bounded prediction-only fallback as
-    CARLA when no genuine flip is found. ``pearl_hard=1`` is unaffected (it is a property
+    the noiseless variant when no genuine flip is found. ``pearl_hard=1`` is unaffected (it is a property
     of the rollout construction, not of the optimisation weight).
 
-    Deliberately **not** a subclass of / refactor into :class:`CARLARecourse`:
+    Deliberately **not** a subclass of / refactor into :class:`NoiselessSCMRecourse`:
     kept fully independent (duplicating the small optimisation-loop structure)
-    so ``CARLARecourse``'s pinned behaviour — ``tests/test_methods.py::
-    TestCARLA`` and the M1-regenerated ``results/`` ``rollout_hard=1`` rows —
+    so ``NoiselessSCMRecourse``'s pinned behaviour — ``tests/test_methods.py::
+    TestNoiselessSCMRecourse`` and the M1-regenerated ``results/`` ``rollout_hard=1`` rows —
     carries zero refactor risk. This mirrors the codebase's existing
     convention of small per-class duplication over shared-base abstraction
     for CF generators (see e.g. ``methods/counterfactual/cfts_methods.py``,
     where every ``Cfts*CF`` class repeats its own ``generate_batch``).
 
-    Parameters mirror :class:`CARLARecourse` exactly (see its docstring)
+    Parameters mirror :class:`NoiselessSCMRecourse` exactly (see its docstring)
     except the ``lam_prox`` default (0.1, not 0.5 — see above); the only
     behavioural difference otherwise is the forward-rollout semantics.
     """
@@ -523,7 +502,7 @@ class PearlCARLARecourse:
         (differentiable w.r.t. ``x_t0``).
 
         ``x_cf[t] = mechanism.forward_torch(window) + eps[t]`` for ``t > t0``
-        — same structure as ``CARLARecourse._rollout`` but adds back the
+        — same structure as ``NoiselessSCMRecourse._rollout`` but adds back the
         precomputed, non-differentiable ``eps[t]`` (constant w.r.t. the
         optimised ``delta``) at each forward step. Matches ``cf_faith.py``'s
         ``pearl_delta`` reference-trajectory construction exactly, so
@@ -556,7 +535,7 @@ class PearlCARLARecourse:
         """Return ``(cf, found)`` for one Pearl-faithful search.
 
         Same signature, actionability masking, t0-candidate search, and
-        Adam-optimised objective as ``CARLARecourse.generate`` — only the
+        Adam-optimised objective as ``NoiselessSCMRecourse.generate`` — only the
         rollout used inside the optimisation loop differs (Pearl noise
         reinjection instead of a noiseless continuation).
         """
@@ -692,7 +671,7 @@ class PearlCARLARecourse:
         return np.stack(cfs, axis=0), ~np.asarray(found, dtype=bool)
 
     # ------------------------------------------------------------------
-    # CFExplainer alias interface + causal-info setter (parity with CARLARecourse)
+    # CFExplainer alias interface + causal-info setter (parity with NoiselessSCMRecourse)
     # ------------------------------------------------------------------
 
     def set_causal_info(self, graph, mechanism) -> None:
@@ -701,7 +680,7 @@ class PearlCARLARecourse:
         self._mechanism = mechanism
 
     def fit(self, X_train, classifier) -> None:
-        """No-op — PearlCARLARecourse needs graph/mechanism, set via set_causal_info()."""
+        """No-op — PearlSCMRecourse needs graph/mechanism, set via set_causal_info()."""
         pass
 
     def explain(self, x, target_class: int, classifier) -> np.ndarray:

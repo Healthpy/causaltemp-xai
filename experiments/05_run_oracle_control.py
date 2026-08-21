@@ -2,7 +2,7 @@
 
 This phase runs **no explainer and no classifier**. It is the oracle
 counterpart to Phase 03/04, not their nonlinear variant: where 03 runs real CF
-methods (Wachter/CARLA/cfts-*) against a trained LSTM and 04 scores what they
+methods (Wachter/NoiselessSCMRecourse/cfts-*) against a trained LSTM and 04 scores what they
 produced, this phase *constructs* counterfactuals analytically via
 :func:`~causaltemp_xai.benchmarks.structural_cf.structural_counterfactual`
 (abduct -> intervene -> re-roll) and scores CF-faith **classifier-free** on

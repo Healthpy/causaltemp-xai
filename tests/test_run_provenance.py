@@ -40,7 +40,7 @@ class TestDumpJsonStampsProvenance:
         """The regression that motivated this: a metrics dict written by a phase
         (e.g. eval_<Method>.json) must come back with seed + commit."""
         set_run_context(seed=7, config="smoke")
-        out = tmp_path / "eval_CARLA.json"
+        out = tmp_path / "eval_NoiselessSCMRecourse.json"
         dump_json(out, {"validity": 1.0, "proximity_l1": 3.2})
 
         d = json.loads(out.read_text())

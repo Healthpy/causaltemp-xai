@@ -35,11 +35,11 @@ the corrected recourse and metric/reporting outputs.
 
 5. **Verify each success criterion** from the index against the `full_nl` numbers specifically.
    Keep `validity` classifier-only and inspect `frac_no_cf_found`, `frac_vacuous`, and
-   `frac_degenerate` as separate diagnostics of whether the CARLA fix produced real actions.
+   `frac_degenerate` as separate diagnostics of whether the NoiselessSCMRecourse fix produced real actions.
 
 6. **Diff run 2 against run 1** cell by cell, and attribute every material change to the metric,
    oracle, table, or harness changes in this plan. Pay attention to the **linear `full` tier**:
-   CARLA `validity` may remain high because it reports classifier outcome only. Report
+   NoiselessSCMRecourse `validity` may remain high because it reports classifier outcome only. Report
    `frac_no_cf_found` and `frac_vacuous` beside it without redefining validity.
 
 7. **Write the superseding report**, `docs/full_run_<date>.md`. Follow the structure of

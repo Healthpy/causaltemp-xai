@@ -1,7 +1,7 @@
 """Tests for the native CF generators on a small trained LSTM.
 
 Verifies output shapes/finiteness, that Wachter flips at least one label, that
-CARLA-causal has zero retroactive change and is CF-faith (rollout) hard=1 by
+Noiseless SCM recourse has zero retroactive change and is CF-faith (rollout) hard=1 by
 construction, and that TSCausalCF's FISTA proximal step and
 causal-residual masking match the paper's equations cell-for-cell.
 """
@@ -15,23 +15,23 @@ import torch
 from causaltemp_xai.benchmarks.generator import LinearSCMT, exogenous_channels
 from causaltemp_xai.classifiers import LSTMClassifier
 from causaltemp_xai.methods import (
-    CARLARecourse,
     CftsCelsCF,
     CftsCOMTECF,
     CftsConfetiCF,
     CftsCountsCF,
     CftsWachterCF,
-    PearlCARLARecourse,
+    NoiselessSCMRecourse,
+    PearlSCMRecourse,
     TSCausalCF,
     derive_intervention_t,
 )
-from causaltemp_xai.methods.counterfactual.carla import _resolve_t0_candidates
 from causaltemp_xai.methods.counterfactual.causal_feasibility import (
     _batched_lag_windows,
     _build_loss_masks,
     _shift_forward,
     _soft_threshold,
 )
+from causaltemp_xai.methods.counterfactual.scm_recourse import _resolve_t0_candidates
 from causaltemp_xai.metrics.cf_faith import CFfaith
 
 
@@ -57,15 +57,15 @@ def trained():
 
 
 # ---------------------------------------------------------------------------
-# CARLA-causal
+# Noiseless SCM recourse
 # ---------------------------------------------------------------------------
 
 
-class TestCARLA:
+class TestNoiselessSCMRecourse:
     def test_shape_and_finite(self, trained):
         clf, data = trained
         x = data["X"][0]
-        cf = CARLARecourse(target_class=1, n_steps=60, t0_fractions=(0.5,)).generate(
+        cf = NoiselessSCMRecourse(target_class=1, n_steps=60, t0_fractions=(0.5,)).generate(
             x, clf, data["graph"], data["mechanism"]
         )
         assert cf.shape == x.shape
@@ -74,7 +74,7 @@ class TestCARLA:
     def test_zero_retroactive_change(self, trained):
         clf, data = trained
         x = data["X"][3]
-        cf = CARLARecourse(target_class=1, n_steps=60, t0_fractions=(0.5,)).generate(
+        cf = NoiselessSCMRecourse(target_class=1, n_steps=60, t0_fractions=(0.5,)).generate(
             x, clf, data["graph"], data["mechanism"]
         )
         t0 = derive_intervention_t(x, cf)
@@ -82,10 +82,10 @@ class TestCARLA:
         assert np.allclose(cf[:t0], x[:t0], atol=1e-6)
 
     def test_cf_faith_rollout_hard_is_one(self, trained):
-        """CARLA emits a noiseless rollout → rollout-faith hard=1 by construction."""
+        """NoiselessSCMRecourse emits a noiseless rollout → rollout-faith hard=1 by construction."""
         clf, data = trained
         x = data["X"][3]
-        cf = CARLARecourse(target_class=1, n_steps=60, t0_fractions=(0.5,)).generate(
+        cf = NoiselessSCMRecourse(target_class=1, n_steps=60, t0_fractions=(0.5,)).generate(
             x, clf, data["graph"], data["mechanism"]
         )
         t0 = derive_intervention_t(x, cf)
@@ -95,15 +95,15 @@ class TestCARLA:
 
 
 # ---------------------------------------------------------------------------
-# Pearl-CARLA (M2, 2026-07-08) — noise-reinjecting recourse variant
+# Pearl-NoiselessSCMRecourse (M2, 2026-07-08) — noise-reinjecting recourse variant
 # ---------------------------------------------------------------------------
 
 
-class TestPearlCARLA:
-    """Mirrors TestCARLA, but the invariant that holds "by construction" is
+class TestPearlSCMRecourse:
+    """Mirrors TestNoiselessSCMRecourse, but the invariant that holds "by construction" is
     ``cf_faith_pearl_hard == 1`` (not ``rollout_hard``) — see
-    ``causaltemp_xai/methods/counterfactual/carla.py``'s module docstring for
-    why the two variants differ, and the docstring of ``PearlCARLARecourse``
+    ``causaltemp_xai/methods/counterfactual/scm_recourse.py``'s module docstring for
+    why the two variants differ, and the docstring of ``PearlSCMRecourse``
     for the empirical long-horizon-validity finding (not a naive "always
     recovers validity" result — smoke-scale confirmed instead: zero
     retroactive change still holds bit-identically pre-t0 because both
@@ -115,31 +115,31 @@ class TestPearlCARLA:
     def test_shape_and_finite(self, trained):
         clf, data = trained
         x = data["X"][0]
-        cf = PearlCARLARecourse(target_class=1, n_steps=60, t0_fractions=(0.5,)).generate(
+        cf = PearlSCMRecourse(target_class=1, n_steps=60, t0_fractions=(0.5,)).generate(
             x, clf, data["graph"], data["mechanism"]
         )
         assert cf.shape == x.shape
         assert np.all(np.isfinite(cf))
 
     def test_zero_retroactive_change(self, trained):
-        """Still holds: both CARLARecourse and PearlCARLARecourse copy
+        """Still holds: both NoiselessSCMRecourse and PearlSCMRecourse copy
         ``x[:t0]`` verbatim into the CF regardless of forward-rollout
         semantics (only the post-t0 region differs between the two)."""
         clf, data = trained
         x = data["X"][3]
-        cf = PearlCARLARecourse(target_class=1, n_steps=60, t0_fractions=(0.5,)).generate(
+        cf = PearlSCMRecourse(target_class=1, n_steps=60, t0_fractions=(0.5,)).generate(
             x, clf, data["graph"], data["mechanism"]
         )
         t0 = derive_intervention_t(x, cf)
         assert np.allclose(cf[:t0], x[:t0], atol=1e-6)
 
     def test_cf_faith_pearl_hard_is_one(self, trained):
-        """PearlCARLARecourse reinjects the abducted factual noise -> Pearl-faith
+        """PearlSCMRecourse reinjects the abducted factual noise -> Pearl-faith
         hard=1 by construction (the rollout-semantics scorer should generally
         NOT also score hard=1 -- the two are structurally different CFs)."""
         clf, data = trained
         x = data["X"][3]
-        cf = PearlCARLARecourse(target_class=1, n_steps=60, t0_fractions=(0.5,)).generate(
+        cf = PearlSCMRecourse(target_class=1, n_steps=60, t0_fractions=(0.5,)).generate(
             x, clf, data["graph"], data["mechanism"]
         )
         t0 = derive_intervention_t(x, cf)
@@ -150,7 +150,7 @@ class TestPearlCARLA:
     def test_generate_batch_shape(self, trained):
         clf, data = trained
         X = data["X"][:4]
-        cfs = PearlCARLARecourse(target_class=1, n_steps=40, t0_fractions=(0.5,)).generate_batch(
+        cfs = PearlSCMRecourse(target_class=1, n_steps=40, t0_fractions=(0.5,)).generate_batch(
             X, clf, data["graph"], data["mechanism"]
         )
         assert cfs.shape == X.shape
@@ -260,7 +260,7 @@ class TestTSCausalCF:
         assert np.all(np.isfinite(cf))
 
     def test_flips_at_least_one(self, trained):
-        """Unlike CARLARecourse, this method has no do()-timestep search --
+        """Unlike NoiselessSCMRecourse, this method has no do()-timestep search --
         Delta is free over the whole trajectory (see the class module
         docstring on why: the paper has no intervention time at all)."""
         clf, data = trained
@@ -494,8 +494,8 @@ class TestT0CandidateResolution:
 
     def test_both_variants_accept_the_pin(self):
         """R9 + a real hazard: if only one variant honoured t0_steps the sweep
-        would compare CARLA at a pinned horizon against PearlCARLA at 25/50."""
-        for cls in (CARLARecourse, PearlCARLARecourse):
+        would compare NoiselessSCMRecourse at a pinned horizon against PearlSCMRecourse at 25/50."""
+        for cls in (NoiselessSCMRecourse, PearlSCMRecourse):
             m = cls(target_class=1, t0_steps=(42,))
             assert m.t0_steps == (42,)
             assert _resolve_t0_candidates(100, m.t0_fractions, m.t0_steps) == [42]

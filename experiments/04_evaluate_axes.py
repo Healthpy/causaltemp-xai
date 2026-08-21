@@ -57,13 +57,13 @@ from experiments._common import (  # noqa: E402
     write_csv,
 )
 
-STATUS_REQUIRED_METHODS = frozenset({"CARLA", "PearlCARLA"})
+STATUS_REQUIRED_METHODS = frozenset({"NoiselessSCMRecourse", "PearlSCMRecourse"})
 
 
 def load_no_cf_found(cf_dir: Path, method_name: str, n: int) -> np.ndarray:
     """Load and strictly validate a Phase-03 failed-search sidecar.
 
-    CARLA methods have a native status API, so their sidecar is mandatory.
+    The two SCM recourse controls have a native status API, so their sidecars are mandatory.
     Older artifacts for other methods fall back to all-false inferred status.
     """
     path = cf_dir / f"no_cf_found_{method_name}.npy"

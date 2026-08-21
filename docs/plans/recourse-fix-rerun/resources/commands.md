@@ -13,7 +13,7 @@ SD=/tmp/ctxai_repro
 .venv/bin/python experiments/01_generate_benchmarks.py --config smoke_nl --out-dir $SD/data
 .venv/bin/python experiments/02_train_classifiers.py   --config smoke_nl --out-dir $SD/data
 .venv/bin/python experiments/03_run_cf_methods.py      --config smoke_nl --n-cf 20 \
-    --methods CARLA PearlCARLA --out-dir $SD/data
+    --methods NoiselessSCMRecourse PearlSCMRecourse --out-dir $SD/data
 ```
 
 Regeneration plus training takes about 2 minutes and must reproduce the Helios classifier
@@ -29,7 +29,7 @@ accuracies exactly (`smoke_nl`: train 0.96 / val 0.98 / test 0.96). If yours dif
 ## Local: the full smoke tier (stage 5)
 
 ```bash
-METHODS="CARLA PearlCARLA CftsWachter CftsCOMTE CftsConfeti CftsCels TSCausal"
+METHODS="NoiselessSCMRecourse PearlSCMRecourse CftsWachter CftsCOMTE CftsConfeti CftsCels TSCausal"
 for C in smoke smoke_nl smoke_spring; do
   .venv/bin/python experiments/01_generate_benchmarks.py --config "$C"
   .venv/bin/python experiments/02_train_classifiers.py   --config "$C"
@@ -81,7 +81,7 @@ silent at minute zero and appears as a TIMEOUT at hour sixteen.
 ## Helios: the phase sequence (from run 1)
 
 ```bash
-METHODS="CARLA PearlCARLA CftsWachter CftsCOMTE CftsConfeti CftsCels TSCausal"
+METHODS="NoiselessSCMRecourse PearlSCMRecourse CftsWachter CftsCOMTE CftsConfeti CftsCels TSCausal"
 
 # Job A: full
 python experiments/01_generate_benchmarks.py --config full
@@ -148,7 +148,7 @@ leaves the queue — recheck before declaring a job missing.
 | Phases 01 / 04 / 05 / 07 | minutes |
 | Peak MaxRSS | 3.07 GB — 24G is ample, do not over-request |
 | Run-1 elapsed | `full` 12:07:25, `full_nl` 12:05:35, reports 01:53:11; ~26 GPU-h total |
-| Per-method cost | CftsConfeti 84 s/instance, PearlCARLA 52, CARLA 32, TSCausal 17; Wachter/COMTE/Cels near-free |
+| Per-method cost | CftsConfeti 84 s/instance, PearlSCMRecourse 52, NoiselessSCMRecourse 32, TSCausal 17; Wachter/COMTE/Cels near-free |
 
 The stage-1 prediction-only fallback can at most double optimizer work on failed cases. Compare
 the stage-5 smoke runtime with these constants and re-size walltimes before submission if needed.

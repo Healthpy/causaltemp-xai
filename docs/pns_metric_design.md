@@ -4,9 +4,12 @@
 10 adversarial tests in `tests/test_pns.py`, wired to Phase 07 as
 `--method pns`. PS direction only; PN still outstanding (see build order).
 
+Names in the prose use the current `NoiselessSCMRecourse` and `PearlSCMRecourse` labels.
+The historical result files cited here retain their original `CARLA` and `PearlCARLA` values.
+
 ## Result of the falsifiable self-check
 
-The design committed to a prediction: CARLA on `full` should show
+The design committed to a prediction: NoiselessSCMRecourse on `full` should show
 `Δ_total ≈ 1.0` attributed almost entirely to `Δ_trajectory`, else "the design
 is wrong, not the finding". **Confirmed exactly** — `Δ_total = 1.00`,
 `Δ_trajectory = 1.00`, `Δ_outcome = 0.00`.
@@ -18,7 +21,7 @@ classifier never flips. Measured directly — the oracle CF differs from the
 factual by **~1e-6** at the label site while the methods' proposed
 trajectories differ by **~0.2–0.3**. They are not making causal
 interventions; they edit the outcome's neighbourhood directly and the causal
-structure does no work. `PearlCARLA`/`full` is the sole exception at
+structure does no work. `PearlSCMRecourse`/`full` is the sole exception at
 `Δ_total = 0.00` — it claims nothing and achieves nothing, the only
 well-calibrated method in the set.
 
@@ -29,13 +32,13 @@ question. It cannot ask whether the intervention the CF proposes actually
 **causes** the outcome change it claims. The two come apart, and today's
 results show both failure directions:
 
-- **CARLA on `full`:** CF-faith(rollout) = 1.00, validity = 1.00 — yet its
+- **NoiselessSCMRecourse on `full`:** CF-faith(rollout) = 1.00, validity = 1.00 — yet its
   intervention's effect on the final timestep is 2.6e-04 (≈ zero). The label
   flip comes from noiseless rollout discarding the abducted noise, not from
   the intervention (2026-07-30 diagnosis, `DECISIONS.md`). A metric that
   compared the *model's* causal claim against the *world's* would have caught
   this automatically.
-- **CARLA on `full_nl`:** CF-faith = 1.00, validity = 0.00 — perfectly
+- **NoiselessSCMRecourse on `full_nl`:** CF-faith = 1.00, validity = 0.00 — perfectly
   faithful, causally inert.
 
 So this is an orthogonal axis, not a re-packaging of CF-faith.
@@ -83,7 +86,7 @@ causal efficacy the world denies (spurious / model artifact); **< 0** the
 model is blind to a real causal dependence. The decomposition mirrors the
 existing `graph_error_decomposition` pattern.
 
-**Predicted behaviour on CARLA/`full`** (a design self-check, to be verified,
+**Predicted behaviour on NoiselessSCMRecourse/`full`** (a design self-check, to be verified,
 not assumed): A = 1.00 (validity), C ≈ 0 (inert intervention), so
 Δ_total ≈ 1.0 attributed almost entirely to `Δ_trajectory` — because the
 oracle Pearl CF of that same intervention has no noise-stripping displacement
@@ -199,7 +202,7 @@ appears in writing.
    backward-compatible (scalars still work).
 3. ✅ `select_flip_candidates(from_class=…)`.
 4. ✅ Metric module + 10 adversarial tests (R6).
-5. ✅ CARLA/`full` prediction confirmed.
+5. ✅ NoiselessSCMRecourse/`full` prediction confirmed.
 6. ✅ Wired to Phase 07 (`--method pns`), run on `full` + `full_nl`.
 
 7. ✅ **PN direction** — `--with-pn` generates the necessity-direction CFs
@@ -211,25 +214,25 @@ appears in writing.
 
 | method | PNS_world | Δ_total (PS) | Δ_total (PN) |
 |---|---|---|---|
-| **PearlCARLA** | **0.90** | +0.10 | +0.05 |
-| CARLA | 0.15 | +0.95 | +0.75 |
+| **PearlSCMRecourse** | **0.90** | +0.10 | +0.05 |
+| NoiselessSCMRecourse | 0.15 | +0.95 | +0.75 |
 | CftsCOMTE / CftsCels / CftsWachter | 0.10 | +0.95 | +0.85 |
 | CftsConfeti | 0.10 | +1.00 | +0.80 |
 
-This **reverses** the PS-only reading. At this horizon PearlCARLA is by a
+This **reverses** the PS-only reading. At this horizon PearlSCMRecourse is by a
 wide margin the most causally honest method: its interventions genuinely
 produce the outcome change in the world (PN=0.95, PS=0.85) and its claims
 almost match (gap ≤ 0.10). Every other method claims near-total efficacy
 (A≈1.00) while the world delivers ~0.05–0.25.
 
-**Read `Δ_trajectory` for PearlCARLA with care.** It is 0.00 in *both*
-directions **by construction** — PearlCARLA emits a Pearl-semantics rollout
+**Read `Δ_trajectory` for PearlSCMRecourse with care.** It is 0.00 in *both*
+directions **by construction** — PearlSCMRecourse emits a Pearl-semantics rollout
 and the oracle is a Pearl rollout of that same intervention, so they coincide
 tautologically (the same caveat as H3b's "faithful by construction"). What is
 *not* tautological, and is the real result, is `C` — whether the world
 actually delivers the outcome change. That is empirical, and it is high.
 
-Contrast with `full`/`full_nl`, where PearlCARLA's interventions decay to
+Contrast with `full`/`full_nl`, where PearlSCMRecourse's interventions decay to
 nothing before the outcome (2026-07-30 horizon finding) and it claims nothing.
 Same method, opposite verdict, entirely explained by horizon.
 

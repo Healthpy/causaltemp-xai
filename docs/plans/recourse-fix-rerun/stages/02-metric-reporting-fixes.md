@@ -25,7 +25,7 @@ best-in-class parsimony.
 
 The earlier diagnosis incorrectly equated the PNS-scorable fraction with
 `1 - frac_vacuous`. Vacuity is evaluated under the CF's noiseless continuation, while
-do-complexity and PNS use Pearl noise reinjection. The counterexample is `full_nl/CARLA`:
+do-complexity and PNS use Pearl noise reinjection. The counterexample is `full_nl/NoiselessSCMRecourse`:
 `do_complexity_mean=74`, `pns_PS_do_complexity_mean=74`, and `frac_vacuous=1.0`.
 
 ### Steps
@@ -44,7 +44,7 @@ do-complexity and PNS use Pearl noise reinjection. The counterexample is `full_n
    denominator of `mean_pearl_scorable`.
 4. Update `tests/test_do_complexity.py` to pin
    `mean_all == mean_pearl_scorable * (n_do_scorable / n)` when `n_do_scorable > 0`, and assert
-   NaN for `mean_pearl_scorable` when it is zero. Add the `full_nl/CARLA` semantic counterexample
+   NaN for `mean_pearl_scorable` when it is zero. Add the `full_nl/NoiselessSCMRecourse` semantic counterexample
    as a regression: a row may be noiseless-vacuous while Pearl do-complexity is non-zero.
 
 ---
