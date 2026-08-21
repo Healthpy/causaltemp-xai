@@ -231,7 +231,7 @@ multi-seed campaign is recorded in the Backlog as the natural successor plan.
 | 2 | [Metric reporting fixes](stages/02-metric-reporting-fixes.md) | DONE | D4/D5/D8 fixed; archived table rebuild byte-identical; real `smoke_nl` Pearl oracle anchor = 1.0; 587 passed, 1 xfailed. | this commit |
 | 3 | [Regression tests](stages/03-regression-tests.md) | DONE | Nonlinear recourse, status sidecars, metric denominators, conditional faithfulness, oracle coverage, publication filtering, and source-scoped provenance pinned; 605 passed, 1 xfailed. | this commit |
 | 4 | [Helios job scripts](stages/04-helios-job-scripts.md) | DONE | Fail-safe GH200 full/full_nl/reports chain, source-only sync, clean provenance gates, stale-output isolation, and executable failure accumulation; 614 passed, 1 xfailed. Cluster `sbatch --test-only` remains at the Stage-6 human gate. | this commit |
-| 5 | [Local full validation](stages/05-local-full-validation.md) | PENDING | | |
+| 5 | [Local full validation](stages/05-local-full-validation.md) | DONE | All three smoke configs completed the seven-method pipeline; C1-C18 pass at smoke scope; fallback overhead is 9.9%, so the 30-hour jobs remain unchanged; 614 passed, 1 xfailed. C19-C20 remain correctly deferred to Stage 7. | `32e6f7a` + `6058400` + this commit |
 | 6 | [Cluster preflight and submit](stages/06-cluster-submit.md) | PENDING | **HUMAN GATE** | |
 | 7 | [Collect, table, document](stages/07-collect-table-document.md) | PENDING | | |
 

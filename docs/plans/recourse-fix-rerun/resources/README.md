@@ -5,6 +5,10 @@
   constants.
 - **[checklist.md](checklist.md)** — the 23-item defect checklist that gates whether a generated
   table is usable. Run it in stage 5 (smoke tier) and again in stage 7 (full run).
+- **[stage5-validation.md](stage5-validation.md)** — smoke-tier execution evidence, checklist
+  disposition, controlled fallback timing, and the run-1 comparison summary.
+- **[stage5-smoke-diff.csv](stage5-smoke-diff.csv)** — cell-level run-1 versus run-2-local diff
+  with an attribution for every changed or added metric.
 
 ## Standing constraints
 

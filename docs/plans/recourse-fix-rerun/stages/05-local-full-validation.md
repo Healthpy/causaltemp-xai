@@ -46,17 +46,22 @@ before spending grant hours.
 
 ## Verification
 
-- [ ] All three smoke configs complete phases 01-05 and 07 without error.
-- [ ] `smoke_nl`: NoiselessSCMRecourse `frac_vacuous <= 0.20`, `frac_no_cf_found <= 0.20`, and classifier
+- [x] All three smoke configs complete phases 01-05 and 07 without error.
+- [x] `smoke_nl`: NoiselessSCMRecourse `frac_vacuous <= 0.20`, `frac_no_cf_found <= 0.20`, and classifier
       `validity > 0.30`; PearlSCMRecourse `frac_degenerate <= 0.10`.
-- [ ] The explicit do-complexity, conditional faithfulness, and oracle-coverage checks pass.
-- [ ] `validity` remains classifier-derived; no-CF, vacuity, and degeneracy remain separate.
-- [ ] Every item in `resources/checklist.md` passes or is waived with a recorded reason.
-- [ ] The run-1 vs run-2 diff table exists and every material change is attributed to a fix.
-- [ ] `uv run pytest tests/ -q` passes.
-- [ ] `slurm/helios_full_run.sbatch` walltimes reflect the measured cost delta.
-- [ ] `git status --porcelain` is clean afterwards (the scratch tree is outside the repo, and
+- [x] The explicit do-complexity, conditional faithfulness, and oracle-coverage checks pass.
+- [x] `validity` remains classifier-derived; no-CF, vacuity, and degeneracy remain separate.
+- [x] Every item in `resources/checklist.md` passes or is waived with a recorded reason.
+- [x] The run-1 vs run-2 diff table exists and every material change is attributed to a fix.
+- [x] `uv run pytest tests/ -q` passes.
+- [x] `slurm/helios_full_run.sbatch` walltimes reflect the measured cost delta.
+- [x] `git status --porcelain` is clean afterwards (the scratch tree is outside the repo, and
       any tracked files phases 01/02 dirtied have been restored).
+
+Execution evidence and the pre-existing-untracked-artifact cleanliness qualification are recorded
+in [`../resources/stage5-validation.md`](../resources/stage5-validation.md). No tracked generated
+dataset or result was written to the main checkout; the report discloses one ignored selection
+array that an interrupted timing command regenerated before producing method output.
 
 ---
 
