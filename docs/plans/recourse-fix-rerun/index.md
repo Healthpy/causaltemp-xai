@@ -228,7 +228,7 @@ multi-seed campaign is recorded in the Backlog as the natural successor plan.
 | # | Stage | Status | Notes | Commit |
 |---|-------|--------|-------|--------|
 | 1 | [Fix the recourse layer](stages/01-fix-recourse-layer.md) | DONE | `smoke_nl` gates pass; canonical SCM-control classes and run-2 schema labels replace the misleading names; historical results remain unchanged; 577 passed, 1 xfailed. | `c4bcc16` + this commit |
-| 2 | [Metric reporting fixes](stages/02-metric-reporting-fixes.md) | PENDING | | |
+| 2 | [Metric reporting fixes](stages/02-metric-reporting-fixes.md) | DONE | D4/D5/D8 fixed; archived table rebuild byte-identical; real `smoke_nl` Pearl oracle anchor = 1.0; 587 passed, 1 xfailed. | this commit |
 | 3 | [Regression tests](stages/03-regression-tests.md) | PENDING | | |
 | 4 | [Helios job scripts](stages/04-helios-job-scripts.md) | PENDING | | |
 | 5 | [Local full validation](stages/05-local-full-validation.md) | PENDING | | |

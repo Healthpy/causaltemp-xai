@@ -826,6 +826,8 @@ class TestJointFaithValidCriterion:
         assert result["cf_faith_rollout_hard"] == 1.0  # gameably 'faithful'
         assert result["validity"] == 0.0  # ...but flips nothing
         assert result["cf_faith_rollout_hard_valid"] == 0.0  # no joint credit
+        assert np.isnan(result["cf_faith_rollout_hard_given_valid"])
+        assert np.isnan(result["cf_faith_pearl_hard_given_valid"])
 
     def test_faithful_and_valid_cf_gets_full_joint_credit(self):
         X, graph, mech, _, big = self._batches()
@@ -833,6 +835,7 @@ class TestJointFaithValidCriterion:
         assert result["validity"] == 1.0
         assert result["cf_faith_rollout_hard"] == 1.0
         assert result["cf_faith_rollout_hard_valid"] == 1.0
+        assert result["cf_faith_rollout_hard_given_valid"] == 1.0
 
     def test_joint_credit_requires_both(self):
         """Mixed batch: joint score == mean(hard_i * valid_i), strictly below
@@ -849,6 +852,10 @@ class TestJointFaithValidCriterion:
             hard = rollout.score(X2[i], CFs[i], t, graph, mech)["hard"]
             manual.append(hard * float(preds[i] == 1))
         assert result["cf_faith_rollout_hard_valid"] == pytest.approx(float(np.mean(manual)))
+        valid = preds == 1
+        assert result["cf_faith_rollout_hard_given_valid"] == pytest.approx(
+            float(np.mean(np.asarray(manual)[valid]))
+        )
         # The tiny-edit half contributes faithfulness but no joint credit.
         assert result["cf_faith_rollout_hard_valid"] < result["cf_faith_rollout_hard"]
 
@@ -991,6 +998,12 @@ class TestLayerConsistency:
             "n_cf_faith_scorable",
             "cf_faith_rollout_hard_valid",
             "cf_faith_pearl_hard_valid",
+            "cf_faith_rollout_hard_given_valid",
+            "cf_faith_pearl_hard_given_valid",
+            "do_complexity_mean_all",
+            "do_complexity_mean_pearl_scorable",
+            "n_do_scorable",
+            "frac_no_do_schedule",
         ],
     )
     def test_both_layers_agree(self, metric):

@@ -107,16 +107,16 @@ spread. It is absent, and the run-1 table shows `n/a`.
 
 ## Verification
 
-- [ ] Regenerate the run-1 table from the archived `results/` and diff it against the committed
+- [x] Regenerate the run-1 table from the archived `results/` and diff it against the committed
       run-1 table. Every changed cell must be explainable by exactly one of D4, D5 or D8 —
       no unexplained drift.
-- [ ] Existing `*_hard_valid` remains `0.0` where `validity == 0`; the new
+- [x] Existing `*_hard_valid` remains `0.0` where `validity == 0`; the new
       `*_hard_given_valid` cell is NaN and is listed in suppression provenance.
-- [ ] Both explicit do-complexity variants and `n_do_scorable` are present; their relation uses
+- [x] Both explicit do-complexity variants and `n_do_scorable` are present; their relation uses
       `n_do_scorable/n`, never `1 - frac_vacuous`.
-- [ ] `OracleCF-Pearl` has `do_complexity_mean_pearl_scorable == 1.0` and both oracle rows carry
+- [x] `OracleCF-Pearl` has `do_complexity_mean_pearl_scorable == 1.0` and both oracle rows carry
       classifier `validity`.
-- [ ] `uv run pytest tests/ -q` passes.
+- [x] `uv run pytest tests/ -q` passes.
 
 ---
 

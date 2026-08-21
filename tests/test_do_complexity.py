@@ -113,6 +113,31 @@ class TestSingleSliceOracle:
         )
         assert do_complexity(x, x_cf, mech) == 1
 
+    def test_oracle_pearl_batch_mean_is_one(self):
+        """The named Pearl oracle is the calibration anchor for the metric."""
+        from causaltemp_xai.eval import evaluate_method
+        from experiments._common import ORACLE_SHIFT, oracle_intervention_spec
+
+        x, mech = _make_scm()
+        X = np.stack([x, x.copy()])
+        cfs = np.stack(
+            [
+                structural_counterfactual(x_i, mech, t0, node, value, noiseless=False)
+                for x_i, (t0, node, value) in zip(
+                    X, oracle_intervention_spec(X, mech.k, ORACLE_SHIFT)
+                )
+            ]
+        )
+        graph = np.zeros((K, K, L))
+
+        class _AllValid:
+            def predict(self, Z):
+                return np.ones(len(Z), dtype=int)
+
+        out = evaluate_method(_AllValid(), X, cfs, X, graph, mech, target_class=1)
+        assert out["do_complexity_mean_pearl_scorable"] == pytest.approx(1.0)
+        assert out["n_do_scorable"] == len(X)
+
 
 # ---------------------------------------------------------------------------
 # 2. The RISK-18 artifact, pinned on a CF that is the world's own trajectory
@@ -221,6 +246,43 @@ class TestDenseDirectEdit:
         x, mech = _make_scm()
         assert extract_intervention_schedule(x, x.copy(), mech) == []
         assert do_complexity(x, x.copy(), mech) == 0
+
+    def test_explicit_batch_denominators_and_semantic_counterexample(self):
+        from causaltemp_xai.eval import evaluate_method
+
+        x, mech = _make_scm()
+        graph = np.zeros((K, K, L))
+
+        class _AllValid:
+            def predict(self, Z):
+                return np.ones(len(Z), dtype=int)
+
+        pearl_cf = structural_counterfactual(x, mech, t0=10, node=0, value=3.0, noiseless=False)
+        X = np.stack([x, x])
+        CFs = np.stack([pearl_cf, x.copy()])
+        out = evaluate_method(_AllValid(), X, CFs, X, graph, mech, target_class=1)
+        assert out["do_complexity_mean"] == out["do_complexity_mean_all"]
+        assert out["n_do_scorable"] == 1
+        assert out["frac_no_do_schedule"] == pytest.approx(0.5)
+        assert out["do_complexity_mean_all"] == pytest.approx(
+            out["do_complexity_mean_pearl_scorable"] * out["n_do_scorable"] / out["n"]
+        )
+
+        no_schedules = evaluate_method(_AllValid(), X, X.copy(), X, graph, mech, target_class=1)
+        assert no_schedules["n_do_scorable"] == 0
+        assert np.isnan(no_schedules["do_complexity_mean_pearl_scorable"])
+
+        # Noiseless vacuity and a non-empty Pearl schedule are compatible; this
+        # is the archived full_nl/NoiselessSCMRecourse counterexample in miniature.
+        noiseless_cf = structural_counterfactual(
+            x, mech, t0=10, node=0, value=float(x[10, 0]), noiseless=True
+        )
+        counterexample = evaluate_method(
+            _AllValid(), x[None], noiseless_cf[None], x[None], graph, mech, target_class=1
+        )
+        assert counterexample["frac_vacuous"] == 1.0
+        assert counterexample["n_do_scorable"] == 1
+        assert counterexample["do_complexity_mean_pearl_scorable"] > 0
 
 
 # ---------------------------------------------------------------------------

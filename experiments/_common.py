@@ -129,7 +129,8 @@ def per_instance_records(
     per instance (anti-gameability criterion, M1 2026-07-07): a tiny-edit CF
     can pass the faithfulness check without consulting the SCM, but earns no
     joint credit unless it also flips the classifier. Blank when ``preds`` is
-    None (classifier-free oracle rows in Phase 05).
+    None. The separately named ``*_hard_given_valid`` columns are populated
+    only for valid instances so their aggregate is ``P(hard | valid)``.
 
     ``vacuous`` (RISK-17, 2026-07-31) is 1 when the CF encodes no intervention
     at all: ``x_cf`` differs from ``x``, but ``x_cf[intervention_t]`` is exactly
@@ -146,6 +147,7 @@ def per_instance_records(
         trsi,
     )
     from causaltemp_xai.metrics.cf_faith import CFfaith
+    from causaltemp_xai.metrics.pns import do_complexity
     from causaltemp_xai.scm.intervention import derive_intervention_t, is_vacuous_intervention
 
     def _nan_to_zero(v):
@@ -170,6 +172,7 @@ def per_instance_records(
         p = pearl.score(x, x_cf, t, graph, mech)
         _spars_detail = sparsity(x, x_cf, return_detailed=True)
         valid_i = int(preds[i] == TARGET_CLASS) if preds is not None else None
+        do_c = do_complexity(x, x_cf, mech)
         rows.append(
             {
                 "benchmark": benchmark,
@@ -202,6 +205,9 @@ def per_instance_records(
                 # zero-perturbation noiseless rollout scores rollout_hard=1.0
                 # while being vacuous; frac_degenerate does not catch it.
                 "vacuous": int(is_vacuous_intervention(x, x_cf, mech, t0=t)),
+                # Pearl-semantic schedule length. This is a distinct predicate
+                # from the noiseless-semantic vacuity flag above.
+                "do_complexity": int(do_c),
                 "cf_faith_rollout_hard": r["hard"],
                 "cf_faith_rollout_soft": r["soft"],
                 "cf_faith_pearl_hard": p["hard"],
@@ -215,6 +221,14 @@ def per_instance_records(
                 ),
                 "cf_faith_pearl_hard_valid": (
                     _nan_to_zero(p["hard"]) * valid_i if valid_i is not None else ""
+                ),
+                # Invalid rows abstain from this conditional denominator;
+                # degenerate valid rows count as zero conditional credit.
+                "cf_faith_rollout_hard_given_valid": (
+                    _nan_to_zero(r["hard"]) if valid_i == 1 else ""
+                ),
+                "cf_faith_pearl_hard_given_valid": (
+                    _nan_to_zero(p["hard"]) if valid_i == 1 else ""
                 ),
             }
         )
@@ -238,10 +252,10 @@ def score_and_collect(
     The step phases 04, 05 and 06 all perform identically, differing only in
     three things this signature makes explicit:
 
-    * ``clf=None`` — Phase 05 is deliberately classifier-free (it scores the
-      oracle control, which is correct *by construction*), so ``validity`` and
-      the joint faith-validity columns are blank rather than computed. Passing a
-      classifier there would quietly put a model back into the positive control.
+    * ``clf=None`` — callers may omit classifier-dependent outcome metrics.
+      Phase 05 now supplies the trained classifier so the structural oracle
+      remains a construction-level positive control while also calibrating the
+      same outcome-quality columns as every other method.
     * ``slot`` — the ``results/<config>/<slot>/`` directory: ``"lstm"`` for the
       explainer phases, ``"oracle"`` for the control.
     * ``extra`` — extra keys stamped onto *both* the per-instance rows and the
@@ -382,6 +396,22 @@ def aggregate_method_row(benchmark, classifier, method_name, instance_rows) -> d
     n_no_cf_found = sum(
         1 for r in instance_rows if str(r.get("no_cf_found", "")).strip() not in ("", "0", "False")
     )
+    do_values = [
+        float(r["do_complexity"])
+        for r in instance_rows
+        if r.get("do_complexity") not in (None, "") and not np.isnan(float(r["do_complexity"]))
+    ]
+    do_scorable_values = [value for value in do_values if value > 0]
+    n_do_scorable = len(do_scorable_values)
+    do_mean_all = float(np.mean(do_values)) if do_values else float("nan")
+    do_mean_scorable = float(np.mean(do_scorable_values)) if do_scorable_values else float("nan")
+    has_validity = any(r.get("validity") not in (None, "") for r in instance_rows)
+
+    def _conditional_mean(key):
+        value = _mean(key)
+        if value is not None:
+            return value
+        return float("nan") if has_validity else None
 
     return {
         "benchmark": benchmark,
@@ -413,9 +443,17 @@ def aggregate_method_row(benchmark, classifier, method_name, instance_rows) -> d
         "frac_vacuous": (float(n_vacuous / n) if n else None),
         "n_no_cf_found": n_no_cf_found,
         "frac_no_cf_found": (float(n_no_cf_found / n) if n else None),
+        "do_complexity_mean_all": do_mean_all,
+        "do_complexity_mean_pearl_scorable": do_mean_scorable,
+        "n_do_scorable": n_do_scorable,
+        "frac_no_do_schedule": (float(1.0 - n_do_scorable / n) if n else None),
+        # Migration alias: always the all-instance Pearl-semantic mean.
+        "do_complexity_mean": do_mean_all,
         # Joint faithfulness-validity (None for classifier-free oracle rows).
         "cf_faith_rollout_hard_valid": _mean("cf_faith_rollout_hard_valid"),
         "cf_faith_pearl_hard_valid": _mean("cf_faith_pearl_hard_valid"),
+        "cf_faith_rollout_hard_given_valid": _conditional_mean("cf_faith_rollout_hard_given_valid"),
+        "cf_faith_pearl_hard_given_valid": _conditional_mean("cf_faith_pearl_hard_given_valid"),
     }
 
 
@@ -828,6 +866,9 @@ SEED_AGGREGATE_METRICS: list[str] = [
     "cf_faith_pearl_soft",
     "cf_faith_rollout_hard_valid",
     "cf_faith_pearl_hard_valid",
+    "cf_faith_rollout_hard_given_valid",
+    "cf_faith_pearl_hard_given_valid",
+    "do_complexity",
 ]
 
 

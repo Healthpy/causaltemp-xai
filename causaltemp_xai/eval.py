@@ -83,8 +83,10 @@ def evaluate_method(
         a near-no-op CF can pass the faithfulness check without consulting
         the SCM, but it then fails to flip the classifier, so it earns no
         joint credit. No proximity floor is needed — a CF that is tiny *and*
-        valid *and* faithful is genuinely good, not gaming.  Also includes
-        ``n`` (batch size).
+        valid *and* faithful is genuinely good, not gaming. The separately
+        named ``cf_faith_{rollout,pearl}_hard_given_valid`` keys condition on
+        classifier validity and are NaN only when the valid set is empty.
+        Also includes ``n`` (batch size).
 
         **Degeneracy (2026-07-30).** The four CF-faith means are ``nanmean``
         over the batch: instances with ``intervention_t >= T-1`` score NaN
@@ -194,7 +196,9 @@ def evaluate_method(
         # RISK-18: how many timesteps this CF must declare as do() before the
         # mechanism can produce it. Read against the Pearl continuation, which
         # is the oracle the PNS audit scores against, so the two agree on what
-        # "the method's intervention" means. D == 0 is the vacuous case above.
+        # "the method's intervention" means. D == 0 is a Pearl-semantic empty
+        # schedule; it is deliberately independent of the noiseless-semantic
+        # vacuity predicate above.
         do_c.append(do_complexity(x, x_cf, mechanism))
         # RISK-20: is this row's D threshold-independent? 1.0 = yes.
         do_stab.append(do_complexity_stability(x, x_cf, mechanism))
@@ -212,11 +216,24 @@ def evaluate_method(
     p_hard_a = np.asarray(p_hard, dtype=float)
     scorable = ~np.isnan(r_hard_a)
     n_scorable = int(scorable.sum())
+    do_c_a = np.asarray(do_c, dtype=float)
+    do_scorable = do_c_a > 0
+    n_do_scorable = int(do_scorable.sum())
+    n_valid = int(valid_i.sum())
 
     def _nanmean(a):
         # all-NaN would warn and return NaN; return NaN explicitly instead.
         a = np.asarray(a, dtype=float)
         return float(np.nanmean(a)) if np.any(~np.isnan(a)) else float("nan")
+
+    def _hard_given_valid(hard):
+        if n_valid == 0:
+            return float("nan")
+        hard_a = np.asarray(hard, dtype=float)
+        return float(np.sum(np.nan_to_num(hard_a) * valid_i) / n_valid)
+
+    do_mean_all = float(np.mean(do_c_a)) if len(do_c_a) else float("nan")
+    do_mean_scorable = float(np.mean(do_c_a[do_scorable])) if n_do_scorable else float("nan")
 
     return {
         "n": len(CFs),
@@ -250,11 +267,20 @@ def evaluate_method(
         "frac_no_cf_found": (float(no_cf_found_a.mean()) if len(no_cf_found_a) else float("nan")),
         # Do-complexity diagnostic (2026-08-03, RISK-18): how densely the method
         # has to intervene for the mechanism to reproduce its own proposal.
-        # Generalises frac_vacuous, which is the D == 0 row. Reported so that
+        # This is Pearl-semantic and does not generalise the separately reported
+        # noiseless-semantic frac_vacuous predicate. Reported so that
         # any delta_trajectory in the PNS table can be read against how much of
         # the proposal the single-slice audit is modelling — a method with
         # D >> 1 is not being scored on the intervention it actually made.
-        "do_complexity_mean": float(np.mean(do_c)) if len(CFs) else float("nan"),
+        "do_complexity_mean_all": do_mean_all,
+        "do_complexity_mean_pearl_scorable": do_mean_scorable,
+        "n_do_scorable": n_do_scorable,
+        "frac_no_do_schedule": (
+            float(1.0 - n_do_scorable / len(CFs)) if len(CFs) else float("nan")
+        ),
+        # Migration alias. This remains the all-instance mean and must never be
+        # repurposed for the conditional Pearl-scorable value.
+        "do_complexity_mean": do_mean_all,
         "do_complexity_median": float(np.median(do_c)) if len(CFs) else float("nan"),
         # Threshold-stability of the D column above (RISK-20). 1.0 means D is
         # threshold-independent for this method; a large value means D must not
@@ -266,6 +292,11 @@ def evaluate_method(
         # shown faithful must not be credited to it.
         "cf_faith_rollout_hard_valid": float(np.mean(np.nan_to_num(r_hard_a) * valid_i)),
         "cf_faith_pearl_hard_valid": float(np.mean(np.nan_to_num(p_hard_a) * valid_i)),
+        # Conditional faithfulness among classifier-valid counterfactuals.
+        # Degenerate hard scores receive no conditional credit. Unlike the
+        # joint rates above, these are undefined when no CF is valid.
+        "cf_faith_rollout_hard_given_valid": _hard_given_valid(r_hard_a),
+        "cf_faith_pearl_hard_given_valid": _hard_given_valid(p_hard_a),
     }
 
 
