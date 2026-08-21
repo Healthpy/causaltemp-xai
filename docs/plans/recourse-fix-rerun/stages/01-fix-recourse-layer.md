@@ -15,12 +15,15 @@ the target boundary is reachable; the separate full-scale reachability stage rem
      failed candidates by lowest cross-entropy instead. Preserve lowest proximity among
      candidates that do flip.
 
-2. **Rescale the proximity penalty with bounded lambda backoff.**
-   - Run the current objective first. If no candidate flips, halve `lam_prox` and retry for at
-     most six rounds, stopping on the first flip.
+2. **Rescale the proximity penalty with a bounded prediction-only fallback.**
+   - Run the current objective first. If no genuine candidate flips, retry once with
+     `lam_prox=0` and stop at the first above-tolerance target flip.
    - Preserve current behavior and cost for cases that succeed in round one.
-   - Record the attempted lambdas and selected round for diagnostics.
+   - Record both attempted lambdas and the selected round for diagnostics.
    - Sanity-check against the measured `smoke_nl` reachable scale (median `||delta|| ~= 20`).
+   - Execution finding: six successive halvings cost 7x but produced 0/3 CARLA and 0/3
+     PearlCARLA flips on the current substrate. The single prediction-only fallback is the
+     bounded corrective path; it avoids repeating the same local optimum.
 
 3. **Add an explicit no-CF status without changing validity.**
    - Factor each class into `_generate_one(...) -> (cf, found)`.
@@ -37,7 +40,7 @@ the target boundary is reachable; the separate full-scale reachability stage rem
      `frac_degenerate` remain separate diagnostics.
 
 4. **Expose recourse hyperparameters only if required.**
-   - Prefer keeping the bounded backoff internal. If configuration is required for reproducible
+   - Prefer keeping the bounded fallback internal. If configuration is required for reproducible
      tuning, add explicit defaults in `causaltemp_xai/config.py` and route them only through
      `experiments/03_run_cf_methods.py::build_methods()`.
    - Preserve registry tests and document every changed default.
@@ -45,7 +48,7 @@ the target boundary is reachable; the separate full-scale reachability stage rem
 5. **Update documentation in `carla.py`.**
    - Remove stale arguments for fixed `lam_prox` values if the implementation no longer follows
      them.
-   - Document backoff bounds, tie-breaking, no-CF status, and classifier-only validity.
+   - Document fallback bounds, tie-breaking, no-CF status, and classifier-only validity.
 
 ---
 
@@ -53,16 +56,22 @@ the target boundary is reachable; the separate full-scale reachability stage rem
 
 Use freshly regenerated `smoke` and `smoke_nl` substrates from `resources/commands.md`.
 
-- [ ] CARLA intervention-row delta exceeds `INTERVENTION_TOL` on at least 90% of `smoke_nl`
+- [x] CARLA intervention-row delta exceeds `INTERVENTION_TOL` on at least 90% of `smoke_nl`
       instances; `frac_vacuous <= 0.20` and `frac_no_cf_found <= 0.20`.
-- [ ] PearlCARLA `frac_degenerate <= 0.10` on `smoke_nl`.
-- [ ] CARLA classifier `validity > 0.30` on `smoke_nl`; validity is not filtered by no-CF or
+- [x] PearlCARLA `frac_degenerate <= 0.10` on `smoke_nl`.
+- [x] CARLA classifier `validity > 0.30` on `smoke_nl`; validity is not filtered by no-CF or
       vacuity status.
-- [ ] A forced zero-delta control may have `validity == 1`, while `no_cf_found == 1` and
+- [x] A forced zero-delta control may have `validity == 1`, while `no_cf_found == 1` and
       `vacuous == 1` are reported separately.
-- [ ] Legacy `generate()` and `generate_batch()` callers remain compatible.
-- [ ] `uv run pytest tests/ -q` passes.
-- [ ] Record Phase-03 wall-clock before and after for Stage 5 walltime sizing.
+- [x] Legacy `generate()` and `generate_batch()` callers remain compatible.
+- [x] `uv run pytest tests/ -q` passes.
+- [x] Record Phase-03 wall-clock before and after for Stage 5 walltime sizing.
+
+Execution evidence (2026-08-21): deterministic regenerated `smoke_nl`, n=20,
+train/val/test accuracy 0.96/0.98/0.96. CARLA took 65.0 s and PearlCARLA 103.9 s; both
+reported validity 1.00, `frac_no_cf_found=0.00`, `frac_vacuous=0.00`,
+`frac_degenerate=0.00`, and 20/20 intervention deltas above tolerance. The pre-fix run-1
+timings remain in `resources/commands.md`; Stage 5 will measure the complete phase-03 delta.
 
 ---
 

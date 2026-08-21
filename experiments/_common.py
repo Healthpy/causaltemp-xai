@@ -99,7 +99,16 @@ def select_flip_candidates(clf, X_test, n_cf, target_class=TARGET_CLASS, from_cl
 
 
 def per_instance_records(
-    benchmark, classifier, method_name, X_sel, CFs, graph, mech, preds=None, noise_scale=None
+    benchmark,
+    classifier,
+    method_name,
+    X_sel,
+    CFs,
+    graph,
+    mech,
+    preds=None,
+    noise_scale=None,
+    no_cf_found=None,
 ):
     """One record per (method, instance) with per-CF Axis-C + CF-faith metrics.
 
@@ -144,6 +153,16 @@ def per_instance_records(
 
     rollout = CFfaith(semantics="noiseless_rollout")
     pearl = CFfaith(semantics="pearl_delta")
+    if no_cf_found is None:
+        no_cf_found_a = np.zeros(len(CFs), dtype=bool)
+    else:
+        no_cf_found_a = np.asarray(no_cf_found)
+        if no_cf_found_a.dtype != np.bool_:
+            raise TypeError(f"no_cf_found must have bool dtype, got {no_cf_found_a.dtype}")
+        if no_cf_found_a.shape != (len(CFs),):
+            raise ValueError(
+                f"no_cf_found shape {no_cf_found_a.shape} does not match CF batch ({len(CFs)},)"
+            )
     rows = []
     for i, (x, x_cf) in enumerate(zip(X_sel, CFs)):
         t = derive_intervention_t(x, x_cf)
@@ -158,6 +177,9 @@ def per_instance_records(
                 "method": method_name,
                 "instance": int(i),
                 "validity": (valid_i if valid_i is not None else ""),
+                # Generator search outcome. Kept separate from classifier
+                # validity and mechanism-level vacuity by design.
+                "no_cf_found": int(no_cf_found_a[i]),
                 "proximity_l1": proximity(x, x_cf, norm="l1"),
                 "proximity_l2": proximity(x, x_cf, norm="l2"),
                 "sparsity": sparsity(x, x_cf),
@@ -199,7 +221,18 @@ def per_instance_records(
     return rows
 
 
-def score_and_collect(cfg, slot, method_name, X_sel, cfs, graph, mech, clf=None, extra=None):
+def score_and_collect(
+    cfg,
+    slot,
+    method_name,
+    X_sel,
+    cfs,
+    graph,
+    mech,
+    clf=None,
+    extra=None,
+    no_cf_found=None,
+):
     """Score one method's counterfactuals: per-instance rows + the aggregate row.
 
     The step phases 04, 05 and 06 all perform identically, differing only in
@@ -238,6 +271,7 @@ def score_and_collect(cfg, slot, method_name, X_sel, cfs, graph, mech, clf=None,
         mech,
         preds,
         noise_scale=expected_abs_noise(cfg.noise_type),
+        no_cf_found=no_cf_found,
     )
     agg = aggregate_method_row(cfg.name, slot, method_name, rows)
     if extra:
@@ -345,6 +379,9 @@ def aggregate_method_row(benchmark, classifier, method_name, instance_rows) -> d
     n_vacuous = sum(
         1 for r in instance_rows if str(r.get("vacuous", "")).strip() not in ("", "0", "False")
     )
+    n_no_cf_found = sum(
+        1 for r in instance_rows if str(r.get("no_cf_found", "")).strip() not in ("", "0", "False")
+    )
 
     return {
         "benchmark": benchmark,
@@ -374,6 +411,8 @@ def aggregate_method_row(benchmark, classifier, method_name, instance_rows) -> d
         # of their value: the CFs contain no intervention to score.
         "n_vacuous": n_vacuous,
         "frac_vacuous": (float(n_vacuous / n) if n else None),
+        "n_no_cf_found": n_no_cf_found,
+        "frac_no_cf_found": (float(n_no_cf_found / n) if n else None),
         # Joint faithfulness-validity (None for classifier-free oracle rows).
         "cf_faith_rollout_hard_valid": _mean("cf_faith_rollout_hard_valid"),
         "cf_faith_pearl_hard_valid": _mean("cf_faith_pearl_hard_valid"),

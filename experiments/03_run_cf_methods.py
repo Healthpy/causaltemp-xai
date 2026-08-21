@@ -38,6 +38,9 @@ Outputs (under ``results/<config>/lstm/``)::
 
     cf/X_sel.npy                  selected factual instances, (n_cf, T, k)
     cf/X_cf_<Method>.npy           one array per CF method, (n_cf, T, k)
+    cf/no_cf_found_<Method>.npy    Boolean failed-search status, (n_cf,)
+    cf/no_cf_found_provenance.json generated vs inferred status source per method
+    cf/recourse_diagnostics_*.json CARLA/PearlCARLA lambda-backoff diagnostics
     shift_vr.json                 Axis B: validity-retention under a noise shift, all CF methods
 
 Usage
@@ -109,14 +112,47 @@ def build_methods(X_train, y_train, target_class: int = TARGET_CLASS) -> dict:
     }
 
 
-def generate_cfs(method, X, clf, graph, mech) -> np.ndarray:
-    """Generate one CF per instance, routing graph/mechanism to causal methods."""
-    params = inspect.signature(method.generate_batch).parameters
+def _call_batch(batch_fn, X, clf, graph, mech):
+    """Call a bound batch method with its declared causal arguments."""
+    params = inspect.signature(batch_fn).parameters
     if "graph" in params or "mechanism" in params:
-        cfs = method.generate_batch(X, clf, graph, mech)
+        return batch_fn(X, clf, graph, mech)
+    return batch_fn(X, clf)
+
+
+def generate_cfs(method, X, clf, graph, mech, *, with_status: bool = False):
+    """Generate one CF per instance, optionally returning failed-search status.
+
+    The default remains the historical ndarray-only return used by Phase 07.
+    Phase 03 requests status explicitly. Methods without a status API receive
+    an all-false vector whose provenance is marked ``inferred``.
+    """
+    status_fn = getattr(method, "generate_batch_with_status", None)
+    if with_status and callable(status_fn):
+        cfs, no_cf_found = _call_batch(status_fn, X, clf, graph, mech)
+        status_source = "generated"
     else:
-        cfs = method.generate_batch(X, clf)
-    return np.asarray(cfs, dtype=np.float32)
+        cfs = _call_batch(method.generate_batch, X, clf, graph, mech)
+        no_cf_found = np.zeros(len(X), dtype=bool)
+        status_source = "inferred"
+
+    cfs = np.asarray(cfs, dtype=np.float32)
+    if not with_status:
+        return cfs
+
+    no_cf_found = np.asarray(no_cf_found)
+    if no_cf_found.dtype != np.bool_:
+        raise TypeError(f"no_cf_found must have bool dtype, got {no_cf_found.dtype}")
+    if no_cf_found.shape != (len(cfs),):
+        raise ValueError(
+            f"no_cf_found shape {no_cf_found.shape} does not match CF batch ({len(cfs)},)"
+        )
+    status_info = {
+        "source": status_source,
+        "n": len(cfs),
+        "n_no_cf_found": int(no_cf_found.sum()),
+    }
+    return cfs, no_cf_found, status_info
 
 
 def load_or_make_shift_test(cfg, out_dir):
@@ -179,15 +215,32 @@ def run(
     # Keep the generated arrays: Shift-VR's base half is exactly this work, so
     # handing them over below saves a full redundant generation pass.
     generated: dict[str, np.ndarray] = {}
+    status_provenance: dict[str, dict] = {}
     for name, method in all_methods.items():
         print(f"[03] generating CFs: {name} ...")
         try:
-            cfs = generate_cfs(method, X_sel, clf, graph, mech)
+            cfs, no_cf_found, status_info = generate_cfs(
+                method, X_sel, clf, graph, mech, with_status=True
+            )
             np.save(cf_dir / f"X_cf_{name}.npy", cfs)
+            np.save(cf_dir / f"no_cf_found_{name}.npy", no_cf_found)
             generated[name] = cfs
-            print(f"     -> {cf_dir / f'X_cf_{name}.npy'}")
+            status_provenance[name] = status_info
+            diagnostics = getattr(method, "last_batch_diagnostics", None)
+            if diagnostics is not None:
+                dump_json(
+                    cf_dir / f"recourse_diagnostics_{name}.json",
+                    {"method": name, "instances": diagnostics},
+                )
+            print(
+                f"     -> {cf_dir / f'X_cf_{name}.npy'}; "
+                f"no_cf_found={int(no_cf_found.sum())}/{len(no_cf_found)} "
+                f"({status_info['source']})"
+            )
         except Exception as exc:
             print(f"     {name} FAILED: {exc}")
+
+    dump_json(cf_dir / "no_cf_found_provenance.json", {"methods": status_provenance})
 
     if skip_aux:
         # CF arrays are written and complete; the auxiliary block below

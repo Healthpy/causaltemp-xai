@@ -36,7 +36,7 @@ Two recourse variants are provided, differing only in the forward-rollout
 semantics used to propagate the intervention past ``t0`` (see each class's
 docstring):
 
-* :class:`CARLARecourse` (default, unchanged since v0.1) — **noiseless**
+* :class:`CARLARecourse` — **noiseless**
   rollout: ``x_cf[t] = mechanism.forward_torch(window)`` for ``t > t0``. Scores
   ``cf_faith_rollout_hard == 1`` by construction
   (``CFfaith(semantics="noiseless_rollout")``), but the deterministic,
@@ -75,7 +75,10 @@ docstring):
   construction, unaffected by ``lam_prox``). See the M2 validation report for
   the full horizon-sweep numbers; this remains a smoke-scale finding (n=15
   instances, 1 seed) — full-scale confirmation is deferred to the PI's
-  separate `full`/`full_nl` run.
+  separate `full`/`full_nl` run. This paragraph records the historical fixed-
+  penalty experiment. The current search still tries those defaults first but,
+  after a failed search, makes one prediction-only attempt with early stopping
+  and reports whether a genuine above-tolerance intervention was found.
 """
 
 from __future__ import annotations
@@ -87,6 +90,14 @@ import torch
 import torch.nn.functional as F
 
 from causaltemp_xai.benchmarks.mechanisms import lag_window as _lag_window
+from causaltemp_xai.scm.intervention import INTERVENTION_TOL
+
+# The first attempt always uses the configured ``lam_prox``. A failed search
+# gets one prediction-only fallback with early stopping at the first genuine
+# flip. This keeps worst-case optimiser work at 2x. Six successive halvings
+# were tested on the current ``smoke_nl`` substrate and still produced 0/3
+# flips, so a shallow geometric backoff only repeated the same local optimum.
+PREDICTION_ONLY_FALLBACK_LAM = 0.0
 
 
 def _resolve_t0_candidates(
@@ -137,8 +148,10 @@ class CARLARecourse:
         delta_actionable = delta * actionable_mask
         x[t0] = x_orig[t0] + delta_actionable
 
-    minimising ``lam_pred * CE(model(x_cf), target) + lam_prox * ||delta||^2``,
-    then deterministically rolls the mechanism forward for every ``t > t0``
+    minimising ``lam_pred * CE(model(x_cf), target) + lam_prox * ||delta||^2``.
+    The configured penalty is tried first; a failed search gets one prediction-
+    only fallback with early stopping. It then deterministically rolls the mechanism forward
+    for every ``t > t0``
     (:meth:`_rollout`) -- so the intervention propagates through the SCM by
     construction, not via a separately-encoded causal-ordering step. See
     :meth:`generate`'s docstring for the full contract.
@@ -154,18 +167,16 @@ class CARLARecourse:
     lam_pred : float
         Prediction-loss weight.
     lam_prox : float
-        Proximity regularisation weight.
+        Initial proximity regularisation weight. Successful first-round cases
+        use this value exactly; failed searches use a bounded prediction-only fallback.
     lr : float
         Adam learning rate.
     n_steps : int
         Gradient-descent iterations.
     t0_fractions : tuple[float, ...]
         Candidate intervention timesteps as fractions of ``T``. The default
-        ``(0.25, 0.5)`` is the locked benchmark setting and is deliberately
-        **not** tuned: PearlCARLA's ``validity = 0.00`` under it is the horizon
-        result, not a misconfiguration, so changing this default would select
-        the regime where the method succeeds (Descoped Items,
-        2026-07-31).
+        ``(0.25, 0.5)`` is the locked benchmark setting; the fix adapts the
+        penalty rather than selecting a different intervention horizon.
     t0_steps : tuple[int, ...] | None
         **Absolute** candidate intervention timesteps. When given, takes
         precedence over ``t0_fractions``. This is the M4d horizon-sweep entry
@@ -226,14 +237,14 @@ class CARLARecourse:
                 rows.append(mechanism.forward_torch(window))
         return torch.stack(rows, dim=0)  # (T, k)
 
-    def generate(
+    def _generate_one(
         self,
         x: np.ndarray,
         model,
         graph: np.ndarray,
         mechanism,
-    ) -> np.ndarray:
-        """Generate a causally-faithful recourse for instance *x*.
+    ) -> tuple[np.ndarray, bool]:
+        """Return ``(cf, found)`` for one instance.
 
         Parameters
         ----------
@@ -246,18 +257,9 @@ class CARLARecourse:
         mechanism : Mechanism
             Transition mechanism producing the deterministic next-step mean.
 
-        Returns
-        -------
-        cf : ndarray of shape ``(T, k)``.
-
-        Notes
-        -----
-        Only ``x[t0]`` (on actionable variables) is free; everything before
-        ``t0`` is held equal to ``x`` (zero retroactive change) and everything
-        after ``t0`` is the deterministic noiseless VAR rollout, so the CF is
-        causally faithful (rollout-hard = 1) by construction. The intervention
-        point ``t0`` is chosen from a small early candidate set; the best
-        (flip achieved, lowest proximity) CF is returned.
+        A result is found only when it reaches ``target_class`` and its direct
+        actionable intervention exceeds :data:`INTERVENTION_TOL`. Failed
+        candidates are ranked by prediction loss, never by smallest edit.
         """
         x_arr = np.asarray(x, dtype=np.float32)
         T, k = x_arr.shape
@@ -272,37 +274,103 @@ class CARLARecourse:
 
         candidates = _resolve_t0_candidates(T, self.t0_fractions, self.t0_steps)
 
-        best = None  # (flipped, prox, cf_array)
-        for t0 in candidates:
-            delta = torch.zeros(k, requires_grad=True)
-            optimiser = torch.optim.Adam([delta], lr=self.lr)
-            x_orig_t0 = x_t[t0]
+        attempted_lambdas: list[float] = []
+        all_candidates: list[dict] = []
+        best = None
 
-            for _step in range(self.n_steps):
-                optimiser.zero_grad()
-                x_t0 = x_orig_t0 + mask * delta
-                x_cf = self._rollout(x_t, t0, x_t0, mechanism)
-                logits = model.torch_logits(x_cf)
-                pred_loss = F.cross_entropy(logits, target)
-                prox = ((mask * delta) ** 2).sum()
-                loss = self.lam_pred * pred_loss + self.lam_prox * prox
-                loss.backward()
-                optimiser.step()
+        # Attempt the configured objective first. If it fails, use one
+        # prediction-only fallback and stop at the first genuine flip. A
+        # six-halving probe still found 0/3 flips on the current smoke_nl
+        # substrate while costing 7x, so repeating shallow backoffs is neither
+        # effective nor an acceptable production runtime.
+        for backoff_round, effective_lam in enumerate(
+            (self.lam_prox, PREDICTION_ONLY_FALLBACK_LAM)
+        ):
+            attempted_lambdas.append(float(effective_lam))
+            round_candidates = []
 
-            with torch.no_grad():
-                x_t0 = x_orig_t0 + mask * delta
-                x_cf = self._rollout(x_t, t0, x_t0, mechanism)
-                logits = model.torch_logits(x_cf)
-                flipped = int(logits.argmax(dim=1).item()) == self.target_class
-                prox_val = float(((mask * delta) ** 2).sum().item())
-                cf_arr = x_cf.detach().cpu().numpy().astype(np.float32)
+            for t0 in candidates:
+                delta = torch.zeros(k, requires_grad=True)
+                optimiser = torch.optim.Adam([delta], lr=self.lr)
+                x_orig_t0 = x_t[t0]
 
-            cand = (flipped, prox_val, cf_arr)
-            # Prefer a flipping CF; among same flip-status, prefer lower proximity.
-            if best is None or (cand[0], -cand[1]) > (best[0], -best[1]):
-                best = cand
+                for _step in range(self.n_steps):
+                    optimiser.zero_grad()
+                    actionable_delta = mask * delta
+                    x_t0 = x_orig_t0 + actionable_delta
+                    x_cf = self._rollout(x_t, t0, x_t0, mechanism)
+                    logits = model.torch_logits(x_cf)
+                    pred_loss = F.cross_entropy(logits, target)
+                    prox = (actionable_delta**2).sum()
+                    if (
+                        backoff_round > 0
+                        and int(logits.argmax(dim=1).item()) == self.target_class
+                        and float(actionable_delta.detach().abs().max().item()) > INTERVENTION_TOL
+                    ):
+                        break
+                    loss = self.lam_pred * pred_loss + effective_lam * prox
+                    loss.backward()
+                    optimiser.step()
 
-        return best[2]
+                with torch.no_grad():
+                    actionable_delta = mask * delta
+                    x_t0 = x_orig_t0 + actionable_delta
+                    x_cf = self._rollout(x_t, t0, x_t0, mechanism)
+                    logits = model.torch_logits(x_cf)
+                    pred_loss_val = float(F.cross_entropy(logits, target).item())
+                    flipped = int(logits.argmax(dim=1).item()) == self.target_class
+                    prox_val = float((actionable_delta**2).sum().item())
+                    delta_max = float(actionable_delta.abs().max().item())
+                    cf_arr = x_cf.detach().cpu().numpy().astype(np.float32)
+
+                cand = {
+                    "found": bool(flipped and delta_max > INTERVENTION_TOL),
+                    "flipped": bool(flipped),
+                    "pred_loss": pred_loss_val,
+                    "proximity": prox_val,
+                    "delta_max": delta_max,
+                    "cf": cf_arr,
+                    "t0": int(t0),
+                    "backoff_round": int(backoff_round),
+                    "effective_lam_prox": float(effective_lam),
+                }
+                round_candidates.append(cand)
+                all_candidates.append(cand)
+
+            successful = [cand for cand in round_candidates if cand["found"]]
+            if successful:
+                best = min(successful, key=lambda cand: cand["proximity"])
+                break
+
+        if best is None:
+            # When nothing succeeds, retain the candidate closest to the target
+            # boundary. The previous ``-proximity`` tie-break actively selected
+            # the most degenerate no-op in this branch.
+            best = min(all_candidates, key=lambda cand: (cand["pred_loss"], cand["proximity"]))
+
+        self.last_generation_diagnostics = {
+            "attempted_lam_prox": attempted_lambdas,
+            "selected_round": best["backoff_round"],
+            "selected_t0": best["t0"],
+            "selected_effective_lam_prox": best["effective_lam_prox"],
+            "selected_prediction_loss": best["pred_loss"],
+            "selected_proximity": best["proximity"],
+            "selected_delta_max": best["delta_max"],
+            "classifier_target_reached": best["flipped"],
+            "found": best["found"],
+        }
+        return best["cf"], bool(best["found"])
+
+    def generate(
+        self,
+        x: np.ndarray,
+        model,
+        graph: np.ndarray,
+        mechanism,
+    ) -> np.ndarray:
+        """Generate one CF while preserving the historical ndarray-only API."""
+        cf, _found = self._generate_one(x, model, graph, mechanism)
+        return cf
 
     # ------------------------------------------------------------------
     # CFExplainer alias interface + causal-info setter
@@ -326,13 +394,27 @@ class CARLARecourse:
         return self.generate(x, classifier, graph, mechanism)
 
     def generate_batch(self, X: np.ndarray, model, graph=None, mechanism=None) -> np.ndarray:
-        """Generate one CF per instance in ``X``."""
+        """Generate one CF per instance, preserving the ndarray-only API."""
+        cfs, _no_cf_found = self.generate_batch_with_status(X, model, graph, mechanism)
+        return cfs
+
+    def generate_batch_with_status(
+        self, X: np.ndarray, model, graph=None, mechanism=None
+    ) -> tuple[np.ndarray, np.ndarray]:
+        """Return counterfactuals plus a Boolean ``no_cf_found`` vector."""
         X = np.asarray(X, dtype=np.float32)
         if graph is None:
             graph = getattr(self, "_graph", None)
         if mechanism is None:
             mechanism = getattr(self, "_mechanism", None)
-        return np.stack([self.generate(x, model, graph, mechanism) for x in X], axis=0)
+        cfs, found, diagnostics = [], [], []
+        for x in X:
+            cf, found_i = self._generate_one(x, model, graph, mechanism)
+            cfs.append(cf)
+            found.append(found_i)
+            diagnostics.append(dict(self.last_generation_diagnostics))
+        self.last_batch_diagnostics = diagnostics
+        return np.stack(cfs, axis=0), ~np.asarray(found, dtype=bool)
 
 
 # =============================================================================
@@ -358,20 +440,19 @@ class PearlCARLARecourse:
     the base class's ``noiseless_rollout`` semantics) — targeting the
     v0.1-documented long-horizon validity collapse of the noiseless variant.
 
-    **``lam_prox`` default differs from ``CARLARecourse`` (0.1 vs 0.5) — this
-    is a deliberate, empirically-motivated choice, not an oversight.** The
+    **``lam_prox`` starts lower than ``CARLARecourse`` (0.1 vs 0.5).** The
     Pearl delta obeys the homogeneous recursion
     ``delta[t] = sum_l A_l @ delta[t-l]`` (factual noise cancels exactly), so
     under this benchmark's stability requirement (spectral radius < 1) any
     one-shot intervention decays geometrically and needs a proportionally
     larger ``delta[t0]`` to still matter at a long horizon. CARLA's default
-    ``lam_prox=0.5`` quadratically over-penalizes that larger delta and,
+    ``lam_prox=0.5`` quadratically over-penalized that larger delta and,
     empirically (smoke-scale, 2026-07-08), turns a partial long-horizon
     validity problem into a near-total one (0.07 vs CARLA's 0.40 at the
-    longest tested horizon). ``lam_prox=0.1`` closes most of that gap (see
-    module docstring for the full horizon sweep) while ``pearl_hard=1`` is
-    unaffected either way (it is a property of the rollout construction, not
-    of the optimisation weights).
+    longest tested horizon). The current implementation preserves 0.1 as the
+    first attempt, then applies the same bounded prediction-only fallback as
+    CARLA when no genuine flip is found. ``pearl_hard=1`` is unaffected (it is a property
+    of the rollout construction, not of the optimisation weight).
 
     Deliberately **not** a subclass of / refactor into :class:`CARLARecourse`:
     kept fully independent (duplicating the small optimisation-loop structure)
@@ -465,14 +546,14 @@ class PearlCARLARecourse:
                 rows.append(mechanism.forward_torch(window) + eps[t])
         return torch.stack(rows, dim=0)  # (T, k)
 
-    def generate(
+    def _generate_one(
         self,
         x: np.ndarray,
         model,
         graph: np.ndarray,
         mechanism,
-    ) -> np.ndarray:
-        """Generate a Pearl-faithful causal recourse for instance *x*.
+    ) -> tuple[np.ndarray, bool]:
+        """Return ``(cf, found)`` for one Pearl-faithful search.
 
         Same signature, actionability masking, t0-candidate search, and
         Adam-optimised objective as ``CARLARecourse.generate`` — only the
@@ -495,48 +576,120 @@ class PearlCARLARecourse:
 
         candidates = _resolve_t0_candidates(T, self.t0_fractions, self.t0_steps)
 
-        best = None  # (flipped, prox, cf_array)
-        for t0 in candidates:
-            delta = torch.zeros(k, requires_grad=True)
-            optimiser = torch.optim.Adam([delta], lr=self.lr)
-            x_orig_t0 = x_t[t0]
+        attempted_lambdas: list[float] = []
+        all_candidates: list[dict] = []
+        best = None
 
-            for _step in range(self.n_steps):
-                optimiser.zero_grad()
-                x_t0 = x_orig_t0 + mask * delta
-                x_cf = self._rollout_pearl(x_t, t0, x_t0, mechanism, eps)
-                logits = model.torch_logits(x_cf)
-                pred_loss = F.cross_entropy(logits, target)
-                prox = ((mask * delta) ** 2).sum()
-                loss = self.lam_pred * pred_loss + self.lam_prox * prox
-                loss.backward()
-                optimiser.step()
+        for backoff_round, effective_lam in enumerate(
+            (self.lam_prox, PREDICTION_ONLY_FALLBACK_LAM)
+        ):
+            attempted_lambdas.append(float(effective_lam))
+            round_candidates = []
 
-            with torch.no_grad():
-                x_t0 = x_orig_t0 + mask * delta
-                x_cf = self._rollout_pearl(x_t, t0, x_t0, mechanism, eps)
-                logits = model.torch_logits(x_cf)
-                flipped = int(logits.argmax(dim=1).item()) == self.target_class
-                prox_val = float(((mask * delta) ** 2).sum().item())
-                cf_arr = x_cf.detach().cpu().numpy().astype(np.float32)
+            for t0 in candidates:
+                delta = torch.zeros(k, requires_grad=True)
+                optimiser = torch.optim.Adam([delta], lr=self.lr)
+                x_orig_t0 = x_t[t0]
 
-            cand = (flipped, prox_val, cf_arr)
-            # Prefer a flipping CF; among same flip-status, prefer lower proximity.
-            if best is None or (cand[0], -cand[1]) > (best[0], -best[1]):
-                best = cand
+                for _step in range(self.n_steps):
+                    optimiser.zero_grad()
+                    actionable_delta = mask * delta
+                    x_t0 = x_orig_t0 + actionable_delta
+                    x_cf = self._rollout_pearl(x_t, t0, x_t0, mechanism, eps)
+                    logits = model.torch_logits(x_cf)
+                    pred_loss = F.cross_entropy(logits, target)
+                    prox = (actionable_delta**2).sum()
+                    if (
+                        backoff_round > 0
+                        and int(logits.argmax(dim=1).item()) == self.target_class
+                        and float(actionable_delta.detach().abs().max().item()) > INTERVENTION_TOL
+                    ):
+                        break
+                    loss = self.lam_pred * pred_loss + effective_lam * prox
+                    loss.backward()
+                    optimiser.step()
 
-        return best[2]
+                with torch.no_grad():
+                    actionable_delta = mask * delta
+                    x_t0 = x_orig_t0 + actionable_delta
+                    x_cf = self._rollout_pearl(x_t, t0, x_t0, mechanism, eps)
+                    logits = model.torch_logits(x_cf)
+                    pred_loss_val = float(F.cross_entropy(logits, target).item())
+                    flipped = int(logits.argmax(dim=1).item()) == self.target_class
+                    prox_val = float((actionable_delta**2).sum().item())
+                    delta_max = float(actionable_delta.abs().max().item())
+                    cf_arr = x_cf.detach().cpu().numpy().astype(np.float32)
+
+                cand = {
+                    "found": bool(flipped and delta_max > INTERVENTION_TOL),
+                    "flipped": bool(flipped),
+                    "pred_loss": pred_loss_val,
+                    "proximity": prox_val,
+                    "delta_max": delta_max,
+                    "cf": cf_arr,
+                    "t0": int(t0),
+                    "backoff_round": int(backoff_round),
+                    "effective_lam_prox": float(effective_lam),
+                }
+                round_candidates.append(cand)
+                all_candidates.append(cand)
+
+            successful = [cand for cand in round_candidates if cand["found"]]
+            if successful:
+                best = min(successful, key=lambda cand: cand["proximity"])
+                break
+
+        if best is None:
+            best = min(all_candidates, key=lambda cand: (cand["pred_loss"], cand["proximity"]))
+
+        self.last_generation_diagnostics = {
+            "attempted_lam_prox": attempted_lambdas,
+            "selected_round": best["backoff_round"],
+            "selected_t0": best["t0"],
+            "selected_effective_lam_prox": best["effective_lam_prox"],
+            "selected_prediction_loss": best["pred_loss"],
+            "selected_proximity": best["proximity"],
+            "selected_delta_max": best["delta_max"],
+            "classifier_target_reached": best["flipped"],
+            "found": best["found"],
+        }
+        return best["cf"], bool(best["found"])
+
+    def generate(
+        self,
+        x: np.ndarray,
+        model,
+        graph: np.ndarray,
+        mechanism,
+    ) -> np.ndarray:
+        """Generate one CF while preserving the historical ndarray-only API."""
+        cf, _found = self._generate_one(x, model, graph, mechanism)
+        return cf
 
     def generate_batch(
         self, X: np.ndarray, model, graph: np.ndarray = None, mechanism=None
     ) -> np.ndarray:
-        """Generate one CF per instance in ``X`` of shape ``(N, T, k)``."""
+        """Generate one CF per instance, preserving the ndarray-only API."""
+        cfs, _no_cf_found = self.generate_batch_with_status(X, model, graph, mechanism)
+        return cfs
+
+    def generate_batch_with_status(
+        self, X: np.ndarray, model, graph: np.ndarray = None, mechanism=None
+    ) -> tuple[np.ndarray, np.ndarray]:
+        """Return counterfactuals plus a Boolean ``no_cf_found`` vector."""
         X = np.asarray(X, dtype=np.float32)
         if graph is None:
             graph = getattr(self, "_graph", None)
         if mechanism is None:
             mechanism = getattr(self, "_mechanism", None)
-        return np.stack([self.generate(x, model, graph, mechanism) for x in X], axis=0)
+        cfs, found, diagnostics = [], [], []
+        for x in X:
+            cf, found_i = self._generate_one(x, model, graph, mechanism)
+            cfs.append(cf)
+            found.append(found_i)
+            diagnostics.append(dict(self.last_generation_diagnostics))
+        self.last_batch_diagnostics = diagnostics
+        return np.stack(cfs, axis=0), ~np.asarray(found, dtype=bool)
 
     # ------------------------------------------------------------------
     # CFExplainer alias interface + causal-info setter (parity with CARLARecourse)

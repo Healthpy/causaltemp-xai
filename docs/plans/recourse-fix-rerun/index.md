@@ -190,7 +190,7 @@ multi-seed campaign is recorded in the Backlog as the natural successor plan.
 
 ### Recourse layer (stages 1 and 3)
 - `causaltemp_xai/methods/counterfactual/carla.py` -- candidate tie-break, bounded proximity
-  backoff, compatibility-preserving status API, and documentation.
+  fallback, compatibility-preserving status API, and documentation.
 - `causaltemp_xai/config.py` -- optional explicit recourse defaults, only if needed.
 - `experiments/03_run_cf_methods.py`, `experiments/04_evaluate_axes.py` -- persist and validate
   no-CF sidecars while preserving classifier-only validity.
@@ -223,7 +223,7 @@ multi-seed campaign is recorded in the Backlog as the natural successor plan.
 
 | # | Stage | Status | Notes | Commit |
 |---|-------|--------|-------|--------|
-| 1 | [Fix the recourse layer](stages/01-fix-recourse-layer.md) | PENDING | | |
+| 1 | [Fix the recourse layer](stages/01-fix-recourse-layer.md) | DONE | `smoke_nl` n=20: both variants validity 1.00, no-CF/vacuity/degeneracy 0.00, and 20/20 interventions above tolerance; 576 passed, 1 xfailed. | this commit |
 | 2 | [Metric reporting fixes](stages/02-metric-reporting-fixes.md) | PENDING | | |
 | 3 | [Regression tests](stages/03-regression-tests.md) | PENDING | | |
 | 4 | [Helios job scripts](stages/04-helios-job-scripts.md) | PENDING | | |
@@ -378,6 +378,15 @@ successor plan, to run once the fix itself is known good.
 **2026-08-21 — Validity remains classifier-only.** Keep `validity` as the classifier's
 target-class rate. Do not add a composite recourse-validity metric. `no_cf_found`, vacuity, and
 degeneracy remain separate diagnostics.
+
+**2026-08-21 — Prediction-only fallback replaces six halvings.** Stage-1 execution measured
+0/3 CARLA and 0/3 PearlCARLA flips after six successive `lam_prox` halvings on regenerated
+`smoke_nl`, at 7x optimiser cost. The implementation now tries the configured objective once,
+then makes one `lam_prox=0` attempt with early stopping at the first genuine flip. This bounds
+worst-case optimiser work at 2x while escaping the failed objective's local optimum.
+On the deterministic `smoke_nl` n=20 substrate (train/val/test accuracy 0.96/0.98/0.96),
+CARLA took 65.0 s and PearlCARLA 103.9 s locally. Both reached validity 1.00 with no-CF,
+vacuity, and degeneracy all 0.00; every selected intervention exceeded the tolerance.
 
 **2026-08-21 — Preserve joint faithfulness-validity; add conditional faithfulness.** The existing
 `cf_faith_*_hard_valid` keys are the tested joint rate `P(hard-faithful AND valid)` and remain

@@ -34,7 +34,7 @@ before spending grant hours.
    item must pass or be explicitly waived with a reason recorded in the index.
 
 5. **Measure the cost delta and resize walltime.** Time phase 03 on `smoke_nl` before and after
-   the stage-1 lambda backoff. Compare with the run-1 constants in `resources/commands.md` and
+   the stage-1 prediction-only fallback. Compare with the run-1 constants in `resources/commands.md` and
    update `slurm/helios_full_run.sbatch` if runtime increases materially.
 
 6. **Compare against run 1 side by side.** Produce a small diff table: run-1 value vs run-2-local

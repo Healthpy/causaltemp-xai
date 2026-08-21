@@ -57,6 +57,35 @@ from experiments._common import (  # noqa: E402
     write_csv,
 )
 
+STATUS_REQUIRED_METHODS = frozenset({"CARLA", "PearlCARLA"})
+
+
+def load_no_cf_found(cf_dir: Path, method_name: str, n: int) -> np.ndarray:
+    """Load and strictly validate a Phase-03 failed-search sidecar.
+
+    CARLA methods have a native status API, so their sidecar is mandatory.
+    Older artifacts for other methods fall back to all-false inferred status.
+    """
+    path = cf_dir / f"no_cf_found_{method_name}.npy"
+    if not path.exists():
+        if method_name in STATUS_REQUIRED_METHODS:
+            raise SystemExit(
+                f"missing {path}; rerun Phase 03 so {method_name} search failures "
+                "cannot be silently scored as successful searches"
+            )
+        print(
+            f"[04] {method_name}: no failed-search sidecar; inferring all false for old artifact",
+            file=sys.stderr,
+        )
+        return np.zeros(n, dtype=bool)
+
+    status = np.load(path, allow_pickle=False)
+    if status.dtype != np.bool_:
+        raise SystemExit(f"{path} must have bool dtype, got {status.dtype}")
+    if status.shape != (n,):
+        raise SystemExit(f"{path} has shape {status.shape}; expected ({n},)")
+    return status
+
 
 def run(config_name: str, out_dir, seed: int | None = None) -> None:
     cfg = get_config(config_name)
@@ -85,7 +114,15 @@ def run(config_name: str, out_dir, seed: int | None = None) -> None:
     ckpt = Path(out_dir) / cfg.name / "lstm.pt"
     clf = LSTMClassifier.load(ckpt)
 
+    status_provenance_path = cf_dir / "no_cf_found_provenance.json"
+    if status_provenance_path.exists():
+        with open(status_provenance_path) as fh:
+            status_provenance = json.load(fh).get("methods", {})
+    else:
+        status_provenance = {}
+
     summary, all_instance_rows, table_rows = [], [], []
+    status_sources: dict[str, str] = {}
     for cf_path in cf_paths:
         method_name = cf_path.stem[len("X_cf_") :]
         # Method discovery is filename-driven, so a CF array left behind by a
@@ -102,11 +139,33 @@ def run(config_name: str, out_dir, seed: int | None = None) -> None:
             )
             continue
         cfs = np.load(cf_path)
-        rec = evaluate_method(clf, X_sel, cfs, data["X_train"], graph, mech, target_class=1)
+        no_cf_found = load_no_cf_found(cf_dir, method_name, len(cfs))
+        status_sources[method_name] = status_provenance.get(method_name, {}).get(
+            "source",
+            "sidecar" if (cf_dir / f"no_cf_found_{method_name}.npy").exists() else "inferred",
+        )
+        rec = evaluate_method(
+            clf,
+            X_sel,
+            cfs,
+            data["X_train"],
+            graph,
+            mech,
+            target_class=1,
+            no_cf_found=no_cf_found,
+        )
         rec["method"] = method_name
 
         instance_rows, agg_row = score_and_collect(
-            cfg, "lstm", method_name, X_sel, cfs, graph, mech, clf=clf
+            cfg,
+            "lstm",
+            method_name,
+            X_sel,
+            cfs,
+            graph,
+            mech,
+            clf=clf,
+            no_cf_found=no_cf_found,
         )
         all_instance_rows.extend(instance_rows)
         table_rows.append(agg_row)
@@ -128,7 +187,8 @@ def run(config_name: str, out_dir, seed: int | None = None) -> None:
             f"prox_l1={rec['proximity_l1']:.3f} "
             f"cf_faith_rollout_hard={rec['cf_faith_rollout_hard']:.2f} "
             f"cf_faith_pearl_hard={rec['cf_faith_pearl_hard']:.2f} "
-            f"frac_vacuous={rec['frac_vacuous']:.2f}"
+            f"frac_vacuous={rec['frac_vacuous']:.2f} "
+            f"frac_no_cf_found={rec['frac_no_cf_found']:.2f}"
         )
 
     write_csv(res_dir / "per_instance.csv", all_instance_rows)
@@ -149,7 +209,12 @@ def run(config_name: str, out_dir, seed: int | None = None) -> None:
     # silently merging pre-removal files into freshly regenerated summaries, which
     # a clean checkout could not reproduce (RISK-21).
     results = {
-        "provenance": {"config": cfg.as_dict(), "seed": cfg.seed, "n_cf": len(X_sel)},
+        "provenance": {
+            "config": cfg.as_dict(),
+            "seed": cfg.seed,
+            "n_cf": len(X_sel),
+            "no_cf_found_status_source": status_sources,
+        },
         "methods": summary,  # Axis C + CF-faith, per CF method
         "axis_a": axis_a,  # Axis A: dataset graph diagnostic (Phase 01)
         "shift_vr": shift,  # Axis B: CF-method validity retention (Phase 03)

@@ -26,8 +26,8 @@ about 16 wasted GPU-hours.
      `plgcountercontex-gpu-gh200`. Peak MaxRSS in run 1 was about 3 GB, so 24G is ample — do not
      over-request.
    - Walltime from run 1's measured elapsed plus headroom: `full` took 12:07:25 under a 16:00:00
-     budget and `full_nl` took 12:05:35 under 30:00:00. Add headroom for the bounded lambda
-     backoff from stage 1 and use stage 5's measured smoke-tier delta to size it.
+     budget and `full_nl` took 12:05:35 under 30:00:00. Add headroom for the bounded
+     prediction-only fallback from stage 1 and use stage 5's measured smoke-tier delta to size it.
    - The mandatory preamble from `resources/commands.md` (project and heavy paths, cache
      variables, `module purge`, `module load ML-bundle/25.10`, venv activation).
    - **The threading fix, verbatim:**

@@ -41,6 +41,7 @@ def evaluate_method(
     graph: np.ndarray,
     mechanism,
     target_class: int = 1,
+    no_cf_found: np.ndarray | None = None,
 ) -> dict:
     """Compute the batch-averaged metric suite for one CF method.
 
@@ -62,6 +63,10 @@ def evaluate_method(
         transition), passed through to CF-faith.
     target_class:
         Desired output class for validity.
+    no_cf_found:
+        Optional Boolean failed-search vector aligned with ``CFs``. It is
+        reported as a separate diagnostic and never changes classifier
+        validity or any faithfulness score.
 
     Returns
     -------
@@ -136,6 +141,16 @@ def evaluate_method(
         CFs = CFs[np.newaxis]
     if len(X_orig) != len(CFs):
         raise ValueError(f"X_orig ({len(X_orig)}) and CFs ({len(CFs)}) batch sizes differ")
+    if no_cf_found is None:
+        no_cf_found_a = np.zeros(len(CFs), dtype=bool)
+    else:
+        no_cf_found_a = np.asarray(no_cf_found)
+        if no_cf_found_a.dtype != np.bool_:
+            raise TypeError(f"no_cf_found must have bool dtype, got {no_cf_found_a.dtype}")
+        if no_cf_found_a.shape != (len(CFs),):
+            raise ValueError(
+                f"no_cf_found shape {no_cf_found_a.shape} does not match CF batch ({len(CFs)},)"
+            )
 
     # Instantiate the two scorers once (outside the loop).
     rollout = CFfaith(semantics="noiseless_rollout")
@@ -228,6 +243,11 @@ def evaluate_method(
         # and posts cf_faith_rollout_hard=1.0 on a CF that did nothing.
         "n_vacuous": int(np.sum(vacuous)),
         "frac_vacuous": float(np.mean(vacuous)) if len(CFs) else float("nan"),
+        # Search outcome from the generator. This is deliberately separate
+        # from classifier validity: a returned trajectory can reach the target
+        # because of noiseless continuation even when no actionable CF exists.
+        "n_no_cf_found": int(no_cf_found_a.sum()),
+        "frac_no_cf_found": (float(no_cf_found_a.mean()) if len(no_cf_found_a) else float("nan")),
         # Do-complexity diagnostic (2026-08-03, RISK-18): how densely the method
         # has to intervene for the mechanism to reproduce its own proposal.
         # Generalises frac_vacuous, which is the D == 0 row. Reported so that

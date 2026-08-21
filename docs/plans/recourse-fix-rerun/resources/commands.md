@@ -150,5 +150,5 @@ leaves the queue — recheck before declaring a job missing.
 | Run-1 elapsed | `full` 12:07:25, `full_nl` 12:05:35, reports 01:53:11; ~26 GPU-h total |
 | Per-method cost | CftsConfeti 84 s/instance, PearlCARLA 52, CARLA 32, TSCausal 17; Wachter/COMTE/Cels near-free |
 
-The stage-1 lambda backoff can multiply optimizer work on failed cases. Compare the stage-5
-smoke runtime with these constants and re-size walltimes before submission if needed.
+The stage-1 prediction-only fallback can at most double optimizer work on failed cases. Compare
+the stage-5 smoke runtime with these constants and re-size walltimes before submission if needed.

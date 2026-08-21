@@ -88,6 +88,8 @@ AXIS_METRICS: dict[str, tuple[str, ...]] = {
         "frac_degenerate",
         "n_vacuous",
         "frac_vacuous",
+        "n_no_cf_found",
+        "frac_no_cf_found",
         # model-vs-world audit
         "A_model_proposed",
         "B_model_oracle",
