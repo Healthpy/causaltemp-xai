@@ -229,7 +229,7 @@ multi-seed campaign is recorded in the Backlog as the natural successor plan.
 |---|-------|--------|-------|--------|
 | 1 | [Fix the recourse layer](stages/01-fix-recourse-layer.md) | DONE | `smoke_nl` gates pass; canonical SCM-control classes and run-2 schema labels replace the misleading names; historical results remain unchanged; 577 passed, 1 xfailed. | `c4bcc16` + this commit |
 | 2 | [Metric reporting fixes](stages/02-metric-reporting-fixes.md) | DONE | D4/D5/D8 fixed; archived table rebuild byte-identical; real `smoke_nl` Pearl oracle anchor = 1.0; 587 passed, 1 xfailed. | this commit |
-| 3 | [Regression tests](stages/03-regression-tests.md) | PENDING | | |
+| 3 | [Regression tests](stages/03-regression-tests.md) | DONE | Nonlinear recourse, status sidecars, metric denominators, conditional faithfulness, oracle coverage, publication filtering, and source-scoped provenance pinned; 605 passed, 1 xfailed. | this commit |
 | 4 | [Helios job scripts](stages/04-helios-job-scripts.md) | PENDING | | |
 | 5 | [Local full validation](stages/05-local-full-validation.md) | PENDING | | |
 | 6 | [Cluster preflight and submit](stages/06-cluster-submit.md) | PENDING | **HUMAN GATE** | |
@@ -338,6 +338,7 @@ Leave empty until execution surfaces something.
 
 | # | Stage | Symptom | Root Cause | Resolution | Fixed By |
 |---|-------|---------|-----------|------------|----------|
+| 1 | 3 | A phase writing tracked results made every later result report `git_dirty=true` even when source code matched the recorded commit. | `git_provenance()` used one unfiltered `git status` result for code reproducibility. | `git_dirty` now excludes `results`, `notebooks`, and `slurm/logs`; unfiltered state is preserved as `git_worktree_dirty` and propagated into final-table provenance. | inline |
 
 ---
 

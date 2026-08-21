@@ -132,3 +132,32 @@ class TestCFFaithValidation:
         }
         assert expected.issubset(result.keys())
         assert 0.0 <= result["validity"] <= 1.0
+
+    def test_failed_search_status_does_not_redefine_classifier_validity(self):
+        data = _dataset()
+        X, mech, graph = data["X"], data["mechanism"], data["graph"]
+        cfs = X[:N_EXAMPLES] + 0.1
+        model = _AllTargetModel()
+        successful_search = evaluate_method(
+            model,
+            X[:N_EXAMPLES],
+            cfs,
+            X,
+            graph,
+            mech,
+            target_class=1,
+            no_cf_found=np.zeros(N_EXAMPLES, dtype=bool),
+        )
+        failed_search = evaluate_method(
+            model,
+            X[:N_EXAMPLES],
+            cfs,
+            X,
+            graph,
+            mech,
+            target_class=1,
+            no_cf_found=np.ones(N_EXAMPLES, dtype=bool),
+        )
+        assert successful_search["validity"] == failed_search["validity"] == 1.0
+        assert successful_search["frac_no_cf_found"] == 0.0
+        assert failed_search["frac_no_cf_found"] == 1.0

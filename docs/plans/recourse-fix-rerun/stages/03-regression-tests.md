@@ -48,10 +48,10 @@
 
 ## Verification
 
-- [ ] `uv run pytest tests/test_methods.py tests/test_eval.py tests/test_do_complexity.py tests/test_metric_adversarial.py -q` passes.
-- [ ] The table-builder and provenance tests pass with retained smoke fixtures present.
-- [ ] `uv run pytest tests/ -q` passes.
-- [ ] `git diff --check` passes.
+- [x] `uv run pytest tests/test_methods.py tests/test_eval.py tests/test_do_complexity.py tests/test_metric_adversarial.py -q` passes.
+- [x] The table-builder and provenance tests pass with retained smoke fixtures present.
+- [x] `uv run pytest tests/ -q` passes.
+- [x] `git diff --check` passes.
 
 ---
 

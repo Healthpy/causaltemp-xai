@@ -64,10 +64,18 @@ SHIFT_VR_METRICS = ["shift_vr", "validity_base", "validity_shift"]
 # Metadata keys that live alongside the real metrics in axis_a / shift_vr /
 # pns.json top-level dicts and must NOT be mistaken for a method name or a
 # metric.
-SUMMARY_METADATA_KEYS = {"seed", "config", "git_commit", "git_dirty", "note"}
+SUMMARY_METADATA_KEYS = {
+    "seed",
+    "config",
+    "git_commit",
+    "git_dirty",
+    "git_worktree_dirty",
+    "note",
+}
 PNS_METADATA_KEYS = {
     "git_commit",
     "git_dirty",
+    "git_worktree_dirty",
     "seed",
     "config",
     "label_threshold",
@@ -335,6 +343,7 @@ def process_config(results_dir: Path, dataset: str) -> tuple[list[dict], dict, l
                 "seed": summary.get("seed"),
                 "git_commit": summary.get("git_commit"),
                 "git_dirty": summary.get("git_dirty"),
+                "git_worktree_dirty": summary.get("git_worktree_dirty"),
                 "config": summary.get("provenance", {}).get("config"),
             }
         else:

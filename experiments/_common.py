@@ -523,19 +523,32 @@ def _git(*args: str) -> str | None:
 
 @functools.lru_cache(maxsize=1)
 def git_provenance() -> dict:
-    """``{"git_commit": <sha|None>, "git_dirty": <bool|None>}`` for this checkout.
+    """Return commit plus source-scoped and unfiltered worktree dirt.
 
-    ``git_dirty`` is load-bearing for reproducibility honesty: a commit hash
-    recorded while the working tree had uncommitted changes does not identify
-    the code that produced the numbers, so the flag says so rather than letting
-    the hash imply a cleanliness it does not have. Cached -- the answer cannot
-    change within a single phase run.
+    ``git_dirty`` covers source/code paths and excludes generated or deliberately
+    omitted trees (``results``, ``notebooks``, and ``slurm/logs``). The separate
+    ``git_worktree_dirty`` flag is the unfiltered state. This lets a result run
+    identify a clean committed implementation even after an earlier phase wrote
+    tracked result files, without hiding that the checkout as a whole changed.
+    Cached -- the answer cannot change within a single phase run.
     """
     sha = _git("rev-parse", "HEAD")
     if sha is None:
-        return {"git_commit": None, "git_dirty": None}
-    status = _git("status", "--porcelain")
-    return {"git_commit": sha, "git_dirty": bool(status)}
+        return {"git_commit": None, "git_dirty": None, "git_worktree_dirty": None}
+    source_status = _git(
+        "status",
+        "--porcelain",
+        "--",
+        ":!results",
+        ":!notebooks",
+        ":!slurm/logs",
+    )
+    worktree_status = _git("status", "--porcelain")
+    return {
+        "git_commit": sha,
+        "git_dirty": bool(source_status),
+        "git_worktree_dirty": bool(worktree_status),
+    }
 
 
 def run_provenance() -> dict:
@@ -575,7 +588,7 @@ def dump_json(path: Path, obj) -> None:
 
 
 def read_run_summary_provenance(summary_path: Path) -> dict | None:
-    """Read ``seed``/``git_commit``/``git_dirty`` out of a ``summary.json``.
+    """Read source-scoped and unfiltered provenance out of ``summary.json``.
 
     Returns ``None`` if the file is missing or unreadable. A ``per_instance.csv``
     with no sibling ``summary.json`` (or one predating R7 provenance stamping)
@@ -595,6 +608,7 @@ def read_run_summary_provenance(summary_path: Path) -> dict | None:
         "seed": obj.get("seed"),
         "git_commit": obj.get("git_commit"),
         "git_dirty": obj.get("git_dirty"),
+        "git_worktree_dirty": obj.get("git_worktree_dirty"),
     }
 
 

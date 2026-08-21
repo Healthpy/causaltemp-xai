@@ -836,6 +836,7 @@ class TestJointFaithValidCriterion:
         assert result["cf_faith_rollout_hard"] == 1.0
         assert result["cf_faith_rollout_hard_valid"] == 1.0
         assert result["cf_faith_rollout_hard_given_valid"] == 1.0
+        assert result["cf_faith_pearl_hard_given_valid"] == result["cf_faith_pearl_hard"]
 
     def test_joint_credit_requires_both(self):
         """Mixed batch: joint score == mean(hard_i * valid_i), strictly below
@@ -846,15 +847,22 @@ class TestJointFaithValidCriterion:
         result = evaluate_method(_StepValueModel(), X2, CFs, X, graph, mech, target_class=1)
         preds = _StepValueModel().predict(CFs)
         rollout = CFfaith(semantics="noiseless_rollout")
+        pearl = CFfaith(semantics="pearl_delta")
         manual = []
+        manual_pearl = []
         for i in range(len(X2)):
             t = derive_intervention_t(X2[i], CFs[i])
             hard = rollout.score(X2[i], CFs[i], t, graph, mech)["hard"]
+            pearl_hard = pearl.score(X2[i], CFs[i], t, graph, mech)["hard"]
             manual.append(hard * float(preds[i] == 1))
+            manual_pearl.append(pearl_hard * float(preds[i] == 1))
         assert result["cf_faith_rollout_hard_valid"] == pytest.approx(float(np.mean(manual)))
         valid = preds == 1
         assert result["cf_faith_rollout_hard_given_valid"] == pytest.approx(
             float(np.mean(np.asarray(manual)[valid]))
+        )
+        assert result["cf_faith_pearl_hard_given_valid"] == pytest.approx(
+            float(np.mean(np.asarray(manual_pearl)[valid]))
         )
         # The tiny-edit half contributes faithfulness but no joint credit.
         assert result["cf_faith_rollout_hard_valid"] < result["cf_faith_rollout_hard"]

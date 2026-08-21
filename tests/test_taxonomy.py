@@ -25,6 +25,7 @@ NON_METRIC_KEYS = frozenset(
         "seed",
         "git_commit",
         "git_dirty",
+        "git_worktree_dirty",
         "n_scorable",
         "frac_no_intervention",
         "schedule_mode",
