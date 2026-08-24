@@ -3,7 +3,7 @@
 A :class:`Mechanism` maps a lag *window* of recent states to the
 **deterministic next-step mean** (pre-noise). It is the single abstraction every
 ``A @ x`` call site routes through, so the same SCM can be evaluated in numpy
-(generation, CF-faith) and in differentiable torch (CARLA), and serialized to
+(generation, CF-faith) and in differentiable torch (NoiselessSCMRecourse), and serialized to
 disk — without any site hard-coding linearity.
 
 Window contract
@@ -13,7 +13,7 @@ oldest rows when fewer than ``L`` are available. Concretely ``history[..., -1, :
 is lag 1 (``x_{t-1}``) and ``history[..., -L, :]`` is lag ``L`` (``x_{t-L}``). A
 lag that would reach before ``t=0`` is therefore a zero row and contributes
 nothing — preserving the ``if lag_t >= 0`` guard the original ``cf_faith`` /
-``carla`` loops used. This is a no-op for ``L=1`` but is the correctness landmine
+SCM-recourse loops used. This is a no-op for ``L=1`` but is the correctness landmine
 for ``L>1`` with an early ``intervention_t``.
 
 Shapes: ``forward_*`` accepts a single window ``(L, k)`` → returns ``(k,)``, or a

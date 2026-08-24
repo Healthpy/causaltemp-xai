@@ -15,8 +15,8 @@ CF-faith scorer (`experiments/07b_discovered_graph_real.py`) to read from --
 this phase's own scope (no graph, no CF-faith) is unchanged.
 
 **Why this is not a per-horizon sweep like Phase 06.** Phase 06 re-generates
-CARLA-family CFs at each swept ``t0`` because ``CARLARecourse``/
-``PearlCARLARecourse`` take ``t0`` as a constructor argument. Both need a
+NoiselessSCMRecourse-family CFs at each swept ``t0`` because ``NoiselessSCMRecourse``/
+``PearlSCMRecourse`` take ``t0`` as a constructor argument. Both need a
 ``mechanism`` and are therefore unusable here (2026-08-05).
 The 5 graph-free methods used instead (``CftsWachter``, ``CftsCOMTE``,
 ``CftsCounts``, ``CftsConfeti``, ``CftsCels``) have **no** ``t0`` parameter

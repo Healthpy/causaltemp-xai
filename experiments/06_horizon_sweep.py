@@ -9,21 +9,21 @@ the horizon at which validity collapses become measurable.
 
 **What this phase does not do.** It does not change ``t0_fractions``. That
 default stays ``(0.25, 0.5)`` and changing it is recorded as *rejected, not
-deferred* (Descoped Items, 2026-07-31): PearlCARLA's
+deferred* (Descoped Items, 2026-07-31): PearlSCMRecourse's
 ``validity = 0.00`` under the default **is** the result, so moving ``t0`` later
 would select the regime where the method succeeds and delete the finding. This
 phase is purely additive — it writes to ``results/<config>/horizon/`` and
 touches no committed row.
 
 **Why this is not a config variant.** ``t0`` is a *method* parameter
-(``CARLARecourse(t0_steps=...)``), not a dataset parameter. The SCM, the
+(``NoiselessSCMRecourse(t0_steps=...)``), not a dataset parameter. The SCM, the
 dataset, the split and the classifier are all invariant to it. So this phase
 loads them **once** and re-runs only CF generation per horizon — no preset, no
 regeneration, no retraining. It also reuses Phase 03's ``X_sel.npy``, so every
 sweep point scores the *same instances* the main pipeline reports on and the
 curve is directly comparable to the committed tables.
 
-**Which methods are swept, and why not the rest.** Only the CARLA family takes
+**Which methods are swept, and why not the rest.** Only the two SCM recourse controls take
 a ``t0``. The cfts baselines (Wachter/COMTE/CONFETI/CELS) have no intervention
 timestep to pin: they edit the trajectory freely and their *derived*
 ``intervention_t`` is merely the first cell they happened to touch. On ``full``,
@@ -76,7 +76,7 @@ sys.path.insert(0, str(ROOT))
 
 from causaltemp_xai.config import CONFIGS, get_config, seeded_variant  # noqa: E402
 from causaltemp_xai.data_io import DEFAULT_OUT_DIR, load_dataset  # noqa: E402
-from causaltemp_xai.methods import CARLARecourse, PearlCARLARecourse  # noqa: E402
+from causaltemp_xai.methods import NoiselessSCMRecourse, PearlSCMRecourse  # noqa: E402
 from causaltemp_xai.metrics.pns import pns_direction, recover_label_threshold  # noqa: E402
 from experiments._common import (  # noqa: E402
     config_dir,
@@ -111,7 +111,7 @@ def resolve_horizons(T: int, spec: str | None) -> list[int]:
     ``spec`` is a comma-separated list of absolute horizons; ``None`` uses
     :data:`DEFAULT_HORIZON_FRACTIONS`. A horizon ``h`` means ``t0 = T - h``, and
     is kept only if that ``t0`` is scorable (``0 < t0 < T - 1``) — the same
-    bound :func:`~causaltemp_xai.methods.counterfactual.carla._resolve_t0_candidates`
+    bound :func:`~causaltemp_xai.methods.counterfactual.scm_recourse._resolve_t0_candidates`
     enforces, applied here so an unusable request is reported before any
     optimisation runs rather than raising mid-sweep.
     """
@@ -198,8 +198,10 @@ def run(
         builders = {
             # t0 bound as a default arg: without it the closure would read the
             # loop variable and every horizon would silently run at the last one.
-            "CARLA": lambda t0=t0: CARLARecourse(target_class=1, n_steps=300, t0_steps=(t0,)),
-            "PearlCARLA": lambda t0=t0: PearlCARLARecourse(target_class=1, t0_steps=(t0,)),
+            "NoiselessSCMRecourse": lambda t0=t0: NoiselessSCMRecourse(
+                target_class=1, n_steps=300, t0_steps=(t0,)
+            ),
+            "PearlSCMRecourse": lambda t0=t0: PearlSCMRecourse(target_class=1, t0_steps=(t0,)),
         }
         for name, build in builders.items():
             cfs = build().generate_batch(X_sel, clf, graph, mech)

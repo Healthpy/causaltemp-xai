@@ -28,7 +28,7 @@ The method (their eq. 5), reproduced exactly::
 
 * ``delta`` is a **free** ``(T, k)`` perturbation over the *entire* trajectory
   -- there is no "fixed before / free after" split the way this benchmark's
-  own ``CARLARecourse`` has. ``T' = T + delta`` is optimised directly.
+  own ``NoiselessSCMRecourse`` has. ``T' = T + delta`` is optimised directly.
 * ``L_prox`` (eq. 3): an L1/Lp proximity penalty on ``U_s`` (every timestep)
   and on ``U_d`` **at t=0 only** -- the one moment those variables have no
   causal parents to be checked against (eq. 2: ``Pa(T_tau^(v)) = T_{t<tau}^(v)``
@@ -36,7 +36,7 @@ The method (their eq. 5), reproduced exactly::
 * ``L_causal`` (eq. 4): a residual ``|T'_t^(v) - f(Pa(T'_t^(v)))|`` against the
   SCM's own structural equation, applied to every ``V`` channel at **every**
   timestep ``t`` (including ``t=0``, zero-padding the missing pre-window
-  history the same way this benchmark's ``lag_window``/``CARLARecourse``
+  history the same way this benchmark's ``lag_window``/``NoiselessSCMRecourse``
   already do) and to ``U_d`` channels for ``t >= 1``.
 * Optimised via FISTA (Beck & Teboulle, 2009) -- gradient descent on the
   smooth part (``L_pred + L_causal``) with a proximal soft-threshold step on
@@ -70,7 +70,7 @@ for a scalar ``x`` is ``|x|`` for every ``p``.
 Their ``lambda_s=1``, ``lambda_d=lambda_v=lambda=13`` (their own
 proximity/feasibility trade-off study, Table/Fig. 4) are this class's
 defaults. This is a **third-party baseline to critique, not a positive
-control** -- unlike ``CARLARecourse``/``PearlCARLARecourse``, its faithfulness
+control** -- unlike ``NoiselessSCMRecourse``/``PearlSCMRecourse``, its faithfulness
 under this benchmark's own CF-faith metric is not true by construction, and
 that is the point (M3, ``docs/risk_register.md`` RISK-16: its
 own causal-likelihood criterion cannot see intervention-level failure, so
@@ -111,7 +111,7 @@ def _batched_lag_windows(x: torch.Tensor, L: int) -> torch.Tensor:
     """``(T, k) -> (T, L, k)``: window ``[t]`` is the L-lag history feeding a
     prediction of ``x[t]``, oldest to newest (``window[t, -1] = x[t - 1]``),
     zero-padded before ``t = 0``. Vectorised over every ``t`` in one shot --
-    unlike :class:`~causaltemp_xai.methods.counterfactual.carla.CARLARecourse`,
+    unlike :class:`~causaltemp_xai.methods.counterfactual.scm_recourse.NoiselessSCMRecourse`,
     this method has no sequential rollout, so every timestep's window can be
     built from the free ``x`` directly rather than one row at a time.
     """
@@ -183,7 +183,7 @@ class TSCausalCF:
     n_steps:
         Fixed number of FISTA iterations (this codebase's existing
         convention for gradient-based CF methods -- see
-        :class:`~causaltemp_xai.methods.counterfactual.carla.CARLARecourse` --
+        :class:`~causaltemp_xai.methods.counterfactual.scm_recourse.NoiselessSCMRecourse` --
         rather than the paper's Figure 2 "loop until flipped").
     """
 
@@ -275,7 +275,7 @@ class TSCausalCF:
         return cf_arr
 
     # ------------------------------------------------------------------
-    # CFExplainer alias interface + causal-info setter (parity with CARLA)
+    # CFExplainer alias interface + causal-info setter (parity with NoiselessSCMRecourse)
     # ------------------------------------------------------------------
 
     def set_causal_info(self, graph, mechanism) -> None:

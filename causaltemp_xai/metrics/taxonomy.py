@@ -84,10 +84,14 @@ AXIS_METRICS: dict[str, tuple[str, ...]] = {
         "cf_faith_pearl_soft",
         "cf_faith_rollout_hard_valid",
         "cf_faith_pearl_hard_valid",
+        "cf_faith_rollout_hard_given_valid",
+        "cf_faith_pearl_hard_given_valid",
         "n_cf_faith_scorable",
         "frac_degenerate",
         "n_vacuous",
         "frac_vacuous",
+        "n_no_cf_found",
+        "frac_no_cf_found",
         # model-vs-world audit
         "A_model_proposed",
         "B_model_oracle",
@@ -96,8 +100,12 @@ AXIS_METRICS: dict[str, tuple[str, ...]] = {
         "delta_trajectory",
         "delta_outcome",
         "do_complexity_mean",
+        "do_complexity_mean_all",
+        "do_complexity_mean_pearl_scorable",
         "do_complexity_median",
         "do_complexity_stability",
+        "n_do_scorable",
+        "frac_no_do_schedule",
         # discovered-graph CF-faith on Tier 2, uncertainty-quantified (M4g,
         # 2026-08-06) — deliberately distinct keys from
         # cf_faith_rollout_hard/soft above: those are exact, against the

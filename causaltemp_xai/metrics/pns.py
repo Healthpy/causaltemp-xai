@@ -5,12 +5,12 @@ consistent with the mechanism? It cannot ask whether the intervention the CF
 proposes actually *causes* the outcome change it claims. The two come apart in
 both directions, and the benchmark's own results show each:
 
-* CARLA on ``full``: CF-faith(rollout) = 1.00 and validity = 1.00, yet the
+* NoiselessSCMRecourse on ``full``: CF-faith(rollout) = 1.00 and validity = 1.00, yet the
   intervention's effect on the final timestep is ~2.6e-04. The label flip comes
   from the noiseless rollout discarding the abducted noise, not from the
   intervention (2026-07-30 diagnosis). This module is the
   metric that catches that.
-* CARLA on ``full_nl``: CF-faith = 1.00, validity = 0.00 — perfectly faithful,
+* NoiselessSCMRecourse on ``full_nl``: CF-faith = 1.00, validity = 0.00 — perfectly faithful,
   causally inert.
 
 **Exact, not bounded.** Necessity/sufficiency probabilities are normally only

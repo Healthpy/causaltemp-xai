@@ -1,38 +1,46 @@
 """Tests for the native CF generators on a small trained LSTM.
 
 Verifies output shapes/finiteness, that Wachter flips at least one label, that
-CARLA-causal has zero retroactive change and is CF-faith (rollout) hard=1 by
+Noiseless SCM recourse has zero retroactive change and is CF-faith (rollout) hard=1 by
 construction, and that TSCausalCF's FISTA proximal step and
 causal-residual masking match the paper's equations cell-for-cell.
 """
 
 from __future__ import annotations
 
+import importlib
+from types import SimpleNamespace
+
 import numpy as np
 import pytest
 import torch
 
-from causaltemp_xai.benchmarks.generator import LinearSCMT, exogenous_channels
+from causaltemp_xai.benchmarks.generator import LinearSCMT, NlinearSCMT, exogenous_channels
 from causaltemp_xai.classifiers import LSTMClassifier
+from causaltemp_xai.config import SMOKE_NL
 from causaltemp_xai.methods import (
-    CARLARecourse,
     CftsCelsCF,
     CftsCOMTECF,
     CftsConfetiCF,
     CftsCountsCF,
     CftsWachterCF,
-    PearlCARLARecourse,
+    NoiselessSCMRecourse,
+    PearlSCMRecourse,
     TSCausalCF,
     derive_intervention_t,
 )
-from causaltemp_xai.methods.counterfactual.carla import _resolve_t0_candidates
 from causaltemp_xai.methods.counterfactual.causal_feasibility import (
     _batched_lag_windows,
     _build_loss_masks,
     _shift_forward,
     _soft_threshold,
 )
+from causaltemp_xai.methods.counterfactual.scm_recourse import _resolve_t0_candidates
 from causaltemp_xai.metrics.cf_faith import CFfaith
+from causaltemp_xai.scm.intervention import INTERVENTION_TOL
+
+_phase03 = importlib.import_module("experiments.03_run_cf_methods")
+_phase04 = importlib.import_module("experiments.04_evaluate_axes")
 
 
 @pytest.fixture(scope="module")
@@ -56,16 +64,224 @@ def trained():
     return clf, data
 
 
+@pytest.fixture(scope="module")
+def nonlinear_current():
+    """Small fixture with the exact MLP hyperparameters registered for smoke_nl."""
+    cfg = SMOKE_NL
+    gen = NlinearSCMT(
+        k=cfg.k,
+        L=cfg.L,
+        sparsity=cfg.sparsity,
+        noise_type=cfg.noise_type,
+        T=cfg.T,
+        N=8,
+        seed=cfg.seed,
+        **cfg.nonlinear,
+    )
+    return gen.generate()
+
+
+class _ReferenceShiftModel:
+    """Differentiable target reached by moving away from a factual reference."""
+
+    device = torch.device("cpu")
+
+    def __init__(self, references, threshold=0.05, reachable=True):
+        self.references = torch.as_tensor(references, dtype=torch.float32)
+        self.reference_sums = self.references.sum(dim=(1, 2))
+        self.threshold = float(threshold)
+        self.reachable = reachable
+
+    def torch_logits(self, Z):
+        Z = torch.as_tensor(Z, dtype=torch.float32)
+        if Z.ndim == 2:
+            Z = Z.unsqueeze(0)
+        distances = ((Z[:, None] - self.references[None]) ** 2).mean(dim=(2, 3))
+        nearest = distances.argmin(dim=1)
+        shift = Z.sum(dim=(1, 2)) - self.reference_sums[nearest]
+        if self.reachable:
+            score = shift - self.threshold
+        else:
+            # Always below the class-1 logit, but retains a gradient so failed
+            # candidates have meaningfully different prediction losses.
+            score = torch.tanh(shift / 10.0) - 2.0
+        return torch.stack((-score, score), dim=1)
+
+    def predict(self, Z):
+        with torch.no_grad():
+            return self.torch_logits(Z).argmax(dim=1).cpu().numpy()
+
+
+class TestSCMRecourseRegression:
+    @pytest.mark.parametrize("method_cls", [NoiselessSCMRecourse, PearlSCMRecourse])
+    def test_current_nonlinear_fixture_produces_real_interventions(
+        self, method_cls, nonlinear_current
+    ):
+        X = nonlinear_current["X"][:3].astype(np.float32)
+        model = _ReferenceShiftModel(X)
+        method = method_cls(n_steps=30, lr=0.1, t0_fractions=(0.25, 0.5))
+
+        cfs, no_cf_found = method.generate_batch_with_status(
+            X, model, nonlinear_current["graph"], nonlinear_current["mechanism"]
+        )
+
+        delta_max = np.asarray(
+            [diagnostic["selected_delta_max"] for diagnostic in method.last_batch_diagnostics]
+        )
+        assert cfs.shape == X.shape
+        assert no_cf_found.dtype == np.bool_
+        assert no_cf_found.shape == (len(X),)
+        assert np.mean(delta_max > INTERVENTION_TOL) >= 0.9
+        assert not no_cf_found.any()
+
+    @pytest.mark.parametrize("method_cls", [NoiselessSCMRecourse, PearlSCMRecourse])
+    def test_forced_zero_delta_failure_has_status_without_breaking_legacy_api(
+        self, method_cls, nonlinear_current
+    ):
+        X = nonlinear_current["X"][:1].astype(np.float32)
+        model = _ReferenceShiftModel(X)
+        method = method_cls(
+            actionable_mask=np.zeros(X.shape[-1], dtype=bool),
+            n_steps=2,
+            t0_fractions=(0.5,),
+        )
+
+        cfs, no_cf_found = method.generate_batch_with_status(
+            X, model, nonlinear_current["graph"], nonlinear_current["mechanism"]
+        )
+        assert isinstance(cfs, np.ndarray)
+        assert no_cf_found.dtype == np.bool_
+        assert no_cf_found.tolist() == [True]
+        assert method.last_batch_diagnostics[0]["selected_delta_max"] == 0.0
+
+        legacy_one = method.generate(
+            X[0], model, nonlinear_current["graph"], nonlinear_current["mechanism"]
+        )
+        legacy_batch = method.generate_batch(
+            X, model, nonlinear_current["graph"], nonlinear_current["mechanism"]
+        )
+        assert isinstance(legacy_one, np.ndarray) and legacy_one.shape == X[0].shape
+        assert isinstance(legacy_batch, np.ndarray) and legacy_batch.shape == X.shape
+
+    @pytest.mark.parametrize("method_cls", [NoiselessSCMRecourse, PearlSCMRecourse])
+    def test_failed_candidates_are_ranked_by_prediction_loss(self, method_cls, nonlinear_current):
+        x = nonlinear_current["X"][0].astype(np.float32)
+        model = _ReferenceShiftModel(x[None], reachable=False)
+        per_t0 = {}
+        for t0 in (8, 15):
+            method = method_cls(n_steps=3, lr=0.1, t0_steps=(t0,))
+            _cf, found = method._generate_one(
+                x, model, nonlinear_current["graph"], nonlinear_current["mechanism"]
+            )
+            assert found is False
+            per_t0[t0] = (
+                method.last_generation_diagnostics["selected_prediction_loss"],
+                method.last_generation_diagnostics["selected_proximity"],
+            )
+
+        combined = method_cls(n_steps=3, lr=0.1, t0_steps=(8, 15))
+        _cf, found = combined._generate_one(
+            x, model, nonlinear_current["graph"], nonlinear_current["mechanism"]
+        )
+        assert found is False
+        expected_t0 = min(per_t0, key=lambda t0: per_t0[t0])
+        assert combined.last_generation_diagnostics["selected_t0"] == expected_t0
+        assert combined.last_generation_diagnostics["selected_prediction_loss"] == pytest.approx(
+            per_t0[expected_t0][0]
+        )
+
+
+class TestRecourseStatusPipeline:
+    def test_phase03_writes_matching_cf_and_status_sidecars(self, tmp_path, monkeypatch):
+        X = np.zeros((3, 6, 2), dtype=np.float32)
+        status = np.asarray([False, True, False], dtype=bool)
+
+        class _Method:
+            def generate_batch_with_status(self, X, model, graph, mechanism):
+                return X + 1.0, status.copy()
+
+        class _Classifier:
+            def score(self, X, y):
+                return 1.0
+
+            def predict(self, X):
+                return np.zeros(len(X), dtype=int)
+
+        cfg = SimpleNamespace(
+            name="test_nl", seed=0, mechanism_type="mlp", k=2, T=6, noise_type="laplace"
+        )
+        data = {
+            "X_train": X,
+            "Y_train": np.zeros(len(X), dtype=int),
+            "X_test": X,
+            "Y_test": np.zeros(len(X), dtype=int),
+            "graph": np.zeros((2, 2, 1)),
+            "mechanism": object(),
+        }
+        out_dir = tmp_path / "data"
+        ckpt = out_dir / cfg.name / "lstm.pt"
+        ckpt.parent.mkdir(parents=True)
+        ckpt.touch()
+        results_dir = tmp_path / "results"
+
+        monkeypatch.setattr(_phase03, "get_config", lambda name: cfg)
+        monkeypatch.setattr(_phase03, "load_dataset", lambda name, out_dir: data)
+        monkeypatch.setattr(
+            _phase03, "LSTMClassifier", SimpleNamespace(load=lambda path: _Classifier())
+        )
+        monkeypatch.setattr(_phase03, "select_flip_candidates", lambda clf, X, n: np.arange(n))
+        monkeypatch.setattr(
+            _phase03,
+            "build_methods",
+            lambda X, y: {
+                "NoiselessSCMRecourse": _Method(),
+                "PearlSCMRecourse": _Method(),
+            },
+        )
+        monkeypatch.setattr(
+            _phase03,
+            "config_dir",
+            lambda name, classifier="lstm": results_dir / name / classifier,
+        )
+
+        _phase03.run(cfg.name, len(X), out_dir, skip_aux=True)
+
+        cf_dir = results_dir / cfg.name / "lstm" / "cf"
+        for method_name in ("NoiselessSCMRecourse", "PearlSCMRecourse"):
+            assert np.load(cf_dir / f"X_cf_{method_name}.npy").shape == X.shape
+            saved_status = np.load(cf_dir / f"no_cf_found_{method_name}.npy")
+            assert saved_status.dtype == np.bool_
+            assert np.array_equal(saved_status, status)
+
+    @pytest.mark.parametrize("method_name", ["NoiselessSCMRecourse", "PearlSCMRecourse"])
+    @pytest.mark.parametrize("failure", ["missing", "dtype", "length"])
+    def test_phase04_rejects_invalid_required_sidecars(self, tmp_path, method_name, failure):
+        path = tmp_path / f"no_cf_found_{method_name}.npy"
+        if failure == "dtype":
+            np.save(path, np.zeros(3, dtype=np.int8))
+        elif failure == "length":
+            np.save(path, np.zeros(2, dtype=bool))
+
+        with pytest.raises(SystemExit):
+            _phase04.load_no_cf_found(tmp_path, method_name, n=3)
+
+    def test_phase04_accepts_matching_boolean_sidecar(self, tmp_path):
+        expected = np.asarray([False, True, False], dtype=bool)
+        np.save(tmp_path / "no_cf_found_NoiselessSCMRecourse.npy", expected)
+        got = _phase04.load_no_cf_found(tmp_path, "NoiselessSCMRecourse", n=3)
+        assert np.array_equal(got, expected)
+
+
 # ---------------------------------------------------------------------------
-# CARLA-causal
+# Noiseless SCM recourse
 # ---------------------------------------------------------------------------
 
 
-class TestCARLA:
+class TestNoiselessSCMRecourse:
     def test_shape_and_finite(self, trained):
         clf, data = trained
         x = data["X"][0]
-        cf = CARLARecourse(target_class=1, n_steps=60, t0_fractions=(0.5,)).generate(
+        cf = NoiselessSCMRecourse(target_class=1, n_steps=60, t0_fractions=(0.5,)).generate(
             x, clf, data["graph"], data["mechanism"]
         )
         assert cf.shape == x.shape
@@ -74,7 +290,7 @@ class TestCARLA:
     def test_zero_retroactive_change(self, trained):
         clf, data = trained
         x = data["X"][3]
-        cf = CARLARecourse(target_class=1, n_steps=60, t0_fractions=(0.5,)).generate(
+        cf = NoiselessSCMRecourse(target_class=1, n_steps=60, t0_fractions=(0.5,)).generate(
             x, clf, data["graph"], data["mechanism"]
         )
         t0 = derive_intervention_t(x, cf)
@@ -82,10 +298,10 @@ class TestCARLA:
         assert np.allclose(cf[:t0], x[:t0], atol=1e-6)
 
     def test_cf_faith_rollout_hard_is_one(self, trained):
-        """CARLA emits a noiseless rollout → rollout-faith hard=1 by construction."""
+        """NoiselessSCMRecourse emits a noiseless rollout → rollout-faith hard=1 by construction."""
         clf, data = trained
         x = data["X"][3]
-        cf = CARLARecourse(target_class=1, n_steps=60, t0_fractions=(0.5,)).generate(
+        cf = NoiselessSCMRecourse(target_class=1, n_steps=60, t0_fractions=(0.5,)).generate(
             x, clf, data["graph"], data["mechanism"]
         )
         t0 = derive_intervention_t(x, cf)
@@ -95,15 +311,15 @@ class TestCARLA:
 
 
 # ---------------------------------------------------------------------------
-# Pearl-CARLA (M2, 2026-07-08) — noise-reinjecting recourse variant
+# Pearl-NoiselessSCMRecourse (M2, 2026-07-08) — noise-reinjecting recourse variant
 # ---------------------------------------------------------------------------
 
 
-class TestPearlCARLA:
-    """Mirrors TestCARLA, but the invariant that holds "by construction" is
+class TestPearlSCMRecourse:
+    """Mirrors TestNoiselessSCMRecourse, but the invariant that holds "by construction" is
     ``cf_faith_pearl_hard == 1`` (not ``rollout_hard``) — see
-    ``causaltemp_xai/methods/counterfactual/carla.py``'s module docstring for
-    why the two variants differ, and the docstring of ``PearlCARLARecourse``
+    ``causaltemp_xai/methods/counterfactual/scm_recourse.py``'s module docstring for
+    why the two variants differ, and the docstring of ``PearlSCMRecourse``
     for the empirical long-horizon-validity finding (not a naive "always
     recovers validity" result — smoke-scale confirmed instead: zero
     retroactive change still holds bit-identically pre-t0 because both
@@ -115,31 +331,31 @@ class TestPearlCARLA:
     def test_shape_and_finite(self, trained):
         clf, data = trained
         x = data["X"][0]
-        cf = PearlCARLARecourse(target_class=1, n_steps=60, t0_fractions=(0.5,)).generate(
+        cf = PearlSCMRecourse(target_class=1, n_steps=60, t0_fractions=(0.5,)).generate(
             x, clf, data["graph"], data["mechanism"]
         )
         assert cf.shape == x.shape
         assert np.all(np.isfinite(cf))
 
     def test_zero_retroactive_change(self, trained):
-        """Still holds: both CARLARecourse and PearlCARLARecourse copy
+        """Still holds: both NoiselessSCMRecourse and PearlSCMRecourse copy
         ``x[:t0]`` verbatim into the CF regardless of forward-rollout
         semantics (only the post-t0 region differs between the two)."""
         clf, data = trained
         x = data["X"][3]
-        cf = PearlCARLARecourse(target_class=1, n_steps=60, t0_fractions=(0.5,)).generate(
+        cf = PearlSCMRecourse(target_class=1, n_steps=60, t0_fractions=(0.5,)).generate(
             x, clf, data["graph"], data["mechanism"]
         )
         t0 = derive_intervention_t(x, cf)
         assert np.allclose(cf[:t0], x[:t0], atol=1e-6)
 
     def test_cf_faith_pearl_hard_is_one(self, trained):
-        """PearlCARLARecourse reinjects the abducted factual noise -> Pearl-faith
+        """PearlSCMRecourse reinjects the abducted factual noise -> Pearl-faith
         hard=1 by construction (the rollout-semantics scorer should generally
         NOT also score hard=1 -- the two are structurally different CFs)."""
         clf, data = trained
         x = data["X"][3]
-        cf = PearlCARLARecourse(target_class=1, n_steps=60, t0_fractions=(0.5,)).generate(
+        cf = PearlSCMRecourse(target_class=1, n_steps=60, t0_fractions=(0.5,)).generate(
             x, clf, data["graph"], data["mechanism"]
         )
         t0 = derive_intervention_t(x, cf)
@@ -150,7 +366,7 @@ class TestPearlCARLA:
     def test_generate_batch_shape(self, trained):
         clf, data = trained
         X = data["X"][:4]
-        cfs = PearlCARLARecourse(target_class=1, n_steps=40, t0_fractions=(0.5,)).generate_batch(
+        cfs = PearlSCMRecourse(target_class=1, n_steps=40, t0_fractions=(0.5,)).generate_batch(
             X, clf, data["graph"], data["mechanism"]
         )
         assert cfs.shape == X.shape
@@ -260,7 +476,7 @@ class TestTSCausalCF:
         assert np.all(np.isfinite(cf))
 
     def test_flips_at_least_one(self, trained):
-        """Unlike CARLARecourse, this method has no do()-timestep search --
+        """Unlike NoiselessSCMRecourse, this method has no do()-timestep search --
         Delta is free over the whole trajectory (see the class module
         docstring on why: the paper has no intervention time at all)."""
         clf, data = trained
@@ -494,8 +710,8 @@ class TestT0CandidateResolution:
 
     def test_both_variants_accept_the_pin(self):
         """R9 + a real hazard: if only one variant honoured t0_steps the sweep
-        would compare CARLA at a pinned horizon against PearlCARLA at 25/50."""
-        for cls in (CARLARecourse, PearlCARLARecourse):
+        would compare NoiselessSCMRecourse at a pinned horizon against PearlSCMRecourse at 25/50."""
+        for cls in (NoiselessSCMRecourse, PearlSCMRecourse):
             m = cls(target_class=1, t0_steps=(42,))
             assert m.t0_steps == (42,)
             assert _resolve_t0_candidates(100, m.t0_fractions, m.t0_steps) == [42]

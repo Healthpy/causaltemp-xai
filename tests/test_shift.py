@@ -10,7 +10,7 @@ from causaltemp_xai.benchmarks.generator import LinearSCMT
 from causaltemp_xai.classifiers import LSTMClassifier
 from causaltemp_xai.config import SMOKE, shifted_config
 from causaltemp_xai.eval import shift_vr
-from causaltemp_xai.methods import CARLARecourse, CftsWachterCF
+from causaltemp_xai.methods import CftsWachterCF, NoiselessSCMRecourse
 from causaltemp_xai.methods.counterfactual.cfts_methods import _DatasetAdapter
 
 
@@ -86,11 +86,11 @@ class TestShiftVR:
         ds = _DatasetAdapter(X[:400], Y[:400])
         methods = {
             "wachter": CftsWachterCF(target_class=1, dataset=ds, max_cfs=50),
-            "carla": CARLARecourse(target_class=1, n_steps=50, t0_fractions=(0.5,)),
+            "noiseless_scm": NoiselessSCMRecourse(target_class=1, n_steps=50, t0_fractions=(0.5,)),
         }
         result = shift_vr(clf, methods, X_base_test, X_shift_test, graph, mech, 1)
 
-        assert set(result) == {"wachter", "carla"}
+        assert set(result) == {"wachter", "noiseless_scm"}
         for name, m in result.items():
             assert 0.0 <= m["validity_base"] <= 1.0
             assert 0.0 <= m["validity_shift"] <= 1.0

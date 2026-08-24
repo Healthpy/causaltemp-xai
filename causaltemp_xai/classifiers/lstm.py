@@ -84,7 +84,7 @@ class LSTM(nn.Module):
         # cuDNN's fused RNN kernel refuses to run its backward pass unless the
         # module is in .train() mode, even for a plain gradient computation --
         # this bites any gradient-based CF method (Wachter/COMTE/CounTS/CELS,
-        # CARLA, integrated_gradients) that backprops through an .eval() model
+        # NoiselessSCMRecourse, integrated_gradients) that backprops through an .eval() model
         # on GPU. Disabling cuDNN for this call falls back to the generic CUDA
         # RNN kernel, which supports eval-mode backward; a no-op on CPU, where
         # cuDNN never applied. Every result committed before this fix was

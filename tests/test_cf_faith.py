@@ -132,7 +132,7 @@ class TestCFFaithRetroactive:
         carries innovation noise (scale ≈ 0.1 in the real generator), so a CF equal
         to the factual deviates from its own noiseless rollout by ~the noise and is
         correctly judged unfaithful. Only CFs that are themselves noiseless SCM
-        rollouts from the intervention point (e.g. CARLA-causal) score hard=1 — that
+        rollouts from the intervention point (e.g. NoiselessSCMRecourse) score hard=1 — that
         is the property the benchmark uses to separate causal from arbitrary CFs.
         A do-nothing CF is degenerate (it flips no label) and is never produced by a
         real method; see index "Decisions" (2026-05-30, CF-faith semantics).
@@ -294,17 +294,17 @@ def _make_nlinear_scm(k: int = 3, L: int = 2, T: int = 25, seed: int = 5):
     return data["X"][0], data["graph"], data["mechanism"]
 
 
-class TestCFFaithSplitIsPrincipledNotCARLASpecific:
+class TestCFFaithSplitIsPrincipledNotNoiselessSCMRecourseSpecific:
     """Independent adversarial case for the rollout/pearl_delta split.
 
     The other disagreement cases in this file and in
     ``test_metric_adversarial.py::TestCFfaithAdversarial`` are already built
     from hand-rolled synthetic helpers (``_noiseless_cf`` / ``_pearl_cf`` /
-    ``_noiseless_rollout_cf`` / ``_noise_reinjected_cf``), not from CARLA's
+    ``_noiseless_rollout_cf`` / ``_noise_reinjected_cf``), not from NoiselessSCMRecourse's
     actual output — but a reviewer could still suspect the two-semantics split
-    was reverse-engineered around CARLA's specific empirical Pearl-hard=0
+    was reverse-engineered around NoiselessSCMRecourse's specific empirical Pearl-hard=0
     result (see docs/archive/hypotheses_assessment.md). This test constructs a CF via
-    a *third*, independently-motivated recipe that is not CARLA's algorithm
+    a *third*, independently-motivated recipe that is not NoiselessSCMRecourse's algorithm
     and is not one of this file's existing helpers: a naive "extreme-target
     shooting" recourse — the kind of degenerate, causally-careless CF a
     badly-tuned optimizer-based method could produce by chasing an
@@ -317,9 +317,9 @@ class TestCFFaithSplitIsPrincipledNotCARLASpecific:
     rollout sense while failing the Pearl (abduction-action-prediction) sense
     because it does not preserve the unit's own noise realization. Showing
     the same hard=1-vs-hard=0 pattern here, from a construction that shares
-    no code path with CARLA and targets a deliberately unrealistic value,
+    no code path with NoiselessSCMRecourse and targets a deliberately unrealistic value,
     demonstrates the split tracks a general property (zero-noise rollout vs.
-    noise-preserving abduction), not an artifact tuned to CARLA.
+    noise-preserving abduction), not an artifact tuned to NoiselessSCMRecourse.
     """
 
     @staticmethod

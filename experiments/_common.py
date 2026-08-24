@@ -35,7 +35,7 @@ metric has no axis). **The axes are not parallel columns** — A scores the
 * **Axis C** (validity, proximity, sparsity, OOD, SCM-noise plausibility, TRSI,
   both CF-faith semantics and their gate diagnostics, the model-vs-world audit,
   do-complexity, ``frac_vacuous``, ``frac_degenerate``) — per **method**, every
-  CF-*generating* method (Wachter, CARLA, cfts-*, OracleCF-*). Axis C scores the
+  CF-*generating* method (Wachter, NoiselessSCMRecourse, cfts-*, OracleCF-*). Axis C scores the
   CF as an artifact; CF-faith scores it against the mechanism.
 
 The oracle interventions built here (:func:`build_oracle_interventions`,
@@ -99,7 +99,16 @@ def select_flip_candidates(clf, X_test, n_cf, target_class=TARGET_CLASS, from_cl
 
 
 def per_instance_records(
-    benchmark, classifier, method_name, X_sel, CFs, graph, mech, preds=None, noise_scale=None
+    benchmark,
+    classifier,
+    method_name,
+    X_sel,
+    CFs,
+    graph,
+    mech,
+    preds=None,
+    noise_scale=None,
+    no_cf_found=None,
 ):
     """One record per (method, instance) with per-CF Axis-C + CF-faith metrics.
 
@@ -120,7 +129,8 @@ def per_instance_records(
     per instance (anti-gameability criterion, M1 2026-07-07): a tiny-edit CF
     can pass the faithfulness check without consulting the SCM, but earns no
     joint credit unless it also flips the classifier. Blank when ``preds`` is
-    None (classifier-free oracle rows in Phase 05).
+    None. The separately named ``*_hard_given_valid`` columns are populated
+    only for valid instances so their aggregate is ``P(hard | valid)``.
 
     ``vacuous`` (RISK-17, 2026-07-31) is 1 when the CF encodes no intervention
     at all: ``x_cf`` differs from ``x``, but ``x_cf[intervention_t]`` is exactly
@@ -137,6 +147,7 @@ def per_instance_records(
         trsi,
     )
     from causaltemp_xai.metrics.cf_faith import CFfaith
+    from causaltemp_xai.metrics.pns import do_complexity
     from causaltemp_xai.scm.intervention import derive_intervention_t, is_vacuous_intervention
 
     def _nan_to_zero(v):
@@ -144,6 +155,16 @@ def per_instance_records(
 
     rollout = CFfaith(semantics="noiseless_rollout")
     pearl = CFfaith(semantics="pearl_delta")
+    if no_cf_found is None:
+        no_cf_found_a = np.zeros(len(CFs), dtype=bool)
+    else:
+        no_cf_found_a = np.asarray(no_cf_found)
+        if no_cf_found_a.dtype != np.bool_:
+            raise TypeError(f"no_cf_found must have bool dtype, got {no_cf_found_a.dtype}")
+        if no_cf_found_a.shape != (len(CFs),):
+            raise ValueError(
+                f"no_cf_found shape {no_cf_found_a.shape} does not match CF batch ({len(CFs)},)"
+            )
     rows = []
     for i, (x, x_cf) in enumerate(zip(X_sel, CFs)):
         t = derive_intervention_t(x, x_cf)
@@ -151,6 +172,7 @@ def per_instance_records(
         p = pearl.score(x, x_cf, t, graph, mech)
         _spars_detail = sparsity(x, x_cf, return_detailed=True)
         valid_i = int(preds[i] == TARGET_CLASS) if preds is not None else None
+        do_c = do_complexity(x, x_cf, mech)
         rows.append(
             {
                 "benchmark": benchmark,
@@ -158,6 +180,9 @@ def per_instance_records(
                 "method": method_name,
                 "instance": int(i),
                 "validity": (valid_i if valid_i is not None else ""),
+                # Generator search outcome. Kept separate from classifier
+                # validity and mechanism-level vacuity by design.
+                "no_cf_found": int(no_cf_found_a[i]),
                 "proximity_l1": proximity(x, x_cf, norm="l1"),
                 "proximity_l2": proximity(x, x_cf, norm="l2"),
                 "sparsity": sparsity(x, x_cf),
@@ -180,6 +205,9 @@ def per_instance_records(
                 # zero-perturbation noiseless rollout scores rollout_hard=1.0
                 # while being vacuous; frac_degenerate does not catch it.
                 "vacuous": int(is_vacuous_intervention(x, x_cf, mech, t0=t)),
+                # Pearl-semantic schedule length. This is a distinct predicate
+                # from the noiseless-semantic vacuity flag above.
+                "do_complexity": int(do_c),
                 "cf_faith_rollout_hard": r["hard"],
                 "cf_faith_rollout_soft": r["soft"],
                 "cf_faith_pearl_hard": p["hard"],
@@ -194,21 +222,40 @@ def per_instance_records(
                 "cf_faith_pearl_hard_valid": (
                     _nan_to_zero(p["hard"]) * valid_i if valid_i is not None else ""
                 ),
+                # Invalid rows abstain from this conditional denominator;
+                # degenerate valid rows count as zero conditional credit.
+                "cf_faith_rollout_hard_given_valid": (
+                    _nan_to_zero(r["hard"]) if valid_i == 1 else ""
+                ),
+                "cf_faith_pearl_hard_given_valid": (
+                    _nan_to_zero(p["hard"]) if valid_i == 1 else ""
+                ),
             }
         )
     return rows
 
 
-def score_and_collect(cfg, slot, method_name, X_sel, cfs, graph, mech, clf=None, extra=None):
+def score_and_collect(
+    cfg,
+    slot,
+    method_name,
+    X_sel,
+    cfs,
+    graph,
+    mech,
+    clf=None,
+    extra=None,
+    no_cf_found=None,
+):
     """Score one method's counterfactuals: per-instance rows + the aggregate row.
 
     The step phases 04, 05 and 06 all perform identically, differing only in
     three things this signature makes explicit:
 
-    * ``clf=None`` — Phase 05 is deliberately classifier-free (it scores the
-      oracle control, which is correct *by construction*), so ``validity`` and
-      the joint faith-validity columns are blank rather than computed. Passing a
-      classifier there would quietly put a model back into the positive control.
+    * ``clf=None`` — callers may omit classifier-dependent outcome metrics.
+      Phase 05 now supplies the trained classifier so the structural oracle
+      remains a construction-level positive control while also calibrating the
+      same outcome-quality columns as every other method.
     * ``slot`` — the ``results/<config>/<slot>/`` directory: ``"lstm"`` for the
       explainer phases, ``"oracle"`` for the control.
     * ``extra`` — extra keys stamped onto *both* the per-instance rows and the
@@ -238,6 +285,7 @@ def score_and_collect(cfg, slot, method_name, X_sel, cfs, graph, mech, clf=None,
         mech,
         preds,
         noise_scale=expected_abs_noise(cfg.noise_type),
+        no_cf_found=no_cf_found,
     )
     agg = aggregate_method_row(cfg.name, slot, method_name, rows)
     if extra:
@@ -345,6 +393,25 @@ def aggregate_method_row(benchmark, classifier, method_name, instance_rows) -> d
     n_vacuous = sum(
         1 for r in instance_rows if str(r.get("vacuous", "")).strip() not in ("", "0", "False")
     )
+    n_no_cf_found = sum(
+        1 for r in instance_rows if str(r.get("no_cf_found", "")).strip() not in ("", "0", "False")
+    )
+    do_values = [
+        float(r["do_complexity"])
+        for r in instance_rows
+        if r.get("do_complexity") not in (None, "") and not np.isnan(float(r["do_complexity"]))
+    ]
+    do_scorable_values = [value for value in do_values if value > 0]
+    n_do_scorable = len(do_scorable_values)
+    do_mean_all = float(np.mean(do_values)) if do_values else float("nan")
+    do_mean_scorable = float(np.mean(do_scorable_values)) if do_scorable_values else float("nan")
+    has_validity = any(r.get("validity") not in (None, "") for r in instance_rows)
+
+    def _conditional_mean(key):
+        value = _mean(key)
+        if value is not None:
+            return value
+        return float("nan") if has_validity else None
 
     return {
         "benchmark": benchmark,
@@ -374,9 +441,19 @@ def aggregate_method_row(benchmark, classifier, method_name, instance_rows) -> d
         # of their value: the CFs contain no intervention to score.
         "n_vacuous": n_vacuous,
         "frac_vacuous": (float(n_vacuous / n) if n else None),
+        "n_no_cf_found": n_no_cf_found,
+        "frac_no_cf_found": (float(n_no_cf_found / n) if n else None),
+        "do_complexity_mean_all": do_mean_all,
+        "do_complexity_mean_pearl_scorable": do_mean_scorable,
+        "n_do_scorable": n_do_scorable,
+        "frac_no_do_schedule": (float(1.0 - n_do_scorable / n) if n else None),
+        # Migration alias: always the all-instance Pearl-semantic mean.
+        "do_complexity_mean": do_mean_all,
         # Joint faithfulness-validity (None for classifier-free oracle rows).
         "cf_faith_rollout_hard_valid": _mean("cf_faith_rollout_hard_valid"),
         "cf_faith_pearl_hard_valid": _mean("cf_faith_pearl_hard_valid"),
+        "cf_faith_rollout_hard_given_valid": _conditional_mean("cf_faith_rollout_hard_given_valid"),
+        "cf_faith_pearl_hard_given_valid": _conditional_mean("cf_faith_pearl_hard_given_valid"),
     }
 
 
@@ -446,19 +523,32 @@ def _git(*args: str) -> str | None:
 
 @functools.lru_cache(maxsize=1)
 def git_provenance() -> dict:
-    """``{"git_commit": <sha|None>, "git_dirty": <bool|None>}`` for this checkout.
+    """Return commit plus source-scoped and unfiltered worktree dirt.
 
-    ``git_dirty`` is load-bearing for reproducibility honesty: a commit hash
-    recorded while the working tree had uncommitted changes does not identify
-    the code that produced the numbers, so the flag says so rather than letting
-    the hash imply a cleanliness it does not have. Cached -- the answer cannot
-    change within a single phase run.
+    ``git_dirty`` covers source/code paths and excludes generated or deliberately
+    omitted trees (``results``, ``notebooks``, and ``slurm/logs``). The separate
+    ``git_worktree_dirty`` flag is the unfiltered state. This lets a result run
+    identify a clean committed implementation even after an earlier phase wrote
+    tracked result files, without hiding that the checkout as a whole changed.
+    Cached -- the answer cannot change within a single phase run.
     """
     sha = _git("rev-parse", "HEAD")
     if sha is None:
-        return {"git_commit": None, "git_dirty": None}
-    status = _git("status", "--porcelain")
-    return {"git_commit": sha, "git_dirty": bool(status)}
+        return {"git_commit": None, "git_dirty": None, "git_worktree_dirty": None}
+    source_status = _git(
+        "status",
+        "--porcelain",
+        "--",
+        ":!results",
+        ":!notebooks",
+        ":!slurm/logs",
+    )
+    worktree_status = _git("status", "--porcelain")
+    return {
+        "git_commit": sha,
+        "git_dirty": bool(source_status),
+        "git_worktree_dirty": bool(worktree_status),
+    }
 
 
 def run_provenance() -> dict:
@@ -498,7 +588,7 @@ def dump_json(path: Path, obj) -> None:
 
 
 def read_run_summary_provenance(summary_path: Path) -> dict | None:
-    """Read ``seed``/``git_commit``/``git_dirty`` out of a ``summary.json``.
+    """Read source-scoped and unfiltered provenance out of ``summary.json``.
 
     Returns ``None`` if the file is missing or unreadable. A ``per_instance.csv``
     with no sibling ``summary.json`` (or one predating R7 provenance stamping)
@@ -518,6 +608,7 @@ def read_run_summary_provenance(summary_path: Path) -> dict | None:
         "seed": obj.get("seed"),
         "git_commit": obj.get("git_commit"),
         "git_dirty": obj.get("git_dirty"),
+        "git_worktree_dirty": obj.get("git_worktree_dirty"),
     }
 
 
@@ -755,8 +846,8 @@ def axis_a_benchmark_diagnostic(graph: np.ndarray, X: np.ndarray, mechanism=None
 #: method from evaluation.
 CF_METHOD_KEYS: frozenset[str] = frozenset(
     {
-        "CARLA",
-        "PearlCARLA",
+        "NoiselessSCMRecourse",
+        "PearlSCMRecourse",
         "CftsWachter",
         "CftsCOMTE",
         "CftsConfeti",
@@ -789,6 +880,9 @@ SEED_AGGREGATE_METRICS: list[str] = [
     "cf_faith_pearl_soft",
     "cf_faith_rollout_hard_valid",
     "cf_faith_pearl_hard_valid",
+    "cf_faith_rollout_hard_given_valid",
+    "cf_faith_pearl_hard_given_valid",
+    "do_complexity",
 ]
 
 

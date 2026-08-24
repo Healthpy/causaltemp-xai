@@ -19,7 +19,7 @@ import numpy as np
 class CFExplainer(ABC):
     """Abstract counterfactual explainer.
 
-    Existing methods (CftsWachterCF, CARLARecourse) expose a ``generate()``
+    Existing methods (CftsWachterCF, NoiselessSCMRecourse) expose a ``generate()``
     interface.  The ``fit()`` / ``explain()`` methods below are aliases added for
     compatibility with the bench's evaluation harness.  Subclasses may implement
     either interface; ``generate()`` remains the primary API.

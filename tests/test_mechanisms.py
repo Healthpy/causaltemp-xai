@@ -129,7 +129,7 @@ class TestMLPForward:
             np.testing.assert_allclose(out[n], mech.forward_numpy(batch[n]), rtol=1e-12)
 
     def test_forward_torch_is_differentiable(self):
-        """forward_torch must be autograd-safe w.r.t. history (needed by CARLA)."""
+        """forward_torch must be autograd-safe w.r.t. history (needed by NoiselessSCMRecourse)."""
         mech = _random_mlp(hidden=8, seed=17)
         rng = np.random.default_rng(18)
         history = torch.as_tensor(rng.normal(size=(mech.L, mech.k)))
@@ -260,7 +260,7 @@ class TestMLPNonmonotonicActivation:
 
     def test_forward_torch_is_differentiable(self):
         """forward_torch must stay autograd-safe w.r.t. history (needed by
-        CARLA) with the nonmonotonic hidden activation too."""
+        NoiselessSCMRecourse) with the nonmonotonic hidden activation too."""
         mech = _random_mlp(hidden=8, seed=43, activation="nonmonotonic")
         rng = np.random.default_rng(44)
         history = torch.as_tensor(rng.normal(size=(mech.L, mech.k)))

@@ -5,7 +5,7 @@ Contract, per ``docs/pns_metric_design.md``'s build order — the metric must:
 1. score the **oracle** structural CF at ``delta_total ≈ 0`` (it *is* the
    world, so model and world cannot disagree about it);
 2. **flag** a CF that flips the classifier while having no world effect —
-   the exact CARLA/``full`` artifact this metric exists to catch;
+   the exact NoiselessSCMRecourse/``full`` artifact this metric exists to catch;
 3. **abstain** on a no-op CF rather than scoring it 0;
 4. satisfy the additive identity ``delta_total == delta_trajectory +
    delta_outcome`` exactly;
@@ -119,7 +119,7 @@ class TestPNSAdversarial:
         """The metric's reason to exist: a CF the model calls a successful
         flip, whose intervention the world says does nothing.
 
-        Built to mimic the CARLA/`full` artifact -- the proposed trajectory is
+        Built to mimic the NoiselessSCMRecourse/`full` artifact -- the proposed trajectory is
         displaced (so the model flips) while the *intervention* at t0 is
         negligible, so the world's realisation of that same intervention does
         not cross the label threshold.

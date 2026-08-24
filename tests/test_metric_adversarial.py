@@ -389,7 +389,7 @@ class TestCFfaithDegeneracy:
 
 
 # ---------------------------------------------------------------------------
-# Vacuous (zero-delta) interventions — the CARLA masking case
+# Vacuous (zero-delta) interventions — the NoiselessSCMRecourse masking case
 # ---------------------------------------------------------------------------
 
 
@@ -401,10 +401,10 @@ class TestVacuousIntervention:
     not fire, the prefix is untouched, and the CF *is* its own noiseless
     rollout, so ``CFfaith(noiseless_rollout)`` scores a perfect 1.0/1.0.
 
-    Located 2026-07-31 in the `full_nl` rerun: PearlCARLA's optimiser gradient
+    Located 2026-07-31 in the `full_nl` rerun: PearlSCMRecourse's optimiser gradient
     collapses to ~3e-9 (contractive MLP mechanism + a saturated LSTM), so its
     delta stays at 0 and it returns literal no-ops, which the degeneracy gate
-    correctly NaNs. CARLA's delta is *equally* stuck, but its noiseless rollout
+    correctly NaNs. NoiselessSCMRecourse's delta is *equally* stuck, but its noiseless rollout
     hides that: its saved `full_nl` CFs are bit-identical to a delta=0 rollout,
     so its reported ``prox_l1 = 96.059`` is 100% deleted noise and 0%
     intervention, published alongside ``rollout_hard = 1.00``.
@@ -826,6 +826,8 @@ class TestJointFaithValidCriterion:
         assert result["cf_faith_rollout_hard"] == 1.0  # gameably 'faithful'
         assert result["validity"] == 0.0  # ...but flips nothing
         assert result["cf_faith_rollout_hard_valid"] == 0.0  # no joint credit
+        assert np.isnan(result["cf_faith_rollout_hard_given_valid"])
+        assert np.isnan(result["cf_faith_pearl_hard_given_valid"])
 
     def test_faithful_and_valid_cf_gets_full_joint_credit(self):
         X, graph, mech, _, big = self._batches()
@@ -833,6 +835,8 @@ class TestJointFaithValidCriterion:
         assert result["validity"] == 1.0
         assert result["cf_faith_rollout_hard"] == 1.0
         assert result["cf_faith_rollout_hard_valid"] == 1.0
+        assert result["cf_faith_rollout_hard_given_valid"] == 1.0
+        assert result["cf_faith_pearl_hard_given_valid"] == result["cf_faith_pearl_hard"]
 
     def test_joint_credit_requires_both(self):
         """Mixed batch: joint score == mean(hard_i * valid_i), strictly below
@@ -843,12 +847,23 @@ class TestJointFaithValidCriterion:
         result = evaluate_method(_StepValueModel(), X2, CFs, X, graph, mech, target_class=1)
         preds = _StepValueModel().predict(CFs)
         rollout = CFfaith(semantics="noiseless_rollout")
+        pearl = CFfaith(semantics="pearl_delta")
         manual = []
+        manual_pearl = []
         for i in range(len(X2)):
             t = derive_intervention_t(X2[i], CFs[i])
             hard = rollout.score(X2[i], CFs[i], t, graph, mech)["hard"]
+            pearl_hard = pearl.score(X2[i], CFs[i], t, graph, mech)["hard"]
             manual.append(hard * float(preds[i] == 1))
+            manual_pearl.append(pearl_hard * float(preds[i] == 1))
         assert result["cf_faith_rollout_hard_valid"] == pytest.approx(float(np.mean(manual)))
+        valid = preds == 1
+        assert result["cf_faith_rollout_hard_given_valid"] == pytest.approx(
+            float(np.mean(np.asarray(manual)[valid]))
+        )
+        assert result["cf_faith_pearl_hard_given_valid"] == pytest.approx(
+            float(np.mean(np.asarray(manual_pearl)[valid]))
+        )
         # The tiny-edit half contributes faithfulness but no joint credit.
         assert result["cf_faith_rollout_hard_valid"] < result["cf_faith_rollout_hard"]
 
@@ -991,6 +1006,12 @@ class TestLayerConsistency:
             "n_cf_faith_scorable",
             "cf_faith_rollout_hard_valid",
             "cf_faith_pearl_hard_valid",
+            "cf_faith_rollout_hard_given_valid",
+            "cf_faith_pearl_hard_given_valid",
+            "do_complexity_mean_all",
+            "do_complexity_mean_pearl_scorable",
+            "n_do_scorable",
+            "frac_no_do_schedule",
         ],
     )
     def test_both_layers_agree(self, metric):

@@ -28,9 +28,20 @@ class TestReadRunSummaryProvenance:
         assert _common.read_run_summary_provenance(tmp_path / "summary.json") is None
 
     def test_reads_seed_commit_dirty(self, tmp_path):
-        _write_summary(tmp_path, seed=42, git_commit="abc123", git_dirty=False)
+        _write_summary(
+            tmp_path,
+            seed=42,
+            git_commit="abc123",
+            git_dirty=False,
+            git_worktree_dirty=True,
+        )
         prov = _common.read_run_summary_provenance(tmp_path / "summary.json")
-        assert prov == {"seed": 42, "git_commit": "abc123", "git_dirty": False}
+        assert prov == {
+            "seed": 42,
+            "git_commit": "abc123",
+            "git_dirty": False,
+            "git_worktree_dirty": True,
+        }
 
     def test_malformed_json_returns_none_not_raise(self, tmp_path):
         (tmp_path / "summary.json").write_text("{not valid json")
@@ -43,7 +54,12 @@ class TestReadRunSummaryProvenance:
     def test_missing_fields_come_back_as_none(self, tmp_path):
         _write_summary(tmp_path, some_other_key=1)
         prov = _common.read_run_summary_provenance(tmp_path / "summary.json")
-        assert prov == {"seed": None, "git_commit": None, "git_dirty": None}
+        assert prov == {
+            "seed": None,
+            "git_commit": None,
+            "git_dirty": None,
+            "git_worktree_dirty": None,
+        }
 
 
 class TestCheckProvenance:
@@ -58,6 +74,7 @@ class TestCheckProvenance:
                 "seed": 42,
                 "git_commit": "deadbeef",
                 "git_dirty": False,
+                "git_worktree_dirty": None,
             }
         ]
 

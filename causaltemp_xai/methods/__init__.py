@@ -2,7 +2,7 @@
 
 The top-level namespace re-exports the most commonly used classes.
 The full method collections are available in the subpackages:
-  - causaltemp_xai.methods.counterfactual  (CARLARecourse, PearlCARLARecourse,
+  - causaltemp_xai.methods.counterfactual  (NoiselessSCMRecourse, PearlSCMRecourse,
                                              TSCausalCF, cfts_*)
   - causaltemp_xai.methods.causal          (DYNOTEARS, PCMCIPlus)
 
@@ -17,7 +17,6 @@ from causaltemp_xai.scm.intervention import derive_intervention_t
 
 from .base import AttributionMethod, CFExplainer
 from .causal.pcmci import PCMCIPlus
-from .counterfactual.carla import CARLARecourse, PearlCARLARecourse
 from .counterfactual.causal_feasibility import TSCausalCF
 from .counterfactual.cfts_methods import (
     CftsCelsCF,
@@ -27,10 +26,10 @@ from .counterfactual.cfts_methods import (
     CftsNativeGuideCF,
     CftsWachterCF,
 )
+from .counterfactual.scm_recourse import NoiselessSCMRecourse, PearlSCMRecourse
 
 __all__ = [
     "AttributionMethod",
-    "CARLARecourse",
     "CFExplainer",
     "CftsCOMTECF",
     "CftsCelsCF",
@@ -38,8 +37,9 @@ __all__ = [
     "CftsCountsCF",
     "CftsNativeGuideCF",
     "CftsWachterCF",
+    "NoiselessSCMRecourse",
     "PCMCIPlus",
-    "PearlCARLARecourse",
+    "PearlSCMRecourse",
     "TSCausalCF",
     "derive_intervention_t",
 ]

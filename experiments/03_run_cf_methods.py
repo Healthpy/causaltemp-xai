@@ -2,7 +2,7 @@
 
 Loads the dataset + LSTM checkpoint for one config, selects the flip
 candidates (test instances not already predicted as ``TARGET_CLASS``), runs
-every registered CF method (CARLA + PearlCARLA + cfts-backed Wachter/COMTE/
+every registered CF method (NoiselessSCMRecourse + PearlSCMRecourse + cfts-backed Wachter/COMTE/
 CONFETTI/CounTS/CELS + TSCausalCF), and persists the raw counterfactual arrays. Also
 computes every CF method's Shift-VR-lite robustness metric (Axis B), which
 needs live method/model access and so belongs here rather than in the
@@ -27,9 +27,9 @@ This goes **beyond** the locked NlinearSCM-T plan's scope: real CF methods on
 the nonlinear mechanism were deferred to a collaborator's track and were never
 validated there (historical: ``docs/archive/plans/nlinearscm-t/``). It works
 mechanically because every method here is mechanism-generic -- the cfts-*
-methods never touch the SCM at all, and CARLA/Axis-A's oracle interventions
+methods never touch the SCM at all, and NoiselessSCMRecourse/Axis-A's oracle interventions
 route through ``mechanism.forward_torch``/``forward_numpy``, which
-``MLPMechanism`` implements just like ``LinearMechanism`` -- but CARLA's
+``MLPMechanism`` implements just like ``LinearMechanism`` -- but NoiselessSCMRecourse's
 recourse objective and the cfts baselines were only ever tuned/validated
 against the linear VAR mechanism, so treat nonlinear results here as
 exploratory, not a validated benchmark claim.
@@ -38,12 +38,15 @@ Outputs (under ``results/<config>/lstm/``)::
 
     cf/X_sel.npy                  selected factual instances, (n_cf, T, k)
     cf/X_cf_<Method>.npy           one array per CF method, (n_cf, T, k)
+    cf/no_cf_found_<Method>.npy    Boolean failed-search status, (n_cf,)
+    cf/no_cf_found_provenance.json generated vs inferred status source per method
+    cf/recourse_diagnostics_*.json NoiselessSCMRecourse/PearlSCMRecourse lambda-backoff diagnostics
     shift_vr.json                 Axis B: validity-retention under a noise shift, all CF methods
 
 Usage
 -----
     uv run python experiments/03_run_cf_methods.py --config smoke --n-cf 20
-    uv run python experiments/03_run_cf_methods.py --config full --n-cf 100 --methods CftsWachter CARLA
+    uv run python experiments/03_run_cf_methods.py --config full --n-cf 100 --methods CftsWachter NoiselessSCMRecourse
     uv run python experiments/03_run_cf_methods.py --config smoke_nl --n-cf 10   # exploratory
 """
 
@@ -64,13 +67,13 @@ from causaltemp_xai.config import CONFIGS, get_config, seeded_variant, shifted_c
 from causaltemp_xai.data_io import DEFAULT_OUT_DIR, generate_and_save, load_dataset  # noqa: E402
 from causaltemp_xai.eval import shift_vr  # noqa: E402
 from causaltemp_xai.methods import (  # noqa: E402  # noqa: E402
-    CARLARecourse,
     CftsCelsCF,
     CftsCOMTECF,
     CftsConfetiCF,
     CftsCountsCF,
     CftsWachterCF,
-    PearlCARLARecourse,
+    NoiselessSCMRecourse,
+    PearlSCMRecourse,
     TSCausalCF,
 )
 from causaltemp_xai.methods.counterfactual.cfts_methods import _DatasetAdapter  # noqa: E402
@@ -98,8 +101,10 @@ def build_methods(X_train, y_train, target_class: int = TARGET_CLASS) -> dict:
     ds = _DatasetAdapter(X_train, y_train)
     tc = target_class
     return {
-        "CARLA": CARLARecourse(target_class=tc, n_steps=300, t0_fractions=(0.25, 0.5)),
-        "PearlCARLA": PearlCARLARecourse(target_class=tc, t0_fractions=(0.25, 0.5)),
+        "NoiselessSCMRecourse": NoiselessSCMRecourse(
+            target_class=tc, n_steps=300, t0_fractions=(0.25, 0.5)
+        ),
+        "PearlSCMRecourse": PearlSCMRecourse(target_class=tc, t0_fractions=(0.25, 0.5)),
         "CftsWachter": CftsWachterCF(target_class=tc, dataset=ds, max_cfs=500),
         "CftsCOMTE": CftsCOMTECF(target_class=tc, dataset=ds),
         "CftsConfeti": CftsConfetiCF(target_class=tc, dataset=ds),
@@ -109,14 +114,47 @@ def build_methods(X_train, y_train, target_class: int = TARGET_CLASS) -> dict:
     }
 
 
-def generate_cfs(method, X, clf, graph, mech) -> np.ndarray:
-    """Generate one CF per instance, routing graph/mechanism to causal methods."""
-    params = inspect.signature(method.generate_batch).parameters
+def _call_batch(batch_fn, X, clf, graph, mech):
+    """Call a bound batch method with its declared causal arguments."""
+    params = inspect.signature(batch_fn).parameters
     if "graph" in params or "mechanism" in params:
-        cfs = method.generate_batch(X, clf, graph, mech)
+        return batch_fn(X, clf, graph, mech)
+    return batch_fn(X, clf)
+
+
+def generate_cfs(method, X, clf, graph, mech, *, with_status: bool = False):
+    """Generate one CF per instance, optionally returning failed-search status.
+
+    The default remains the historical ndarray-only return used by Phase 07.
+    Phase 03 requests status explicitly. Methods without a status API receive
+    an all-false vector whose provenance is marked ``inferred``.
+    """
+    status_fn = getattr(method, "generate_batch_with_status", None)
+    if with_status and callable(status_fn):
+        cfs, no_cf_found = _call_batch(status_fn, X, clf, graph, mech)
+        status_source = "generated"
     else:
-        cfs = method.generate_batch(X, clf)
-    return np.asarray(cfs, dtype=np.float32)
+        cfs = _call_batch(method.generate_batch, X, clf, graph, mech)
+        no_cf_found = np.zeros(len(X), dtype=bool)
+        status_source = "inferred"
+
+    cfs = np.asarray(cfs, dtype=np.float32)
+    if not with_status:
+        return cfs
+
+    no_cf_found = np.asarray(no_cf_found)
+    if no_cf_found.dtype != np.bool_:
+        raise TypeError(f"no_cf_found must have bool dtype, got {no_cf_found.dtype}")
+    if no_cf_found.shape != (len(cfs),):
+        raise ValueError(
+            f"no_cf_found shape {no_cf_found.shape} does not match CF batch ({len(cfs)},)"
+        )
+    status_info = {
+        "source": status_source,
+        "n": len(cfs),
+        "n_no_cf_found": int(no_cf_found.sum()),
+    }
+    return cfs, no_cf_found, status_info
 
 
 def load_or_make_shift_test(cfg, out_dir):
@@ -179,15 +217,32 @@ def run(
     # Keep the generated arrays: Shift-VR's base half is exactly this work, so
     # handing them over below saves a full redundant generation pass.
     generated: dict[str, np.ndarray] = {}
+    status_provenance: dict[str, dict] = {}
     for name, method in all_methods.items():
         print(f"[03] generating CFs: {name} ...")
         try:
-            cfs = generate_cfs(method, X_sel, clf, graph, mech)
+            cfs, no_cf_found, status_info = generate_cfs(
+                method, X_sel, clf, graph, mech, with_status=True
+            )
             np.save(cf_dir / f"X_cf_{name}.npy", cfs)
+            np.save(cf_dir / f"no_cf_found_{name}.npy", no_cf_found)
             generated[name] = cfs
-            print(f"     -> {cf_dir / f'X_cf_{name}.npy'}")
+            status_provenance[name] = status_info
+            diagnostics = getattr(method, "last_batch_diagnostics", None)
+            if diagnostics is not None:
+                dump_json(
+                    cf_dir / f"recourse_diagnostics_{name}.json",
+                    {"method": name, "instances": diagnostics},
+                )
+            print(
+                f"     -> {cf_dir / f'X_cf_{name}.npy'}; "
+                f"no_cf_found={int(no_cf_found.sum())}/{len(no_cf_found)} "
+                f"({status_info['source']})"
+            )
         except Exception as exc:
             print(f"     {name} FAILED: {exc}")
+
+    dump_json(cf_dir / "no_cf_found_provenance.json", {"methods": status_provenance})
 
     if skip_aux:
         # CF arrays are written and complete; the auxiliary block below
