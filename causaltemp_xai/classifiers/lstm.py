@@ -19,7 +19,6 @@ from torch.utils.data import DataLoader, TensorDataset
 
 from causaltemp_xai.classifiers.base import TSClassifier
 
-
 # ---------------------------------------------------------------------------
 # Core module
 # ---------------------------------------------------------------------------
@@ -82,8 +81,29 @@ class LSTM(nn.Module):
         -------
         logits : Tensor of shape ``(N, n_classes)``.
         """
-        # out: (N, T, D*hidden_size); hn: (D*num_layers, N, hidden_size)
-        _, (hn, _) = self.lstm(x)
+        # cuDNN's fused RNN kernel refuses to run its backward pass unless the
+        # module is in .train() mode, even for a plain gradient computation --
+        # this bites any gradient-based CF method (Wachter/COMTE/CounTS/CELS,
+        # NoiselessSCMRecourse, integrated_gradients) that backprops through an .eval() model
+        # on GPU. Disabling cuDNN for this call falls back to the generic CUDA
+        # RNN kernel, which supports eval-mode backward; a no-op on CPU, where
+        # cuDNN never applied. Every result committed before this fix was
+        # produced on CPU, so this changes no prior number.
+        #
+        # Scoped to torch.is_grad_enabled(): the vast majority of calls here
+        # are plain inference under torch.no_grad() (predict_proba, scoring,
+        # non-gradient CF methods) where the eval-mode-backward restriction
+        # never triggers, so cuDNN's fast kernel is safe and should not be
+        # paid for. Suspected (not yet isolated) as the dominant cause of a
+        # full-scale GPU phase-03 run (n_cf=100, 7 CF methods) blowing past
+        # its 12h budget -- see slurm/logs/ctxai-full-rerun-24839349.{out,err}
+        # (TIMEOUT). That run predates this fix.
+        if torch.is_grad_enabled():
+            with torch.backends.cudnn.flags(enabled=False):
+                # out: (N, T, D*hidden_size); hn: (D*num_layers, N, hidden_size)
+                _, (hn, _) = self.lstm(x)
+        else:
+            _, (hn, _) = self.lstm(x)
         # hn[-1] is the last layer's forward hidden state;
         # for bidirectional, concatenate the last forward and backward states.
         if self.bidirectional:
@@ -264,9 +284,7 @@ class LSTMClassifier(TSClassifier):
         self.patience = patience
         self.target_acc = target_acc
         self.seed = seed
-        self.device = torch.device(
-            device or ("cuda" if torch.cuda.is_available() else "cpu")
-        )
+        self.device = torch.device(device or ("cuda" if torch.cuda.is_available() else "cpu"))
         torch.manual_seed(seed)
         self.model = LSTM(**self.hparams).to(self.device)
 
@@ -297,9 +315,7 @@ class LSTMClassifier(TSClassifier):
         torch.manual_seed(self.seed)
         Xtr = torch.as_tensor(np.asarray(X_train), dtype=torch.float32)
         ytr = torch.as_tensor(np.asarray(y_train), dtype=torch.long)
-        loader = DataLoader(
-            TensorDataset(Xtr, ytr), batch_size=self.batch_size, shuffle=True
-        )
+        loader = DataLoader(TensorDataset(Xtr, ytr), batch_size=self.batch_size, shuffle=True)
         optimiser = torch.optim.Adam(self.model.parameters(), lr=self.lr)
 
         has_val = X_val is not None and y_val is not None
@@ -435,7 +451,7 @@ class LSTMClassifier(TSClassifier):
         )
 
     @classmethod
-    def load(cls, path: Path | str, device: Optional[str] = None) -> "LSTMClassifier":
+    def load(cls, path: Path | str, device: Optional[str] = None) -> LSTMClassifier:
         """Reconstruct a classifier from a checkpoint written by :meth:`save`."""
         ckpt = torch.load(path, map_location="cpu", weights_only=False)
         train_cfg = ckpt.get("train_cfg", {})
@@ -490,9 +506,7 @@ def _train_cli(argv: list[str] | None = None) -> None:
         max_epochs=args.max_epochs,
         patience=args.patience,
     )
-    clf.fit(
-        data["X_train"], data["Y_train"], data["X_val"], data["Y_val"], verbose=args.verbose
-    )
+    clf.fit(data["X_train"], data["Y_train"], data["X_val"], data["Y_val"], verbose=args.verbose)
 
     train_acc = clf.score(data["X_train"], data["Y_train"])
     val_acc = clf.score(data["X_val"], data["Y_val"])

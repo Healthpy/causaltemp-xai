@@ -1,6 +1,0 @@
-{
-  "SHD": 0.0,
-  "LagAcc": 1.0,
-  "TV_Confounding": 0.5657142857142856,
-  "note": "SHD/LagAcc computed against the graph itself (no graph-discovery method in this pipeline) -- trivially perfect; TV_Confounding is the informative benchmark-structural diagnostic here."
-}

@@ -11,8 +11,12 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from causaltemp_xai.stats import bootstrap_ci, hierarchical_bootstrap_ci
-
+from causaltemp_xai.stats import (
+    bootstrap_ci,
+    bootstrap_resample_indices,
+    collapse_horizon_ci,
+    hierarchical_bootstrap_ci,
+)
 
 # ---------------------------------------------------------------------------
 # bootstrap_ci (flat, i.i.d.)
@@ -78,6 +82,42 @@ class TestBootstrapCI:
         r = bootstrap_ci([1.0, 2.0, 3.0], n_boot=100, seed=0)
         d = r.as_dict(prefix="validity_")
         assert set(d.keys()) == {"validity_mean", "validity_ci_lo", "validity_ci_hi", "validity_n"}
+
+
+# ---------------------------------------------------------------------------
+# bootstrap_resample_indices (raw-data resampling for a per-resample refit, M4f)
+# ---------------------------------------------------------------------------
+
+
+class TestBootstrapResampleIndices:
+    def test_shape(self):
+        idx = bootstrap_resample_indices(n=20, n_boot=7, seed=0)
+        assert idx.shape == (7, 20)
+
+    def test_values_in_range(self):
+        idx = bootstrap_resample_indices(n=15, n_boot=50, seed=0)
+        assert idx.min() >= 0
+        assert idx.max() < 15
+
+    def test_deterministic_given_same_seed(self):
+        idx1 = bootstrap_resample_indices(n=10, n_boot=5, seed=42)
+        idx2 = bootstrap_resample_indices(n=10, n_boot=5, seed=42)
+        assert np.array_equal(idx1, idx2)
+
+    def test_different_seeds_differ(self):
+        idx1 = bootstrap_resample_indices(n=10, n_boot=5, seed=1)
+        idx2 = bootstrap_resample_indices(n=10, n_boot=5, seed=2)
+        assert not np.array_equal(idx1, idx2)
+
+    def test_n_boot_one(self):
+        idx = bootstrap_resample_indices(n=6, n_boot=1, seed=0)
+        assert idx.shape == (1, 6)
+        assert idx.min() >= 0
+        assert idx.max() < 6
+
+    def test_dtype_is_integer(self):
+        idx = bootstrap_resample_indices(n=5, n_boot=3, seed=0)
+        assert np.issubdtype(idx.dtype, np.integer)
 
 
 # ---------------------------------------------------------------------------
@@ -156,3 +196,87 @@ class TestHierarchicalBootstrapCI:
         width_flat = r_flat.ci_hi - r_flat.ci_lo
         width_hier = r_hier.ci_hi - r_hier.ci_lo
         assert width_hier == pytest.approx(width_flat, rel=0.5)
+
+
+# ---------------------------------------------------------------------------
+# collapse_horizon_ci (M4d)
+# ---------------------------------------------------------------------------
+
+
+class TestCollapseHorizonCI:
+    def test_exact_grid_point_crossing(self):
+        """A curve that lands exactly on the threshold at a grid point should
+        report that horizon without needing interpolation."""
+        horizons = [5, 10, 20, 40]
+        seeds = [[1.0, 1.0, 0.5, 0.0]]
+        r = collapse_horizon_ci(horizons, seeds, threshold=0.5, n_boot=10)
+        assert r.horizon == pytest.approx(20.0)
+
+    def test_interpolates_between_grid_points(self):
+        """Threshold crossed strictly between two tested horizons -> linear
+        interpolation, not a snap to the nearest grid point."""
+        horizons = [0, 10]
+        seeds = [[1.0, 0.0]]  # straight line, crosses 0.5 exactly at x=5
+        r = collapse_horizon_ci(horizons, seeds, threshold=0.5, n_boot=10)
+        assert r.horizon == pytest.approx(5.0)
+
+    def test_never_collapses_is_nan_not_extrapolated(self):
+        """Validity stays above threshold at every tested horizon -- the
+        honest answer is 'no evidence of a crossing in this range', not a
+        fabricated point beyond the last horizon tested."""
+        horizons = [5, 10, 20]
+        seeds = [[1.0, 0.9, 0.8]]
+        r = collapse_horizon_ci(horizons, seeds, threshold=0.5, n_boot=10)
+        assert np.isnan(r.horizon)
+        assert r.frac_boot_crossed == pytest.approx(0.0)
+
+    def test_already_collapsed_at_first_horizon_is_nan_not_first_point(self):
+        """Validity is already at/below threshold at the smallest horizon
+        tested -- the true crossing may lie before it, which this grid
+        cannot see, so this must not silently report horizons[0]."""
+        horizons = [5, 10, 20]
+        seeds = [[0.4, 0.3, 0.1]]
+        r = collapse_horizon_ci(horizons, seeds, threshold=0.5, n_boot=10)
+        assert np.isnan(r.horizon)
+
+    def test_deterministic_given_same_seed(self):
+        rng = np.random.default_rng(1)
+        horizons = [5, 10, 20, 40]
+        seeds = [
+            np.clip(1.0 - rng.normal(0.02, 0.005) * np.array(horizons), 0, 1) for _ in range(5)
+        ]
+        r1 = collapse_horizon_ci(horizons, seeds, n_boot=500, seed=3)
+        r2 = collapse_horizon_ci(horizons, seeds, n_boot=500, seed=3)
+        assert r1 == r2
+
+    def test_ci_ordering_when_crossing_found(self):
+        rng = np.random.default_rng(2)
+        horizons = [5, 10, 20, 40, 80]
+        # Decaying curves with seed-level noise, guaranteed to cross 0.5.
+        seeds = [
+            np.clip(1.2 - 0.02 * np.array(horizons) + rng.normal(0, 0.05, 5), 0, 1)
+            for _ in range(6)
+        ]
+        r = collapse_horizon_ci(horizons, seeds, threshold=0.5, n_boot=2000, seed=0)
+        if r.frac_boot_crossed > 0:
+            assert r.ci_lo <= r.horizon <= r.ci_hi
+
+    def test_single_seed_gives_point_ci(self):
+        horizons = [5, 10, 20]
+        seeds = [[1.0, 0.6, 0.2]]
+        r = collapse_horizon_ci(horizons, seeds, threshold=0.5, n_boot=500)
+        assert r.n_seeds == 1
+        assert r.ci_lo == r.horizon == r.ci_hi
+
+    def test_frac_boot_crossed_reflects_marginal_curves(self):
+        """A curve that hovers right at the threshold should cross in only
+        some bootstrap resamples, not all -- frac_boot_crossed must reflect
+        that rather than silently reporting a full-confidence interval."""
+        horizons = [5, 10, 20]
+        rng = np.random.default_rng(9)
+        seeds = [
+            [0.5 + rng.normal(0, 0.05), 0.5 + rng.normal(0, 0.05), 0.5 + rng.normal(0, 0.05)]
+            for _ in range(8)
+        ]
+        r = collapse_horizon_ci(horizons, seeds, threshold=0.5, n_boot=2000, seed=0)
+        assert 0.0 < r.frac_boot_crossed < 1.0

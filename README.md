@@ -6,25 +6,53 @@
 
 ## Description
 
+Temporal counterfactual explanations are evaluated with validity, proximity,
+sparsity and OOD-plausibility — every one of which measures a relationship
+between the counterfactual and **the model**. None measures the relationship
+between the counterfactual and **the process that generated the data**.
 
-`causaltemp-xai` provides:
+`causaltemp-xai` is a benchmark and audit protocol that closes that gap: it
+generates time series from a known SCM, so a proposed counterfactual can be
+scored against what the true mechanism would actually have produced. The field
+uses structural causal models to *penalise* counterfactuals; nobody uses them to
+*derive* the counterfactual the proposal is scored against.
 
-- **LinearSCM-T** - a VAR(L) benchmark generator with an explicit causal graph
-  and non-Gaussian noise, so the true counterfactual distribution is known.
-- **NlinearSCM-T** - the nonlinear sibling: same graph, additive-noise per-node
-  MLP transition mechanisms (spectral-norm-capped for stability). Tests
-  generalization beyond linear VAR identifiability. See below.
-- **CFfaith** - a hard/soft metric that checks whether a proposed CF respects
-  the causal mechanisms of the data-generating process.
-- **Axis-C metrics** - four complementary quality axes (validity, proximity,
-  sparsity, OOD plausibility) that together characterise a CF explanation.
-- **Six wired CF methods** - `CARLARecourse` (causal noiseless-rollout
+**What it provides:**
+
+- **A model-vs-world audit.** The method's own intervention is realised by the
+  true mechanism and the two outcomes are compared, decomposed additively into
+  a trajectory term and an outcome term. Necessity/sufficiency are computed
+  **exactly**, not Tian–Pearl bounded, because additive noise makes abduction an
+  exact subtraction.
+- **Do-complexity `D`** — how many timesteps a counterfactual must declare as
+  interventions before the mechanism can reproduce it. Pooled over 3 seeds on
+  `full` (`T = 100`): a single-`do()` recourse control sits at `D = 1.0`, while
+  the strongest published gradient method sits at `D = 96.4` and one method
+  declares **every one of the 100 timesteps** an intervention. That is a
+  trajectory rewrite, not an explanation.
+- **Intervention-to-outcome distance as a reporting condition.** Effects on the
+  label attenuate geometrically in the distance from the intervention to the
+  label site, so recourse feasibility is a property of the *configuration*, not
+  of the method — and validity numbers reported without that distance are
+  uninterpretable.
+- **LinearSCM-T / NlinearSCM-T** — VAR(L) and additive-noise per-node MLP
+  generators, each shipping true graph, true mechanism, and oracle
+  abduction–action–prediction counterfactuals. The **label functional** is a
+  configurable axis, not a constant.
+- **CFfaith** — a mechanism-consistency **admission gate** with two mutually
+  exclusive semantics (`noiseless_rollout`, `pearl_delta`). A single CF cannot
+  be hard-faithful under both; the contrast is itself a result. It is not a
+  ranking axis — see [`docs/general_plan.md`](docs/general_plan.md) §7.
+- **Seven wired CF methods** — `NoiselessSCMRecourse` (causal noiseless-rollout
   recourse) plus five reference methods backed by the vendored `cfts` repo
-  (Wachter, COMTE, CONFETI, CounTS, CELS), all behind a uniform interface.
-  Native from-scratch `WachterCF`/`DiCECF` are also available via the library
-  API.
-- **Attribution foils** - integrated gradients + deletion/insertion
-  perturbation curves.
+  (Wachter, COMTE, CONFETI, CounTS, CELS) and `TSCausalCF` (SCM-regularised,
+  Bahri et al. 2025; wired into the default full-scale set 2026-08-06), all
+  behind a uniform interface.
+
+Findings are established on the synthetic tier, which is the **only** tier with
+a ground-truth mechanism and therefore the only one where a metric can be shown
+faithful. Real-signal tiers test whether the findings *travel*; they cannot
+validate the metrics, and the docs are explicit about not conflating the two.
 
 ## Installation
 
@@ -42,11 +70,23 @@ The full benchmark runs end-to-end from a clean checkout. Datasets and the
 classifier checkpoint are **regenerated deterministically** (seeded), never
 committed.
 
-> **v0.1 note:** the frozen v0.1 numbers in
-> [`docs/hypotheses_assessment.md`](docs/hypotheses_assessment.md) were
-> produced with a TCN classifier and 3 CF methods. The TCN was dropped in the
-> package restructure (restoring it is on the roadmap); the current pipeline
-> trains an LSTM and runs 6 CF methods.
+> **⚠ Also retracted (2026-08-03): `Δ_trajectory ≈ 1.0`.** The earlier headline
+> "no wired method makes a causal intervention" was substantially an artifact of
+> reading each counterfactual as a single `do()` at `t0`. Auditing the whole
+> multi-timestep intervention a proposal implies collapses `Δ_trajectory` to
+> 0.00 on every method. The finding is restated on do-complexity, which is not
+> an artifact of the reading — see [`DECISIONS.md`](DECISIONS.md) and
+> [`docs/general_plan.md`](docs/general_plan.md) §4.1.
+
+> **⚠ The v0.1 numbers are retracted, not merely stale.** They were produced
+> with a TCN classifier (descoped 2026-07-08) and a since-deleted method
+> (DiCE), on metric code predating the `99a2e9f` construct-validity fixes; the
+> CF-faith column was then retracted outright by `d3c377d`. The historical
+> record is kept at
+> [`docs/archive/hypotheses_assessment.md`](docs/archive/hypotheses_assessment.md)
+> **for provenance only — do not cite it.** Verdicts are regenerated into
+> [`docs/05_evaluation_plan.md`](docs/05_evaluation_plan.md) §5 after the
+> `full`/`full_nl` rerun.
 
 ```bash
 # 0. environment
@@ -59,18 +99,22 @@ uv run python -m causaltemp_xai.data_io --config full
 uv run python -m causaltemp_xai.classifiers.lstm --config full --train --patience 20
 
 # 3. run the harness: CF methods x Axis-C + both CF-faith metrics
-#    + IG attribution foil + Shift-VR-lite -> results/full/<classifier>/...
-uv run python experiments/03_run_cf_methods.py --config full --n-cf 100
+#    + Shift-VR-lite -> results/full/<classifier>/...
+#    CftsCounts excluded from the current default run (PI decision, 2026-07-29)
+#    TSCausalCF (was CausalFeasibilityCF) wired into the default set 2026-08-06
+uv run python experiments/03_run_cf_methods.py --config full --n-cf 100 \
+    --methods NoiselessSCMRecourse PearlSCMRecourse CftsWachter \
+    CftsCOMTE CftsConfeti CftsCels TSCausal
 uv run python experiments/04_evaluate_axes.py --config full
 
 # 4. render the 3 publication figures -> results/figures/
-uv run python experiments/06_make_figures.py
+uv run python experiments/08_aggregate_and_report.py figures
 ```
 
 Swap `--config full` for `--config smoke` (k=5, T=30, N=500) for a fast pass; the
-smoke pipeline is what CI runs. See
-[`docs/hypotheses_assessment.md`](docs/hypotheses_assessment.md) for the H1/H3/H4
-verdicts and the go/no-go decision.
+smoke pipeline is what CI runs. The scientific claim and evaluation protocol are
+in [`docs/general_plan.md`](docs/general_plan.md); the pre-registered hypotheses
+are in [`docs/05_evaluation_plan.md`](docs/05_evaluation_plan.md).
 
 ### Phased pipeline
 
@@ -86,9 +130,19 @@ uv run python experiments/02_train_classifiers.py --config smoke     # linear co
 uv run python experiments/03_run_cf_methods.py --config smoke --n-cf 20
 uv run python experiments/04_evaluate_axes.py --config smoke
 uv run python experiments/05_run_oracle_control.py --config smoke     # oracle positive control; any config, classifier-free
-uv run python experiments/06_make_figures.py
-uv run python experiments/08_citris_graph.py --config smoke_nl   # DYNOTEARS self-graphing + H3 graph-error split (nonlinear configs); --method citris for the secondary
-uv run python experiments/09_axis_a_icc.py --config smoke        # decoder-based Axis-A ICC (iVAE latent traversal) with recon gate + latent->factor alignment
+
+# phase 8 — post-hoc publication artifacts (subcommands: figures | seeds | pns | horizon)
+uv run python experiments/08_aggregate_and_report.py figures                            # -> results/figures/
+uv run python experiments/08_aggregate_and_report.py seeds --config smoke --seeds 0 1 2 # -> results/tables/ (multi-seed + bootstrap CIs)
+
+# phase 7 — auxiliary method families outside the main 01-05 pipeline
+uv run python experiments/07_auxiliary_methods.py --config smoke_nl --method dynotears  # self-graphing + H3 graph-error split (nonlinear configs); --method pcmciplus for the second method; --method cross_method_agreement compares both
+
+# model-vs-world audit + do-complexity (M2b). --schedule audits the whole
+# multi-timestep intervention a CF implies rather than the single do() at t0.
+uv run python experiments/07_auxiliary_methods.py --config full --method pns --seed 0
+uv run python experiments/07_auxiliary_methods.py --config full --method pns --seed 0 --schedule
+uv run python experiments/08_aggregate_and_report.py pns --config full   # -> results/tables/table_pns_do_complexity_full.csv
 ```
 
 See [`results/README.md`](results/README.md) for the on-disk layout each
@@ -132,9 +186,9 @@ config (`--config smoke` as readily as `smoke_nl`); the split between Phase
 **Scope:** this ships nonlinear *transitions* only. Nonlinear **mixing**
 `x = g(z)` (an invertible observation map over latents) and **non-additive**
 noise are a separate identifiability axis (iVAE/CITRIS) and are documented as a
-**future extension** — see the [`docs/plans/nlinearscm-t/`](docs/plans/nlinearscm-t/index.md)
-Backlog. Real CF methods (Wachter/DiCE/CARLA) on the nonlinear SCM are the
-collaborator's track and are likewise out of scope here.
+**future extension** — see [`docs/general_plan.md`](docs/general_plan.md) §10
+(Scope Boundaries) for why relaxing additivity would cost the exact abduction
+the benchmark's contribution depends on.
 
 ## Quickstart (library API)
 
@@ -187,9 +241,11 @@ print("sparsity :", sparsity(x_orig, x_cf))
 | **OOD Plausibility** | `ood_plausibility(x_train, x_cf)` | IsolationForest decision score; higher means more in-distribution. |
 | **CF-faith (hard)** | `CFfaith.score(...)["hard"]` | 1.0 iff the CF exactly follows SCM mechanisms from the intervention time. |
 | **CF-faith (soft)** | `CFfaith.score(...)["soft"]` | exp(-L1 residual / scale); continuous relaxation of hard faithfulness. |
+| **Do-complexity** | `do_complexity(x, x_cf, mechanism)` | Number of timesteps the CF must declare as `do()` before the mechanism reproduces it. `D = 0` is the vacuous case; `D → T` is a trajectory rewrite. |
+| **Model-vs-world gap** | `pns_direction(...)` | `A`/`B`/`C` and the additive split `Δ_total = Δ_trajectory + Δ_outcome`. Always reported with `D`. |
 
 Two CF-faith *semantics* are reported side by side (`CFfaith(semantics=...)`):
-`"noiseless_rollout"` (default — what CARLA-causal is built to satisfy) and
+`"noiseless_rollout"` (default — what `NoiselessSCMRecourse` is built to satisfy) and
 `"pearl_delta"` (Pearl delta-recursion). A single CF cannot be `hard=1` under
 both; the contrast is itself a benchmark result.
 
@@ -209,46 +265,47 @@ causaltemp-xai/
 │   ├── eval.py                  # evaluate_method (Axis-C + both CF-faith) + shift_vr
 │   ├── benchmarks/
 │   │   ├── generator.py         # LinearSCM-T VAR(L) + NlinearSCM-T MLP generators
+│   │   ├── labels.py            # label functionals (which scalar the label thresholds)
 │   │   ├── mechanisms.py        # Mechanism / LinearMechanism / MLPMechanism (+ serialize)
-│   │   └── structural_cf.py     # oracle abduction-action-prediction counterfactual
+│   │   └── structural_cf.py     # oracle abduction-action-prediction CF (single do() or schedule)
 │   ├── scm/
-│   │   ├── intervention.py      # derive_intervention_t (uniform rule)
-│   │   ├── abduction.py         # noise abduction for Pearl counterfactuals
-│   │   └── counterfactual.py    # abduction-action-prediction machinery
+│   │   └── intervention.py      # derive_intervention_t, is_vacuous_intervention (only file here)
 │   ├── metrics/
+│   │   ├── taxonomy.py          # AXES / AXIS_METRICS -- sole source of truth for A/B/C routing
+│   │   ├── axis_a.py            # structure: SHD, lag accuracy, graph AUC (per dataset)
+│   │   ├── axis_b.py            # robustness: Shift-VR, input sensitivity (per method)
+│   │   ├── axis_c.py            # counterfactual quality: validity, proximity, sparsity, OOD, TRSI
 │   │   ├── cf_faith.py          # CFfaith (noiseless_rollout | pearl_delta semantics)
-│   │   ├── axis_c.py            # validity, proximity, sparsity, OOD, TRSI
-│   │   └── axis_a|b|d.py        # concept, graph, robustness axis metrics
+│   │   └── pns.py               # model-vs-world audit: A/B/C split + do-complexity
 │   ├── classifiers/lstm.py      # LSTM + LSTMClassifier wrapper (+ train CLI)
 │   └── methods/
 │       ├── counterfactual/
-│       │   ├── wachter.py       # WachterCF (gradient CF)
-│       │   ├── dice.py          # DiCECF (dice-ml gradient + DPP fallback)
-│       │   ├── carla.py         # CARLARecourse (causal noiseless-rollout recourse)
-│       │   └── cfts_methods.py  # cfts-backed Wachter/COMTE/CONFETI/CounTS/CELS
-│       ├── attribution/
-│       │   ├── integrated_gradients.py   # hand-rolled IG attribution foil (WP3)
-│       │   ├── perturbation_curves.py    # deletion / insertion curves
-│       │   ├── timeshap.py      # TimeSHAP: official feedzai timeshap wrapper (Bento et al., 2021)
-│       │   └── dynamask.py      # Dynamask: official Dynamask submodule wrapper (Crabbe & van der Schaar, 2021)
-│       ├── concept/             # CBM-T probe + iVAE (experimental, unwired)
-│       └── causal/              # DYNOTEARS + CITRIS (genuine, vendored)
+│       │   ├── scm_recourse.py         # Noiseless/Pearl SCM recourse positive controls
+│       │   ├── causal_feasibility.py  # TSCausalCF (was CausalFeasibilityCF; Bahri et al. 2025, FISTA, SCM-regularised)
+│       │   └── cfts_methods.py        # cfts-backed Wachter/COMTE/CONFETI/CounTS/CELS/NativeGuide
+│       └── causal/              # DYNOTEARS (vendored) + PCMCIplus (tigramite, PyPI)
 ├── third_party/cfts_repo/       # vendored cfts reference implementations
 ├── third_party/dynamask_repo/   # vendored official Dynamask
-├── third_party/citris_repo/     # vendored official CITRIS (github.com/phlippe/CITRIS)
 ├── third_party/causalnex_repo/  # vendored McKinsey CausalNex (DYNOTEARS solver)
 ├── experiments/
 │   ├── 01_generate_benchmarks.py    # phase 1: generate + persist datasets
 │   ├── 02_train_classifiers.py      # phase 2: train the LSTM classifier
-│   ├── 03_run_cf_methods.py         # phase 3: run CF methods + IG + shift-VR
+│   ├── 03_run_cf_methods.py         # phase 3: run CF methods + shift-VR
 │   ├── 04_evaluate_axes.py          # phase 4: Axis-C + CF-faith on persisted CFs
 │   ├── 05_run_oracle_control.py     # phase 5: oracle structural-CF positive control (any config)
-│   ├── 06_make_figures.py           # phase 6: figures from results/
-│   ├── 07_aggregate_seeds.py        # phase 7: multi-seed pooling + bootstrap CIs (M2)
+│   ├── 06_horizon_sweep.py          # phase 6: sweep t0, so the horizon claim is plotted not asserted
+│   ├── 07_auxiliary_methods.py      # phase 7: self-graphing (Axis A) | PNS model-vs-world audit
+│   ├── 07b_discovered_graph_real.py # phase 7b: discovered-graph CF-faith + cross-method agreement, Tier 2 (M4g/M4i)
+│   ├── 08_aggregate_and_report.py   # phase 8: multi-seed pooling + bootstrap CIs | figures
+│   ├── 09_tier1_synthetic_suite.py  # phase 9: Tier-1 suite, all 4 synthetic families x smoke/full (M4i)
+│   ├── 10_tier2_real_suite.py       # phase 10: Tier-2 suite, 3 UCR/UEA real datasets (M4i)
+│   ├── 11_tier3_real_suite.py       # phase 11: Tier-3 generic scaffold, known/discover/domain graph source (M4i)
 │   └── _common.py                   # shared paths/loading for the phased pipeline
 ├── results/                     # figures + tables written by the phased pipeline
-├── docs/hypotheses_assessment.md  # H1/H3/H4 verdicts + go/no-go
-├── docs/PROJECT_PLAN.md         # PI project plan: objectives, milestones, todos
+├── docs/general_plan.md         # the scientific claim, contributions, protocol
+├── docs/05_evaluation_plan.md   # pre-registration: configs, methods, hypotheses
+├── docs/risk_register.md        # descriptive risk register (RISK-01..RISK-19)
+├── docs/archive/                # superseded memos, retracted numbers — do not cite
 ├── tests/
 ├── notebooks/                   # 01_data_exploration, 02_benchmark_exploration
 └── data/scm_t/                 # generated datasets + checkpoints (gitignored)

@@ -15,15 +15,19 @@ import numpy as np
 import pytest
 from scipy.stats import kstest, kurtosis
 
-from causaltemp_xai.benchmarks.generator import _GAUSSIAN_STD, LinearSCMT
-from causaltemp_xai.config import CONFIGS, SMOKE
+from causaltemp_xai.benchmarks.generator import (
+    _GAUSSIAN_STD,
+    LinearSCMT,
+    NlinearSCMT,
+    exogenous_channels,
+)
+from causaltemp_xai.config import CONFIGS, FULL, FULL_NL, SMOKE
 from causaltemp_xai.data_io import (
     SPLIT_FRACTIONS,
     generate_and_save,
     load_dataset,
     stratified_split,
 )
-
 
 # ---------------------------------------------------------------------------
 # Output shape / structure
@@ -91,9 +95,9 @@ class TestGraphSparsity:
         gen = LinearSCMT(k=8, L=2, sparsity=sparsity, T=10, N=10, seed=0)
         data = gen.generate()
         actual = data["graph"].mean()
-        assert abs(actual - sparsity) < 0.15, (
-            f"sparsity={sparsity}: actual={actual:.3f} out of tolerance"
-        )
+        assert (
+            abs(actual - sparsity) < 0.15
+        ), f"sparsity={sparsity}: actual={actual:.3f} out of tolerance"
 
 
 # ---------------------------------------------------------------------------
@@ -205,6 +209,48 @@ class TestAcyclicity:
         assert np.all(np.diag(graph[:, :, 0]) == 0.0)
 
 
+class TestExogenousChannels:
+    """M3's U_s/U_d/V typing prerequisite (`TSCausalCF`, was `CausalFeasibilityCF`).
+
+    Decided 2026-08-04: a channel with zero incoming edges is
+    this benchmark's ``U_d`` (dynamic exogenous); every other channel is ``V``.
+    ``U_s`` has no counterpart here and is always empty. The decision was made
+    *after* checking real data, not assumed -- these numbers pin that check so
+    a future graph/sparsity change surfaces here rather than silently changing
+    the typing everyone downstream assumes.
+    """
+
+    def test_no_incoming_edges_means_pure_noise(self):
+        """A channel with an all-zero row has nothing to be exogenous *from*."""
+        graph = np.zeros((4, 4, 1))
+        graph[1, 0, 0] = 1  # channel 1 <- channel 0
+        graph[2, 1, 0] = 1  # channel 2 <- channel 1
+        # channels 0 and 3 have no incoming edge at all.
+        assert exogenous_channels(graph) == [0, 3]
+
+    def test_fully_connected_graph_has_no_exogenous_channels(self):
+        graph = np.ones((3, 3, 1))
+        np.fill_diagonal(graph[:, :, 0], 0.0)  # lag-1 self-loops never occur
+        assert exogenous_channels(graph) == []
+
+    def test_empty_graph_is_all_exogenous(self):
+        graph = np.zeros((5, 5, 2))
+        assert exogenous_channels(graph) == [0, 1, 2, 3, 4]
+
+    def test_full_and_full_nl_have_no_exogenous_channels_at_paper_scale(self):
+        """The finding that shaped the M3 decision: U_d is empty where the
+        DoD needs it. Sparsity 0.2 at k=10 leaves every channel a descendant
+        of at least one other -- not a bug to route around."""
+        for cfg, cls in ((FULL, LinearSCMT), (FULL_NL, NlinearSCMT)):
+            scm = cls(k=cfg.k, L=cfg.L, sparsity=cfg.sparsity, seed=cfg.seed)
+            assert exogenous_channels(scm.graph) == []
+
+    def test_smoke_has_one_exogenous_channel(self):
+        """The one config where the typing is non-degenerate."""
+        scm = LinearSCMT(k=SMOKE.k, L=SMOKE.L, sparsity=SMOKE.sparsity, seed=SMOKE.seed)
+        assert exogenous_channels(scm.graph) == [1]
+
+
 # ---------------------------------------------------------------------------
 # Dataset persistence (Stage 2)
 # ---------------------------------------------------------------------------
@@ -282,4 +328,3 @@ class TestPersistenceRoundTrip:
             assert np.array_equal(loaded[f"X_{split}"], data["X"][idx])
             assert np.array_equal(loaded[f"Y_{split}"], data["Y"][idx])
         assert np.array_equal(loaded["graph"], data["graph"])
-

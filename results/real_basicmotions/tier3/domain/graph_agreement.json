@@ -1,0 +1,39 @@
+{
+  "seed": null,
+  "config": null,
+  "git_commit": "d99f4146b7be05a97e81ac91b9d001676b5da473",
+  "git_dirty": true,
+  "provenance": {
+    "dataset": "basicmotions",
+    "mode": "domain",
+    "mechanism_file": "test_mech_tmp.npz"
+  },
+  "graph_edges": 30,
+  "graph_shape": [
+    6,
+    6,
+    1
+  ],
+  "cf_faith_by_method": {
+    "CftsCels": {
+      "cf_faith_rollout": 0.32894129608752176,
+      "cf_faith_pearl": 0.7519972767746431
+    },
+    "CftsCOMTE": {
+      "cf_faith_rollout": 0.1368231750245365,
+      "cf_faith_pearl": 0.20937532829163766
+    },
+    "CftsConfeti": {
+      "cf_faith_rollout": 0.0806408307498549,
+      "cf_faith_pearl": 0.06487152204114673
+    },
+    "CftsCounts": {
+      "cf_faith_rollout": 0.4685267792391328,
+      "cf_faith_pearl": 0.2726828103827864
+    },
+    "CftsWachter": {
+      "cf_faith_rollout": 0.18652717738954913,
+      "cf_faith_pearl": 0.1204313374995743
+    }
+  }
+}

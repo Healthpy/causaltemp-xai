@@ -1,0 +1,155 @@
+{
+  "seed": 0,
+  "config": "smoke_spring",
+  "git_commit": "888fa2601a9408e7e6ae159a82b2cf3cb3a23142",
+  "git_dirty": false,
+  "provenance": {
+    "config": {
+      "k": 10,
+      "L": 1,
+      "sparsity": 0.3,
+      "noise_type": "laplace",
+      "T": 30,
+      "N": 500,
+      "seed": 0,
+      "name": "smoke_spring",
+      "mechanism_type": "spring",
+      "nonlinear": {
+        "k_spring": 0.3,
+        "dt": 0.1,
+        "n_exogenous": 2
+      },
+      "label_fn": "terminal_threshold",
+      "label_params": null
+    },
+    "method": "dynotears",
+    "n_cf": 40,
+    "dynotears": {
+      "source": "third_party/causalnex_repo (github.com/mckinsey/causalnex)",
+      "lambda_a": 0.01,
+      "lambda_w": 0.01,
+      "p": 1
+    },
+    "citris": null
+  },
+  "axis_a": {
+    "SHD": 10.0,
+    "LagAcc": 0.0,
+    "LagF1": 0.0,
+    "AUC": 0.45789473684210524,
+    "cf_faith_gt": 1.0,
+    "cf_faith_inferred": 0.7311871353724809,
+    "graph_error": 0.2688128646275191,
+    "propagation_error": 0.0
+  },
+  "oracle_decomposition": {
+    "cf_faith_gt": 1.0,
+    "cf_faith_inferred": 0.7311871353724809,
+    "graph_error": 0.2688128646275191,
+    "propagation_error": 0.0
+  },
+  "methods": [
+    {
+      "method": "CARLA",
+      "cf_faith_gt": 0.9999994084089362,
+      "propagation_error": 5.915910638032429e-07,
+      "cf_faith_pearl_gt": 0.7406509418220876,
+      "propagation_error_pearl": 0.25934905817791243
+    },
+    {
+      "method": "CausalFeasibility",
+      "cf_faith_gt": 0.22075325260118075,
+      "propagation_error": 0.7792467473988193,
+      "cf_faith_pearl_gt": 0.20877819589596897,
+      "propagation_error_pearl": 0.7912218041040311
+    },
+    {
+      "method": "CftsCels",
+      "cf_faith_gt": 0.5073265592343634,
+      "propagation_error": 0.49267344076563657,
+      "cf_faith_pearl_gt": 0.7394256567202994,
+      "propagation_error_pearl": 0.26057434327970064
+    },
+    {
+      "method": "CftsCOMTE",
+      "cf_faith_gt": 0.06939791519973193,
+      "propagation_error": 0.9306020848002681,
+      "cf_faith_pearl_gt": 0.06962189318471552,
+      "propagation_error_pearl": 0.9303781068152844
+    },
+    {
+      "method": "CftsConfeti",
+      "cf_faith_gt": 0.0046063741254437135,
+      "propagation_error": 0.9953936258745563,
+      "cf_faith_pearl_gt": 0.006147837724632922,
+      "propagation_error_pearl": 0.9938521622753671
+    },
+    {
+      "method": "CftsCounts",
+      "cf_faith_gt": 0.4290432111185726,
+      "propagation_error": 0.5709567888814274,
+      "cf_faith_pearl_gt": 0.358289147578725,
+      "propagation_error_pearl": 0.641710852421275
+    },
+    {
+      "method": "CftsWachter",
+      "cf_faith_gt": 0.43264631755429794,
+      "propagation_error": 0.5673536824457021,
+      "cf_faith_pearl_gt": 0.3566955225702021,
+      "propagation_error_pearl": 0.6433044774297979
+    },
+    {
+      "method": "PearlCARLA",
+      "cf_faith_gt": 0.727832687146849,
+      "propagation_error": 0.272167312853151,
+      "cf_faith_pearl_gt": 0.9999996053198629,
+      "propagation_error_pearl": 3.9468013712795624e-07
+    }
+  ],
+  "graph_quality_sweep": [
+    {
+      "label": "corrupt_frac=0",
+      "graph_auc": 1.0,
+      "shd": 0.0,
+      "cf_faith_inferred": 1.0,
+      "graph_error": 0.0
+    },
+    {
+      "label": "corrupt_frac=0.25",
+      "graph_auc": 0.8947368421052632,
+      "shd": 2.0,
+      "cf_faith_inferred": 0.6002237840936909,
+      "graph_error": 0.3997762159063091
+    },
+    {
+      "label": "corrupt_frac=0.5",
+      "graph_auc": 0.7894736842105263,
+      "shd": 4.0,
+      "cf_faith_inferred": 0.8099870565596895,
+      "graph_error": 0.1900129434403105
+    },
+    {
+      "label": "corrupt_frac=0.75",
+      "graph_auc": 0.5789473684210525,
+      "shd": 8.0,
+      "cf_faith_inferred": 0.7643243424803625,
+      "graph_error": 0.23567565751963748
+    },
+    {
+      "label": "corrupt_frac=1",
+      "graph_auc": 0.4736842105263158,
+      "shd": 10.0,
+      "cf_faith_inferred": 0.5160043769212598,
+      "graph_error": 0.4839956230787402
+    },
+    {
+      "label": "dynotears",
+      "graph_auc": 0.45789473684210524,
+      "shd": 10.0,
+      "cf_faith_inferred": 0.7311871353724809,
+      "graph_error": 0.2688128646275191
+    }
+  ],
+  "inferred_edges": 5,
+  "true_edges": 5
+}

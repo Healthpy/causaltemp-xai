@@ -1,0 +1,11 @@
+{
+  "seed": 1,
+  "config": "smoke_gaussian_seed1",
+  "git_commit": "ae51bb41e64d210972d222573e2925730a6cfa19",
+  "git_dirty": true,
+  "SHD": 0.0,
+  "LagAcc": 1.0,
+  "LagF1": 1.0,
+  "ResidualDep": 0.011256612638726321,
+  "note": "SHD/LagAcc computed against the graph itself (no graph-discovery method in this pipeline) -- trivially perfect; ResidualDep is the informative benchmark-structural diagnostic here."
+}

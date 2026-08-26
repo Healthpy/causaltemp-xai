@@ -15,7 +15,6 @@ from causaltemp_xai.benchmarks.mechanisms import LinearMechanism
 from causaltemp_xai.benchmarks.structural_cf import structural_counterfactual
 from causaltemp_xai.metrics.cf_faith import CFfaith
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -133,7 +132,7 @@ class TestCFFaithRetroactive:
         carries innovation noise (scale ≈ 0.1 in the real generator), so a CF equal
         to the factual deviates from its own noiseless rollout by ~the noise and is
         correctly judged unfaithful. Only CFs that are themselves noiseless SCM
-        rollouts from the intervention point (e.g. CARLA-causal) score hard=1 — that
+        rollouts from the intervention point (e.g. NoiselessSCMRecourse) score hard=1 — that
         is the property the benchmark uses to separate causal from arbitrary CFs.
         A do-nothing CF is degenerate (it flips no label) and is never produced by a
         real method; see index "Decisions" (2026-05-30, CF-faith semantics).
@@ -184,7 +183,7 @@ def _noiseless_rollout_cf(x_orig, mechanism, t0, pert):
 
 def _noise_reinjected_cf(x_orig, mechanism, t0, pert):
     """Pearl CF: intervene at t0, propagate while re-injecting original noise."""
-    T, k = x_orig.shape
+    T, _ = x_orig.shape
     e = _abduct(x_orig, mechanism)
     x_cf = x_orig.copy()
     x_cf[t0] = x_orig[t0] + pert
@@ -227,9 +226,7 @@ class TestCFFaithPearl:
         rng = np.random.default_rng(11)
         x_cf = _noise_reinjected_cf(x_orig, mechanism, t0, rng.uniform(-0.4, 0.4, k))
 
-        pearl = CFfaith(tol=1e-3, semantics="pearl_delta").score(
-            x_orig, x_cf, t0, graph, mechanism
-        )
+        pearl = CFfaith(tol=1e-3, semantics="pearl_delta").score(x_orig, x_cf, t0, graph, mechanism)
         rollout = CFfaith(tol=1e-3, semantics="noiseless_rollout").score(
             x_orig, x_cf, t0, graph, mechanism
         )
@@ -247,11 +244,27 @@ class TestCFFaithPearl:
         rollout = CFfaith(tol=1e-3, semantics="noiseless_rollout").score(
             x_orig, x_cf, t0, graph, mechanism
         )
-        pearl = CFfaith(tol=1e-3, semantics="pearl_delta").score(
-            x_orig, x_cf, t0, graph, mechanism
-        )
+        pearl = CFfaith(tol=1e-3, semantics="pearl_delta").score(x_orig, x_cf, t0, graph, mechanism)
         assert rollout["hard"] == 1.0, f"rollout should accept, got {rollout}"
         assert pearl["hard"] == 0.0, f"pearl should reject, got {pearl}"
+
+    def test_mutual_exclusivity_holds_at_bare_default_tol(self):
+        """Same divergence pair as above, but with no explicit ``tol`` — the
+        production call sites (``eval.py``, ``experiments/_common.py``, ...)
+        never pass ``tol``, so they only ever exercise the bare default. Pins
+        that raising the default 1e-4 -> 1e-3 (2026-08-06) does not collapse
+        the contract for the code path actually used in the pipeline.
+        """
+        k, L, T = 3, 1, 25
+        x_orig, graph, mechanism = _make_simple_scm(k=k, L=L, T=T, seed=6)
+        t0 = 8
+        rng = np.random.default_rng(11)
+        x_cf = _noise_reinjected_cf(x_orig, mechanism, t0, rng.uniform(-0.4, 0.4, k))
+
+        pearl = CFfaith(semantics="pearl_delta").score(x_orig, x_cf, t0, graph, mechanism)
+        rollout = CFfaith(semantics="noiseless_rollout").score(x_orig, x_cf, t0, graph, mechanism)
+        assert pearl["hard"] == 1.0, f"pearl should accept, got {pearl}"
+        assert rollout["hard"] == 0.0, f"rollout should reject, got {rollout}"
 
     def test_retroactive_zero_in_both_modes(self):
         """A retroactive change is unfaithful under both semantics."""
@@ -262,9 +275,7 @@ class TestCFFaithPearl:
         x_cf[3, 0] += 5.0  # change before t0
 
         for sem in CFfaith.SEMANTICS:
-            result = CFfaith(tol=1e-3, semantics=sem).score(
-                x_orig, x_cf, t0, graph, mechanism
-            )
+            result = CFfaith(tol=1e-3, semantics=sem).score(x_orig, x_cf, t0, graph, mechanism)
             assert result["hard"] == 0.0, f"{sem} should reject retroactive, got {result}"
 
 
@@ -283,6 +294,75 @@ def _make_nlinear_scm(k: int = 3, L: int = 2, T: int = 25, seed: int = 5):
     return data["X"][0], data["graph"], data["mechanism"]
 
 
+class TestCFFaithSplitIsPrincipledNotNoiselessSCMRecourseSpecific:
+    """Independent adversarial case for the rollout/pearl_delta split.
+
+    The other disagreement cases in this file and in
+    ``test_metric_adversarial.py::TestCFfaithAdversarial`` are already built
+    from hand-rolled synthetic helpers (``_noiseless_cf`` / ``_pearl_cf`` /
+    ``_noiseless_rollout_cf`` / ``_noise_reinjected_cf``), not from NoiselessSCMRecourse's
+    actual output — but a reviewer could still suspect the two-semantics split
+    was reverse-engineered around NoiselessSCMRecourse's specific empirical Pearl-hard=0
+    result (see docs/archive/hypotheses_assessment.md). This test constructs a CF via
+    a *third*, independently-motivated recipe that is not NoiselessSCMRecourse's algorithm
+    and is not one of this file's existing helpers: a naive "extreme-target
+    shooting" recourse — the kind of degenerate, causally-careless CF a
+    badly-tuned optimizer-based method could produce by chasing an
+    unrealistic target value with no regard for the data's noise
+    distribution. It is genuinely off-manifold (real trajectories from this
+    SCM always carry noise; this one is bit-exact zero-noise) and causally
+    careless (the target magnitude is deliberately unrealistic, far outside
+    the SCM's typical operating range) — yet, being an exact deterministic
+    SCM continuation, it is intuitively "faithful to the mechanism" in the
+    rollout sense while failing the Pearl (abduction-action-prediction) sense
+    because it does not preserve the unit's own noise realization. Showing
+    the same hard=1-vs-hard=0 pattern here, from a construction that shares
+    no code path with NoiselessSCMRecourse and targets a deliberately unrealistic value,
+    demonstrates the split tracks a general property (zero-noise rollout vs.
+    noise-preserving abduction), not an artifact tuned to NoiselessSCMRecourse.
+    """
+
+    @staticmethod
+    def _shoot_for_extreme_target(x_orig, mechanism, t0, node, extreme_value):
+        """Naive shooting-method CF: force `node` to `extreme_value` at t0,
+        then roll the SCM forward with zero injected noise (a "greedy
+        optimizer chased the target and ignored realism" archetype).
+        """
+        T, k = x_orig.shape
+        x_cf = x_orig.copy()
+        x_cf[t0, node] = extreme_value
+        for t in range(t0 + 1, T):
+            nxt = np.zeros(k)
+            for lag, A in enumerate(mechanism.A_list, start=1):
+                if t - lag >= 0:
+                    nxt += A @ x_cf[t - lag]
+            x_cf[t] = nxt
+        return x_cf
+
+    def test_extreme_target_shooting_cf_diverges_like_the_general_case(self):
+        k, L, T = 3, 1, 25
+        x_orig, graph, mechanism = _make_simple_scm(k=k, L=L, T=T, seed=42)
+        t0, node = 9, 1
+
+        # A target 50x the typical scale of this SCM's stationary values —
+        # not a realistic recourse target, just a naive shooting-method
+        # artifact, and unrelated to any implemented CF method.
+        extreme_value = float(np.abs(x_orig).max()) * 50.0 + 10.0
+        x_cf = self._shoot_for_extreme_target(x_orig, mechanism, t0, node, extreme_value)
+
+        rollout = CFfaith(tol=1e-6, semantics="noiseless_rollout").score(
+            x_orig, x_cf, t0, graph, mechanism
+        )
+        pearl = CFfaith(tol=1e-6, semantics="pearl_delta").score(x_orig, x_cf, t0, graph, mechanism)
+
+        # Rollout: this CF *is* its own noiseless continuation by construction.
+        assert rollout["hard"] == 1.0, f"rollout should accept, got {rollout}"
+        # Pearl: it discards the unit's abducted noise, so it must diverge
+        # from the noise-preserving Pearl reference trajectory.
+        assert pearl["hard"] == 0.0, f"pearl should reject, got {pearl}"
+        assert pearl["soft"] < rollout["soft"]
+
+
 class TestCFFaithNonlinear:
     def test_pearl_oracle_faithful_rollout_unfaithful(self):
         """Nonlinear Pearl CF: pearl hard=1, rollout hard=0 (abduction works)."""
@@ -291,9 +371,7 @@ class TestCFFaithNonlinear:
         value = x_orig[t0, node] + 0.4
         x_cf = structural_counterfactual(x_orig, mechanism, t0, node, value)
 
-        pearl = CFfaith(tol=1e-4, semantics="pearl_delta").score(
-            x_orig, x_cf, t0, graph, mechanism
-        )
+        pearl = CFfaith(tol=1e-4, semantics="pearl_delta").score(x_orig, x_cf, t0, graph, mechanism)
         rollout = CFfaith(tol=1e-4, semantics="noiseless_rollout").score(
             x_orig, x_cf, t0, graph, mechanism
         )
@@ -305,16 +383,12 @@ class TestCFFaithNonlinear:
         x_orig, graph, mechanism = _make_nlinear_scm(seed=6)
         t0, node = 7, 1
         value = x_orig[t0, node] + 0.4
-        x_cf = structural_counterfactual(
-            x_orig, mechanism, t0, node, value, noiseless=True
-        )
+        x_cf = structural_counterfactual(x_orig, mechanism, t0, node, value, noiseless=True)
 
         rollout = CFfaith(tol=1e-4, semantics="noiseless_rollout").score(
             x_orig, x_cf, t0, graph, mechanism
         )
-        pearl = CFfaith(tol=1e-4, semantics="pearl_delta").score(
-            x_orig, x_cf, t0, graph, mechanism
-        )
+        pearl = CFfaith(tol=1e-4, semantics="pearl_delta").score(x_orig, x_cf, t0, graph, mechanism)
         assert rollout["hard"] == 1.0, f"rollout should accept, got {rollout}"
         assert pearl["hard"] == 0.0, f"pearl should reject, got {pearl}"
 
@@ -322,9 +396,7 @@ class TestCFFaithNonlinear:
         """Identical CF on nonlinear SCM → pearl hard=1 (delta=0 generalizes)."""
         x_orig, graph, mechanism = _make_nlinear_scm(seed=8)
         x_cf = x_orig.copy()
-        result = CFfaith(tol=1e-4, semantics="pearl_delta").score(
-            x_orig, x_cf, 7, graph, mechanism
-        )
+        result = CFfaith(tol=1e-4, semantics="pearl_delta").score(x_orig, x_cf, 7, graph, mechanism)
         assert result["hard"] == 1.0
 
     def test_retroactive_zero_in_both_modes(self):
@@ -334,8 +406,5 @@ class TestCFFaithNonlinear:
         x_cf = x_orig.copy()
         x_cf[2, 0] += 5.0  # change before t0
         for sem in CFfaith.SEMANTICS:
-            r = CFfaith(tol=1e-4, semantics=sem).score(
-                x_orig, x_cf, t0, graph, mechanism
-            )
+            r = CFfaith(tol=1e-4, semantics=sem).score(x_orig, x_cf, t0, graph, mechanism)
             assert r["hard"] == 0.0, f"{sem} should reject retroactive, got {r}"
-

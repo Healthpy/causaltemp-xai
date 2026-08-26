@@ -1,573 +1,257 @@
-"""Axis-A concept quality metrics.
+﻿"""Axis A - Structure (graph) metrics.
 
-Four metrics that jointly characterise the quality of a latent concept
-representation produced by a concept-based XAI method (TCAV-T, CBM-T, iVAE,
-β-VAE, LEAP, …) evaluated against ground-truth generative factors.
+Full port from causal_tscf_bench/metrics/axis_a.py.
 
-* **icc_latent** (model-based latent intervention) — Interventional Concept Consistency.
-  Perturbs each latent dimension independently and counts how often the
-  classifier changes its prediction.  Under Hyvärinen (2019) / Song (2024)
-  nonlinear-ICA identifiability, a high ICC_i implies that concept i is
-  causally relevant to the classifier's decision up to permutation and
-  element-wise reparameterisation.
+Metrics:
+  SHD        : Structural Hamming Distance between inferred and ground-truth adjacency
+  LagAcc     : Fraction of true edges recovered at the correct lag (recall-only)
+  LagF1      : F1 over lagged edges (precision-aware companion to LagAcc)
+  AUC-ROC    : Edge-level AUC over binary edge presence across the graph
+  ResidualDep: |Pearson r| of mechanism residuals between non-adjacent channels
+               (replaces the retired TV-confounding score, fix #1 2026-07-18)
+  GraphErrDecomp: CF-faith against ground-truth graph vs. inferred graph
 
-* **MIG** — Mutual Information Gap (Chen et al., 2018, β-TCVAE).
-  For each true factor the gap between the two highest mutual-information
-  latent dimensions is normalised by the factor's marginal entropy.
-  A MIG of 1 means each factor is captured by a single latent; 0 means
-  information is spread uniformly.
-
-* **DCI-D / DCI-C** — Disentanglement and Completeness (Eastwood &
-  Williams, 2018).  A random-forest regressor is trained to predict each
-  true factor from inferred latents; its feature-importance matrix drives
-  both scores.
-
-* **MCC** — Mean Correlation Coefficient.
-  Optimal linear matching between inferred and true latent dimensions via
-  the Hungarian algorithm on the absolute Pearson correlation matrix.
-  Standard identifiability benchmark metric.
-
-References
-----------
-Chen et al. (2018). "Isolating Sources of Disentanglement in VAEs." NeurIPS.
-Eastwood & Williams (2018). "A Framework for the Quantitative Evaluation
-    of Disentangled Representations." ICLR.
-Hyvärinen & Morioka (2019). "Nonlinear ICA Using Auxiliary Variables."
-    AISTATS.
-Song et al. (2024). "Identifiability of Sparse Causal Representations."
-    NeurIPS.
+Reference:
+  Peters et al. (2013), Identifiability of Gaussian SEM; Runge et al. (2019),
+  Detecting and quantifying causal associations in large nonlinear time series datasets.
 """
 
 from __future__ import annotations
 
-from typing import Callable, Optional, Union
-
 import numpy as np
-from scipy.optimize import linear_sum_assignment
-from scipy.stats import pearsonr
-from sklearn.ensemble import GradientBoostingRegressor
+from sklearn.metrics import roc_auc_score
 
 
-# ---------------------------------------------------------------------------
-# Internal helpers
-# ---------------------------------------------------------------------------
-
-
-def _normalise_rows(M: np.ndarray) -> np.ndarray:
-    """Divide each row by its sum; rows that sum to 0 remain 0."""
-    row_sums = M.sum(axis=1, keepdims=True)
-    return np.where(row_sums > 0, M / row_sums, 0.0)
-
-
-def _normalise_cols(M: np.ndarray) -> np.ndarray:
-    """Divide each column by its sum; columns that sum to 0 remain 0."""
-    col_sums = M.sum(axis=0, keepdims=True)
-    return np.where(col_sums > 0, M / col_sums, 0.0)
-
-
-def _entropy(p: np.ndarray) -> float:
-    """Shannon entropy of a normalised probability vector (nats)."""
-    p = p[p > 0]
-    return float(-np.sum(p * np.log(p)))
-
-
-def _mi_binned(x: np.ndarray, y: np.ndarray, n_bins: int = 20) -> float:
-    """Empirical mutual information (nats) estimated via joint histogram."""
-    N = len(x)
-    x_edges = np.linspace(x.min(), x.max() + 1e-10, n_bins + 1)
-    y_edges = np.linspace(y.min(), y.max() + 1e-10, n_bins + 1)
-    x_disc = np.searchsorted(x_edges[1:-1], x)
-    y_disc = np.searchsorted(y_edges[1:-1], y)
-
-    # Build joint distribution
-    p_xy = np.zeros((n_bins, n_bins))
-    np.add.at(p_xy, (x_disc, y_disc), 1.0)
-    p_xy /= N
-
-    p_x = p_xy.sum(axis=1, keepdims=True)
-    p_y = p_xy.sum(axis=0, keepdims=True)
-
-    mask = p_xy > 0
-    mi = float(np.sum(p_xy[mask] * np.log(p_xy[mask] / (p_x * p_y + 1e-12)[mask])))
-    return max(mi, 0.0)
-
-
-def _marginal_entropy_binned(x: np.ndarray, n_bins: int = 20) -> float:
-    """Marginal entropy (nats) of a continuous variable via histogram."""
-    counts, _ = np.histogram(x, bins=n_bins)
-    p = counts / counts.sum()
-    return _entropy(p)
-
-
-# ---------------------------------------------------------------------------
-# ICC — Interventional Concept Consistency
-# ---------------------------------------------------------------------------
-
-
-def icc_latent(
-    X: np.ndarray,
-    encoder: Callable,
-    decoder: Callable,
-    classifier,
-    delta: Union[float, np.ndarray] = 1.0,
-    scale_by_std: bool = True,
-    symmetric: bool = True,
-) -> np.ndarray:
-    """Interventional Concept Consistency (ICC) — matched-baseline latent traversal.
-
-    For each latent dimension *i*, ICC measures how often a traversal along that
-    dimension changes the classifier's prediction **relative to the unperturbed
-    reconstruction** (not the original input):
-
-    .. math::
-
-        \\mathrm{ICC}_i = \\frac{1}{N} \\sum_{n}
-            \\mathbb{1}\\!\\left[
-                f\\!\\left(D_\\psi\\!\\left(z^n + \\delta_i e_i\\right)\\right)
-                \\neq f\\!\\left(D_\\psi(z^n)\\right)
-            \\right]
-
-    **Deliberate deviation from the drafted spec** (which used the original
-    input ``f(x^n)`` as baseline): using the *reconstruction* ``f(D_ψ(z^n))`` as
-    baseline isolates the causal effect of the traversal from the decoder's
-    reconstruction error, which would otherwise flip labels even at ``δ=0`` and
-    inflate every ICC score toward the reconstruction-flip rate (destroying the
-    parent-vs-non-parent contrast). Documented in
-    ``docs/spec_code_reconciliation.md`` §2.
-
-    Under identifiability conditions (Hyvärinen 2019; Song 2024) a high
-    :math:`\\mathrm{ICC}_i` means concept *i* is causally relevant to the
-    classifier's decision up to permutation and element-wise reparameterisation.
-    **Latent dimensions are identified only up to permutation**, so a caller
-    comparing "causal-parent vs non-parent" dims MUST first align latents to
-    ground-truth factors (e.g. via :func:`mcc` + Hungarian) — ``icc_scores[i]``
-    is *not* factor *i*.
+def shd(adj_true: np.ndarray, adj_pred: np.ndarray) -> int:
+    """Structural Hamming Distance.
 
     Parameters
     ----------
-    X:
-        Input time series, shape ``(N, T, k)``.
-    encoder:
-        Callable ``(N, T, k) → (N, d_z)`` — posterior-mean latent codes.
-    decoder:
-        Callable ``(N, d_z) → (N, T, k)`` — **deterministic** decode (no
-        reparam sampling), else ICC is noisy.
-    classifier:
-        Black-box ``f`` exposing ``predict`` (or directly callable), accepting
-        ``(N, T, k)`` and returning ``(N,)`` integer labels.
-    delta:
-        Traversal magnitude. If ``scale_by_std`` (default), this is a unitless
-        factor ``c`` and the per-dimension step is ``δ_i = c · std(Z[:, i])``
-        (so a fixed raw ``δ`` does not confound causal relevance with each
-        latent's heterogeneous scale). If ``scale_by_std=False``, ``delta`` is
-        the raw step (scalar or ``(d_z,)`` array).
-    scale_by_std:
-        Scale the step per dimension by the dataset latent std (recommended).
-    symmetric:
-        Average the flip rate over ``+δ`` and ``−δ`` (recommended — a signed
-        concept can flip in only one direction).
+    adj_true : (k, k[, max_lag]) binary true adjacency
+    adj_pred : same shape as adj_true
 
     Returns
     -------
-    icc_scores : ndarray of shape ``(d_z,)`` in ``[0, 1]``. Higher ⇒ the concept
-        is more causally relevant to the classifier.
+    int -- number of wrong edge decisions (false positives + false negatives)
     """
-    X_arr = np.asarray(X, dtype=float)
-    predict = getattr(classifier, "predict", classifier)
+    return int(np.sum(adj_true.astype(bool) != adj_pred.astype(bool)))
 
-    Z = np.asarray(encoder(X_arr), dtype=float)  # (N, d_z)
-    d_z = Z.shape[1]
 
-    if scale_by_std:
-        std = Z.std(axis=0)
-        std = np.where(std > 0, std, 1.0)  # guard dead dims
-        step = np.asarray(delta, dtype=float) * std
+def lag_accuracy(adj_true: np.ndarray, adj_pred: np.ndarray) -> float:
+    """Fraction of true edges for which the correct lag is predicted.
+
+    Parameters
+    ----------
+    adj_true : (k, k, max_lag)
+    adj_pred : (k, k, max_lag)
+
+    Returns
+    -------
+    float in [0, 1]; nan if no true edges
+    """
+    true_edges = np.argwhere(adj_true)
+    if len(true_edges) == 0:
+        return float("nan")
+    correct = 0
+    for e in true_edges:
+        i, j, lag = e
+        if adj_pred[i, j, lag] == 1:
+            correct += 1
+    return float(correct / len(true_edges))
+
+
+def graph_auc(adj_true: np.ndarray, score_matrix: np.ndarray) -> float:
+    """AUC-ROC for edge detection.
+
+    Parameters
+    ----------
+    adj_true      : (k, k) or (k, k, max_lag) binary ground-truth
+    score_matrix  : same shape, continuous edge scores
+
+    Returns
+    -------
+    float in [0, 1], or NaN if undefined (see below)
+
+    Notes
+    -----
+    Returns NaN both when ``y_true`` is degenerate (sklearn's own guard) and
+    when ``y_score`` is constant (P0-4, 2026-08-11). A discovery method that
+    produces a constant score matrix has ranked nothing -- ``roc_auc_score``
+    returns the ties-broken-at-chance convention 0.5 in that case, which is
+    indistinguishable from a method that genuinely ranks at chance. That
+    laundering is how the pre-removal Kuramoto family posted
+    ``AUC = 0.500 +/- 0.000`` for two different discovery methods across 3
+    seeds: DYNOTEARS recovered only self-loops, which ``inferred_graph``
+    zeroes, leaving an identically-zero score matrix. NaN is the honest
+    answer -- the metric is undefined, not satisfied-at-chance. See
+    ``tests/test_axis_a.py::TestGraphAUCAdversarial::test_constant_scores_are_nan``.
+    """
+    y_true = adj_true.flatten().astype(int)
+    y_score = score_matrix.flatten().astype(float)
+    if len(np.unique(y_true)) < 2 or len(np.unique(y_score)) < 2:
+        return float("nan")
+    return float(roc_auc_score(y_true, y_score))
+
+
+def residual_dependence(X: np.ndarray, adj_true: np.ndarray, mechanism=None) -> float:
+    """Residual-Dependence Score — unexplained association between non-adjacent channels.
+
+    Replaces ``tv_confounding`` (metric-quality fix #1, 2026-07-18).
+    Confounding / unmodeled structure manifests as **dependence** between
+    channels the graph says are not directly connected — not as dissimilarity
+    of their marginal distributions, which is what the retired TV formulation
+    measured (two independent channels with different scales scored high TV,
+    and a confounder-free SCM read ~0.6).
+
+    When ``mechanism`` is given, dependence is measured on the **abducted
+    mechanism residuals** ``eps[t] = x[t] - f(window_t)`` (exact under the
+    benchmark's additive-noise SCMs): after the graph explains what it can,
+    any remaining correlation between non-adjacent channels' innovations is
+    genuine unmodeled association. Residuals at ``t < L`` are excluded (they
+    absorb initial conditions — see ``abduct_noise``). Without a mechanism the
+    raw channel values are used (weaker: parent-mediated association is then
+    not removed and can inflate the score).
+
+    Parameters
+    ----------
+    X         : (N, T, k)
+    adj_true  : (k, k) lag-aggregated binary adjacency
+    mechanism : optional Mechanism — enables residual (recommended) mode
+
+    Returns
+    -------
+    float -- mean |Pearson r| over non-adjacent channel pairs, in [0, 1];
+    ~0 for a well-specified confounder-free SCM. 0.0 if fully connected.
+    """
+    X = np.asarray(X, dtype=float)
+    k = adj_true.shape[0]
+
+    if mechanism is not None:
+        from causaltemp_xai.benchmarks.structural_cf import abduct_noise
+
+        L = mechanism.L
+        R = np.stack([abduct_noise(x, mechanism)[L:] for x in X])  # (N, T-L, k)
     else:
-        step = np.broadcast_to(np.asarray(delta, dtype=float), (d_z,)).astype(float)
+        R = X
+    flat = R.reshape(-1, k)  # pool instances and time
 
-    # Correction 1: matched baseline — prediction on the *unperturbed
-    # reconstruction*, so ICC measures only the traversal, not reconstruction error.
-    f_baseline = np.asarray(predict(np.asarray(decoder(Z), dtype=float))).reshape(-1)
+    scores = []
+    for i in range(k):
+        for j in range(i + 1, k):
+            if adj_true[i, j] == 0 and adj_true[j, i] == 0:
+                a, b = flat[:, i], flat[:, j]
+                sa, sb = a.std(), b.std()
+                if sa < 1e-12 or sb < 1e-12:
+                    scores.append(0.0)
+                    continue
+                r = float(np.corrcoef(a, b)[0, 1])
+                scores.append(abs(r) if np.isfinite(r) else 0.0)
 
-    signs = (1.0, -1.0) if symmetric else (1.0,)
-    icc_scores = np.zeros(d_z)
-    for i in range(d_z):
-        flips = 0.0
-        for s in signs:
-            Z_pert = Z.copy()
-            Z_pert[:, i] += s * step[i]
-            f_pert = np.asarray(predict(np.asarray(decoder(Z_pert), dtype=float))).reshape(-1)
-            flips += float(np.mean(f_pert != f_baseline))
-        icc_scores[i] = flips / len(signs)
-
-    return icc_scores
+    return float(np.mean(scores)) if scores else 0.0
 
 
-# ---------------------------------------------------------------------------
-# MIG — Mutual Information Gap
-# ---------------------------------------------------------------------------
+def lagged_edge_f1(adj_true: np.ndarray, adj_pred: np.ndarray) -> float:
+    """F1 over lagged edges — the precision-aware companion to ``lag_accuracy``.
 
-
-def mig(
-    z_inferred: np.ndarray,
-    z_true: np.ndarray,
-    n_bins: int = 20,
-) -> float:
-    """Mutual Information Gap (MIG).
-
-    For each ground-truth generative factor *k* the MIG measures the
-    normalised gap between the highest and second-highest mutual information
-    with any inferred latent dimension:
-
-    .. math::
-
-        \\mathrm{MIG} = \\frac{1}{K} \\sum_k \\frac{1}{H(v_k)}
-            \\left(
-                I(z_{j^*_k}; v_k) - \\max_{j \\neq j^*_k} I(z_j; v_k)
-            \\right)
-
-    where :math:`j^*_k = \\arg\\max_j I(z_j; v_k)`.
-
-    A score of 1 means every factor is captured by a unique latent; 0 means
-    information is spread uniformly across dimensions.
+    ``lag_accuracy`` is recall-only: a predicted **complete** graph (every
+    edge at every lag) scores 1.0 (metric-quality fix #7, 2026-07-18). F1
+    keeps the lag-resolved recall but charges for spurious edges.
 
     Parameters
     ----------
-    z_inferred:
-        Inferred latent codes, shape ``(N, d_z)``.
-    z_true:
-        Ground-truth generative factors, shape ``(N, K)``.
-    n_bins:
-        Number of histogram bins used for MI estimation.
+    adj_true : (k, k, max_lag) binary
+    adj_pred : (k, k, max_lag) binary
 
     Returns
     -------
-    float
-        MIG score in ``[0, 1]``.
+    float in [0, 1]; nan if the true graph has no edges.
     """
-    Z = np.asarray(z_inferred, dtype=float)
-    V = np.asarray(z_true, dtype=float)
-    N, d_z = Z.shape
-    K = V.shape[1]
-
-    # MI matrix: (K, d_z)
-    MI = np.zeros((K, d_z))
-    for k in range(K):
-        for j in range(d_z):
-            MI[k, j] = _mi_binned(Z[:, j], V[:, k], n_bins=n_bins)
-
-    # Entropy of each true factor
-    H = np.array([_marginal_entropy_binned(V[:, k], n_bins=n_bins) for k in range(K)])
-
-    gaps = np.zeros(K)
-    for k in range(K):
-        sorted_mi = np.sort(MI[k])[::-1]
-        top1 = sorted_mi[0]
-        top2 = sorted_mi[1] if d_z >= 2 else 0.0
-        gaps[k] = (top1 - top2) / (H[k] + 1e-12)
-
-    return float(np.mean(gaps))
-
-
-# ---------------------------------------------------------------------------
-# DCI — Disentanglement and Completeness
-# ---------------------------------------------------------------------------
-
-
-def dci(
-    z_inferred: np.ndarray,
-    z_true: np.ndarray,
-    regressor_kwargs: Optional[dict] = None,
-    random_state: int = 0,
-) -> dict[str, float]:
-    """Disentanglement (DCI-D) and Completeness (DCI-C).
-
-    Fits a :class:`~sklearn.ensemble.GradientBoostingRegressor` to predict
-    each true factor from inferred latents and builds the importance matrix
-    ``R`` where ``R[k, j]`` is the importance of latent *j* for predicting
-    factor *k*.
-
-    * **Disentanglement** ``D_j = 1 - H(\\hat{P}_{\\cdot j})`` where
-      :math:`\\hat{P}_{\\cdot j}` is the column-normalised weight vector.
-      A latent with all weight on a single factor has D = 1 (perfectly
-      disentangled); uniform weight gives D = 0.
-
-    * **Completeness** ``C_k = 1 - H(\\hat{P}_{k \\cdot})`` where
-      :math:`\\hat{P}_{k \\cdot}` is the row-normalised weight vector.
-      A factor captured by exactly one latent has C = 1; captured by all
-      latents equally gives C = 0.
-
-    Parameters
-    ----------
-    z_inferred:
-        Inferred latent codes, shape ``(N, d_z)``.
-    z_true:
-        Ground-truth generative factors, shape ``(N, K)``.
-    regressor_kwargs:
-        Extra kwargs forwarded to :class:`GradientBoostingRegressor`.  The
-        ``random_state`` parameter is set separately.
-    random_state:
-        Random seed for the regressors.
-
-    Returns
-    -------
-    dict with keys:
-        ``"disentanglement"`` — mean D score across latents, in ``[0, 1]``.
-        ``"completeness"``    — mean C score across factors, in ``[0, 1]``.
-        ``"R"``               — raw importance matrix of shape ``(K, d_z)``.
-    """
-    Z = np.asarray(z_inferred, dtype=float)
-    V = np.asarray(z_true, dtype=float)
-    K = V.shape[1]
-    d_z = Z.shape[1]
-
-    kwargs = dict(n_estimators=100, max_depth=3)
-    if regressor_kwargs:
-        kwargs.update(regressor_kwargs)
-    kwargs["random_state"] = random_state
-
-    # Build importance matrix R: (K, d_z)
-    R = np.zeros((K, d_z))
-    for k in range(K):
-        reg = GradientBoostingRegressor(**kwargs)
-        reg.fit(Z, V[:, k])
-        R[k] = reg.feature_importances_
-
-    # Disentanglement: entropy of column-normalised R, per latent j
-    R_col = _normalise_cols(R)
-    log2_dz = np.log(d_z) if d_z > 1 else 1.0
-    D = np.array([
-        1.0 - _entropy(R_col[:, j]) / log2_dz
-        for j in range(d_z)
-    ])
-
-    # Completeness: entropy of row-normalised R, per factor k
-    R_row = _normalise_rows(R)
-    log2_K = np.log(K) if K > 1 else 1.0
-    C = np.array([
-        1.0 - _entropy(R_row[k]) / log2_K
-        for k in range(K)
-    ])
-
-    return {
-        "disentanglement": float(np.mean(D)),
-        "completeness": float(np.mean(C)),
-        "R": R,
-    }
-
-
-# ---------------------------------------------------------------------------
-# MCC — Mean Correlation Coefficient
-# ---------------------------------------------------------------------------
-
-
-def mcc(
-    z_inferred: np.ndarray,
-    z_true: np.ndarray,
-) -> float:
-    """Mean Correlation Coefficient (MCC).
-
-    Computes the absolute Pearson correlation matrix between every pair of
-    inferred and true latent dimensions, then solves the optimal linear
-    assignment (Hungarian algorithm) to maximally match dimensions.  The
-    mean absolute correlation of matched pairs is returned.
-
-    This is the standard identifiability metric used in nonlinear-ICA
-    literature (Hyvärinen 2019; Khemakhem et al. 2020) to verify that
-    inferred latents recover true factors up to permutation and monotone
-    reparameterisation.
-
-    Parameters
-    ----------
-    z_inferred:
-        Inferred latent codes, shape ``(N, d_z)``.
-    z_true:
-        Ground-truth generative factors, shape ``(N, K)``.
-        If ``d_z != K`` the smaller dimension is used (unmatched columns are
-        ignored).
-
-    Returns
-    -------
-    float
-        Mean absolute Pearson correlation of optimally matched pairs, in
-        ``[0, 1]``.  1 means perfect recovery.
-    """
-    Z = np.asarray(z_inferred, dtype=float)
-    V = np.asarray(z_true, dtype=float)
-    d_z = Z.shape[1]
-    K = V.shape[1]
-
-    # Absolute correlation matrix C[j, k] = |corr(Z[:, j], V[:, k])|
-    corr_mat = np.zeros((d_z, K))
-    for j in range(d_z):
-        for k in range(K):
-            r, _ = pearsonr(Z[:, j], V[:, k])
-            corr_mat[j, k] = abs(r) if np.isfinite(r) else 0.0
-
-    # Optimal assignment: maximise sum of correlations = minimise negative
-    row_ind, col_ind = linear_sum_assignment(-corr_mat)
-    matched_corrs = corr_mat[row_ind, col_ind]
-    return float(matched_corrs.mean())
-
-
-# ---------------------------------------------------------------------------
-# Bench-ported additions
-# ---------------------------------------------------------------------------
-
-
-def icc(attribution: np.ndarray, int_channel: int) -> float:
-    """Intervention-Channel Consistency (attribution-mass variant).
-
-    Fraction of total attribution mass that falls on the ground-truth
-    intervened channel. Ported from causal_tscf_bench/metrics/axis_a.py.
-
-    Parameters
-    ----------
-    attribution : (T, k)
-    int_channel : ground-truth intervened channel index
-
-    Returns
-    -------
-    float in [0, 1]
-    """
-    total_mass = np.abs(attribution).sum()
-    if total_mass < 1e-12:
+    t = np.asarray(adj_true).astype(bool)
+    p = np.asarray(adj_pred).astype(bool)
+    n_true = int(t.sum())
+    if n_true == 0:
+        return float("nan")
+    tp = int((t & p).sum())
+    n_pred = int(p.sum())
+    if n_pred == 0 or tp == 0:
         return 0.0
-    channel_mass = np.abs(attribution[:, int_channel]).sum()
-    return float(channel_mass / total_mass)
+    precision = tp / n_pred
+    recall = tp / n_true
+    return float(2 * precision * recall / (precision + recall))
 
 
-def mcc_concept(
-    attribution: np.ndarray,
-    causal_parents: list,
-) -> float:
-    """Causal Coverage — chance-normalized attribution mass on causal parents.
+def graph_error_decomposition(cf_faith_vs_gt: float, cf_faith_vs_inferred: float) -> dict:
+    """Decompose CF-faith drop into graph-estimation error vs. propagation failure.
 
-    .. math::
-
-        \\mathrm{MCC_{cov}} = \\frac{\\sum_{p \\in \\mathrm{Pa}} \\sum_t
-        |a_{t,p}| \\; / \\; \\sum_{j,t} |a_{t,j}|}{|\\mathrm{Pa}| / k}
-
-    i.e. the share of total attribution mass landing on ground-truth
-    causal-parent channels, divided by the share a *uniform* map would place
-    there. ``1.0`` = chance-level alignment; ``> 1`` = attribution
-    concentrates on causal parents; ``< 1`` = attribution actively avoids
-    them. Maximum is ``k / |Pa|`` (all mass on parents).
-
-    M1 redesign (2026-07-07). The previous formulation — fraction of parents
-    whose absolute channel mass exceeded a fixed ``threshold=1e-3`` — had two
-    defects: (i) the score depended on the attribution method's output
-    *scale*, not its alignment, and (ii) dense saliency maps (IG) cleared any
-    reasonable threshold on every channel, pinning the metric at the 1.0
-    ceiling with zero discriminative power. A scale-*relative* threshold
-    fixes (i) but not (ii) — dense maps still cover everything. The
-    continuous mass formulation is threshold-free, scale-invariant by
-    construction, mirrors the ``icc`` attribution-mass formulation already
-    used on this axis, and its chance normalization makes instances with
-    different parent counts comparable under a mean.
+    Sign convention (metric-quality fix #10, 2026-07-18): this is bookkeeping,
+    not a decomposition into non-negative parts. ``graph_error =
+    cf_faith_gt - cf_faith_inferred`` **can be negative** — an inferred graph
+    can outscore the ground truth by chance on a finite CF sample. Report the
+    signed value; do not clip.
 
     Parameters
     ----------
-    attribution    : (T, k)
-    causal_parents : list of channel indices that are causal parents (ground-truth)
+    cf_faith_vs_gt       : CF-faith when using ground-truth graph
+    cf_faith_vs_inferred : CF-faith when using inferred graph
 
     Returns
     -------
-    float in [0, k/len(causal_parents)]; 1.0 = chance. Returns nan if
-    ``causal_parents`` is empty (coverage of zero parents is undefined) or if
-    the attribution map carries (numerically) zero total mass.
+    dict with: cf_faith_gt, cf_faith_inferred, graph_error (signed),
+    propagation_error
     """
-    if not causal_parents:
-        return float("nan")
-    attribution = np.asarray(attribution, dtype=float)
-    k = attribution.shape[1]
-    total_mass = np.abs(attribution).sum()
-    if total_mass < 1e-12:
-        return float("nan")
-    channel_totals = np.abs(attribution).sum(axis=0)  # (k,)
-    parent_share = float(sum(channel_totals[p] for p in causal_parents)) / float(total_mass)
-    chance_share = len(causal_parents) / k
-    return float(parent_share / chance_share)
-
-
-def latent_disentanglement(Z: np.ndarray, X_channels: np.ndarray) -> float:
-    """Latent Disentanglement (LD) via linear R².
-
-    For each causal channel m, fit a linear regression from the best-aligned
-    latent dimension to X_channels[:, m] and record R². LD = mean R² over k.
-
-    Parameters
-    ----------
-    Z          : (N, latent_dim)
-    X_channels : (N, k) — ground-truth channel values (e.g. time-mean per channel)
-
-    Returns
-    -------
-    float in [0, 1]
-    """
-    from sklearn.linear_model import LinearRegression
-
-    latent_dim = Z.shape[1]
-    k = X_channels.shape[1]
-    r2_per_channel = []
-
-    for m in range(k):
-        y = X_channels[:, m]
-        best_r2 = -np.inf
-        for d in range(latent_dim):
-            reg = LinearRegression().fit(Z[:, [d]], y)
-            ss_res = np.sum((y - reg.predict(Z[:, [d]])) ** 2)
-            ss_tot = np.sum((y - y.mean()) ** 2) + 1e-12
-            r2 = 1 - ss_res / ss_tot
-            best_r2 = max(best_r2, r2)
-        r2_per_channel.append(max(0.0, best_r2))
-
-    return float(np.mean(r2_per_channel))
+    graph_err = cf_faith_vs_gt - cf_faith_vs_inferred
+    return {
+        "cf_faith_gt": cf_faith_vs_gt,
+        "cf_faith_inferred": cf_faith_vs_inferred,
+        "graph_error": float(graph_err),
+        "propagation_error": float(1.0 - cf_faith_vs_gt),
+    }
 
 
 def compute_axis_a(
-    attributions: np.ndarray,
-    int_channels: np.ndarray,
-    causal_parents_list: list,
-    Z: np.ndarray = None,
-    X_channels: np.ndarray = None,
-    Z_true: np.ndarray = None,
+    adj_true_lagged: np.ndarray,
+    adj_pred_lagged: np.ndarray,
+    score_matrix: np.ndarray | None = None,
+    X: np.ndarray | None = None,
+    cf_faith_gt: float | None = None,
+    cf_faith_inferred: float | None = None,
+    mechanism=None,
 ) -> dict:
-    """Aggregate Axis A metrics over N instances.
+    """Aggregate Axis A metrics.
 
     Parameters
     ----------
-    attributions        : (N, T, k)
-    int_channels        : (N,) ground-truth intervened channel per instance
-    causal_parents_list : list of length N, each a list of causal parent indices
-    Z                   : (N, latent_dim) optional; encoder outputs for LD/MCC
-    X_channels          : (N, k) optional; ground-truth channel means for LD
-    Z_true              : (N, K) optional; ground-truth latent factors for MCC
+    adj_true_lagged : (k, k, max_lag) ground-truth lagged adjacency
+    adj_pred_lagged : (k, k, max_lag) predicted lagged adjacency
+    score_matrix    : (k, k, max_lag) optional continuous edge scores for AUC
+    X               : (N, T, k) optional for the residual-dependence diagnostic
+    cf_faith_gt     : optional for graph-error decomposition
+    cf_faith_inferred : optional for graph-error decomposition
+    mechanism       : optional Mechanism — residual (recommended) mode for
+                      the dependence diagnostic
 
     Returns
     -------
-    dict with keys: ICC, MCC_coverage, LD, MCC_disent
+    dict with keys: SHD, LagAcc, LagF1, (AUC), (ResidualDep), (cf_faith_gt, ...)
     """
-    N = attributions.shape[0]
-    icc_vals, mcc_vals = [], []
+    adj_true_bin = (adj_true_lagged > 0).astype(int)
+    adj_pred_bin = (adj_pred_lagged > 0).astype(int)
 
-    for i in range(N):
-        icc_vals.append(icc(attributions[i], int(int_channels[i])))
-        mc = mcc_concept(attributions[i], causal_parents_list[i])
-        if not np.isnan(mc):
-            mcc_vals.append(mc)
-
-    ld = float("nan")
-    if Z is not None and X_channels is not None:
-        ld = latent_disentanglement(Z, X_channels)
-
-    mcc_disent = float("nan")
-    if Z_true is not None and Z is not None and Z_true.shape == Z.shape:
-        mcc_disent = mcc(Z, Z_true)
-
-    return {
-        "ICC": float(np.mean(icc_vals)),
-        "MCC_coverage": float(np.mean(mcc_vals)) if mcc_vals else float("nan"),
-        "LD": ld,
-        "MCC_disent": mcc_disent,
+    results: dict = {
+        "SHD": float(shd(adj_true_bin, adj_pred_bin)),
+        "LagAcc": lag_accuracy(adj_true_lagged, adj_pred_lagged),
+        "LagF1": lagged_edge_f1(adj_true_bin, adj_pred_bin),
     }
+
+    if score_matrix is not None:
+        results["AUC"] = graph_auc(adj_true_bin, score_matrix)
+
+    if X is not None:
+        adj_agg = adj_true_bin.any(axis=-1).astype(int)  # (k, k)
+        results["ResidualDep"] = residual_dependence(X, adj_agg, mechanism=mechanism)
+
+    if cf_faith_gt is not None and cf_faith_inferred is not None:
+        decomp = graph_error_decomposition(cf_faith_gt, cf_faith_inferred)
+        results.update(decomp)
+
+    return results

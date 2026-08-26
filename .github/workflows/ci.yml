@@ -37,6 +37,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
       - name: Install uv
         uses: astral-sh/setup-uv@v5
@@ -75,4 +77,4 @@ jobs:
           uv run --no-sync --python 3.11 python experiments/02_train_classifiers.py --config smoke
           uv run --no-sync --python 3.11 python experiments/03_run_cf_methods.py --config smoke --n-cf 10
           uv run --no-sync --python 3.11 python experiments/04_evaluate_axes.py --config smoke
-          uv run --no-sync --python 3.11 python experiments/06_make_figures.py
+          uv run --no-sync --python 3.11 python experiments/08_aggregate_and_report.py figures

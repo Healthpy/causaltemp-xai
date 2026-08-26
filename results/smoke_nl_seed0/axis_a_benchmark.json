@@ -1,0 +1,11 @@
+{
+  "seed": 0,
+  "config": "smoke_nl_seed0",
+  "git_commit": "253e0d27f5c5e21c884e94d02e20bdd48733123c",
+  "git_dirty": true,
+  "SHD": 0.0,
+  "LagAcc": 1.0,
+  "LagF1": 1.0,
+  "ResidualDep": 0.0069615387020009085,
+  "note": "SHD/LagAcc computed against the graph itself (no graph-discovery method in this pipeline) -- trivially perfect; ResidualDep is the informative benchmark-structural diagnostic here."
+}

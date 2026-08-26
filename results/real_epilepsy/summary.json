@@ -1,0 +1,105 @@
+{
+  "config": "real_epilepsy",
+  "git_commit": "d99f4146b7be05a97e81ac91b9d001676b5da473",
+  "git_dirty": true,
+  "seed": 0,
+  "dataset": "epilepsy",
+  "T": 206,
+  "n_classes": 4,
+  "target_class": 0,
+  "test_acc": 0.5,
+  "graph": null,
+  "note": "M4b: no causal graph, CF-faith/PNS/do-complexity not computed (no oracle mechanism on real data). Horizon is DERIVED per instance via extract_intervention, not swept -- these 5 methods have no t0 parameter to control.",
+  "horizon_bins": [
+    {
+      "method": "CftsWachter",
+      "horizon_bin_lo": 52,
+      "horizon_bin_hi": 103,
+      "n": 1,
+      "validity_mean": 1.0,
+      "proximity_l1_mean": 34.584379265689314,
+      "sparsity_mean": 0.6262135922330098,
+      "ood_mean": 0.11671725854557224
+    },
+    {
+      "method": "CftsWachter",
+      "horizon_bin_lo": 154,
+      "horizon_bin_hi": 206,
+      "n": 9,
+      "validity_mean": 0.8888888888888888,
+      "proximity_l1_mean": 304.34337459095104,
+      "sparsity_mean": 0.09942466738583243,
+      "ood_mean": 0.10327853323184197
+    },
+    {
+      "method": "CftsCOMTE",
+      "horizon_bin_lo": 154,
+      "horizon_bin_hi": 206,
+      "n": 10,
+      "validity_mean": 1.0,
+      "proximity_l1_mean": 798.2671917947578,
+      "sparsity_mean": 0.0011326860841423948,
+      "ood_mean": 0.017033557803662336
+    },
+    {
+      "method": "CftsConfeti",
+      "horizon_bin_lo": 154,
+      "horizon_bin_hi": 206,
+      "n": 10,
+      "validity_mean": 0.0,
+      "proximity_l1_mean": 215.15500404868277,
+      "sparsity_mean": 0.5048543689320388,
+      "ood_mean": 0.09102624104273974
+    },
+    {
+      "method": "CftsCounts",
+      "horizon_bin_lo": 154,
+      "horizon_bin_hi": 206,
+      "n": 10,
+      "validity_mean": 0.0,
+      "proximity_l1_mean": 337.71422274482245,
+      "sparsity_mean": 0.002103559870550162,
+      "ood_mean": 0.13031738635573037
+    },
+    {
+      "method": "CftsCels",
+      "horizon_bin_lo": 21,
+      "horizon_bin_hi": 52,
+      "n": 1,
+      "validity_mean": 0.0,
+      "proximity_l1_mean": 14.541073283776633,
+      "sparsity_mean": 0.9320388349514563,
+      "ood_mean": 0.1241225628101455
+    },
+    {
+      "method": "CftsCels",
+      "horizon_bin_lo": 52,
+      "horizon_bin_hi": 103,
+      "n": 1,
+      "validity_mean": 1.0,
+      "proximity_l1_mean": 18.571574795898048,
+      "sparsity_mean": 0.7006472491909385,
+      "ood_mean": 0.11400050504306192
+    },
+    {
+      "method": "CftsCels",
+      "horizon_bin_lo": 103,
+      "horizon_bin_hi": 154,
+      "n": 4,
+      "validity_mean": 0.5,
+      "proximity_l1_mean": 29.62928057829573,
+      "sparsity_mean": 0.8774271844660193,
+      "ood_mean": 0.07757715865461087
+    },
+    {
+      "method": "CftsCels",
+      "horizon_bin_lo": 154,
+      "horizon_bin_hi": 206,
+      "n": 4,
+      "validity_mean": 0.25,
+      "proximity_l1_mean": 39.270369309326625,
+      "sparsity_mean": 0.8741909385113269,
+      "ood_mean": 0.08472308769716794
+    }
+  ]
+}

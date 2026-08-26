@@ -1,0 +1,158 @@
+{
+  "seed": 2,
+  "config": "smoke_kuramoto_seed2",
+  "git_commit": "d99f4146b7be05a97e81ac91b9d001676b5da473",
+  "git_dirty": true,
+  "per_seed_records": [
+    {
+      "family": "linear",
+      "scale": "smoke",
+      "config": "smoke",
+      "seed": 0,
+      "decomposition_skipped_reason": "LinearMechanism has no masking support (build_masked_mechanism); run_graph_method's CF-faith graph-error decomposition is genuinely not computable for linear, not merely omitted. cross_method_agreement (AUC/SHD vs ground truth) still runs for linear -- see below.",
+      "dynotears_auc": 1.0,
+      "pcmciplus_auc": 0.9246031746031746,
+      "shd_between_methods": 2.0,
+      "dynotears_shd_to_true": 0.0,
+      "pcmciplus_shd_to_true": 2.0
+    },
+    {
+      "family": "linear",
+      "scale": "smoke",
+      "config": "smoke",
+      "seed": 1,
+      "decomposition_skipped_reason": "LinearMechanism has no masking support (build_masked_mechanism); run_graph_method's CF-faith graph-error decomposition is genuinely not computable for linear, not merely omitted. cross_method_agreement (AUC/SHD vs ground truth) still runs for linear -- see below.",
+      "dynotears_auc": 1.0,
+      "pcmciplus_auc": 1.0,
+      "shd_between_methods": 0.0,
+      "dynotears_shd_to_true": 0.0,
+      "pcmciplus_shd_to_true": 0.0
+    },
+    {
+      "family": "linear",
+      "scale": "smoke",
+      "config": "smoke",
+      "seed": 2,
+      "decomposition_skipped_reason": "LinearMechanism has no masking support (build_masked_mechanism); run_graph_method's CF-faith graph-error decomposition is genuinely not computable for linear, not merely omitted. cross_method_agreement (AUC/SHD vs ground truth) still runs for linear -- see below.",
+      "dynotears_auc": 1.0,
+      "pcmciplus_auc": 1.0,
+      "shd_between_methods": 0.0,
+      "dynotears_shd_to_true": 0.0,
+      "pcmciplus_shd_to_true": 0.0
+    },
+    {
+      "family": "mlp",
+      "scale": "smoke",
+      "config": "smoke_nl",
+      "seed": 0,
+      "decomposition_skipped_reason": null,
+      "dynotears_auc": 0.9166666666666667,
+      "pcmciplus_auc": 0.8571428571428572,
+      "shd_between_methods": 2.0,
+      "dynotears_shd_to_true": 2.0,
+      "pcmciplus_shd_to_true": 4.0
+    },
+    {
+      "family": "mlp",
+      "scale": "smoke",
+      "config": "smoke_nl",
+      "seed": 1,
+      "decomposition_skipped_reason": null,
+      "dynotears_auc": 0.8106060606060606,
+      "pcmciplus_auc": 0.8333333333333333,
+      "shd_between_methods": 2.0,
+      "dynotears_shd_to_true": 2.0,
+      "pcmciplus_shd_to_true": 2.0
+    },
+    {
+      "family": "mlp",
+      "scale": "smoke",
+      "config": "smoke_nl",
+      "seed": 2,
+      "decomposition_skipped_reason": null,
+      "dynotears_auc": 1.0,
+      "pcmciplus_auc": 1.0,
+      "shd_between_methods": 0.0,
+      "dynotears_shd_to_true": 0.0,
+      "pcmciplus_shd_to_true": 0.0
+    },
+    {
+      "family": "spring",
+      "scale": "smoke",
+      "config": "smoke_spring",
+      "seed": 0,
+      "decomposition_skipped_reason": null,
+      "dynotears_auc": 0.45789473684210524,
+      "pcmciplus_auc": 0.6484210526315789,
+      "shd_between_methods": 4.0,
+      "dynotears_shd_to_true": 10.0,
+      "pcmciplus_shd_to_true": 10.0
+    },
+    {
+      "family": "spring",
+      "scale": "smoke",
+      "config": "smoke_spring",
+      "seed": 1,
+      "decomposition_skipped_reason": null,
+      "dynotears_auc": 0.4642857142857143,
+      "pcmciplus_auc": 0.7015306122448979,
+      "shd_between_methods": 2.0,
+      "dynotears_shd_to_true": 4.0,
+      "pcmciplus_shd_to_true": 4.0
+    },
+    {
+      "family": "spring",
+      "scale": "smoke",
+      "config": "smoke_spring",
+      "seed": 2,
+      "decomposition_skipped_reason": null,
+      "dynotears_auc": 0.45789473684210524,
+      "pcmciplus_auc": 0.6421052631578947,
+      "shd_between_methods": 4.0,
+      "dynotears_shd_to_true": 10.0,
+      "pcmciplus_shd_to_true": 10.0
+    },
+    {
+      "family": "kuramoto",
+      "scale": "smoke",
+      "config": "smoke_kuramoto",
+      "seed": 0,
+      "decomposition_skipped_reason": null,
+      "dynotears_auc": 0.5,
+      "pcmciplus_auc": 0.5,
+      "shd_between_methods": 0.0,
+      "dynotears_shd_to_true": 10.0,
+      "pcmciplus_shd_to_true": 10.0
+    },
+    {
+      "family": "kuramoto",
+      "scale": "smoke",
+      "config": "smoke_kuramoto",
+      "seed": 1,
+      "decomposition_skipped_reason": null,
+      "dynotears_auc": 0.5,
+      "pcmciplus_auc": 0.5,
+      "shd_between_methods": 0.0,
+      "dynotears_shd_to_true": 4.0,
+      "pcmciplus_shd_to_true": 4.0
+    },
+    {
+      "family": "kuramoto",
+      "scale": "smoke",
+      "config": "smoke_kuramoto",
+      "seed": 2,
+      "decomposition_skipped_reason": null,
+      "dynotears_auc": 0.5,
+      "pcmciplus_auc": 0.5,
+      "shd_between_methods": 0.0,
+      "dynotears_shd_to_true": 10.0,
+      "pcmciplus_shd_to_true": 10.0
+    }
+  ],
+  "skipped": [],
+  "seeds": [
+    0,
+    1,
+    2
+  ]
+}

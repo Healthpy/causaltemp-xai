@@ -1,0 +1,5 @@
+config,method,threshold,collapse_horizon,collapse_horizon_lo,collapse_horizon_hi,n_seeds,frac_boot_crossed,horizons_swept
+full,CARLA,0.5,nan,30.0,35.0,3,0.2569,"5,10,20,40"
+full,PearlCARLA,0.5,28.94736842105263,26.666666666666664,32.0,3,1.0,"5,10,20,40"
+full_interior_label_late,CARLA,0.5,nan,nan,nan,3,0.0,"5,10,20,40"
+full_interior_label_late,PearlCARLA,0.5,nan,31.28205128205128,35.75757575757576,3,0.2596,"5,10,20,40"

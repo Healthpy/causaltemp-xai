@@ -1,18 +1,18 @@
 """Regression test: every implemented, unit-tested CF method must actually be
 wired into ``experiments/03_run_cf_methods.py::build_methods()`` -- the one
-registry every phase-03/04/07 run reads from.
+registry every phase-03/04/06 run reads from.
 
 This guards against exactly the gap found during the M2 pipeline-wiring
-review (see ``docs/m2_multiseed_and_pearl_carla.md``, S3): ``PearlCARLARecourse``
-was fully implemented (``causaltemp_xai/methods/counterfactual/carla.py``) and
-unit-tested (``tests/test_methods.py::TestPearlCARLA``) but was absent from
+review (see ``docs/archive/m2_multiseed_and_pearl_carla.md``, S3): ``PearlSCMRecourse``
+was fully implemented (``causaltemp_xai/methods/counterfactual/scm_recourse.py``) and
+unit-tested (``tests/test_methods.py::TestPearlSCMRecourse``) but was absent from
 ``build_methods()``, so it had never flowed through a real experiment run
 despite looking "done" from the unit-test suite alone. A method can be
 correct and tested and still never actually run -- this test exists so that
 gap cannot recur silently for *any* of the seven currently-registered methods.
 
 Phase 03 is a numbered-prefix module (not a valid ``import`` target), so it is
-loaded the same way ``experiments/07_aggregate_seeds.py`` already does:
+loaded the same way ``experiments/08_aggregate_and_report.py`` already does:
 ``importlib.import_module("experiments.03_run_cf_methods")``.
 """
 
@@ -23,27 +23,31 @@ import importlib
 import numpy as np
 import pytest
 
+import causaltemp_xai.methods as method_exports
 from causaltemp_xai.methods import (
-    CARLARecourse,
     CftsCelsCF,
     CftsCOMTECF,
     CftsConfetiCF,
     CftsCountsCF,
     CftsWachterCF,
-    PearlCARLARecourse,
+    NoiselessSCMRecourse,
+    PearlSCMRecourse,
+    TSCausalCF,
 )
+from experiments._common import CF_METHOD_KEYS
 
 _phase03 = importlib.import_module("experiments.03_run_cf_methods")
 
 #: method key -> expected class, mirroring build_methods()'s current roster.
 EXPECTED_REGISTRY = {
-    "CARLA": CARLARecourse,
-    "PearlCARLA": PearlCARLARecourse,
+    "NoiselessSCMRecourse": NoiselessSCMRecourse,
+    "PearlSCMRecourse": PearlSCMRecourse,
     "CftsWachter": CftsWachterCF,
     "CftsCOMTE": CftsCOMTECF,
     "CftsConfeti": CftsConfetiCF,
     "CftsCounts": CftsCountsCF,
     "CftsCels": CftsCelsCF,
+    "TSCausal": TSCausalCF,
 }
 
 
@@ -58,26 +62,26 @@ def methods():
     return _phase03.build_methods(X_train, y_train)
 
 
-def test_pearl_carla_is_registered(methods):
-    """The specific gap this test was written for: PearlCARLARecourse must be
+def test_pearl_scm_recourse_is_registered(methods):
+    """The specific gap this test was written for: PearlSCMRecourse must be
     present in the real experiment registry, not just importable/unit-tested."""
-    assert "PearlCARLA" in methods, (
-        "'PearlCARLA' missing from experiments/03_run_cf_methods.py::build_methods() -- "
+    assert "PearlSCMRecourse" in methods, (
+        "'PearlSCMRecourse' missing from experiments/03_run_cf_methods.py::build_methods() -- "
         "a fully-implemented, unit-tested method is not reachable by any real "
-        "experiment run. See docs/m2_multiseed_and_pearl_carla.md S3."
+        "experiment run. See docs/archive/m2_multiseed_and_pearl_carla.md S3."
     )
-    assert isinstance(methods["PearlCARLA"], PearlCARLARecourse)
+    assert isinstance(methods["PearlSCMRecourse"], PearlSCMRecourse)
 
 
-def test_pearl_carla_uses_validated_n_steps(methods):
-    """Pinned design decision (S3 of the M2 doc): PearlCARLA must NOT silently
-    inherit CARLA's speed-motivated n_steps=300 override -- its lam_prox=0.1
+def test_pearl_scm_recourse_uses_validated_n_steps(methods):
+    """Pinned design decision (S3 of the M2 doc): PearlSCMRecourse must NOT silently
+    inherit NoiselessSCMRecourse's speed-motivated n_steps=300 override -- its lam_prox=0.1
     default was only empirically validated at n_steps=500 (its own class
     default). If this test starts failing because someone added an explicit
-    n_steps= override to the PearlCARLA entry, that is a deliberate parameter
+    n_steps= override to the PearlSCMRecourse entry, that is a deliberate parameter
     change that needs its own documented justification, not a silent drift.
     """
-    assert methods["PearlCARLA"].n_steps == 500
+    assert methods["PearlSCMRecourse"].n_steps == 500
 
 
 def test_full_registry_has_no_silent_gaps(methods):
@@ -88,3 +92,63 @@ def test_full_registry_has_no_silent_gaps(methods):
     assert not missing, f"missing from build_methods(): {missing}"
     for name, cls in EXPECTED_REGISTRY.items():
         assert isinstance(methods[name], cls), f"{name} is not a {cls.__name__}"
+
+
+def test_phase04_key_guard_matches_registry(methods):
+    """Phase 04 discovers methods by globbing ``cf/X_cf_*.npy`` filenames, and
+    guards that discovery against ``CF_METHOD_KEYS``. If the guard drifts from
+    the real registry, one of two silent failures follows: a live method is
+    skipped from evaluation entirely, or a stale array from a renamed method is
+    re-scored as live (the M3 ``CausalFeasibility`` -> ``TSCausal`` duplicate).
+    Both are silent in the output tables, so they are pinned here."""
+    assert set(CF_METHOD_KEYS) == set(methods), (
+        "experiments/_common.py::CF_METHOD_KEYS has drifted from "
+        "build_methods(): "
+        f"guard-only={sorted(set(CF_METHOD_KEYS) - set(methods))}, "
+        f"registry-only={sorted(set(methods) - set(CF_METHOD_KEYS))}"
+    )
+
+
+def test_legacy_carla_labels_are_not_future_schema_keys(methods):
+    """Run-1 labels stay only in historical artifacts, never new output schemas."""
+    legacy = {"CARLA", "PearlCARLA"}
+    assert legacy.isdisjoint(methods)
+    assert legacy.isdisjoint(CF_METHOD_KEYS)
+    assert not hasattr(method_exports, "CARLARecourse")
+    assert not hasattr(method_exports, "PearlCARLARecourse")
+
+
+class TestSkipAux:
+    """`--skip-aux` exists so CF generation can be chunked on a host that kills
+    long processes. It must skip *only* the auxiliary blocks and never the CF
+    arrays -- a flag that quietly skipped CF generation would produce an
+    apparently-successful run with nothing to score."""
+
+    def test_flag_is_wired_to_run(self):
+        import inspect
+
+        sig = inspect.signature(_phase03.run)
+        assert "skip_aux" in sig.parameters
+        assert sig.parameters["skip_aux"].default is False, "must default to current behaviour"
+
+    def test_early_return_is_after_cf_generation(self):
+        """The guard must sit after the CF-writing loop, otherwise --skip-aux
+        would write no counterfactuals at all."""
+        import inspect
+
+        src = inspect.getsource(_phase03.run)
+        cf_write = src.index("X_cf_")
+        guard = src.index("if skip_aux:")
+        assert cf_write < guard, "--skip-aux must not short-circuit CF generation"
+
+    def test_guard_precedes_every_aux_block(self):
+        import inspect
+
+        src = inspect.getsource(_phase03.run)
+        guard = src.index("if skip_aux:")
+        # attribution_block / axis_a_block were removed 2026-08-03 with
+        # methods/attribution; shift_vr is the surviving aux
+        # block. The invariant is unchanged: nothing expensive may run ahead of
+        # the guard, or --skip-aux stops being a cheap CF-only path.
+        for aux in ("shift_vr(",):
+            assert guard < src.index(aux), f"{aux} must be behind the --skip-aux guard"

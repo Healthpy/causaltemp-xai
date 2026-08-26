@@ -29,19 +29,19 @@ dependencies = [
     "statsmodels>=0.14",
     "matplotlib>=3.7",
     "seaborn>=0.12",
-    "dice-ml>=0.12",
     "captum>=0.8.0",
     "timeshap>=1.0.4",
     # timeshap imports `shap.explainers._kernel.Kernel`, removed in shap>=0.44;
     # pin to the last compatible release. Nothing else in the repo uses shap.
     "shap==0.42.1",
+    "tigramite>=5.2.10.1",
 ]
 
 [project.optional-dependencies]
 dev = [
     "pytest>=7.4",
     "pytest-cov>=4.1",
-    "black>=23.0",
+    "black==25.11.0",
     "isort>=5.12",
     "ruff>=0.1",
     "mypy>=1.0",
@@ -79,7 +79,7 @@ exclude = '''
 [tool.isort]
 profile = "black"
 line_length = 100
-multi_line_mode = 3
+multi_line_output = 3
 include_trailing_comma = true
 force_grid_wrap = 0
 use_parentheses = true
@@ -89,6 +89,17 @@ skip_gitignore = true
 [tool.ruff]
 line-length = 100
 target-version = "py39"
+exclude = [
+    ".git",
+    ".venv",
+    "__pycache__",
+    "build",
+    "dist",
+    ".eggs",
+    "*.egg-info",
+]
+
+[tool.ruff.lint]
 select = [
     "E",    # pycodestyle errors
     "W",    # pycodestyle warnings
@@ -98,17 +109,12 @@ select = [
     "RUF",  # Ruff-specific
 ]
 ignore = [
-    "E501",  # line too long (handled by black)
-    "W503",  # line break before binary operator
-]
-exclude = [
-    ".git",
-    ".venv",
-    "__pycache__",
-    "build",
-    "dist",
-    ".eggs",
-    "*.egg-info",
+    "E501",    # line too long (handled by black)
+    "E741",    # ambiguous variable name — `l` is the lag index throughout (standard notation)
+    "RUF002",  # ambiguous unicode in docstrings — Greek letters (ε, Δ) and × in math notation
+    "RUF003",  # ambiguous unicode in comments — same math notation
+    "UP007",   # non-PEP604 Union[...] — kept for the py39 runtime target
+    "UP045",   # non-PEP604 Optional[...] — kept for the py39 runtime target
 ]
 
 [tool.mypy]

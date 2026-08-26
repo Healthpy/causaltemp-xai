@@ -1,0 +1,66 @@
+{
+  "seed": 0,
+  "config": "real_basicmotions",
+  "git_commit": "d99f4146b7be05a97e81ac91b9d001676b5da473",
+  "git_dirty": true,
+  "provenance": {
+    "dataset": "basicmotions",
+    "ensemble_b": 5,
+    "threshold": 0.1,
+    "lag_order_L": 1,
+    "n_ensemble_fit": 40
+  },
+  "methods": [
+    {
+      "method": "CftsCels",
+      "cf_faith_discovered_rollout_mean": 0.3266916899452143,
+      "cf_faith_discovered_rollout_ci_lo": 0.3226815751930213,
+      "cf_faith_discovered_rollout_ci_hi": 0.32938087810597133,
+      "cf_faith_discovered_pearl_mean": 0.7519604574271482,
+      "cf_faith_discovered_pearl_ci_lo": 0.7519382299711335,
+      "cf_faith_discovered_pearl_ci_hi": 0.7519760434042339,
+      "ensemble_b": 5
+    },
+    {
+      "method": "CftsCOMTE",
+      "cf_faith_discovered_rollout_mean": 0.13690560783822253,
+      "cf_faith_discovered_rollout_ci_lo": 0.13686332135015994,
+      "cf_faith_discovered_rollout_ci_hi": 0.13695689787791973,
+      "cf_faith_discovered_pearl_mean": 0.20984441363408607,
+      "cf_faith_discovered_pearl_ci_lo": 0.20976768712408092,
+      "cf_faith_discovered_pearl_ci_hi": 0.2099091063814055,
+      "ensemble_b": 5
+    },
+    {
+      "method": "CftsConfeti",
+      "cf_faith_discovered_rollout_mean": 0.08056261751675309,
+      "cf_faith_discovered_rollout_ci_lo": 0.08047072384579061,
+      "cf_faith_discovered_rollout_ci_hi": 0.08062624905312417,
+      "cf_faith_discovered_pearl_mean": 0.06467611684392209,
+      "cf_faith_discovered_pearl_ci_lo": 0.06457589201804292,
+      "cf_faith_discovered_pearl_ci_hi": 0.06475055410709062,
+      "ensemble_b": 5
+    },
+    {
+      "method": "CftsCounts",
+      "cf_faith_discovered_rollout_mean": 0.4689334420369093,
+      "cf_faith_discovered_rollout_ci_lo": 0.4688667914831588,
+      "cf_faith_discovered_rollout_ci_hi": 0.469002666734578,
+      "cf_faith_discovered_pearl_mean": 0.27275564957144743,
+      "cf_faith_discovered_pearl_ci_lo": 0.27254389491026954,
+      "cf_faith_discovered_pearl_ci_hi": 0.2729064370701565,
+      "ensemble_b": 5
+    },
+    {
+      "method": "CftsWachter",
+      "cf_faith_discovered_rollout_mean": 0.18638993341261095,
+      "cf_faith_discovered_rollout_ci_lo": 0.18623135641173308,
+      "cf_faith_discovered_rollout_ci_hi": 0.1865046465457359,
+      "cf_faith_discovered_pearl_mean": 0.12055747746363495,
+      "cf_faith_discovered_pearl_ci_lo": 0.12053000461048187,
+      "cf_faith_discovered_pearl_ci_hi": 0.1205767743769683,
+      "ensemble_b": 5
+    }
+  ],
+  "limitation": "cf_faith_discovered_* quantifies estimation VARIANCE (resampling stability of the DYNOTEARS fit across B independent refits), not model-misspecification BIAS. Every ensemble member shares DYNOTEARS's linear structural-equation assumption; if that assumption is wrong for this real (plausibly nonlinear) data, all B members can agree tightly while being systematically wrong together. A tight ensemble does not rule this out. See docs/risk_register.md RISK-22 and ROADMAP.md M4g."
+}

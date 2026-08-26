@@ -46,6 +46,6 @@ class TestDeriveInterventionT:
     def test_tol_ignores_subthreshold_changes(self):
         x = _base()
         x_cf = x.copy()
-        x_cf[2, 0] += 1e-9      # below tol → ignored
-        x_cf[6, 1] += 1.0       # above tol → detected
+        x_cf[2, 0] += 1e-9  # below tol → ignored
+        x_cf[6, 1] += 1.0  # above tol → detected
         assert derive_intervention_t(x, x_cf, tol=1e-6) == 6
