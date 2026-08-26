@@ -204,14 +204,10 @@ The tiers separate internal from external validity; they are not a realism ladde
 
 \textbf{Tier~2} would ask whether the intervention-to-label dependence observed in Tier~1 appears on real multivariate classification signals that have no ground-truth graph.  It cannot validate a causal metric.  No Tier~2 or Tier~3 result is used in this paper.
 
-\subsection{Methods, oracles, and negative controls}
+\subsection{Methods and controls}
 \label{sec:setup-methods}
 
-We hold the predictive model fixed to the same LSTM and compare four graph-free temporal CF baselines through a common interface: gradient-based Wachter \citep{wachter2017counterfactual}, segment substitution with COMTE \citep{ates2021comte}, genetic subsequence recombination with CONFETTI \citep{paredescetina2025confetti}, and saliency-guided M-CELS \citep{li2024mcels}.  These methods are evaluated as independent proposals: none receives the true graph or mechanism.  Native Guide, TSEvo, MASCOTS and CounTS appear in related work; they are not in the evaluated set.
-
-Controls are kept separate from those baselines.  \textbf{PearlSCMRecourse} optimises one slice and propagates it with the factual instance's abducted innovations; any non-vacuous proposal therefore represents one intervention timestep and has $D=1$ by construction.  \textbf{NoiselessSCMRecourse} uses the same single-slice search but continues with zero future innovations.  It is a positive control only for the \texttt{noiseless\_rollout} CF-faith semantic, just as PearlSCMRecourse is a positive control for \texttt{pearl\_delta}; their CF-faith scores verify construction and are not evidence of method superiority.  Separately, analytically constructed Pearl and noiseless oracle trajectories under a fixed intervention verify that the two reference semantics score the object they define.
-
-A diagnostic construction, used in tests rather than as a named pipeline method, blends a single-$\dop()$ Pearl oracle with a direct rewrite of the same post-intervention channel path.  As the mechanism is bypassed, $D$ must increase from one toward the number of editable timesteps; low disagreement obtained by declaring the whole rewrite as action is consequently exposed as vacuous agreement, not a vacuous intervention.  Finally, \textbf{TSCausalCF} \citep{bahri2025causalfeasibility} is the substantive foil.  It receives the true graph and mechanism from the generator, and optimises a free trajectory perturbation with a local structural-residual penalty, but performs no abduction, declares no intervention time, and does not propagate a $\dop()$.  Its faithfulness is therefore an empirical question rather than a property of its construction.  Graph-estimation error, when $F$ is \emph{not} given, is a separate analysis (Section~\ref{sec:res-foil}) and is not mixed into the foil comparison.  Every artifact records the method identity, classifier, configuration, and seed; raw per-instance outputs are retained for aggregation.
+The predictive model is a fixed LSTM.  The baselines are Wachter \citep{wachter2017counterfactual}, COMTE \citep{ates2021comte}, CONFETTI \citep{paredescetina2025confetti}, and M-CELS \citep{li2024mcels}; none receives the true graph or mechanism.  The controls are PearlSCMRecourse and NoiselessSCMRecourse (Appendix~\ref{app:controls}).  TSCausalCF \citep{bahri2025causalfeasibility} receives the true graph and mechanism and is evaluated as a residual-penalty foil.
 
 \section{Results}
 \label{sec:results}
@@ -360,6 +356,42 @@ Additive innovations are then applied as in the other families.  $K$ is $0.3$ ti
 
 \paragraph{Registered deviations.}
 The original design space listed $k\in\{5,10,20\}$, $L\in\{1,3\}$, $s\in\{0.1,0.2,0.3\}$, $T\in\{50,100,200\}$, and a segment count.  The three families lock $k=10$, $L=1$, $T=100$, $N=10{,}000$.  Changing $L$ would invalidate the per-matrix spectral rescaling and is not a casual configuration edit.  Segments are unused.  KuramotoSCM-T was removed.  Multi-seed replicates of a family change only the seed.
+
+\section{Control methods}
+\label{app:controls}
+
+PearlSCMRecourse and NoiselessSCMRecourse are positive controls constructed by this work, not adapters of a published explainer.  Both receive the true mechanism $F$.  Both leave the factual prefix unchanged, optimise a single slice $\bx_{t_0}+\boldsymbol{\delta}$, and let $F$ produce the suffix.  A non-vacuous proposal therefore has $D=1$ by construction.  Candidate intervention times are $t_0/T\in\{0.25,0.5\}$.  The search minimises
+\begin{equation}
+  \lambda_{\mathrm{pred}}\,\mathrm{CE}\bigl(h(\hat{\bx}),\,y^\star\bigr)
+  +\lambda_{\mathrm{prox}}\lVert\boldsymbol{\delta}\rVert_2^2
+\end{equation}
+with Adam over $\boldsymbol{\delta}\in\R^k$ (300 steps for NoiselessSCMRecourse, 500 for PearlSCMRecourse).  If that search does not produce a genuine above-tolerance flip, one prediction-only retry with $\lambda_{\mathrm{prox}}=0$ is allowed.  Registered weights are $\lambda_{\mathrm{pred}}=1$ for both controls, $\lambda_{\mathrm{prox}}=0.1$ for PearlSCMRecourse and $\lambda_{\mathrm{prox}}=0.5$ for NoiselessSCMRecourse.
+
+\paragraph{PearlSCMRecourse.}
+The suffix is the abduction--action--prediction recursion of Eq.~\eqref{eq:oracle-cf}:
+\begin{equation}
+  \hat{x}_t
+  =
+  \begin{cases}
+    x_t, & t<t_0,\\
+    x_{t_0}+\boldsymbol{\delta}, & t=t_0,\\
+    F\bigl(\Pa_G(\hat{\bx}_t)\bigr)+\varepsilon_t, & t>t_0,
+  \end{cases}
+\end{equation}
+with $\varepsilon_t$ abducted from the factual instance as in Eq.~\eqref{eq:abduction}.  Hard CF-faith under \texttt{pearl\_delta} is therefore $1$ by construction, provided the instance is scorable ($t_0<T-1$).
+
+\paragraph{NoiselessSCMRecourse.}
+The same search, with all subsequent innovations set to zero:
+\begin{equation}
+  \hat{x}_t
+  =
+  \begin{cases}
+    x_t, & t<t_0,\\
+    x_{t_0}+\boldsymbol{\delta}, & t=t_0,\\
+    F\bigl(\Pa_G(\hat{\bx}_t)\bigr), & t>t_0.
+  \end{cases}
+\end{equation}
+Hard CF-faith under \texttt{noiseless\_rollout} is $1$ by construction on scorable instances.  The two controls are not interchangeable: a noiseless skeleton is not the unit-level Pearl counterfactual, and we never average the two CF-faith semantics.
 
 \section{Additional results}
 \label{app:extra}
