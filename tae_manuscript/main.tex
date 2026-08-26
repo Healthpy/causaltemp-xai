@@ -60,7 +60,7 @@ The evaluation protocol those methods are judged by has been remarkably stable: 
 
 This is a measurement-validity problem rather than a leaderboard problem, and it is the reason the gap has persisted. Asking whether the world agrees requires a setting where the world is known: a benchmark that ships the mechanism that generated its own data, so that the \emph{same} intervention a method claims credit for can be re-run through the true structural equations and the two outcomes compared. Real classification datasets cannot supply this. Synthetic temporal discovery benches ship a graph but no explanation method \citep{cheng2024causaltime,herdeanu2025causaldynamics,ferdous2025timegraph}. Temporal explanation benches put explainers in the loop but have no mechanism that could replay an intervention \citep{hollig2023xtscbench,nguyen2024amee}. The closest audit of third-party counterfactuals against a known SCM is tabular \citep{hollig2023semantic}.
 
-We build that setting and use it as an instrument. Our benchmark generates multivariate time series from a known temporal structural causal model (SCM) with additive noise, which makes Pearl's abduction step an exact subtraction \citep{pearl2009causality}: the exogenous noise of a given instance is recovered rather than approximated, so the counterfactual the world would have produced \emph{for that instance} is computed exactly rather than estimated. (The invertibility of an additive-noise map is the ANM property of \citealp{hoyer2008anm}; the abduction step itself is Pearl's.) On top of it we define a \textbf{model-vs-world audit}: a proposed counterfactual is admitted or rejected by a mechanism-consistency gate, its implied intervention is realised by the true mechanism, and the disagreement between what the explanation \emph{claims} and what the world \emph{does} is decomposed additively into a trajectory term (the proposed trajectory is not the one the world would produce) and an outcome term (the classifier does not track the true label rule).
+We build that setting and use it as an instrument. Our benchmark generates multivariate time series from a known temporal structural causal model (SCM) with additive noise, which makes Pearl's abduction step an exact subtraction \citep{pearl2009causality}: the exogenous noise of a given instance is recovered rather than approximated, so the counterfactual the world would have produced \emph{for that instance} is computed exactly rather than estimated. (The invertibility of an additive-noise map is the ANM property of \citealp{hoyer2008anm}; the abduction step itself is Pearl's.) On top of it we define a \textbf{model-vs-world audit}: a proposed counterfactual is scored for mechanism consistency (CF-faith) and intervention size (do-complexity $D$), its implied intervention is realised by the true mechanism, and the disagreement between what the explanation \emph{claims} and what the world \emph{does} is decomposed additively into a trajectory term (the proposed trajectory is not the one the world would produce) and an outcome term (the classifier does not track the true label rule).
 
 Building the instrument surfaced a construct-validity issue that we consider part of the contribution rather than an implementation detail. The audit's answer depends on how a proposal is \emph{read}: interpreting a counterfactual as a single $\dop()$ at one timestep inflates the trajectory term for densely-editing methods, while interpreting every edited slice as its own intervention drives that term to zero \emph{by construction}. Neither endpoint is privileged, so we report the quantity that is stable across both; \textbf{do-complexity} $D$, the number of timesteps a proposal must declare as interventions before the mechanism can reproduce it, alongside every disagreement number. A method with $D$ close to the trajectory length has not explained a prediction; it has rewritten the trajectory, and its agreement with the world is vacuous because nothing was left for the mechanism to predict.
 
@@ -98,7 +98,7 @@ DYNOTEARS \citep{pamfil2020dynotears}, PCMCI \citep{runge2019pcmci} and the broa
 \section{The Model-vs-World Audit}
 \label{sec:audit}
 
-\noindent\textbf{Measurement chain.} The phenomenon is a classifier-valid counterfactual that the data-generating process would not realise.  The task is therefore to replay the proposal's implied intervention in a known process for the same factual unit.  The metrics are a mechanism-consistency gate followed by the pair $(D,\dototal)$, and the supported claim is deliberately narrow: under the stated SCM and intervention reading, whether and by how much the proposal and the world disagree about target-class efficacy.  This chain does not turn model validity into causal efficacy, nor synthetic agreement into a claim about an unknown real-world mechanism.
+\noindent\textbf{Measurement chain.} The phenomenon is a classifier-valid counterfactual that the data-generating process would not realise.  The task is therefore to replay the proposal's implied intervention in a known process for the same factual unit.  The mechanism-relative metrics are CF-faith and do-complexity $D$, reported for every proposal together with the disagreement $\dototal$; the supported claim is deliberately narrow: under the stated SCM and intervention reading, whether the proposal is mechanism-consistent, how large an intervention schedule it requires, and by how much the proposal and the world disagree about target-class efficacy.  This chain does not turn model validity into causal efficacy, nor synthetic agreement into a claim about an unknown real-world mechanism.
 
 \subsection{SCM, oracle, and identifying assumptions}
 
@@ -131,11 +131,11 @@ This shared noise tensor is what conditions the query on this factual unit; draw
 
 Exactness is conditional, not universal.  It requires that the recorded $G$ and $F$ are the data-generating SCM, that causes enter with positive lag, that there is no unmeasured confounding, and that innovations enter additively and are not themselves changed by $I$.  These conditions hold by construction only in the synthetic tier.  Relaxing additivity would require an identified inverse noise model; replacing the written mechanism with a discovered one would make discovery error part of the estimand.
 
-\subsection{Admission by CF-faith; intervention size by $D$}
+\subsection{CF-faith and do-complexity $D$}
 
-Given a proposed counterfactual $\hat{\bx}$ and its first changed timestep $t_0$, CF-faith first rejects any retroactive edit $\hat{\bx}_{<t_0}\neq\bx_{<t_0}$ and then compares the suffix with one of two SCM continuations.  Under \texttt{noiseless\_rollout}, the reference is the deterministic skeleton $F$ with all subsequent innovations set to zero.  Under \texttt{pearl\_delta}, it is the abduction--action--prediction recursion in Eq.~\eqref{eq:oracle-cf}.  These semantics answer different questions and are reported separately: in a noisy SCM, a proposal is not expected to be both a noiseless skeleton and the unit-level Pearl counterfactual.  We never average them.  The hard score is a pass/fail admission check within a fixed tolerance; when $t_0\geq T-1$ leaves no suffix to test, it abstains rather than awarding a vacuous pass.  CF-faith is therefore a gate, not a ranking axis.
+Given a proposed counterfactual $\hat{\bx}$ and its first changed timestep $t_0$, CF-faith scores mechanism consistency.  It flags any retroactive edit $\hat{\bx}_{<t_0}\neq\bx_{<t_0}$ and then compares the suffix with one of two SCM continuations.  Under \texttt{noiseless\_rollout}, the reference is the deterministic skeleton $F$ with all subsequent innovations set to zero.  Under \texttt{pearl\_delta}, it is the abduction--action--prediction recursion in Eq.~\eqref{eq:oracle-cf}.  These semantics answer different questions and are reported separately: in a noisy SCM, a proposal is not expected to be both a noiseless skeleton and the unit-level Pearl counterfactual.  We never average them.  The hard score is the fraction of proposals whose suffix residual falls within a fixed tolerance; when $t_0\geq T-1$ leaves no suffix to test, the instance is unscorable rather than awarded a vacuous one.  We report CF-faith and $D$ as the two mechanism-relative metrics of a proposal.
 
-Passing the gate does not say how much of the trajectory was imposed by action.  We extract, under Pearl semantics, the schedule required to reproduce $\hat{\bx}$.  At each timestep, $S_t$ contains coordinates that differ beyond tolerance from $F(\Pa_G(\hat{\bx}_t))+\beps_t$, and
+How much of the trajectory was imposed by action is scored by $D$.  We extract, under Pearl semantics, the schedule required to reproduce $\hat{\bx}$.  At each timestep, $S_t$ contains coordinates that differ beyond tolerance from $F(\Pa_G(\hat{\bx}_t))+\beps_t$, and
 \begin{equation}
   D(\hat{\bx};\bx,F)
   =\left|\{t:S_t\neq\varnothing\}\right|
@@ -171,7 +171,7 @@ The signed disagreement decomposes exactly as
 \end{equation}
 $\dotraj$ locates disagreement in the proposed versus structurally realised trajectory, whereas $\dooutcome$ locates it in the classifier versus the published label rule.  A positive $\dototal$ is over-claimed efficacy; a negative value means that the classifier misses an effect present under the label rule.  Distance from zero measures disagreement, while the sign is retained for diagnosis.
 
-After the CF-faith gate, methods are compared on the two-dimensional pair $(D,\dototal)$: progress means small intervention schedules and small model--world disagreement.  We do not combine the pair into a scalar. $\dotraj$ and $\dooutcome$ explain the source of the gap; neither is a second leaderboard, and $\dotraj$ is never interpreted without the intervention reading and $D$.
+We report CF-faith, $D$, and $\dototal$ jointly for every method; we do not combine them into a scalar.  Progress means mechanism-consistent proposals, small intervention schedules, and small model--world disagreement. $\dotraj$ and $\dooutcome$ explain the source of the gap; neither is a second leaderboard, and $\dotraj$ is never interpreted without the intervention reading and $D$.
 
 \subsection{The intervention-to-label reporting rule}
 
@@ -209,7 +209,7 @@ The tiers separate internal from external validity; they are not a realism ladde
 
 We hold the predictive model fixed to the same LSTM and compare four graph-free temporal CF baselines through a common interface: gradient-based Wachter \citep{wachter2017counterfactual}, segment substitution with COMTE \citep{ates2021comte}, genetic subsequence recombination with CONFETTI \citep{paredescetina2025confetti}, and saliency-guided M-CELS \citep{li2024mcels}.  These methods are evaluated as independent proposals: none receives the true graph or mechanism.  Native Guide, TSEvo, MASCOTS and CounTS appear in related work; they are not in the evaluated set.
 
-Controls are kept separate from those baselines.  \textbf{PearlSCMRecourse} optimises one slice and propagates it with the factual instance's abducted innovations; any non-vacuous proposal therefore represents one intervention timestep and has $D=1$ by construction.  \textbf{NoiselessSCMRecourse} uses the same single-slice search but continues with zero future innovations.  It is a positive control only for the \texttt{noiseless\_rollout} admission semantics, just as PearlSCMRecourse is a positive control for \texttt{pearl\_delta}; their gate scores verify construction and are not evidence of method superiority.  Separately, analytically constructed Pearl and noiseless oracle trajectories under a fixed intervention verify that the two reference semantics admit the object they define.
+Controls are kept separate from those baselines.  \textbf{PearlSCMRecourse} optimises one slice and propagates it with the factual instance's abducted innovations; any non-vacuous proposal therefore represents one intervention timestep and has $D=1$ by construction.  \textbf{NoiselessSCMRecourse} uses the same single-slice search but continues with zero future innovations.  It is a positive control only for the \texttt{noiseless\_rollout} CF-faith semantic, just as PearlSCMRecourse is a positive control for \texttt{pearl\_delta}; their CF-faith scores verify construction and are not evidence of method superiority.  Separately, analytically constructed Pearl and noiseless oracle trajectories under a fixed intervention verify that the two reference semantics score the object they define.
 
 A diagnostic construction, used in tests rather than as a named pipeline method, blends a single-$\dop()$ Pearl oracle with a direct rewrite of the same post-intervention channel path.  As the mechanism is bypassed, $D$ must increase from one toward the number of editable timesteps; low disagreement obtained by declaring the whole rewrite as action is consequently exposed as vacuous agreement, not a vacuous intervention.  Finally, \textbf{TSCausalCF} \citep{bahri2025causalfeasibility} is the substantive foil.  It receives the true graph and mechanism from the generator, and optimises a free trajectory perturbation with a local structural-residual penalty, but performs no abduction, declares no intervention time, and does not propagate a $\dop()$.  Its faithfulness is therefore an empirical question rather than a property of its construction.  Graph-estimation error, when $F$ is \emph{not} given, is a separate analysis (Section~\ref{sec:res-foil}) and is not mixed into the foil comparison.  Every artifact records the method identity, classifier, configuration, and seed; raw per-instance outputs are retained for aggregation.
 
@@ -222,14 +222,14 @@ Current evidence: \texttt{full} and \texttt{full\_nl}. Do not fill
 \texttt{full\_spring} rows from \texttt{smoke\_spring}. Oracle construction
 check is phase~05, not the tier-1 suite.}
 
-\subsection{Standard methods fail the admission gate}
-\label{sec:res-gate}
+\subsection{Standard methods score zero CF-faith}
+\label{sec:res-cffaith}
 
 \brief{H1, split verdict, \texttt{full}/\texttt{full\_nl} only: CF-faith $=0$
 for the four wired standard explainers; validity $>0.9$ is not universal.
-CF-faith has no dynamic range across real methods---which is why it is a
-gate. Positive-control check (construction, not a finding):
-NoiselessSCMRecourse's perfect rollout score is tautological.}
+CF-faith and $D$ are reported metrics, not a filter. Positive-control
+check (construction, not a finding): NoiselessSCMRecourse's perfect
+rollout score is tautological.}
 
 \subsection{Validity is bought by intervening almost everywhere}
 \label{sec:res-rewrite}
@@ -275,8 +275,8 @@ quality, marked exploratory / not pre-registered.}
 \emph{not} be used to say. Additive noise and exact abduction; no
 unmeasured confounding; $L{=}1$ presets; audit answer depends on
 intervention reading (only $(D,\Delta)$ is reportable); label functional
-is a design choice; CF-faith rejects every non-control entrant (a finding,
-not a leaderboard); $\mathrm{graph\_error}$ is not scale-free;
+is a design choice; CF-faith is zero for every non-control entrant (a
+reported metric, not a filter); $\mathrm{graph\_error}$ is not scale-free;
 $t_0/T$ fractions are scale-dependent in the wrong direction; Tier~2
 cannot validate causal metrics; no new method is proposed. Retracted
 figures named only if a reader would otherwise cite them, in one sentence,
