@@ -22,16 +22,15 @@ design, pre-registered expected direction, and smoke-scale preliminary
 finding for each. **No full-scale variant of any of these three presets
 exists or is planned as part of this work.**
 
-One further M4c preset (2026-08-05) adds a **non-dissipative**
-mechanism family, testing H4 evidence (i) (renumbered 2026-08-06, was H8b)
-in the regime where causal effects persist rather than decay --
-``SMOKE_SPRING`` (``mechanism_type="spring"``, ``k=10`` exposed channels =
-position+velocity for 5 particles,
-:class:`~causaltemp_xai.benchmarks.generator.SpringSCMT`, adopted from Bahri
-et al. IEEE BigData 2025). Unlike every other preset in this module it is
-**not** contractive by design -- see the generator class's docstring. No
-full-scale variant exists yet; smoke-scale verification is M4c's first DoD
-gate.
+Two M4c presets add a **non-dissipative** mechanism family, testing H4
+evidence (i) (renumbered 2026-08-06, was H8b) in the regime where causal
+effects persist rather than decay -- ``SMOKE_SPRING`` (plumbing) and
+``FULL_SPRING`` (paper cell). Both use ``mechanism_type="spring"``,
+``k=10`` exposed channels = position+velocity for 5 particles
+(:class:`~causaltemp_xai.benchmarks.generator.SpringSCMT`, adopted from
+Bahri et al. IEEE BigData 2025). Unlike the VAR/MLP presets they are
+**not** contractive by design -- see the generator class's docstring.
+The manuscript reports only ``full``, ``full_nl``, and ``full_spring``.
 
 Two **label-site presets** are registered for H4 evidence (ii) (renumbered
 2026-08-06, was H8c; M2b, 2026-08-03):
@@ -477,6 +476,21 @@ SMOKE_SPRING = BenchmarkConfig(
     nonlinear=dict(_SPRING_HYPERPARAMS),
 )
 
+#: Paper-scale SpringSCM-T. Same particle layout and spring hyperparameters as
+#: ``SMOKE_SPRING``; ``T``, ``N``, and ``seed`` match ``FULL`` / ``FULL_NL``.
+FULL_SPRING = BenchmarkConfig(
+    k=10,
+    L=1,
+    sparsity=0.3,
+    noise_type="laplace",
+    T=100,
+    N=10_000,
+    seed=42,
+    name="full_spring",
+    mechanism_type="spring",
+    nonlinear=dict(_SPRING_HYPERPARAMS),
+)
+
 
 #: Registry of all named configs.
 CONFIGS: dict[str, BenchmarkConfig] = {
@@ -493,6 +507,7 @@ CONFIGS: dict[str, BenchmarkConfig] = {
     "full_interior_label": FULL_INTERIOR_LABEL,
     "full_interior_label_late": FULL_INTERIOR_LABEL_LATE,
     "smoke_spring": SMOKE_SPRING,
+    "full_spring": FULL_SPRING,
 }
 
 
@@ -596,7 +611,8 @@ def get_config(name: str) -> BenchmarkConfig:
         ``"full_nl"``, ``"smoke_gaussian"``, ``"smoke_nonmonotonic"``,
         ``"smoke_regime"``, ``"smoke_regime_hmm"``,
         ``"smoke_interior_label"``, ``"full_interior_label"``,
-        ``"full_interior_label_late"``.
+        ``"full_interior_label_late"``, ``"smoke_spring"``,
+        ``"full_spring"``.
 
     Raises
     ------

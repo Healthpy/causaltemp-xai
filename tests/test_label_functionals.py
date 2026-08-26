@@ -50,7 +50,7 @@ class TestDefaultUnchanged:
             assert scm_label(x, theta) == int(x[-1, 0] > theta)
 
     def test_locked_presets_still_use_the_terminal_rule(self):
-        for name in ("smoke", "full", "smoke_nl", "full_nl"):
+        for name in ("smoke", "full", "smoke_nl", "full_nl", "full_spring"):
             cfg = get_config(name)
             assert cfg.label_fn == "terminal_threshold"
             assert cfg.label_params is None

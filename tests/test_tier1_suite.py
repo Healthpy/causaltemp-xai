@@ -28,25 +28,24 @@ class TestResolveJobs:
             "spring": "smoke_spring",
         }
 
-    def test_full_scale_skips_spring(self):
-        """Spring has no full-scale preset -- skipped and recorded, not
-        silently dropped."""
+    def test_full_scale_includes_spring(self):
         jobs, skipped = _phase09._resolve_jobs(list(_phase09.ALL_FAMILIES), ["full"])
-        resolved_families = {family for family, _scale, _config in jobs}
-        assert resolved_families == {"linear", "mlp"}
-        skipped_families = {s["family"] for s in skipped}
-        assert skipped_families == {"spring"}
-        for s in skipped:
-            assert "no full-scale preset" in s["reason"]
+        resolved = {family: config for family, _scale, config in jobs}
+        assert resolved == {
+            "linear": "full",
+            "mlp": "full_nl",
+            "spring": "full_spring",
+        }
+        assert skipped == []
 
-    def test_both_scales_yields_five_jobs_one_skip(self):
+    def test_both_scales_yields_six_jobs(self):
         jobs, skipped = _phase09._resolve_jobs(list(_phase09.ALL_FAMILIES), ["smoke", "full"])
-        assert len(jobs) == 5  # 3 smoke + 2 full (linear, mlp)
-        assert len(skipped) == 1  # spring/full
+        assert len(jobs) == 6
+        assert skipped == []
 
     def test_empty_job_list_raises(self):
         with pytest.raises(SystemExit):
-            _phase09._resolve_jobs(["spring"], ["full"])
+            _phase09._resolve_jobs([], ["full"])
 
     def test_maskable_families_exclude_linear(self):
         assert "linear" not in _phase09._MASKABLE_FAMILIES

@@ -9,11 +9,13 @@ than manually assembling per-config commands.
 The kuramoto family was removed 2026-08-11; three synthetic
 families are enough, and it was the worst-conditioned of the four.
 
-Family -> preset table (spring has no full-scale preset yet):
+Family -> preset table:
 
-    linear    mechanism_type="linear"    smoke -> "smoke"       full -> "full"
-    mlp       mechanism_type="mlp"       smoke -> "smoke_nl"    full -> "full_nl"
-    spring    mechanism_type="spring"    smoke -> "smoke_spring" full -> none
+    linear    mechanism_type="linear"    smoke -> "smoke"        full -> "full"
+    mlp       mechanism_type="mlp"       smoke -> "smoke_nl"     full -> "full_nl"
+    spring    mechanism_type="spring"    smoke -> "smoke_spring" full -> "full_spring"
+
+The manuscript reports only ``full``, ``full_nl``, and ``full_spring``.
 
 **spring's discovery AUC caveat (P0-4, 2026-08-11):** ``SpringMechanism``'s
 ``graph`` deliberately omits the position<-velocity coupling every particle's
@@ -80,7 +82,7 @@ _phase08 = importlib.import_module("experiments.08_aggregate_and_report")
 _FAMILY_CONFIGS = {
     "linear": {"smoke": "smoke", "full": "full"},
     "mlp": {"smoke": "smoke_nl", "full": "full_nl"},
-    "spring": {"smoke": "smoke_spring", "full": None},
+    "spring": {"smoke": "smoke_spring", "full": "full_spring"},
 }
 _MASKABLE_FAMILIES = ("mlp", "spring")
 ALL_FAMILIES = tuple(_FAMILY_CONFIGS)

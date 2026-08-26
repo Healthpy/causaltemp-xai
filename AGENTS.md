@@ -99,7 +99,8 @@ For multi-step work, state a short plan with a verification check for each step.
 - Benchmark presets in `causaltemp_xai/config.py` are experimental contracts, not convenient defaults to edit casually.
 - Existing presets fix `L=1`; changing the lag order requires revisiting stability assumptions and adding appropriate tests.
 - Preserve deterministic seeds and seeded output-directory isolation.
-- Smoke configurations validate plumbing and directionality. Do not present smoke-scale numbers as paper-scale evidence.
+- **Paper cells.** The manuscript reports only `full` (LinearSCM-T), `full_nl` (NlinearSCM-T), and `full_spring` (SpringSCM-T). Every other named preset — all `smoke*` cells, interior-label variants, `full_sparse`, Gaussian/regime/non-monotonic ablations, and real-data tiers — exists for plumbing, tests, or directionality checks. Do not present those numbers in the paper or pool them with the three paper cells.
+- Smoke configurations validate plumbing and directionality. They are not paper evidence.
 - Use multi-seed estimates and uncertainty for scientific conclusions when the protocol calls for them.
 - Do not revive or cite retracted numbers. `README.md` and `docs/general_plan.md` identify the current retractions and surviving claims.
 - Prefer explicit limitation statements over extrapolation beyond the measured configuration.
