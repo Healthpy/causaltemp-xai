@@ -33,10 +33,9 @@
 \title{Does the World Agree? A Model-vs-World Audit for Counterfactual
 Explanations of Time Series}
 
+% Camera-ready: restore the named author block.
 \author{%
-  Oleksii Furman \\
-  Wroc{\l}aw University of Science and Technology \\
-  \texttt{oleksii.furman@pwr.edu.pl}
+  Anonymous Author(s)
 }
 
 \begin{document}
@@ -57,41 +56,40 @@ transfer only). No leaderboard teaser.}
 
 A counterfactual explanation answers the question practitioners actually ask of a high-stakes sequential model: \emph{what would have had to be different in this trajectory for the prediction to have been otherwise?} \citep{wachter2017counterfactual}. In the temporal setting the question is routinely posed about clinical trajectories, industrial telemetry and financial series, and a substantial family of methods now answers it \citep{delaney2021nativeguide,ates2021comte,hollig2022tsevo,li2024mcels,paredescetina2025confetti,yan2023counts}.
 
-The evaluation protocol those methods are judged by has been remarkably stable: \emph{validity} (does the counterfactual flip the classifier), \emph{proximity} (how far is it from the factual), \emph{sparsity} (how many entries changed), and \emph{plausibility} (does it look like training data) \citep{pawelczyk2021carla,hollig2023xtscbench,nguyen2024amee}. Every one of those four quantities is a relation between the counterfactual and \textbf{the model}. None is a relation between the counterfactual and \textbf{the process that generated the data}. A method can therefore score perfectly on all four while proposing a trajectory the world could never have produced, or an intervention that would in fact have left the outcome untouched. The evaluation cannot tell the two apart, because it never asks the world.
+The evaluation protocol those methods are judged by has been remarkably stable: \emph{validity} (does the counterfactual flip the classifier), \emph{proximity} (how far is it from the factual), \emph{sparsity} (how many entries changed), and \emph{plausibility} (does it look like training data) \citep{delaney2021nativeguide,hollig2022tsevo,pawelczyk2021carla}. Every one of those four quantities is a relation between the counterfactual and \textbf{the model}. None is a relation between the counterfactual and \textbf{the process that generated the data}. A method can therefore score perfectly on all four while proposing a trajectory the world could never have produced, or an intervention that would in fact have left the outcome untouched. The evaluation cannot tell the two apart, because it never asks the world.
 
-This is a measurement-validity problem rather than a leaderboard problem, and it is the reason the gap has persisted. Asking whether the world agrees requires a setting where the world is known: a benchmark that ships the mechanism that generated its own data, so that the \emph{same} intervention a method claims credit for can be re-run through the true structural equations and the two outcomes compared. Real datasets cannot supply this, and existing synthetic temporal benchmarks were built for a different purpose, recovering the causal graph \citep{cheng2024causaltime,herdeanu2025causaldynamics,ferdous2025timegraph}, with no explanation method in the loop.
+This is a measurement-validity problem rather than a leaderboard problem, and it is the reason the gap has persisted. Asking whether the world agrees requires a setting where the world is known: a benchmark that ships the mechanism that generated its own data, so that the \emph{same} intervention a method claims credit for can be re-run through the true structural equations and the two outcomes compared. Real classification datasets cannot supply this. Synthetic temporal discovery benches ship a graph but no explanation method \citep{cheng2024causaltime,herdeanu2025causaldynamics,ferdous2025timegraph}. Temporal explanation benches put explainers in the loop but have no mechanism that could replay an intervention \citep{hollig2023xtscbench,nguyen2024amee}. The closest audit of third-party counterfactuals against a known SCM is tabular \citep{hollig2023semantic}.
 
-We build that setting and use it as an instrument. Our benchmark generates multivariate time series from a known temporal structural causal model (SCM) with additive noise, which makes Pearl's abduction step an exact subtraction \citep{pearl2009causality,hoyer2008anm}: the exogenous noise of a given instance is recovered rather than approximated, so the counterfactual the world would have produced \emph{for that instance} is computed exactly rather than estimated. On top of it we define a \textbf{model-vs-world audit}: a proposed counterfactual is admitted or rejected by a mechanism-consistency gate, its implied intervention is realised by the true mechanism, and the disagreement between what the explanation \emph{claims} and what the world \emph{does} is decomposed additively into a trajectory term (the proposed trajectory is not the one the world would produce) and an outcome term (the classifier does not track the true label rule).
+We build that setting and use it as an instrument. Our benchmark generates multivariate time series from a known temporal structural causal model (SCM) with additive noise, which makes Pearl's abduction step an exact subtraction \citep{pearl2009causality}: the exogenous noise of a given instance is recovered rather than approximated, so the counterfactual the world would have produced \emph{for that instance} is computed exactly rather than estimated. (The invertibility of an additive-noise map is the ANM property of \citealp{hoyer2008anm}; the abduction step itself is Pearl's.) On top of it we define a \textbf{model-vs-world audit}: a proposed counterfactual is admitted or rejected by a mechanism-consistency gate, its implied intervention is realised by the true mechanism, and the disagreement between what the explanation \emph{claims} and what the world \emph{does} is decomposed additively into a trajectory term (the proposed trajectory is not the one the world would produce) and an outcome term (the classifier does not track the true label rule).
 
 Building the instrument surfaced a construct-validity issue that we consider part of the contribution rather than an implementation detail. The audit's answer depends on how a proposal is \emph{read}: interpreting a counterfactual as a single $\dop()$ at one timestep inflates the trajectory term for densely-editing methods, while interpreting every edited slice as its own intervention drives that term to zero \emph{by construction}. Neither endpoint is privileged, so we report the quantity that is stable across both; \textbf{do-complexity} $D$, the number of timesteps a proposal must declare as interventions before the mechanism can reproduce it, alongside every disagreement number. A method with $D$ close to the trajectory length has not explained a prediction; it has rewritten the trajectory, and its agreement with the world is vacuous because nothing was left for the mechanism to predict.
 
-A second finding is a reporting rule rather than a method comparison. Stability of a temporal SCM requires a spectral radius below one(citation needed), so an intervention's effect on the label attenuates geometrically in the distance from the intervention time to the \emph{label site}, not to the end of the trajectory, which is the same thing only when labels are terminal, as they are in nearly every published temporal-recourse evaluation. Recourse feasibility is therefore a property of the benchmark configuration as much as of the method, and a validity number reported without its intervention-to-label distance is not interpretable. This is not a claim that recourse is impossible; it is a condition that every temporal recourse evaluation, including favourable ones,
-needs to state.
+A second finding is a reporting rule rather than a method comparison. Stationarity of a linear VAR requires a spectral radius below one \citep{lutkepohl2005}, so an intervention's effect on the label attenuates geometrically in the distance from the intervention time to the \emph{label site}, not to the end of the trajectory. Those two distances coincide only when the label is terminal, as it is in the paper cells and in the spring experiments of \citet{bahri2025causalfeasibility}, but not in UCR/UEA whole-series classification, where the discriminative site can be interior. Recourse feasibility is therefore a property of the benchmark configuration as much as of the method, and a validity number reported without its intervention-to-label distance is not interpretable. This is not a claim that recourse is impossible; it is a condition that every temporal recourse evaluation, including favourable ones, needs to state.
 
 \paragraph{Contributions.}
 \begin{enumerate}
   \item \textbf{A model-vs-world audit instrument} for temporal counterfactual explanations: the proposal's own intervention is realised by the true mechanism, and the disagreement is decomposed additively into trajectory and outcome terms, each computed exactly against a known mechanism rather than estimated. Its construct validity is carried by do-complexity $D$, published beside every disagreement figure.
-  \item \textbf{Intervention-to-outcome distance as a required reporting condition}, with the label site, not the trajectory end, as the correct distance.
+  \item \textbf{Intervention-to-outcome distance as a required reporting condition.} The relevant distance is $t_{\mathrm{label}}-t_0$, not $T-t_0$. The two coincide in the terminal-label paper cells, so this contribution is the reporting rule, not an interior-label ablation.
   \item \textbf{A benchmark suite with exact structural counterfactuals}: three additive-noise temporal SCM families shipping the true graph, the true mechanism, and oracle abduction--action--prediction counterfactuals, with the label functional exposed as a configurable axis rather than fixed by construction.
   \item \textbf{An audit of published temporal CF methods} against that instrument. \todo{one sentence, once results are final.}
 \end{enumerate}
 
-\paragraph{Scope.} Findings are established on the synthetic tier, which is the only tier possessing a ground-truth mechanism and therefore the only tier where a metric can be shown faithful to what it claims to measure. This paper reports only \texttt{full}, \texttt{full\_nl}, and \texttt{full\_spring}. Real-signal tiers could test whether the findings \emph{travel}, but by construction they cannot validate the metrics, and no real-signal result is used here.
+\paragraph{Scope.} Findings are established on the synthetic tier, which is the only tier possessing a ground-truth mechanism and therefore the only tier where a metric can be shown faithful to what it claims to measure. The intended paper cells are \texttt{full}, \texttt{full\_nl}, and \texttt{full\_spring}. Headline empirical claims currently rest on \texttt{full} and \texttt{full\_nl}; \texttt{full\_spring} is specified in Appendix~\ref{app:generators} but is not yet reported at paper scale. Real-signal tiers could test whether the findings \emph{travel}, but by construction they cannot validate the metrics, and no real-signal result is used here.
 
 \section{Related Work}
 
 \paragraph{Counterfactual explanation for time series.}
-Temporal counterfactual methods span instance substitution (Native Guide, \citealp{delaney2021nativeguide}), segment-level substitution (CoMTE, \citealp{ates2021comte}), evolutionary search (TSEvo, \citealp{hollig2022tsevo}), saliency-guided perturbation (M-CELS, \citealp{li2024mcels}), multi-objective optimisation (CONFETTI, \citealp{paredescetina2025confetti}), symbolic abstraction (MASCOTS, \citep{pludowski2025mascots}, and self-interpretable models that emit counterfactuals for their own predictions (CounTS, \citealp{yan2023counts}). Recent work has pushed on plausibility and temporal coherence of the edits themselves \citep{kostrzewa2026plausibility,zuin2026navigating,voets2026contex}.
-What unifies the evaluation across this literature is that every reported quantity is model-relative: whether the classifier's decision changed, and how much of the input had to move for it to change. None of these papers is in a position to ask whether the proposed change would have worked, because their datasets do not come with a mechanism that could answer.
+Temporal counterfactual methods span instance substitution (Native Guide, \citealp{delaney2021nativeguide}), segment-level substitution (CoMTE, \citealp{ates2021comte}), evolutionary search (TSEvo, \citealp{hollig2022tsevo}), saliency-guided perturbation (M-CELS, \citealp{li2024mcels}), multi-objective optimisation (CONFETTI, \citealp{paredescetina2025confetti}), symbolic abstraction (MASCOTS, \citealp{pludowski2025mascots}), and self-interpretable models that emit counterfactuals for their own predictions (CounTS, \citealp{yan2023counts}). Recent work has pushed on plausibility and temporal coherence of the edits themselves \citep{kostrzewa2026plausibility,zuin2026navigating,voets2026contex}.
+What unifies the evaluation across the instance-based and search-based methods is that every reported quantity is model-relative: whether the classifier's decision changed, and how much of the input had to move for it to change. On UCR/UEA classification those methods cannot ask whether the proposed change would have worked, because the datasets do not ship a mechanism. CounTS is the exception that proves the split: it does run abduction--action--prediction, but over the latents of its own variational model, not a known data-generating process.
 
 \paragraph{Benchmarks for temporal explanation.}
-XTSC-Bench \citep{hollig2023xtscbench}, AMEE \citep{nguyen2024amee} and ExplainTS \citep{mozolewski2026explaints} standardise the comparison of temporal explainers, and the tabular CARLA library \citep{pawelczyk2021carla} to be distinguished from the algorithmic-recourse framework that shares its name \citep{karimi2021recourse} fixed the four-axis protocol the temporal work inherited. ExplainTS states the limitation directly: with real classification tasks it has no ground-truth relevance structure, so faithfulness must be assessed by proxy. Robustness and fragility critiques of explanation methods \citep{ghorbani2019fragile,yeh2019infidelity,artelt2021robustness} and of unjustified counterfactuals \citep{laugel2019dangers,poyiadzi2020face} sharpen the model-relative axes but do not add a world-relative one.
+XTSC-Bench \citep{hollig2023xtscbench} and AMEE \citep{nguyen2024amee} standardise the comparison of temporal \emph{saliency} explainers (complexity, reliability, robustness, faithfulness or perturbation power), not the four CF axes above. The tabular CARLA library \citep{pawelczyk2021carla}---to be distinguished from the algorithmic-recourse framework that shares its name \citep{karimi2021recourse}---fixed a related success/proximity protocol that the temporal CF methods inherited. ExplainTS \citep{mozolewski2026explaints} states the limitation directly: with real classification tasks it has no ground-truth relevance structure, so faithfulness must be assessed by proxy. Robustness and fragility critiques of explanation methods \citep{ghorbani2019fragile,yeh2019infidelity,artelt2021robustness} and of unjustified counterfactuals \citep{laugel2019dangers,poyiadzi2020face} sharpen the model-relative axes but do not add a world-relative one. \citet{hollig2023semantic} do score nine third-party tabular CF methods against known SCMs, via relation-satisfaction rather than a Pearl trajectory, and without time.
 
 \paragraph{Causal temporal benchmarks.}
-CausalTime \citep{cheng2024causaltime}, CausalDynamics \citep{herdeanu2025causaldynamics}, TimeGraph \citep{ferdous2025timegraph} and TCS \citep{gkorgkolis2025tcs} supply time series with known causal graphs, and CauKer \citep{xie2026cauker} and the causal-DAG prior of \citet{orourke2026causaldag} pair a ground-truth DAG with classification labels. All of them target \emph{structure recovery} or \emph{pretraining}: the object being scored is a discovered graph or a learned representation, never an independently produced post-hoc explanation. Their causal graphs are also typically atemporal over whole-trajectory nodes, rather than lagged over time-indexed variables, which is the structure an intervention at a specific timestep needs. DoFlow \citep{doflow2025} is the closest work on the counterfactual axis a flow-based model supporting observational, interventional and counterfactual queries over a known DAG but it is a generative forecaster in its own right, not a harness that scores third-party explainers against its ground truth. \citet{thumm2026interventional} make the relevant distinction explicit in their own appendix: their observational and interventional runs draw independent noise realisations, answering the \emph{interventional} query $P(X \mid \dop(\cdot))$ rather than the \emph{counterfactual} $P(X^{\mathrm{cf}} \mid X^{\mathrm{obs}}, \dop(\cdot))$, and they describe sharing the noise tensor exactly the step our oracle takes as a natural but strictly harder extension. Independently, they report the same attenuation of causal effects we characterise in Section~\ref{sec:audit}, arriving at it from a different stability mechanism and responding by restricting queries to short horizons rather than measuring the wall.
+CausalTime \citep{cheng2024causaltime}, CausalDynamics \citep{herdeanu2025causaldynamics}, TimeGraph \citep{ferdous2025timegraph} and TCS \citep{gkorgkolis2025tcs} supply time series with known \emph{lagged} causal graphs for structure recovery: the object scored is a discovered graph, never an independently produced post-hoc explanation. CauKer \citep{xie2026cauker} pretrains classification foundation models on unlabeled synthetic series from an atemporal DAG. The causal-DAG prior of \citet{orourke2026causaldag} does pair that DAG with classification labels; neither scores third-party explainers. DoFlow \citep{doflow2025} is the closest work on the counterfactual axis: a flow-based model supporting observational, interventional and counterfactual queries over a known DAG, but it is a generative forecaster in its own right, not a harness that scores third-party explainers against its ground truth. \citet{thumm2026interventional} make the relevant distinction explicit in their own appendix: their observational and interventional runs draw independent noise realisations, answering the \emph{interventional} query $P(X \mid \dop(\cdot))$ rather than the \emph{counterfactual} $P(X^{\mathrm{cf}} \mid X^{\mathrm{obs}}, \dop(\cdot))$, and they describe sharing the noise tensor---exactly the step our oracle takes---as a natural but strictly harder extension. Independently, they report the same attenuation of causal effects we characterise in Section~\ref{sec:audit}, arriving at it from a different stability mechanism (no spectral-radius constraint) and responding by restricting queries to short horizons rather than measuring the wall.
 
 \paragraph{Causality used to constrain, versus causality used to derive.}
-The causally-motivated counterfactual literature divides in a way that matters for what our benchmark can be. One branch uses a structural model to \textbf{penalise} implausible edits: the state of the art for temporal classification, \citet{bahri2025causalfeasibility}, adds a residual $\lVert T'_t - f(\Pa(T'_t))\rVert$ to a Wachter-style objective over a free perturbation $T' = T + \delta$, no $\dop()$ operator, no intervention time, no abduction. That penalty is a \emph{local, one-step} check: it asks whether each slice is close to $f$ of its own parents, independently, and never propagates the intervention forward. A counterfactual can therefore be locally mechanism-consistent at every timestep while its intervention has no effect whatsoever on the outcome, and score perfectly. The second branch \textbf{derives} counterfactuals from a causal model, but a \emph{learned} one, in order to explain that same model's own predictions: CounTS \citep{yan2023counts} performs genuine abduction--action--prediction over the latent variables of its own variational model, and the static recourse literature \citep{karimi2021recourse} derives interventions from an assumed tabular SCM. Neither branch derives the counterfactual from a \emph{known} mechanism in order to score an \emph{independently produced} explanation against it. That conjunction ground-truth rather than learned mechanism, a graph lagged over time-indexed variables rather than atemporal over whole trajectories, and the derived counterfactual used as an evaluation oracle rather than as generative machinery is what this work adds.
+The causally-motivated counterfactual literature divides in a way that matters for what our benchmark can be. One branch uses a structural model to \textbf{penalise} implausible edits: the state of the art for temporal classification, \citet{bahri2025causalfeasibility}, adds a residual $\lVert T'_t - f(\Pa(T'_t))\rVert$ to a Wachter-style objective over a free perturbation $T' = T + \delta$, no $\dop()$ operator, no intervention time, no abduction. That penalty is a \emph{local, one-step} check: it asks whether each slice is close to $f$ of its own parents, independently, and never propagates the intervention forward. A counterfactual can therefore be locally mechanism-consistent at every timestep while its intervention has no effect whatsoever on the outcome, and score perfectly. The second branch \textbf{derives} counterfactuals from a causal model, but a \emph{learned} one, in order to explain that same model's own predictions: CounTS \citep{yan2023counts} performs genuine abduction--action--prediction over the latent variables of its own variational model, and the static recourse literature \citep{karimi2021recourse} derives interventions from an assumed tabular SCM. Neither branch derives the counterfactual from a \emph{known} mechanism in order to score an \emph{independently produced} explanation against it. \citet{hollig2023semantic} come closest in the static setting: they score third-party tabular CFs against known SCMs by relation satisfaction, not by replaying a Pearl trajectory. That conjunction---ground-truth rather than learned mechanism, a graph lagged over time-indexed variables rather than atemporal over whole trajectories, and the derived counterfactual used as an evaluation oracle rather than as generative machinery or a local residual---is what this work adds.
 
 \paragraph{Causal discovery.}
 DYNOTEARS \citep{pamfil2020dynotears}, PCMCI \citep{runge2019pcmci} and the broader temporal causal-inference literature \citep{runge2023causal,lippe2022citris,song2024ctrlns} address the inverse problem: recovering structure from observations. In our synthetic tiers the graph is the generator's ground truth and discovery runs only as a diagnostic, so discovery error never enters a metric; we report it as a property of the benchmark, not of any explainer. Where a graph must be discovered rather than given, discovery accuracy becomes the ceiling on everything scored against it, and we say so explicitly rather than absorbing it silently into a method's score.
@@ -113,7 +111,7 @@ An observed trajectory is $\bx=(\bx_0,\ldots,\bx_{T-1})$, with $\bx_t\in\R^k$.  
 \end{equation}
 The binary outcome is $y_g(\bx)=\mathbb{1}\{g(\bx)>\theta\}$, where $g$ is a published label functional and $t_{\mathrm{label}}$ is the last timestep on which it depends.  We reserve $h$ for the evaluated classifier; $h$ need not implement $g$, and their disagreement is one object of the audit.
 
-For a factual instance, additivity makes abduction an exact subtraction \citep{hoyer2008anm}:
+For a factual instance, additivity makes Pearl abduction an exact subtraction \citep{pearl2009causality}; the same residual is the ANM noise term \citep{hoyer2008anm}:
 \begin{equation}
   \varepsilon_t^i
   =x_t^i-F_i\!\left(\Pa_G(x_t^i)\right).
@@ -177,7 +175,7 @@ After the CF-faith gate, methods are compared on the two-dimensional pair $(D,\d
 
 \subsection{The intervention-to-label reporting rule}
 
-Let $\boldsymbol{\delta}_t=\bx_t^I-\bx_t$ denote the propagated effect of an atomic intervention at $t_0$.  In the linear $L=1$ tier, after that action it obeys $\boldsymbol{\delta}_t=A\boldsymbol{\delta}_{t-1}$.  Stability $\rho(A)<1$ implies that, for any $r\in(\rho(A),1)$, there is a finite constant $K$ such that
+Let $\boldsymbol{\delta}_t=\bx_t^I-\bx_t$ denote the propagated effect of an atomic intervention at $t_0$.  In the linear $L=1$ tier, after that action it obeys $\boldsymbol{\delta}_t=A\boldsymbol{\delta}_{t-1}$.  Stationarity of a VAR requires $\rho(A)<1$ \citep{lutkepohl2005}.  Gelfand's formula then implies that, for any $r\in(\rho(A),1)$, there is a finite constant $K$ such that \citep{hornjohnson2013}
 \begin{equation}
   \|\boldsymbol{\delta}_{t_{\mathrm{label}}}\|
   \leq K r^{\,t_{\mathrm{label}}-t_0}
@@ -195,75 +193,80 @@ Every validity and model-vs-world result must therefore report the label functio
 
 We organise the benchmark around factors that can change the difficulty or meaning of a temporal intervention, rather than around a catalogue of datasets.  The first factor is the \emph{mechanism family}.  LinearSCM-T is a stable VAR; NlinearSCM-T replaces its linear transition with masked per-node MLPs; and SpringSCM-T uses an undamped second-order spring system, with positions and velocities as observed channels.  All three retain additive innovations.  This restriction is load-bearing: it preserves the exact unit-level abduction in Eq.~\eqref{eq:abduction}, and hence keeps the audit identical across families.
 
-The second factor is \emph{contraction}.  The VAR and MLP configurations are contractive by construction, whereas the spring system is near-conservative.  We nevertheless measure an empirical contraction rate for each generated dataset instead of treating the family name as evidence of its dynamics.  This contrast tests whether the horizon effect in Eq.~\eqref{eq:horizon-decay} follows dissipation rather than a particular transition parameterisation.  The third factor is \emph{temporal placement}: trajectory length $T$, intervention time $t_0$, and label site $t_{\mathrm{label}}$.  The paper cells use a terminal threshold label.  Intervention sweeps use absolute timesteps, so that $t_{\mathrm{label}}-t_0$ is controlled rather than silently changing with $T$.
+The second factor is \emph{contraction}.  The VAR cell is contractive by construction ($\rho\le 0.9$).  The MLP cell is bounded ($\mathrm{gain}\cdot\tanh$, $\mathrm{decay}<1$) and empirically dissipative; the shipped spectral-norm cap of $6.0$ does not itself imply branch-level contraction.  The spring system is undamped and near-conservative.  Family names are not treated as evidence of the dynamics: empirical contraction characterises the mechanism, and is not a per-dataset pipeline output.  This contrast tests whether the horizon effect in Eq.~\eqref{eq:horizon-decay} follows dissipation rather than a particular transition parameterisation.  The third factor is \emph{temporal placement}: trajectory length $T$, intervention time $t_0$, and label site $t_{\mathrm{label}}$.  The paper cells use a terminal threshold label, so $t_{\mathrm{label}}-t_0$ and $T-1-t_0$ coincide.  Default CF generation places $t_0/T\in\{0.25,0.5\}$ (i.e.\ $t_0\in\{25,50\}$ at $T=100$).  Horizon sweeps convert those fractions to absolute $T-t_0$ so the operating point can be located on the decay curve rather than silently changing with $T$.
 
 The paper reports three cells: \texttt{full} (LinearSCM-T), \texttt{full\_nl} (NlinearSCM-T), and \texttt{full\_spring} (SpringSCM-T).  All three use $k=10$, $L=1$, $T=100$, $N=10{,}000$, a terminal label, and Laplace innovations.  The VAR and MLP cells use graph density $0.2$; the spring cell uses particle-level coupling probability $0.3$.  Generator cards are given in Appendix~\ref{app:generators}.  Structural diagnostics such as SHD, lagged-edge F1, and graph-error characterise each generated dataset once (Axis~A).  Their unit is the dataset: we never print them as if they were per-explainer scores.
 
 \subsection{Tiers and what each can support}
 \label{sec:setup-tiers}
 
-The tiers separate internal from external validity; they are not a realism ladder on which later tiers inherit stronger causal claims.  \textbf{Tier~1} contains the three synthetic SCM families, with the written $G$, $F$, noise, and label functional.  It is the only tier in which the oracle trajectory is known, and therefore the only tier used to validate CF-faith, $D$, or the model--world decomposition.  This paper reports only the three Tier~1 cells \texttt{full}, \texttt{full\_nl}, and \texttt{full\_spring}.  Every headline causal claim is established there.
+The tiers separate internal from external validity; they are not a realism ladder on which later tiers inherit stronger causal claims.  \textbf{Tier~1} contains the three synthetic SCM families, with the written $G$, $F$, noise, and label functional.  It is the only tier in which the oracle trajectory is known, and therefore the only tier used to validate CF-faith, $D$, or the model--world decomposition.  This paper's intended cells are the three Tier~1 configurations \texttt{full}, \texttt{full\_nl}, and \texttt{full\_spring}.  Headline causal claims currently rest on \texttt{full} and \texttt{full\_nl}.
 
 \textbf{Tier~2} would ask whether the intervention-to-label dependence observed in Tier~1 appears on real multivariate classification signals that have no ground-truth graph.  It cannot validate a causal metric.  No Tier~2 or Tier~3 result is used in this paper.
 
 \subsection{Methods, oracles, and negative controls}
 \label{sec:setup-methods}
 
-We hold the predictive model fixed to the same LSTM and compare four graph-free temporal CF baselines through a common interface: gradient-based Wachter \citep{wachter2017counterfactual}, segment substitution with COMTE \citep{ates2021comte}, genetic subsequence recombination with CONFETTI \citep{paredescetina2025confetti}, and saliency-guided M-CELS \citep{li2024mcels}.  These methods are evaluated as independent proposals: none receives the true graph or mechanism.
+We hold the predictive model fixed to the same LSTM and compare four graph-free temporal CF baselines through a common interface: gradient-based Wachter \citep{wachter2017counterfactual}, segment substitution with COMTE \citep{ates2021comte}, genetic subsequence recombination with CONFETTI \citep{paredescetina2025confetti}, and saliency-guided M-CELS \citep{li2024mcels}.  These methods are evaluated as independent proposals: none receives the true graph or mechanism.  Native Guide, TSEvo, MASCOTS and CounTS appear in related work; they are not in the evaluated set.
 
 Controls are kept separate from those baselines.  \textbf{PearlSCMRecourse} optimises one slice and propagates it with the factual instance's abducted innovations; any non-vacuous proposal therefore represents one intervention timestep and has $D=1$ by construction.  \textbf{NoiselessSCMRecourse} uses the same single-slice search but continues with zero future innovations.  It is a positive control only for the \texttt{noiseless\_rollout} admission semantics, just as PearlSCMRecourse is a positive control for \texttt{pearl\_delta}; their gate scores verify construction and are not evidence of method superiority.  Separately, analytically constructed Pearl and noiseless oracle trajectories under a fixed intervention verify that the two reference semantics admit the object they define.
 
-Two controls probe failure rather than success.  A calibrated rewrite blends a single-$\dop()$ Pearl oracle with a direct rewrite of the same post-intervention channel path.  As the mechanism is bypassed, $D$ must increase from one toward the number of editable timesteps; low disagreement obtained by declaring the whole rewrite as action is consequently exposed as vacuous agreement, not a vacuous intervention.  Finally, \textbf{TSCausalCF} \citep{bahri2025causalfeasibility} is the substantive foil.  It optimises a free trajectory perturbation with a local structural-residual penalty, but performs no abduction, declares no intervention time, and does not propagate a $\dop()$.  Its faithfulness is therefore an empirical question rather than a property of its construction.  Every artifact records the method identity, classifier, configuration, and seed; raw per-instance outputs are retained for aggregation.
+A diagnostic construction, used in tests rather than as a named pipeline method, blends a single-$\dop()$ Pearl oracle with a direct rewrite of the same post-intervention channel path.  As the mechanism is bypassed, $D$ must increase from one toward the number of editable timesteps; low disagreement obtained by declaring the whole rewrite as action is consequently exposed as vacuous agreement, not a vacuous intervention.  Finally, \textbf{TSCausalCF} \citep{bahri2025causalfeasibility} is the substantive foil.  It receives the true graph and mechanism from the generator, and optimises a free trajectory perturbation with a local structural-residual penalty, but performs no abduction, declares no intervention time, and does not propagate a $\dop()$.  Its faithfulness is therefore an empirical question rather than a property of its construction.  Graph-estimation error, when $F$ is \emph{not} given, is a separate analysis (Section~\ref{sec:res-foil}) and is not mixed into the foil comparison.  Every artifact records the method identity, classifier, configuration, and seed; raw per-instance outputs are retained for aggregation.
 
 \section{Results}
 \label{sec:results}
 
 \brief{Tables that change the question, not a bake-off. Numbered findings;
 uncertainty with a named unit of variation (seeds). No retracted numbers.
-Paper cells only: \texttt{full}, \texttt{full\_nl}, \texttt{full\_spring}.
-Oracle must pass; vacuous rewrite must fail.}
+Current evidence: \texttt{full} and \texttt{full\_nl}. Do not fill
+\texttt{full\_spring} rows from \texttt{smoke\_spring}. Oracle construction
+check is phase~05, not the tier-1 suite.}
 
 \subsection{Standard methods fail the admission gate}
 \label{sec:res-gate}
 
-\brief{H1, split verdict: CF-faith $=0$ for wired standard explainers on
-\texttt{full}/\texttt{full\_nl}/\texttt{full\_spring}; validity $>0.9$ is not
-universal. CF-faith has no dynamic range across real methods---which is why
-it is a gate. Positive-control check (construction, not a finding):
+\brief{H1, split verdict, \texttt{full}/\texttt{full\_nl} only: CF-faith $=0$
+for the four wired standard explainers; validity $>0.9$ is not universal.
+CF-faith has no dynamic range across real methods---which is why it is a
+gate. Positive-control check (construction, not a finding):
 NoiselessSCMRecourse's perfect rollout score is tautological.}
 
 \subsection{Validity is bought by intervening almost everywhere}
 \label{sec:res-rewrite}
 
-\brief{Lead empirical claim (H3), with $D$ on every row. Under the
-whole-proposal reading $\dotraj$ hits 0 by construction; what remains is
-that methods declare most of a $T{=}100$ trajectory as interventions
-(PearlSCMRecourse $D{=}1$; others $D$ from single digits to $100$).
-CftsWachter fails both readings. $\dototal$ ranks; PNS collapses at paper
-scale (horizon, not a metric bug) and is shown as a null with PN/PS
-separate.}
+\brief{Lead empirical claim (H3), with $D$ on every row, \texttt{full}/
+\texttt{full\_nl}. Under the whole-proposal reading $\dotraj$ hits 0 by
+construction; what remains is that methods declare most of a $T{=}100$
+trajectory as interventions (PearlSCMRecourse $D{=}1$; others $D$ from
+single digits to $100$). CftsWachter fails both readings. $\dototal$ ranks.
+PNS is out of scope (Section~\ref{sec:audit}); do not show a combined-PNS
+null.}
 
 \subsection{Recourse validity is uninterpretable without label-site distance}
 \label{sec:res-horizon}
 
-\brief{H4: validity decays with $t_{\mathrm{label}}-t_0$ at a rate set by
-the spectral radius; beyond a computable horizon, reported validity is a
-non-causal artifact of CF semantics. Evidence (i): non-dissipative springs
-(\texttt{full\_spring}) do not show the same decay (not an artifact of our
-stabilisation). Evidence (ii): distance is to the label site. Do not present
-smoke or interior-label cells. Independent corroboration (CausalTimePrior
-short-range attenuation) as measurement, not as their workaround.}
+\brief{H4 as a reporting rule, not an interior-label ablation. On the
+contractive paper cells the label is terminal, so $t_{\mathrm{label}}-t_0$
+equals $T-1-t_0$; report that distance beside every validity number. Default
+generation sits at $t_0\in\{25,50\}$, 50--75 steps from the label, which is
+why late-horizon validity is expected to collapse. Do not present smoke or
+interior-label cells as paper evidence, and do not claim the spring
+non-decay until \texttt{full\_spring} exists. Independent corroboration
+(CausalTimePrior short-range attenuation from a different stability
+mechanism) as measurement, not as their workaround.}
 
 \subsection{SCM regularisation does not close the gap}
 \label{sec:res-foil}
 
 \brief{TSCausalCF vs.\ the oracle and vs.\ standard CFs on $(D,\dototal)$.
-A local residual penalty can be mechanism-consistent slicewise while the
-intervention has negligible effect on the outcome (the NoiselessSCMRecourse
-pathology). Graph estimation is a first-order error source when $F$ is not
-given (H2 refuted; do not claim ``graph quality is not the problem'').
-H2$'$ only if space: explainer choice spans a wider infidelity range than
-graph quality, marked exploratory / not pre-registered.}
+TSCausal receives the true $G$ and $F$; the foil is residual-penalty vs.\
+$\dop()$, not graph quality. A local residual penalty can be
+mechanism-consistent slicewise while the intervention has negligible effect
+on the outcome (the NoiselessSCMRecourse pathology). Graph estimation as a
+first-order error source is a \emph{separate} analysis for when $F$ is not
+given (H2 refuted; do not claim ``graph quality is not the problem''). H2$'$
+only if space: explainer choice spans a wider infidelity range than graph
+quality, marked exploratory / not pre-registered.}
 
 \section{Limitations}
 \label{sec:limitations}
@@ -326,7 +329,7 @@ The same $G$ and additive noise, with the linear map replaced by a per-node two-
 \begin{equation}
   x_t^i=\mathrm{decay}_i\,x_{t-1}^i+\mathrm{gain}\cdot\tanh\bigl(\mathrm{MLP}_i(\text{masked lags})\bigr)+\varepsilon_t^i.
 \end{equation}
-Registered hyperparameters are hidden width $16$, $\mathrm{gain}=1.5$, $\mathrm{decay}_i\sim U[0.1,0.4]$, spectral-norm cap $6.0$ on each weight matrix, and init-gain $3.0$.  Masked inputs are scaled by $1/\sqrt{\max(n_{\mathrm{parents}},1)}$.  The family remains contractive; we still measure an empirical contraction rate per dataset rather than taking the cap as evidence.  A randomly initialised two-layer net stays close to its own linearisation, so this family is a nonlinear \emph{parameterisation} of an additive-noise transition, not a strongly curved mechanism.
+Registered hyperparameters are hidden width $16$, $\mathrm{gain}=1.5$, $\mathrm{decay}_i\sim U[0.1,0.4]$, spectral-norm cap $6.0$ on each weight matrix, and init-gain $3.0$.  Masked inputs are scaled by $1/\sqrt{\max(n_{\mathrm{parents}},1)}$.  Boundedness follows from $\mathrm{gain}\cdot\tanh$ and $\mathrm{decay}<1$; the cap of $6.0$ does not itself make the nonlinear branch Lipschitz-contractive, so dissipation is an empirical property of the family rather than a constructive one.  A randomly initialised two-layer net stays close to its own linearisation, so this family is a nonlinear \emph{parameterisation} of an additive-noise transition, not a strongly curved mechanism.
 
 \paragraph{SpringSCM-T.}
 An undamped second-order particle system, adopted as used by \citet{bahri2025causalfeasibility}.  Five particles are exposed as $k=10$ channels (position then velocity).  One symplectic-Euler step with spring constant $0.3$, $\Delta t=0.1$, and unit mass gives
@@ -361,12 +364,9 @@ The original design space listed $k\in\{5,10,20\}$, $L\in\{1,3\}$, $s\in\{0.1,0.
 \section{Additional results}
 \label{app:extra}
 
-\brief{Per-seed tables for \texttt{full}, \texttt{full\_nl}, and
-\texttt{full\_spring}; PNS collapse at $T{=}100$ with PN/PS split; Axis~A
-dataset diagnostics. Nothing required for the headline finding. No smoke
-cells.}
-
-\newpage
-\input{checklist.tex}
+\brief{Per-seed tables for \texttt{full} and \texttt{full\_nl};
+\texttt{full\_spring} only once paper-scale artifacts exist. Axis~A dataset
+diagnostics. Nothing required for the headline finding. No smoke cells; no
+combined PNS.}
 
 \end{document}
