@@ -193,34 +193,27 @@ Every validity and model-vs-world result must therefore report the label functio
 \subsection{Generators as challenge factors}
 \label{sec:setup-generators}
 
-\brief{CauseMe-style factors, not a file dump: mechanism family (VAR /
-per-node MLP / Newtonian springs), contraction vs.\ near-conservative
-dynamics, horizon $T$, label site, intervention time $t_0$. Additive noise
-is load-bearing (keeps abduction exact). Label functional is a
-configurable axis so the reporting rule is testable. Axis~A diagnostics
-(SHD, lag F1, graph-error) characterise the benchmark once, never printed
-as per-method scores.}
+We organise the benchmark around factors that can change the difficulty or meaning of a temporal intervention, rather than around a catalogue of datasets.  The first factor is the \emph{mechanism family}.  LinearSCM-T is a stable VAR; NlinearSCM-T replaces its linear transition with masked per-node MLPs; and SpringSCM-T uses an undamped second-order spring system, with positions and velocities as observed channels.  All three retain additive innovations.  This restriction is load-bearing: it preserves the exact unit-level abduction in Eq.~\eqref{eq:abduction}, and hence keeps the audit identical across families.
+
+The second factor is \emph{contraction}.  The VAR and MLP configurations are contractive by construction, whereas the spring system is near-conservative.  We nevertheless measure an empirical contraction rate for each generated dataset instead of treating the family name as evidence of its dynamics.  This contrast tests whether the horizon effect in Eq.~\eqref{eq:horizon-decay} follows dissipation rather than a particular transition parameterisation.  The third factor is \emph{temporal placement}: trajectory length $T$, intervention time $t_0$, and label site $t_{\mathrm{label}}$.  Default configurations use a terminal threshold label; paired interior-label configurations change only the label functional while holding the SCM, noise, $T$, and seed fixed.  Intervention sweeps use absolute timesteps, so that $t_{\mathrm{label}}-t_0$ is controlled rather than silently changing with $T$.
+
+The main paper-scale configurations use $k=10$, $L=1$, $T=100$, $N=10{,}000$, graph density $0.2$, and Laplace innovations.  Smaller configurations are labelled as smoke-scale evidence and are not pooled with paper-scale results.  Full generator cards and the registered deviations are given in Appendix~\ref{app:generators}.  Structural diagnostics such as SHD, lagged-edge F1, and graph-error characterise each generated dataset once (Axis~A).  Their unit is the dataset: we never print them as if they were per-explainer scores.
 
 \subsection{Tiers and what each can support}
 \label{sec:setup-tiers}
 
-\brief{Internal vs.\ external validity (Liao/Raji), not a realism ladder.
-Tier~1 (synthetic, written $F$): every headline result and every
-metric-validity argument. Tier~2 (real signal, no graph): whether the
-horizon finding travels. Tier~3 (domain DAG) deferred; do not promise
-SepsisSim. Discovered-graph CF-faith on real data: variance quantified,
-bias disclosed, not resolved.}
+The tiers separate internal from external validity; they are not a realism ladder on which later tiers inherit stronger causal claims.  \textbf{Tier~1} contains the three synthetic SCM families, with the written $G$, $F$, noise, and label functional.  It is the only tier in which the oracle trajectory is known, and therefore the only tier used to validate CF-faith, $D$, or the model--world decomposition.  Every headline causal claim is established there.
+
+\textbf{Tier~2} contains real multivariate classification signals with no ground-truth graph.  It asks the narrower external-validity question: does the dependence of validity on intervention-to-label distance observed in Tier~1 also appear outside a generated SCM?  It cannot validate a causal metric.  For a secondary analysis we fit an ensemble of discovered mechanisms and report the resulting variation in CF-faith.  The ensemble quantifies estimation variance only; shared misspecification can make all fitted mechanisms agree and remain wrong, so the unresolved bias is disclosed with the result.  A possible \textbf{Tier~3}, in which a real-data mechanism is supplied by domain knowledge or discovery, remains deferred.  No Tier~3 result is used in this paper.
 
 \subsection{Methods, oracles, and negative controls}
 \label{sec:setup-methods}
 
-\brief{Standard temporal CFs (Wachter, COMTE, CONFETI, CELS). Positive
-controls, labelled as such: PearlSCMRecourse (single $\dop()$, $D=1$) and
-NoiselessSCMRecourse (emits the rollout it is scored against). Foil:
-TSCausalCF (Bahri; faithfulness not true by construction). Negative
-controls in the main figure: vacuous rewrite ($D\approx T$) must not earn
-causal credit. Classifier fixed (LSTM); method identity, seed, and
-config are provenance, not afterthoughts.}
+We hold the predictive model fixed to the same LSTM and compare four graph-free temporal CF baselines through a common interface: gradient-based Wachter \citep{wachter2017counterfactual}, segment substitution with COMTE \citep{ates2021comte}, genetic subsequence recombination with CONFETTI \citep{paredescetina2025confetti}, and saliency-guided M-CELS \citep{li2024mcels}.  These methods are evaluated as independent proposals: none receives the true graph or mechanism.
+
+Controls are kept separate from those baselines.  \textbf{PearlSCMRecourse} optimises one slice and propagates it with the factual instance's abducted innovations; any non-vacuous proposal therefore represents one intervention timestep and has $D=1$ by construction.  \textbf{NoiselessSCMRecourse} uses the same single-slice search but continues with zero future innovations.  It is a positive control only for the \texttt{noiseless\_rollout} admission semantics, just as PearlSCMRecourse is a positive control for \texttt{pearl\_delta}; their gate scores verify construction and are not evidence of method superiority.  Separately, analytically constructed Pearl and noiseless oracle trajectories under a fixed intervention verify that the two reference semantics admit the object they define.
+
+Two controls probe failure rather than success.  A calibrated rewrite blends a single-$\dop()$ Pearl oracle with a direct rewrite of the same post-intervention channel path.  As the mechanism is bypassed, $D$ must increase from one toward the number of editable timesteps; low disagreement obtained by declaring the whole rewrite as action is consequently exposed as vacuous agreement, not a vacuous intervention.  Finally, \textbf{TSCausalCF} \citep{bahri2025causalfeasibility} is the substantive foil.  It optimises a free trajectory perturbation with a local structural-residual penalty, but performs no abduction, declares no intervention time, and does not propagate a $\dop()$.  Its faithfulness is therefore an empirical question rather than a property of its construction.  Every artifact records the method identity, classifier, configuration, and seed; raw per-instance outputs are retained for aggregation.
 
 \section{Results}
 \label{sec:results}
