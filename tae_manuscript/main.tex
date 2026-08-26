@@ -64,17 +64,17 @@ We build that setting and use it as an instrument. Our benchmark generates multi
 
 Building the instrument surfaced a construct-validity issue that we consider part of the contribution rather than an implementation detail. The audit's answer depends on how a proposal is \emph{read}: interpreting a counterfactual as a single $\dop()$ at one timestep inflates the trajectory term for densely-editing methods, while interpreting every edited slice as its own intervention drives that term to zero \emph{by construction}. Neither endpoint is privileged, so we report the quantity that is stable across both; \textbf{do-complexity} $D$, the number of timesteps a proposal must declare as interventions before the mechanism can reproduce it, alongside every disagreement number. A method with $D$ close to the trajectory length has not explained a prediction; it has rewritten the trajectory, and its agreement with the world is vacuous because nothing was left for the mechanism to predict.
 
-A second finding is a reporting rule rather than a method comparison. Stationarity of a linear VAR requires a spectral radius below one \citep{lutkepohl2005}, so an intervention's effect on the label attenuates geometrically in the distance from the intervention time to the \emph{label site}, not to the end of the trajectory. Those two distances coincide only when the label is terminal, as it is in the paper cells and in the spring experiments of \citet{bahri2025causalfeasibility}, but not in UCR/UEA whole-series classification, where the discriminative site can be interior. Recourse feasibility is therefore a property of the benchmark configuration as much as of the method, and a validity number reported without its intervention-to-label distance is not interpretable. This is not a claim that recourse is impossible; it is a condition that every temporal recourse evaluation, including favourable ones, needs to state.
+A second finding is a reporting rule rather than a method comparison. Stationarity of a linear VAR requires a spectral radius below one \citep{lutkepohl2005}, so an intervention's effect on the label attenuates geometrically in the distance from the intervention time to the \emph{label site}, not to the end of the trajectory. Those two distances coincide only when the label is terminal, as it is in LinearSCM-T, NlinearSCM-T, and SpringSCM-T, and in the spring experiments of \citet{bahri2025causalfeasibility}, but not in UCR/UEA whole-series classification, where the discriminative site can be interior. Recourse feasibility is therefore a property of the benchmark configuration as much as of the method, and a validity number reported without its intervention-to-label distance is not interpretable. This is not a claim that recourse is impossible; it is a condition that every temporal recourse evaluation, including favourable ones, needs to state.
 
 \paragraph{Contributions.}
 \begin{enumerate}
   \item \textbf{A model-vs-world audit instrument} for temporal counterfactual explanations: the proposal's own intervention is realised by the true mechanism, and the disagreement is decomposed additively into trajectory and outcome terms, each computed exactly against a known mechanism rather than estimated. Its construct validity is carried by do-complexity $D$, published beside every disagreement figure.
-  \item \textbf{Intervention-to-outcome distance as a required reporting condition.} The relevant distance is $t_{\mathrm{label}}-t_0$, not $T-t_0$. The two coincide in the terminal-label paper cells, so this contribution is the reporting rule, not an interior-label ablation.
+  \item \textbf{Intervention-to-outcome distance as a required reporting condition.} The relevant distance is $t_{\mathrm{label}}-t_0$, not $T-t_0$. The two coincide in the terminal-label families, so this contribution is the reporting rule, not an interior-label ablation.
   \item \textbf{A benchmark suite with exact structural counterfactuals}: three additive-noise temporal SCM families shipping the true graph, the true mechanism, and oracle abduction--action--prediction counterfactuals, with the label functional exposed as a configurable axis rather than fixed by construction.
   \item \textbf{An audit of published temporal CF methods} against that instrument. \todo{one sentence, once results are final.}
 \end{enumerate}
 
-\paragraph{Scope.} Findings are established on the synthetic tier, which is the only tier possessing a ground-truth mechanism and therefore the only tier where a metric can be shown faithful to what it claims to measure. The intended paper cells are \texttt{full}, \texttt{full\_nl}, and \texttt{full\_spring}. Headline empirical claims currently rest on \texttt{full} and \texttt{full\_nl}; \texttt{full\_spring} is specified in Appendix~\ref{app:generators} but is not yet reported at paper scale. Real-signal tiers could test whether the findings \emph{travel}, but by construction they cannot validate the metrics, and no real-signal result is used here.
+\paragraph{Scope.} Findings are established on the synthetic tier, which is the only tier possessing a ground-truth mechanism and therefore the only tier where a metric can be shown faithful to what it claims to measure. The intended families are LinearSCM-T, NlinearSCM-T, and SpringSCM-T. Headline empirical claims currently rest on LinearSCM-T and NlinearSCM-T; SpringSCM-T is specified in Appendix~\ref{app:generators} but is not yet reported at paper scale. Real-signal tiers could test whether the findings \emph{travel}, but by construction they cannot validate the metrics, and no real-signal result is used here.
 
 \section{Related Work}
 
@@ -193,14 +193,14 @@ Every validity and model-vs-world result must therefore report the label functio
 
 We organise the benchmark around factors that can change the difficulty or meaning of a temporal intervention, rather than around a catalogue of datasets.  The first factor is the \emph{mechanism family}.  LinearSCM-T is a stable VAR; NlinearSCM-T replaces its linear transition with masked per-node MLPs; and SpringSCM-T uses an undamped second-order spring system, with positions and velocities as observed channels.  All three retain additive innovations.  This restriction is load-bearing: it preserves the exact unit-level abduction in Eq.~\eqref{eq:abduction}, and hence keeps the audit identical across families.
 
-The second factor is \emph{contraction}.  The VAR cell is contractive by construction ($\rho\le 0.9$).  The MLP cell is bounded ($\mathrm{gain}\cdot\tanh$, $\mathrm{decay}<1$) and empirically dissipative; the shipped spectral-norm cap of $6.0$ does not itself imply branch-level contraction.  The spring system is undamped and near-conservative.  Family names are not treated as evidence of the dynamics: empirical contraction characterises the mechanism, and is not a per-dataset pipeline output.  This contrast tests whether the horizon effect in Eq.~\eqref{eq:horizon-decay} follows dissipation rather than a particular transition parameterisation.  The third factor is \emph{temporal placement}: trajectory length $T$, intervention time $t_0$, and label site $t_{\mathrm{label}}$.  The paper cells use a terminal threshold label, so $t_{\mathrm{label}}-t_0$ and $T-1-t_0$ coincide.  Default CF generation places $t_0/T\in\{0.25,0.5\}$ (i.e.\ $t_0\in\{25,50\}$ at $T=100$).  Horizon sweeps convert those fractions to absolute $T-t_0$ so the operating point can be located on the decay curve rather than silently changing with $T$.
+The second factor is \emph{contraction}.  LinearSCM-T is contractive by construction ($\rho\le 0.9$).  NlinearSCM-T is bounded ($\mathrm{gain}\cdot\tanh$, $\mathrm{decay}<1$) and empirically dissipative; the shipped spectral-norm cap of $6.0$ does not itself imply branch-level contraction.  SpringSCM-T is undamped and near-conservative.  Family names are not treated as evidence of the dynamics: empirical contraction characterises the mechanism, and is not a per-dataset pipeline output.  This contrast tests whether the horizon effect in Eq.~\eqref{eq:horizon-decay} follows dissipation rather than a particular transition parameterisation.  The third factor is \emph{temporal placement}: trajectory length $T$, intervention time $t_0$, and label site $t_{\mathrm{label}}$.  All three families use a terminal threshold label, so $t_{\mathrm{label}}-t_0$ and $T-1-t_0$ coincide.  Default CF generation places $t_0/T\in\{0.25,0.5\}$ (i.e.\ $t_0\in\{25,50\}$ at $T=100$).  Horizon sweeps convert those fractions to absolute $T-t_0$ so the operating point can be located on the decay curve rather than silently changing with $T$.
 
-The paper reports three cells: \texttt{full} (LinearSCM-T), \texttt{full\_nl} (NlinearSCM-T), and \texttt{full\_spring} (SpringSCM-T).  All three use $k=10$, $L=1$, $T=100$, $N=10{,}000$, a terminal label, and Laplace innovations.  The VAR and MLP cells use graph density $0.2$; the spring cell uses particle-level coupling probability $0.3$.  Generator cards are given in Appendix~\ref{app:generators}.  Structural diagnostics such as SHD, lagged-edge F1, and graph-error characterise each generated dataset once (Axis~A).  Their unit is the dataset: we never print them as if they were per-explainer scores.
+The paper reports three families: LinearSCM-T, NlinearSCM-T, and SpringSCM-T.  All three use $k=10$, $L=1$, $T=100$, $N=10{,}000$, a terminal label, and Laplace innovations.  LinearSCM-T and NlinearSCM-T use graph density $0.2$; SpringSCM-T uses particle-level coupling probability $0.3$.  Generator cards are given in Appendix~\ref{app:generators}.  Structural diagnostics such as SHD, lagged-edge F1, and graph-error characterise each generated dataset once (Axis~A).  Their unit is the dataset: we never print them as if they were per-explainer scores.
 
 \subsection{Tiers and what each can support}
 \label{sec:setup-tiers}
 
-The tiers separate internal from external validity; they are not a realism ladder on which later tiers inherit stronger causal claims.  \textbf{Tier~1} contains the three synthetic SCM families, with the written $G$, $F$, noise, and label functional.  It is the only tier in which the oracle trajectory is known, and therefore the only tier used to validate CF-faith, $D$, or the model--world decomposition.  This paper's intended cells are the three Tier~1 configurations \texttt{full}, \texttt{full\_nl}, and \texttt{full\_spring}.  Headline causal claims currently rest on \texttt{full} and \texttt{full\_nl}.
+The tiers separate internal from external validity; they are not a realism ladder on which later tiers inherit stronger causal claims.  \textbf{Tier~1} contains the three synthetic SCM families, with the written $G$, $F$, noise, and label functional.  It is the only tier in which the oracle trajectory is known, and therefore the only tier used to validate CF-faith, $D$, or the model--world decomposition.  This paper's intended families are LinearSCM-T, NlinearSCM-T, and SpringSCM-T.  Headline causal claims currently rest on LinearSCM-T and NlinearSCM-T.
 
 \textbf{Tier~2} would ask whether the intervention-to-label dependence observed in Tier~1 appears on real multivariate classification signals that have no ground-truth graph.  It cannot validate a causal metric.  No Tier~2 or Tier~3 result is used in this paper.
 
@@ -218,14 +218,14 @@ A diagnostic construction, used in tests rather than as a named pipeline method,
 
 \brief{Tables that change the question, not a bake-off. Numbered findings;
 uncertainty with a named unit of variation (seeds). No retracted numbers.
-Current evidence: \texttt{full} and \texttt{full\_nl}. Do not fill
-\texttt{full\_spring} rows from \texttt{smoke\_spring}. Oracle construction
+Current evidence: LinearSCM-T and NlinearSCM-T. Do not fill
+SpringSCM-T rows from a smoke-scale run. Oracle construction
 check is phase~05, not the tier-1 suite.}
 
 \subsection{Standard methods score zero CF-faith}
 \label{sec:res-cffaith}
 
-\brief{H1, split verdict, \texttt{full}/\texttt{full\_nl} only: CF-faith $=0$
+\brief{H1, split verdict, LinearSCM-T/NlinearSCM-T only: CF-faith $=0$
 for the four wired standard explainers; validity $>0.9$ is not universal.
 CF-faith and $D$ are reported metrics, not a filter. Positive-control
 check (construction, not a finding): NoiselessSCMRecourse's perfect
@@ -234,8 +234,8 @@ rollout score is tautological.}
 \subsection{Validity is bought by intervening almost everywhere}
 \label{sec:res-rewrite}
 
-\brief{Lead empirical claim (H3), with $D$ on every row, \texttt{full}/
-\texttt{full\_nl}. Under the whole-proposal reading $\dotraj$ hits 0 by
+\brief{Lead empirical claim (H3), with $D$ on every row, LinearSCM-T/
+NlinearSCM-T. Under the whole-proposal reading $\dotraj$ hits 0 by
 construction; what remains is that methods declare most of a $T{=}100$
 trajectory as interventions (PearlSCMRecourse $D{=}1$; others $D$ from
 single digits to $100$). CftsWachter fails both readings. $\dototal$ ranks.
@@ -246,12 +246,12 @@ null.}
 \label{sec:res-horizon}
 
 \brief{H4 as a reporting rule, not an interior-label ablation. On the
-contractive paper cells the label is terminal, so $t_{\mathrm{label}}-t_0$
+contractive families the label is terminal, so $t_{\mathrm{label}}-t_0$
 equals $T-1-t_0$; report that distance beside every validity number. Default
 generation sits at $t_0\in\{25,50\}$, 50--75 steps from the label, which is
 why late-horizon validity is expected to collapse. Do not present smoke or
 interior-label cells as paper evidence, and do not claim the spring
-non-decay until \texttt{full\_spring} exists. Independent corroboration
+non-decay until SpringSCM-T exists at paper scale. Independent corroboration
 (CausalTimePrior short-range attenuation from a different stability
 mechanism) as measurement, not as their workaround.}
 
@@ -313,7 +313,7 @@ Section~\ref{sec:audit}.}
 \section{Generator specifications}
 \label{app:generators}
 
-The paper reports three cells: \texttt{full}, \texttt{full\_nl}, and \texttt{full\_spring}.  Other named presets exist in the code for plumbing and tests and are not reported.
+The paper reports three families: LinearSCM-T, NlinearSCM-T, and SpringSCM-T.  Other generator scales exist in the code for plumbing and tests and are not reported.
 
 All three families share the same outer protocol.  A lagged graph $G\in\{0,1\}^{k\times k\times L}$ is drawn with independent Bernoulli($s$) edges, except that lag-1 self-loops are forbidden.  Innovations are additive Laplace with scale $0.1$.  A burn-in of $100$ steps is discarded.  The binary label is a median split, over the generated population, of channel~$0$ at $t_{\mathrm{label}}=T-1$.  The threshold itself is not persisted.  Observation is the identity: nonlinear mixing $x=g(z)$ is out of scope, because it would make abduction partial.
 
@@ -345,27 +345,27 @@ Additive innovations are then applied as in the other families.  $K$ is $0.3$ ti
 \begin{table}[h]
   \centering
   \small
-  \caption{Paper generator cells.  Every row uses $L=1$, a terminal label, and Laplace innovations.  For \texttt{full\_spring}, $s$ is a particle-level coupling probability.}
-  \label{tab:generator-presets}
+  \caption{Paper generator families.  Every row uses $L=1$, a terminal label, and Laplace innovations.  For SpringSCM-T, $s$ is a particle-level coupling probability.}
+  \label{tab:generator-families}
   \begin{tabular}{@{}llrrrr@{}}
     \toprule
-    name & family & $k$ & $T$ & $N$ & $s$ \\
+    family & mechanism & $k$ & $T$ & $N$ & $s$ \\
     \midrule
-    \texttt{full} & VAR & 10 & 100 & $10{,}000$ & 0.2 \\
-    \texttt{full\_nl} & MLP & 10 & 100 & $10{,}000$ & 0.2 \\
-    \texttt{full\_spring} & spring & 10 & 100 & $10{,}000$ & 0.3 \\
+    LinearSCM-T & VAR & 10 & 100 & $10{,}000$ & 0.2 \\
+    NlinearSCM-T & MLP & 10 & 100 & $10{,}000$ & 0.2 \\
+    SpringSCM-T & spring & 10 & 100 & $10{,}000$ & 0.3 \\
     \bottomrule
   \end{tabular}
 \end{table}
 
 \paragraph{Registered deviations.}
-The original design space listed $k\in\{5,10,20\}$, $L\in\{1,3\}$, $s\in\{0.1,0.2,0.3\}$, $T\in\{50,100,200\}$, and a segment count.  Paper cells lock $k=10$, $L=1$, $T=100$, $N=10{,}000$.  Changing $L$ would invalidate the per-matrix spectral rescaling and is not a casual preset edit.  Segments are unused.  KuramotoSCM-T was removed.  Multi-seed replicates of a paper cell change only the seed.
+The original design space listed $k\in\{5,10,20\}$, $L\in\{1,3\}$, $s\in\{0.1,0.2,0.3\}$, $T\in\{50,100,200\}$, and a segment count.  The three families lock $k=10$, $L=1$, $T=100$, $N=10{,}000$.  Changing $L$ would invalidate the per-matrix spectral rescaling and is not a casual configuration edit.  Segments are unused.  KuramotoSCM-T was removed.  Multi-seed replicates of a family change only the seed.
 
 \section{Additional results}
 \label{app:extra}
 
-\brief{Per-seed tables for \texttt{full} and \texttt{full\_nl};
-\texttt{full\_spring} only once paper-scale artifacts exist. Axis~A dataset
+\brief{Per-seed tables for LinearSCM-T and NlinearSCM-T;
+SpringSCM-T only once paper-scale artifacts exist. Axis~A dataset
 diagnostics. Nothing required for the headline finding. No smoke cells; no
 combined PNS.}
 
