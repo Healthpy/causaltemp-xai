@@ -478,12 +478,19 @@ class TestTSCausalCF:
     def test_flips_at_least_one(self, trained):
         """Unlike NoiselessSCMRecourse, this method has no do()-timestep search --
         Delta is free over the whole trajectory (see the class module
-        docstring on why: the paper has no intervention time at all)."""
+        docstring on why: the paper has no intervention time at all).
+
+        The budget here is deliberately not tiny: with the backtracking line
+        search the iterates move by an admissible step rather than the old
+        fixed ``lr``-sized one, and the first flip lands a few hundred steps
+        in rather than immediately. A flip inside 150 steps used to "pass"
+        only because the unstable iteration was wandering far off-manifold.
+        """
         clf, data = trained
         X = data["X"]
         preds = clf.predict(X[:20])
         src = [i for i in range(20) if preds[i] == 0][:3] or list(range(3))
-        method = TSCausalCF(target_class=1, n_steps=150)
+        method = TSCausalCF(target_class=1, n_steps=600)
         flips = 0
         for i in src:
             cf = method.generate(X[i], clf, data["graph"], data["mechanism"])

@@ -179,12 +179,50 @@ class TSCausalCF:
         Norm order for both loss terms (paper default 1; they only ever use
         ``p=1``). No numerical effect here -- see module docstring.
     lr:
-        FISTA step size.
+        Initial FISTA step size (``1 / L_0``). With ``backtrack=True`` this is
+        an upper bound that the line search shrinks as needed, not a fixed
+        step.
     n_steps:
-        Fixed number of FISTA iterations (this codebase's existing
+        Maximum number of FISTA iterations (this codebase's existing
         convention for gradient-based CF methods -- see
         :class:`~causaltemp_xai.methods.counterfactual.scm_recourse.NoiselessSCMRecourse` --
-        rather than the paper's Figure 2 "loop until flipped").
+        rather than the paper's Figure 2 "loop until flipped"). With
+        ``select_best=True`` this is a budget rather than a result-defining
+        knob: the returned iterate is the best one seen, so a larger budget
+        can only help. Raised 500 -> 1000 alongside the line search: a
+        correctly-stepped run makes smaller, admissible moves than the old
+        diverging one, so it needs more of them (measured: first flip at
+        step 44-203 on the ``smoke`` fixture, converged causal residual by
+        ~1000).
+    huber_beta:
+        Half-width of the quadratic region of the Huberised causal residual
+        used **for the gradient only** (0 disables it, restoring a bare
+        ``|.|``). FISTA assumes the smooth part has a Lipschitz-continuous
+        gradient; ``|r|`` does not, and with the paper's ``lambda=13`` a
+        fixed-step proximal-gradient iteration on it does not converge -- it
+        drifts with a per-cell step of ``lr * lambda`` that never decays. The
+        reported/selected objective is always the paper's true L1 one.
+    backtrack:
+        Enable the Beck & Teboulle (2009, sec. 4) backtracking line search.
+        The Lipschitz constant here depends on the classifier, the mechanism,
+        ``lambda`` and the data scale, so no single fixed ``lr`` is safe
+        across presets.
+    eta:
+        Step-shrink factor for the line search.
+    grow:
+        Per-iteration re-growth factor for the backtracked step, capped at
+        ``lr``. Beck & Teboulle's own backtracking only ever *shrinks* the
+        step, so one badly-conditioned iterate permanently throttles the rest
+        of the run; letting it recover between iterations keeps the same
+        per-step descent guarantee while restoring the step size once the
+        iterate leaves the sharp region.
+    min_lr:
+        Floor on the backtracked step size (guards against an infinite
+        shrink loop at a non-differentiable point).
+    select_best:
+        Return the best iterate seen -- any flipped one, and among flipped
+        the lowest-objective one -- rather than the last. Set ``False`` to
+        recover the previous last-iterate behaviour.
     """
 
     def __init__(
@@ -194,7 +232,13 @@ class TSCausalCF:
         lam_s: float = 1.0,
         p: int = 1,
         lr: float = 0.05,
-        n_steps: int = 500,
+        n_steps: int = 1000,
+        huber_beta: float = 0.1,
+        backtrack: bool = True,
+        eta: float = 2.0,
+        grow: float = 1.2,
+        min_lr: float = 1e-8,
+        select_best: bool = True,
     ) -> None:
         self.target_class = target_class
         self.lam = lam
@@ -202,10 +246,150 @@ class TSCausalCF:
         self.p = p
         self.lr = lr
         self.n_steps = n_steps
+        self.huber_beta = huber_beta
+        self.backtrack = backtrack
+        self.eta = eta
+        self.grow = grow
+        self.min_lr = min_lr
+        self.select_best = select_best
 
     # ------------------------------------------------------------------
     # FISTA optimisation
     # ------------------------------------------------------------------
+
+    def _run_fista(self, x, model, graph, mechanism):
+        """The FISTA loop. Returns ``(cf, flipped, info)``.
+
+        ``flipped`` is whether the returned iterate is actually classified as
+        ``target_class`` -- measured on the returned iterate, not inferred.
+        ``info`` carries the objective decomposition and the backtracked step
+        size, for diagnostics.
+        """
+        x_arr = np.asarray(x, dtype=np.float32)
+        T, k = x_arr.shape
+        x_t = torch.as_tensor(x_arr)
+        target = torch.tensor([self.target_class], dtype=torch.long, device=model.device)
+
+        u_d = exogenous_channels(graph)
+        u_s: list[int] = []  # always empty -- see module docstring
+
+        prox_mask, causal_mask, thresh = _build_loss_masks(T, k, u_s, u_d, self.lam_s, self.lam)
+        causal_mask_f = causal_mask.to(torch.float32)
+
+        def smooth(d: torch.Tensor):
+            """``L_pred + lambda * L_causal`` at ``delta = d``.
+
+            Returns ``(surrogate, true_value, logits)``. ``surrogate`` is what
+            FISTA differentiates: the causal residual is Huberised (scaled so
+            it agrees with ``|.|`` outside ``|r| < beta``) because FISTA's
+            convergence needs the smooth part to have a Lipschitz-continuous
+            gradient, and a bare ``|.|`` residual does not -- its subgradient
+            has constant magnitude right up to the kink, so a proximal-
+            gradient step never settles and instead oscillates with amplitude
+            ``lr * lambda``. ``true_value`` is the paper's own L1 objective,
+            used for iterate selection and reporting so nothing downstream
+            ever sees the surrogate's number.
+            """
+            x_cf = x_t + d
+            logits = model.torch_logits(x_cf)
+            pred_loss = F.cross_entropy(logits, target)
+            windows = _batched_lag_windows(x_cf, mechanism.L)  # (T, L, k)
+            f_pa = mechanism.forward_torch(windows)  # (T, k)
+            resid = x_cf - f_pa
+            # scalar channels: ||.||_p == |.| for any p (module docstring)
+            causal_l1 = (resid.abs() * causal_mask_f).sum()
+            if self.huber_beta > 0:
+                huber = (
+                    F.smooth_l1_loss(
+                        resid,
+                        torch.zeros_like(resid),
+                        beta=self.huber_beta,
+                        reduction="none",
+                    )
+                    / self.huber_beta
+                )
+                causal_s = (huber * causal_mask_f).sum()
+            else:
+                causal_s = causal_l1
+            return (
+                pred_loss + self.lam * causal_s,
+                (pred_loss + self.lam * causal_l1).detach(),
+                logits.detach(),
+            )
+
+        def prox_penalty(d: torch.Tensor) -> torch.Tensor:
+            """``L_prox`` (eq. 3). ``thresh`` is zero off ``prox_mask``, so the
+            elementwise product already restricts the sum to those cells."""
+            return (d.abs() * thresh).sum()
+
+        delta = torch.zeros(T, k, dtype=torch.float32)
+        y = delta.clone().requires_grad_(True)
+        t_mom = 1.0
+        s = float(self.lr)
+
+        best_obj = float("inf")
+        best_delta = delta.clone()
+        best_flipped = False
+        first_flip_step = -1
+        last: dict = {}
+
+        for _step in range(self.n_steps):
+            s = min(float(self.lr), s * float(self.grow))
+            g_y, _, _ = smooth(y)
+            (grad,) = torch.autograd.grad(g_y, y)
+            g_y_val = float(g_y.detach())
+
+            # Backtracking line search (Beck & Teboulle 2009, sec. 4): the
+            # Lipschitz constant of the smooth part is not known here -- it
+            # depends on the classifier, the mechanism, lambda and the data
+            # scale -- and a fixed step above 1/L diverges instead of
+            # converging, which is what the previous fixed ``lr`` did.
+            while True:
+                with torch.no_grad():
+                    z = y - s * grad
+                    cand = torch.where(prox_mask, _soft_threshold(z, s * thresh), z)
+                    diff = cand - y
+                    g_c, true_c, logits_c = smooth(cand)
+                    q = g_y_val + float((grad * diff).sum()) + float(diff.pow(2).sum()) / (2 * s)
+                if not self.backtrack or float(g_c) <= q + 1e-9 or s <= self.min_lr:
+                    break
+                s /= self.eta
+
+            with torch.no_grad():
+                delta_new = cand
+                obj = float(true_c + prox_penalty(delta_new))
+                flipped = bool(int(logits_c.argmax(dim=-1).item()) == self.target_class)
+                # Prefer any flipped iterate; among flipped, the lowest
+                # objective. Without this the method returns whatever the
+                # fixed iteration budget happened to land on, which for a
+                # diverging run can be an iterate that has already flipped
+                # *back* -- making both validity and proximity a function of
+                # ``n_steps`` rather than of the objective.
+                better = (flipped and not best_flipped) or (
+                    flipped == best_flipped and obj < best_obj
+                )
+                if flipped and first_flip_step < 0:
+                    first_flip_step = _step
+                if better:
+                    best_obj, best_delta, best_flipped = obj, delta_new.clone(), flipped
+
+                t_next = (1.0 + (1.0 + 4.0 * t_mom * t_mom) ** 0.5) / 2.0
+                y_next = delta_new + ((t_mom - 1.0) / t_next) * (delta_new - delta)
+                t_mom = t_next
+                delta = delta_new
+                last = {"objective": obj, "flipped": flipped, "step_size": s}
+
+            y = y_next.detach().requires_grad_(True)
+
+        with torch.no_grad():
+            out = best_delta if self.select_best else delta
+            out_flipped = best_flipped if self.select_best else bool(last.get("flipped", False))
+            cf_arr = (x_t + out).cpu().numpy().astype(np.float32)
+
+        info = dict(last)
+        info["best_objective"] = best_obj
+        info["first_flip_step"] = first_flip_step
+        return cf_arr, out_flipped, info
 
     def generate(
         self,
@@ -229,50 +413,11 @@ class TSCausalCF:
 
         Returns
         -------
-        cf : ndarray of shape ``(T, k)``, ``x + delta`` at the final FISTA
-            iterate.
+        cf : ndarray of shape ``(T, k)``, ``x + delta`` at the best FISTA
+            iterate (see ``select_best``).
         """
-        x_arr = np.asarray(x, dtype=np.float32)
-        T, k = x_arr.shape
-        x_t = torch.as_tensor(x_arr)
-        target = torch.tensor([self.target_class], dtype=torch.long, device=model.device)
-
-        u_d = exogenous_channels(graph)
-        u_s: list[int] = []  # always empty -- see module docstring
-
-        prox_mask, causal_mask, thresh = _build_loss_masks(T, k, u_s, u_d, self.lam_s, self.lam)
-        causal_mask_f = causal_mask.to(torch.float32)
-
-        delta = torch.zeros(T, k, dtype=torch.float32)
-        y = delta.clone().requires_grad_(True)
-
-        for step in range(self.n_steps):
-            x_cf = x_t + y
-            logits = model.torch_logits(x_cf)
-            pred_loss = F.cross_entropy(logits, target)
-
-            windows = _batched_lag_windows(x_cf, mechanism.L)  # (T, L, k)
-            f_pa = mechanism.forward_torch(windows)  # (T, k)
-            resid = (x_cf - f_pa).abs()  # scalar channels: ||.||_p == |.| for any p
-            causal_loss = (resid * causal_mask_f).sum()
-
-            smooth_loss = pred_loss + self.lam * causal_loss
-            (grad,) = torch.autograd.grad(smooth_loss, y)
-
-            with torch.no_grad():
-                z = y - self.lr * grad
-                delta_new = torch.where(prox_mask, _soft_threshold(z, self.lr * thresh), z)
-                momentum = step / (step + 3)  # FISTA/CEGP fixed-iteration schedule
-                y_next = delta_new + momentum * (delta_new - delta)
-                delta = delta_new
-
-            y = y_next.detach().requires_grad_(True)
-
-        with torch.no_grad():
-            x_cf = x_t + delta
-            cf_arr = x_cf.cpu().numpy().astype(np.float32)
-
-        return cf_arr
+        cf, _flipped, _info = self._run_fista(x, model, graph, mechanism)
+        return cf
 
     # ------------------------------------------------------------------
     # CFExplainer alias interface + causal-info setter (parity with NoiselessSCMRecourse)
@@ -305,3 +450,25 @@ class TSCausalCF:
         if mechanism is None:
             mechanism = getattr(self, "_mechanism", None)
         return np.stack([self.generate(x, model, graph, mechanism) for x in X], axis=0)
+
+    def generate_batch_with_status(
+        self, X: np.ndarray, model, graph: Optional[np.ndarray] = None, mechanism=None
+    ) -> tuple[np.ndarray, np.ndarray]:
+        """``generate_batch`` plus a measured failed-search flag per instance.
+
+        The flip check is already computed inside the FISTA loop (it drives
+        best-iterate selection), so reporting it costs nothing -- and Phase 03
+        no longer has to record this method's ``no_cf_found`` provenance as
+        ``inferred``.
+        """
+        X = np.asarray(X, dtype=np.float32)
+        if graph is None:
+            graph = getattr(self, "_graph", None)
+        if mechanism is None:
+            mechanism = getattr(self, "_mechanism", None)
+        cfs, found = [], []
+        for x in X:
+            cf, flipped, _info = self._run_fista(x, model, graph, mechanism)
+            cfs.append(cf)
+            found.append(flipped)
+        return np.stack(cfs, axis=0), ~np.asarray(found, dtype=bool)
