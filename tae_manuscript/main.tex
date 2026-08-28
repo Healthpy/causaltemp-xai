@@ -98,7 +98,7 @@ For $\bx=(\bx_0,\ldots,\bx_{T-1})$, $\bx_t\in\R^k$, the lagged SCM is
   \Pa_G(X_t^i)=\{X_{t-\ell}^j:G_{ij\ell}=1,\ 1\leq\ell\leq L\}.
   \label{eq:temporal-scm}
 \end{equation}
-The world label is $y_g(\bx)=\mathbb{1}\{g(\bx)>\theta\}$, whose final dependency is $t_{\mathrm{label}}$; $h$ denotes the evaluated classifier.
+The world label is $y_g(\bx)=\mathbb{1}\{g(\bx)>\theta\}$, whose final dependency is $t_{\mathrm{label}}$; $h:\R^{T\times k}\to\{0,1\}$ denotes the evaluated classifier's hard decision, and $z_h:\R^{T\times k}\to\R^2$ denotes its logits.
 
 Additivity makes Pearl abduction exact \citep{pearl2009causality,hoyer2008anm}:
 \begin{equation}
@@ -434,7 +434,7 @@ The original design space listed $k\in\{5,10,20\}$, $L\in\{1,3\}$, $s\in\{0.1,0.
 
 PearlSCMRecourse and NoiselessSCMRecourse are positive controls constructed by this work, not adapters of a published explainer.  Both receive the true mechanism $F$.  Both leave the factual prefix unchanged, optimise a single slice $\bx_{t_0}+\boldsymbol{\delta}$, and let $F$ produce the suffix.  A non-vacuous proposal therefore has $D=1$ by construction.  Candidate intervention times are $t_0/T\in\{0.25,0.5\}$.  The search minimises
 \begin{equation}
-  \lambda_{\mathrm{pred}}\,\mathrm{CE}\bigl(h(\hat{\bx}),\,y^\star\bigr)
+  \lambda_{\mathrm{pred}}\,\mathrm{CE}\bigl(z_h(\hat{\bx}),\,y^\star\bigr)
   +\lambda_{\mathrm{prox}}\lVert\boldsymbol{\delta}\rVert_2^2
 \end{equation}
 with Adam over $\boldsymbol{\delta}\in\R^k$ (300 steps for NoiselessSCMRecourse, 500 for PearlSCMRecourse).  If that search does not produce a genuine above-tolerance flip, one prediction-only retry with $\lambda_{\mathrm{prox}}=0$ is allowed.  Registered weights are $\lambda_{\mathrm{pred}}=1$ for both controls, $\lambda_{\mathrm{prox}}=0.1$ for PearlSCMRecourse and $\lambda_{\mathrm{prox}}=0.5$ for NoiselessSCMRecourse.
