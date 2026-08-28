@@ -106,7 +106,7 @@ Additivity makes Pearl abduction exact \citep{pearl2009causality,hoyer2008anm}:
   =x_t^i-F_i\!\left(\Pa_G(x_t^i)\right).
   \label{eq:abduction}
 \end{equation}
-For schedule $I=\{(t,S_t,\mathbf{a}_t)\}$, the oracle keeps the factual prefix, replaces intervened equations, and recursively evaluates the rest with the same abducted noise:
+For schedule $I=\{(t,S_t,\mathbf{a}_t)\}$, the oracle keeps the factual prefix, replaces intervened equations, and recursively evaluates the rest with the same abducted noise. Here $S_t\subseteq\{1,\ldots,k\}$ denotes the set of coordinates whose structural equations are replaced by interventions at timestep $t$:
 \begin{equation}
   x_t^{I,i}=
   \begin{cases}
