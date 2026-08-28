@@ -58,14 +58,12 @@ A second finding is a reporting rule rather than a method comparison. Stationari
 
 \paragraph{Contributions.}
 \begin{enumerate}
-  \item \textbf{A model--world benchmark} for temporal counterfactual explanations: the proposal's own intervention is realised by the true mechanism, and the disagreement is decomposed additively into trajectory and outcome terms, each computed exactly against a known mechanism rather than estimated. Its construct validity is carried by do-complexity $D$, published beside every disagreement figure.
+    \item \textbf{A model--world benchmark} for temporal counterfactual explanations: the proposal's own intervention is realised by the true mechanism, and the disagreement is decomposed additively into trajectory and outcome terms, each computed exactly against a known mechanism rather than estimated. Its construct validity is carried by do-complexity $D$, published beside every disagreement figure.
   \item \textbf{Intervention-to-outcome distance as a required reporting condition.} The relevant distance is $t_{\mathrm{label}}-t_0$, not $T-t_0$. The two coincide in the terminal-label families, so this contribution is the reporting rule, not an interior-label ablation.
   \item \textbf{A benchmark suite with exact structural counterfactuals}: three additive-noise temporal SCM families shipping the true graph, the true mechanism, and oracle abduction--action--prediction counterfactuals, with the label functional exposed explicitly rather than hidden in the construction.
   \item \textbf{A controlled demonstration of the measurement gap}: conventional metrics frequently remain favourable while structural replay reveals low mechanism consistency, large intervention schedules, and claimed target-class rates above the rates realised by the SCM.
 \end{enumerate}
 
-\paragraph{Scope.}
-Findings are established on LinearSCM-T, NlinearSCM-T, and SpringSCM-T, whose ground-truth mechanisms permit validation against the processes the benchmark claims to measure. The empirical results are descriptive point estimates for the registered benchmark realizations; they establish that conventional and mechanism-relative assessments can diverge, not a stable ordering of methods or mechanism families. Real-signal data could test whether the findings \emph{travel}, but without a ground-truth mechanism they cannot validate the metrics, and no real-signal result is used here.
 
 \section{Related Work}
 
