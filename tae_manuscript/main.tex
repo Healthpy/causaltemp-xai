@@ -98,7 +98,7 @@ For $\bx=(\bx_0,\ldots,\bx_{T-1})$, $\bx_t\in\R^k$, the lagged SCM is
   \Pa_G(X_t^i)=\{X_{t-\ell}^j:G_{ij\ell}=1,\ 1\leq\ell\leq L\}.
   \label{eq:temporal-scm}
 \end{equation}
-The world label is $y_g(\bx)=\mathbb{1}\{g(\bx)>\theta\}$, whose final dependency is $t_{\mathrm{label}}$; $h:\R^{T\times k}\to\{0,1\}$ denotes the evaluated classifier's hard decision, and $z_h:\R^{T\times k}\to\R^2$ denotes its logits.
+The world label is $y_g(\bx)=\mathbb{1}\{g(\bx)>\theta\}$, whose final dependency is $t_{\mathrm{label}}$; $h:\R^{T\times k}\to\{0,1\}$ denotes the evaluated classifier's hard decision, and $\mathbf{z}_h:\R^{T\times k}\to\R^2$ denotes its logits.
 
 Additivity makes Pearl abduction exact \citep{pearl2009causality,hoyer2008anm}:
 \begin{equation}
@@ -383,12 +383,12 @@ Shift-VR is validity retention on a held-out environment of the same SCM (frozen
 
 The paper reports three families: LinearSCM-T, NlinearSCM-T, and SpringSCM-T.  Other generator scales exist in the code for plumbing and tests and are not reported.
 
-All three families share the same outer protocol.  A lagged graph $G\in\{0,1\}^{k\times k\times L}$ is drawn with independent Bernoulli($s$) edges, except that lag-1 self-loops are forbidden.  Innovations are additive Laplace with scale $0.1$.  A burn-in of $100$ steps is discarded.  The binary label is a median split, over the generated population, of channel~$0$ at $t_{\mathrm{label}}=T-1$, and the resulting threshold is recorded with the benchmark artifacts.  Observation is the identity: nonlinear mixing $x=g(z)$ is out of scope, because it would make abduction partial.
+All three families share the same outer protocol.  A lagged graph $G\in\{0,1\}^{k\times k\times L}$ is drawn with independent Bernoulli($s$) edges, except that lag-1 self-loops are forbidden.  Innovations are additive Laplace with scale $0.1$.  A burn-in of $100$ steps is discarded.  The binary label is a median split, over the generated population, of channel~$0$ at $t_{\mathrm{label}}=T-1$, and the resulting threshold is recorded with the benchmark artifacts.  Observation is the identity: nonlinear mixing $\bx=g(\mathbf{z})$ is out of scope, because it would make abduction partial.
 
 \paragraph{LinearSCM-T.}
 A stable VAR,
 \begin{equation}
-  x_t=\sum_{\ell=1}^{L}A_\ell x_{t-\ell}+\varepsilon_t.
+  \bx_t=\sum_{\ell=1}^{L}A_\ell \bx_{t-\ell}+\beps_t.
 \end{equation}
 Entries of each $A_\ell$ are drawn from $U(-0.5,0.5)$, masked by $G$, and rescaled so that $\rho(A_\ell)\le 0.9$.  With $L=1$ this is the contraction that Eq.~\eqref{eq:horizon-decay} uses.
 
@@ -434,7 +434,7 @@ The original design space listed $k\in\{5,10,20\}$, $L\in\{1,3\}$, $s\in\{0.1,0.
 
 PearlSCMRecourse and NoiselessSCMRecourse are positive controls constructed by this work, not adapters of a published explainer.  Both receive the true mechanism $F$.  Both leave the factual prefix unchanged, optimise a single slice $\bx_{t_0}+\boldsymbol{\delta}$, and let $F$ produce the suffix.  A non-vacuous proposal therefore has $D=1$ by construction.  Candidate intervention times are $t_0/T\in\{0.25,0.5\}$.  The search minimises
 \begin{equation}
-  \lambda_{\mathrm{pred}}\,\mathrm{CE}\bigl(z_h(\hat{\bx}),\,y^\star\bigr)
+  \lambda_{\mathrm{pred}}\,\mathrm{CE}\bigl(\mathbf{z}_h(\hat{\bx}),\,y^\star\bigr)
   +\lambda_{\mathrm{prox}}\lVert\boldsymbol{\delta}\rVert_2^2
 \end{equation}
 with Adam over $\boldsymbol{\delta}\in\R^k$ (300 steps for NoiselessSCMRecourse, 500 for PearlSCMRecourse).  If that search does not produce a genuine above-tolerance flip, one prediction-only retry with $\lambda_{\mathrm{prox}}=0$ is allowed.  Registered weights are $\lambda_{\mathrm{pred}}=1$ for both controls, $\lambda_{\mathrm{prox}}=0.1$ for PearlSCMRecourse and $\lambda_{\mathrm{prox}}=0.5$ for NoiselessSCMRecourse.
@@ -442,24 +442,24 @@ with Adam over $\boldsymbol{\delta}\in\R^k$ (300 steps for NoiselessSCMRecourse,
 \paragraph{PearlSCMRecourse.}
 The suffix is the abduction--action--prediction recursion of Eq.~\eqref{eq:oracle-cf}:
 \begin{equation}
-  \hat{x}_t
+  \hat{\bx}_t
   =
   \begin{cases}
-    x_t, & t<t_0,\\
-    x_{t_0}+\boldsymbol{\delta}, & t=t_0,\\
-    F\bigl(\Pa_G(\hat{\bx}_t)\bigr)+\varepsilon_t, & t>t_0,
+    \bx_t, & t<t_0,\\
+    \bx_{t_0}+\boldsymbol{\delta}, & t=t_0,\\
+    F\bigl(\Pa_G(\hat{\bx}_t)\bigr)+\beps_t, & t>t_0,
   \end{cases}
 \end{equation}
-with $\varepsilon_t$ abducted from the factual instance as in Eq.~\eqref{eq:abduction}.  Hard CF-faith under \texttt{pearl\_delta} is therefore $1$ by construction, provided the instance is scorable ($t_0<T-1$).
+with $\beps_t$ abducted from the factual instance as in Eq.~\eqref{eq:abduction}.  Hard CF-faith under \texttt{pearl\_delta} is therefore $1$ by construction, provided the instance is scorable ($t_0<T-1$).
 
 \paragraph{NoiselessSCMRecourse.}
 The same search, with all subsequent innovations set to zero:
 \begin{equation}
-  \hat{x}_t
+  \hat{\bx}_t
   =
   \begin{cases}
-    x_t, & t<t_0,\\
-    x_{t_0}+\boldsymbol{\delta}, & t=t_0,\\
+    \bx_t, & t<t_0,\\
+    \bx_{t_0}+\boldsymbol{\delta}, & t=t_0,\\
     F\bigl(\Pa_G(\hat{\bx}_t)\bigr), & t>t_0.
   \end{cases}
 \end{equation}
