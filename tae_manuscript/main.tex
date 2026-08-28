@@ -60,7 +60,7 @@ A second finding is a reporting rule rather than a method comparison. Stationari
 \begin{enumerate}
   \item \textbf{A model--world benchmark} for temporal counterfactual explanations: the proposal's own intervention is realised by the true mechanism, and the disagreement is decomposed additively into trajectory and outcome terms, each computed exactly against a known mechanism rather than estimated. Its construct validity is carried by do-complexity $D$, published beside every disagreement figure.
   \item \textbf{Intervention-to-outcome distance as a required reporting condition.} The relevant distance is $t_{\mathrm{label}}-t_0$, not $T-t_0$. The two coincide in the terminal-label families, so this contribution is the reporting rule, not an interior-label ablation.
-  \item \textbf{A benchmark suite with exact structural counterfactuals}: three additive-noise temporal SCM families shipping the true graph, the true mechanism, and oracle abduction--action--prediction counterfactuals, with the label functional exposed as a configurable axis rather than fixed by construction.
+  \item \textbf{A benchmark suite with exact structural counterfactuals}: three additive-noise temporal SCM families shipping the true graph, the true mechanism, and oracle abduction--action--prediction counterfactuals, with the label functional exposed explicitly rather than hidden in the construction.
   \item \textbf{A controlled demonstration of the measurement gap}: conventional metrics frequently remain favourable while structural replay reveals low mechanism consistency, large intervention schedules, and claimed target-class rates above the rates realised by the SCM.
 \end{enumerate}
 
@@ -73,7 +73,7 @@ Findings are established on LinearSCM-T, NlinearSCM-T, and SpringSCM-T, whose gr
 Methods span instance or segment substitution, saliency-guided optimisation, evolutionary search, and learned latent models \citep{delaney2021nativeguide,ates2021comte,hollig2022tsevo,li2024mcels,paredescetina2025confetti,yan2023counts}.  Work on plausibility and temporal coherence improves the proposal relative to observed data \citep{kostrzewa2026plausibility,zuin2026navigating,voets2026contex}, but standard real-data benchmarks still cannot replay it through a known mechanism.  CounTS performs abduction--action--prediction in its learned latent model; our benchmark instead uses the known data-generating process to evaluate an independently produced explanation. This distinction is not semantic: proximity asks whether the edit is small, plausibility whether it resembles observed data, and validity whether a model changes its decision.  None asks whether the proposed intervention propagates through the process to the target label.  A causally impossible trajectory can therefore remain conventionally successful.
 
 \paragraph{Benchmarks for temporal explanation.}
-XTSC-Bench and AMEE standardise temporal saliency evaluation, while CARLA systematises model-relative counterfactual success and distance \citep{hollig2023xtscbench,nguyen2024amee,pawelczyk2021carla}.  Robustness and unjustified-counterfactual critiques sharpen those axes but do not add a world-relative replay \citep{ghorbani2019fragile,yeh2019infidelity,laugel2019dangers,poyiadzi2020face}.  The closest evaluation of third-party explanations against known SCMs is static and relation-based rather than a Pearl trajectory \citep{hollig2023semantic}. ExplainTS makes the real-data limitation explicit: without known relevance or mechanism, faithfulness is necessarily proxy-based \citep{mozolewski2026explaints}. Our benchmark complements rather than replaces such suites.  Their axes remain necessary for model-relative quality; the replay adds a missing estimand.
+XTSC-Bench and AMEE standardise temporal saliency evaluation, while CARLA systematises model-relative counterfactual success and distance \citep{hollig2023xtscbench,nguyen2024amee,pawelczyk2021carla}.  Robustness and unjustified-counterfactual critiques sharpen those criteria but do not add a world-relative replay \citep{ghorbani2019fragile,yeh2019infidelity,laugel2019dangers,poyiadzi2020face}.  The closest evaluation of third-party explanations against known SCMs is static and relation-based rather than a Pearl trajectory \citep{hollig2023semantic}. ExplainTS makes the real-data limitation explicit: without known relevance or mechanism, faithfulness is necessarily proxy-based \citep{mozolewski2026explaints}. Our benchmark complements rather than replaces such suites.  Their measures remain necessary for model-relative quality; the replay adds a missing estimand.
 
 \paragraph{Causal temporal benchmarks.}
 CausalTime, CausalDynamics, TimeGraph, and TCS expose lagged graphs to score structure recovery, not post-hoc explanations \citep{cheng2024causaltime,herdeanu2025causaldynamics,ferdous2025timegraph,gkorgkolis2025tcs}.  DoFlow supports causal queries as a generative forecaster rather than a benchmark for third-party explanations \citep{doflow2025}.  The distinction is unit-level: drawing fresh noise estimates an interventional distribution, whereas retaining the abducted factual noise answers the counterfactual query \citep{thumm2026interventional,pearl2009causality}. This is why a known graph alone is insufficient.  The benchmark also needs the transition functions, the factual innovations, and an exposed label rule so that the same proposed action can be evaluated by both classifier and world.
@@ -154,7 +154,7 @@ The signed disagreement decomposes exactly as
   +\underbrace{B-C}_{\dooutcome}.
   \label{eq:delta-decomposition}
 \end{equation}
-$\dotraj$ locates proposal-versus-replay disagreement; $\dooutcome$ locates classifier-versus-label-rule disagreement on the replay.  Positive $\dototal$ is over-claimed efficacy.  We report CF-faith, $D$, and the signed decomposition jointly, never as a scalar leaderboard. The intermediate rate $B$ is what makes the diagnosis possible: $A-B$ changes only the trajectory presented to the fixed classifier, whereas $B-C$ changes only the decision rule applied to the replayed trajectory.  The decomposition therefore distinguishes an implausible proposal from classifier--world misalignment without treating either term as a new ranking axis.
+$\dotraj$ locates proposal-versus-replay disagreement; $\dooutcome$ locates classifier-versus-label-rule disagreement on the replay.  Positive $\dototal$ is over-claimed efficacy.  We report CF-faith, $D$, and the signed decomposition jointly, never as a scalar leaderboard. The intermediate rate $B$ is what makes the diagnosis possible: $A-B$ changes only the trajectory presented to the fixed classifier, whereas $B-C$ changes only the decision rule applied to the replayed trajectory.  The decomposition therefore distinguishes an implausible proposal from classifier--world misalignment without turning either term into a standalone ranking criterion.
 
 \subsection{The intervention-to-label reporting rule}
 
@@ -190,7 +190,7 @@ Without the mechanism, Table~\ref{tab:conventional-results} is reassuring: basel
 \begin{table}[t]
   \centering
   \scriptsize
-  \caption{Model-relative Axis~C.  $V$: validity; $L_1$: proximity; $S$: unchanged-entry fraction; OOD: Isolation Forest score.  $L_1$ and OOD are comparable only within families.  $\dagger$: foil; $\ddagger$: control.}
+  \caption{Model-relative counterfactual quality.  $V$: validity; $L_1$: proximity; $S$: unchanged-entry fraction; OOD: Isolation Forest score.  $L_1$ and OOD are comparable only within families.  $\dagger$: foil; $\ddagger$: control.}
   \label{tab:conventional-results}
   \setlength{\tabcolsep}{3.2pt}
   \begin{tabular}{@{}llrrrr@{}}
@@ -227,7 +227,7 @@ Without the mechanism, Table~\ref{tab:conventional-results} is reassuring: basel
 \begin{table}[t]
   \centering
   \scriptsize
-  \caption{Axis~B innovation shift.  Cells give base/shifted validity/Shift-VR; the ratio is suppressed when base validity is below $0.30$.}
+  \caption{Innovation-shift robustness.  Cells give base/shifted validity/Shift-VR; the ratio is suppressed when base validity is below $0.30$.}
   \label{tab:shift-results}
   \setlength{\tabcolsep}{4pt}
   \begin{tabular}{@{}lrrr@{}}
@@ -355,36 +355,15 @@ For an atomic intervention at $t_0$, let $\boldsymbol{\delta}_t=\bx_t^I-\bx_t$. 
 \end{equation}
 Contractive nonlinear transitions give the analogous product of local Lipschitz factors.  Thus the relevant distance is to the label site.  If $t_0>t_{\mathrm{label}}$, the action cannot affect the label; for terminal labels, $T-1-t_0$ merely happens to equal that distance.
 
-\section{Metric definitions and axis taxonomy}
+\section{Metric definitions and reporting conventions}
 \label{app:metrics}
 
-The validity argument is in Section~\ref{sec:benchmark}.  This appendix records membership, populations, and the numerical conventions needed to reproduce a table.  Every reported quantity belongs to exactly one axis.  Axis~A scores the \emph{benchmark} (one number per generated dataset).  Axes~B and~C score \emph{methods}.  Presenting all three as parallel per-method columns is a category error.  A former concept-quality axis was deleted; there is no Axis~D.  The benchmark quantities $A$, $B$, $C$ in Eq.~\eqref{eq:abc} are not Axis~A/B/C.
-
-\begin{table}[h]
-  \centering
-  \small
-  \caption{Axis membership.  Mechanism-relative interpretation uses CF-faith, $D$, and the disagreement terms jointly, never an average of axes.  A hard CF-faith score of $0$ does not remove a method from the reported population.}
-  \label{tab:axis-membership}
-  \begin{tabular}{@{}llll@{}}
-    \toprule
-    quantity & axis & unit & this paper \\
-    \midrule
-    SHD, lag accuracy, lagged-edge F1, graph-error & A & dataset & not reported \\
-    residual dependence, graph AUC & A & dataset & not reported \\
-    Shift-VR & B & method & reported \\
-    input sensitivity & B & method & not reported \\
-    validity, proximity, sparsity, OOD & C & method & model-relative \\
-    CF-faith (both semantics) & C & method & reported, not ranked \\
-    $D$, $\dototal$, $\dotraj$, $\dooutcome$ & C & method & jointly interpreted \\
-    PN, PS, PNS & C & method & out of scope \\
-    \bottomrule
-  \end{tabular}
-\end{table}
+The validity argument is in Section~\ref{sec:benchmark}.  This appendix records populations and the numerical conventions needed to reproduce the reported model-relative, innovation-shift, and mechanism-relative quantities.  CF-faith, $D$, and the disagreement terms are interpreted jointly, never averaged into a composite score.  A hard CF-faith score of $0$ does not remove a method from the reported population.
 
 \paragraph{Changed-element predicate.}
 A coordinate is changed when $\lvert\hat{x}_t^i-x_t^i\rvert>10^{-3}$.  That single threshold defines $t_0$ (the first changed timestep), CF-faith's retroactive gate, sparsity, and the action set $S_t$ inside $D$.  If no coordinate exceeds it, $t_0=T-1$ and the instance is CF-faith-degenerate.
 
-\paragraph{Axis C, model-relative.}
+\paragraph{Model-relative counterfactual quality.}
 Validity is the fraction of proposals with $h(\hat{\bx})=y^\star$.  It is reported with $t_{\mathrm{label}}$, $t_0$, and $t_{\mathrm{label}}-t_0$; without that distance it is not interpretable (Section~\ref{sec:benchmark}).  Proximity is $\lVert\hat{\bx}-\bx\rVert_p$ over the flattened $T\times k$ trajectory, $p\in\{1,2\}$.  Sparsity is the fraction of the $T\times k$ entries left \emph{unchanged} ($\lvert\Delta\rvert\le 10^{-3}$).  Higher means a sparser edit; $1$ means the proposal equals the factual.  This is the complement of an $L_0$ altered-fraction; we emit that complement as \texttt{frac\_altered} and do not treat the two as interchangeable.  Channel and timepoint variants are the fractions of channels (resp.\ timesteps) left entirely untouched.  OOD plausibility is the Isolation Forest decision score on the flattened trajectory (higher $=$ more in-distribution).  TRSI is implemented as a mechanism-free smoothness descriptor and is not reported here.
 
 \paragraph{CF-faith, both semantics.}
@@ -396,11 +375,8 @@ $D$ is Eq.~\eqref{eq:do-complexity}, counted on timesteps, under Pearl semantics
 \paragraph{Sign of $\Delta$.}
 $\dototal=A-C$ is signed.  Positive means over-claimed efficacy (the explanation asserts a target-class outcome the world denies); negative means the classifier misses an effect present under the label rule $y_g$.  Distance from zero measures disagreement; the sign is retained for diagnosis.  $\dotraj$ and $\dooutcome$ locate the source and are not a second leaderboard.  A $\Delta$ of either kind is never cited without $D$ and the intervention reading.
 
-\paragraph{Axis B.}
+\paragraph{Innovation-shift robustness.}
 Shift-VR is validity retention on a held-out environment of the same SCM (frozen classifier): $\mathrm{validity}_{\mathrm{shift}}/\mathrm{validity}_{\mathrm{base}}$ when base validity is at least $0.30$.  It is reported in Table~\ref{tab:shift-results}; below that threshold, the base and shifted rates are shown but the unstable ratio is suppressed.  Input sensitivity is a Lipschitz constant of the explanation in the input, where exposed, and is not reported.
-
-\paragraph{Axis A.}
-Computed once per dataset against the written graph, not against any explainer.  SHD is the number of disagreeing lagged-edge decisions.  Lag accuracy is recall of true lagged edges; lagged-edge F1 is the precision-aware companion.  Graph AUC is edge-level ROC against ground truth (NaN if the score matrix is constant or the labels are degenerate).  Residual dependence is the mean $\lvert$Pearson $r\rvert$ of mechanism residuals on non-adjacent channels.  Graph-error is the signed difference of CF-faith against the true graph minus CF-faith against an inferred graph; it can be negative and is not scale-free across mechanism families.  These construction checks are retained in the experiment artifacts but are not manuscript results.  On SpringSCM-T the recorded graph omits the position-from-velocity self-coupling (Appendix~\ref{app:generators}), so those Axis~A numbers are not comparable to the VAR/MLP scores without that note.
 
 \section{Generator specifications}
 \label{app:generators}
@@ -432,7 +408,7 @@ An undamped second-order particle system, adopted as used by \citet{bahri2025cau
     x_{t+1}^i &= x_t^i+\Delta t\,v_t^i.
   \end{aligned}
 \end{equation}
-Additive innovations are then applied as in the other families.  $K$ is $0.3$ times a particle-level Bernoulli($0.3$) mask with no self-coupling; the last two particles have their incoming edges zeroed, so two exogenous particles exist by construction.  There is no damping term.  The recorded graph stores only the velocity-from-position couplings; the position-from-velocity self-coupling is treated as baseline structure and omitted, so Axis~A graph scores on this family are not comparable to the VAR/MLP scores without that note.  The label is the same channel-$0$ median threshold as the other families (first-particle position), not an energy functional.
+Additive innovations are then applied as in the other families.  $K$ is $0.3$ times a particle-level Bernoulli($0.3$) mask with no self-coupling; the last two particles have their incoming edges zeroed, so two exogenous particles exist by construction.  There is no damping term.  The recorded graph stores only the velocity-from-position couplings; the position-from-velocity self-coupling is treated as baseline structure and omitted.  The label is the same channel-$0$ median threshold as the other families (first-particle position), not an energy functional.
 
 \begin{table}[h]
   \centering
