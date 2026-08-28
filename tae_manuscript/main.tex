@@ -27,7 +27,7 @@
 \newcommand{\dop}{\mathrm{do}}
 
 \workshoptitle{TAE (Trust-AI-Eval): Can We Trust AI Evaluation?}
-\title{Does the World Agree? A Model-vs-World Audit for Counterfactual
+\title{Does the World Agree? A Model-vs-World Benchmark for Counterfactual
 Explanations of Time Series}
 
 % Camera-ready: restore the named author block.
@@ -44,8 +44,8 @@ Temporal counterfactual explanations are usually evaluated by whether they
 flip a classifier and remain close, sparse, or plausible relative to the
 observed input.  These criteria do not establish whether the data-generating
 process would realise the proposed trajectory or its claimed outcome.  We
-introduce a model--world audit built on additive-noise temporal structural
-causal models, where unit-level abduction is exact.  The audit separately
+introduce a model--world benchmark built on additive-noise temporal structural
+causal models, where unit-level abduction is exact.  The benchmark separately
 measures mechanism consistency (CF-faith), the number of timesteps that must
 be treated as interventions (do-complexity $D$), and the disagreement between
 the proposed and structurally replayed outcomes through an additive $A/B/C$
@@ -69,17 +69,17 @@ A temporal counterfactual explains what would have had to change in a trajectory
 
 They are usually judged by classifier validity, proximity, sparsity, and plausibility \citep{delaney2021nativeguide,hollig2022tsevo,pawelczyk2021carla}.  These quantities relate a proposal to the model or observed data, not to the process that generated the trajectory.  They can therefore reward a classifier flip even when the proposed trajectory is structurally impossible or its implied intervention would not produce the claimed outcome.
 
-This is a measurement-validity problem, not a leaderboard problem.  Asking whether the world agrees requires a benchmark that exposes the mechanism that generated its data, so the proposal's implied intervention can be replayed through the true structural equations.  Real classification datasets cannot supply this; temporal discovery benchmarks expose graphs but do not audit explanations, while explanation benchmarks lack a replayable mechanism \citep{cheng2024causaltime,herdeanu2025causaldynamics,ferdous2025timegraph,hollig2023xtscbench,nguyen2024amee}.
+This is a measurement-validity problem, not a leaderboard problem.  Asking whether the world agrees requires a benchmark that exposes the mechanism that generated its data, so the proposal's implied intervention can be replayed through the true structural equations.  Real classification datasets cannot supply this; temporal discovery benchmarks expose graphs but do not evaluate explanations against the known process, while explanation benchmarks lack a replayable mechanism \citep{cheng2024causaltime,herdeanu2025causaldynamics,ferdous2025timegraph,hollig2023xtscbench,nguyen2024amee}.
 
-We build that instrument from known additive-noise temporal SCMs.  Additivity makes Pearl abduction an exact subtraction \citep{pearl2009causality,hoyer2008anm}, so the unit-level structural counterfactual is computed rather than estimated.  The audit asks three distinct questions: does the proposal follow the mechanism (CF-faith), how many timesteps must be declared actions before the mechanism can reproduce it (do-complexity $D$), and does structural replay preserve the proposal's claimed target-class outcome (the $A/B/C$ disagreement decomposition)?
+We introduce a model--world benchmark that evaluates temporal counterfactual explanations using exact structural replay through known additive-noise temporal SCMs.  Additivity makes Pearl abduction an exact subtraction \citep{pearl2009causality,hoyer2008anm}, so the unit-level structural counterfactual is computed rather than estimated.  The benchmark asks three distinct questions: does the proposal follow the mechanism (CF-faith), how many timesteps must be declared actions before the mechanism can reproduce it (do-complexity $D$), and does structural replay preserve the proposal's claimed target-class outcome (the $A/B/C$ disagreement decomposition)?
 
-The intervention reading is load-bearing.  Reading only the first changed slice can penalise later edits that were intended as actions; reading every required slice as an action reproduces any proposal by construction.  We therefore report $D$ beside every disagreement.  A proposal with $D\approx T$ is a trajectory rewrite under this audit, because little remains for the mechanism to predict.
+The intervention reading is load-bearing.  Reading only the first changed slice can penalise later edits that were intended as actions; reading every required slice as an action reproduces any proposal by construction.  We therefore report $D$ beside every disagreement.  A proposal with $D\approx T$ is a trajectory rewrite under this benchmark, because little remains for the mechanism to predict.
 
 Temporal placement is equally important.  In a contractive process, an intervention's effect attenuates with its distance to the label site, $t_{\mathrm{label}}-t_0$, not automatically with its distance to the trajectory end \citep{lutkepohl2005}.  Every validity or replay result must therefore identify the label functional, intervention time, and label distance.
 
 \paragraph{Contributions.}
 \begin{enumerate}
-  \item An exact \textbf{model--world audit} that reports CF-faith, $D$, and an additive trajectory/outcome disagreement decomposition without combining them into a scalar.
+  \item A \textbf{model--world benchmark} with exact structural replay that reports CF-faith, $D$, and an additive trajectory/outcome disagreement decomposition without combining them into a scalar.
   \item A \textbf{temporal reporting contract}: every result identifies $t_{\mathrm{label}}-t_0$, the intervention reading, and the scorable population.
   \item A \textbf{controlled demonstration} on three additive-noise SCM families: conventional metrics remain favourable while replay reveals low mechanism consistency, large schedules, and over-claimed target-class efficacy.
 \end{enumerate}
@@ -89,7 +89,7 @@ Temporal placement is equally important.  In a contractive process, an intervent
 \section{Related Work}
 
 \paragraph{Counterfactual explanation for time series.}
-Methods span instance or segment substitution, saliency-guided optimisation, evolutionary search, and learned latent models \citep{delaney2021nativeguide,ates2021comte,hollig2022tsevo,li2024mcels,paredescetina2025confetti,yan2023counts}.  Work on plausibility and temporal coherence improves the proposal relative to observed data \citep{kostrzewa2026plausibility,zuin2026navigating,voets2026contex}, but standard real-data benchmarks still cannot replay it through a known mechanism.  CounTS performs abduction--action--prediction in its learned latent model; our question instead uses the known data-generating process to audit an independently produced explanation.
+Methods span instance or segment substitution, saliency-guided optimisation, evolutionary search, and learned latent models \citep{delaney2021nativeguide,ates2021comte,hollig2022tsevo,li2024mcels,paredescetina2025confetti,yan2023counts}.  Work on plausibility and temporal coherence improves the proposal relative to observed data \citep{kostrzewa2026plausibility,zuin2026navigating,voets2026contex}, but standard real-data benchmarks still cannot replay it through a known mechanism.  CounTS performs abduction--action--prediction in its learned latent model; our benchmark instead uses the known data-generating process to evaluate an independently produced explanation.
 This distinction is not semantic: proximity asks whether the edit is small,
 plausibility whether it resembles observed data, and validity whether a model
 changes its decision.  None asks whether the proposed intervention propagates
@@ -97,33 +97,33 @@ through the process to the target label.  A causally impossible trajectory can
 therefore remain conventionally successful.
 
 \paragraph{Benchmarks for temporal explanation.}
-XTSC-Bench and AMEE standardise temporal saliency evaluation, while CARLA systematises model-relative counterfactual success and distance \citep{hollig2023xtscbench,nguyen2024amee,pawelczyk2021carla}.  Robustness and unjustified-counterfactual critiques sharpen those axes but do not add a world-relative replay \citep{ghorbani2019fragile,yeh2019infidelity,laugel2019dangers,poyiadzi2020face}.  The closest audit of third-party explanations against known SCMs is static and relation-based rather than a Pearl trajectory \citep{hollig2023semantic}.
+XTSC-Bench and AMEE standardise temporal saliency evaluation, while CARLA systematises model-relative counterfactual success and distance \citep{hollig2023xtscbench,nguyen2024amee,pawelczyk2021carla}.  Robustness and unjustified-counterfactual critiques sharpen those axes but do not add a world-relative replay \citep{ghorbani2019fragile,yeh2019infidelity,laugel2019dangers,poyiadzi2020face}.  The closest evaluation of third-party explanations against known SCMs is static and relation-based rather than a Pearl trajectory \citep{hollig2023semantic}.
 ExplainTS makes the real-data limitation explicit: without known relevance or
 mechanism, faithfulness is necessarily proxy-based \citep{mozolewski2026explaints}.
 Our benchmark complements rather than replaces such suites.  Their axes remain
 necessary for model-relative quality; the replay adds a missing estimand.
 
 \paragraph{Causal temporal benchmarks.}
-CausalTime, CausalDynamics, TimeGraph, and TCS expose lagged graphs to score structure recovery, not post-hoc explanations \citep{cheng2024causaltime,herdeanu2025causaldynamics,ferdous2025timegraph,gkorgkolis2025tcs}.  DoFlow supports causal queries as a generative forecaster rather than an external audit \citep{doflow2025}.  The distinction is unit-level: drawing fresh noise estimates an interventional distribution, whereas retaining the abducted factual noise answers the counterfactual query \citep{thumm2026interventional,pearl2009causality}.
-This is why a known graph alone is insufficient.  The audit also needs the
+CausalTime, CausalDynamics, TimeGraph, and TCS expose lagged graphs to score structure recovery, not post-hoc explanations \citep{cheng2024causaltime,herdeanu2025causaldynamics,ferdous2025timegraph,gkorgkolis2025tcs}.  DoFlow supports causal queries as a generative forecaster rather than a benchmark for third-party explanations \citep{doflow2025}.  The distinction is unit-level: drawing fresh noise estimates an interventional distribution, whereas retaining the abducted factual noise answers the counterfactual query \citep{thumm2026interventional,pearl2009causality}.
+This is why a known graph alone is insufficient.  The benchmark also needs the
 transition functions, the factual innovations, and an exposed label rule so
 that the same proposed action can be evaluated by both classifier and world.
 
 \paragraph{Causality used to constrain, versus causality used to derive.}
-TSCausalCF constrains a freely edited trajectory with local structural residuals \citep{bahri2025causalfeasibility}; CounTS and causal recourse derive counterfactuals from learned or assumed models \citep{yan2023counts,karimi2021recourse}.  Our audit occupies a different role: the true temporal mechanism is an evaluation oracle for proposals generated independently of it.  The TSCausalCF foil tests whether access to that mechanism as a residual penalty is equivalent to explicit abduction--action--prediction.
+TSCausalCF constrains a freely edited trajectory with local structural residuals \citep{bahri2025causalfeasibility}; CounTS and causal recourse derive counterfactuals from learned or assumed models \citep{yan2023counts,karimi2021recourse}.  Our benchmark occupies a different role: the true temporal mechanism is an evaluation oracle for proposals generated independently of it.  The TSCausalCF foil tests whether access to that mechanism as a residual penalty is equivalent to explicit abduction--action--prediction.
 A local residual can be small at each edited slice without representing the
 trajectory produced by one intervention.  Conversely, a structurally derived
 counterfactual is faithful to the model that generated it but cannot validate
-that learned model.  The known-SCM audit separates these two uses of causality.
+that learned model.  The known-SCM benchmark separates these two uses of causality.
 
 \paragraph{Causal discovery.}
-Causal discovery solves the inverse problem of recovering structure \citep{pamfil2020dynotears,runge2019pcmci,runge2023causal}.  Here the generator's graph is ground truth and discovery checks remain outside the manuscript results.  With an estimated graph, recovery error would become part of the audit rather than a hidden property of the explainer.
+Causal discovery solves the inverse problem of recovering structure \citep{pamfil2020dynotears,runge2019pcmci,runge2023causal}.  Here the generator's graph is ground truth and discovery checks remain outside the manuscript results.  With an estimated graph, recovery error would become part of the benchmark error rather than a hidden property of the explainer.
 
 
-\section{The Model-vs-World Audit}
-\label{sec:audit}
+\section{The Model-vs-World Benchmark}
+\label{sec:benchmark}
 
-The audit replays a proposal's implied intervention in the known process for the same factual unit.  It reports mechanism consistency, intervention size, and claimed-versus-realised target-class efficacy under a named intervention reading; it does not turn classifier validity into causal efficacy.
+The benchmark replays a proposal's implied intervention in the known process for the same factual unit.  Its evaluation protocol reports mechanism consistency, intervention size, and claimed-versus-realised target-class efficacy under a named intervention reading; it does not turn classifier validity into causal efficacy.
 
 \subsection{SCM, oracle, and identifying assumptions}
 
@@ -152,7 +152,7 @@ For schedule $I=\{(t,S_t,\mathbf{a}_t)\}$, the oracle keeps the factual prefix, 
   \end{cases}
   \label{eq:oracle-cf}
 \end{equation}
-Fresh noise would instead answer an interventional query.  Exactness requires the recorded $G,F$ to be the data-generating SCM, positive lags, no unmeasured confounding, and additive innovations unchanged by $I$; Appendix~\ref{app:audit-details} records the derivation and claim boundary.
+Fresh noise would instead answer an interventional query.  Exactness requires the recorded $G,F$ to be the data-generating SCM, positive lags, no unmeasured confounding, and additive innovations unchanged by $I$; Appendix~\ref{app:benchmark-details} records the derivation and claim boundary.
 The shared innovations are essential: they condition the replay on the same
 factual unit rather than comparing the proposal with another random trajectory.
 The oracle is therefore exact only inside the benchmark, where these
@@ -213,11 +213,11 @@ misalignment without treating either term as a new ranking axis.
 
 \subsection{The intervention-to-label reporting rule}
 
-For a stable linear process, an atomic intervention's effect is bounded by a geometric factor in $t_{\mathrm{label}}-t_0$; Appendix~\ref{app:audit-details} gives the derivation.  Every validity and replay result must therefore report the label functional, $t_{\mathrm{label}}$, empirical $t_0$, and label distance; multi-action proposals also require $D$.  A classifier flip without this distance is not evidence that the intervention could change the world.
+For a stable linear process, an atomic intervention's effect is bounded by a geometric factor in $t_{\mathrm{label}}-t_0$; Appendix~\ref{app:benchmark-details} gives the derivation.  Every validity and replay result must therefore report the label functional, $t_{\mathrm{label}}$, empirical $t_0$, and label distance; multi-action proposals also require $D$.  A classifier flip without this distance is not evidence that the intervention could change the world.
 The distance happens to equal $T-1-t_0$ for the terminal labels reported here,
 but trajectory end does not define it.  Methods acting at different times pose
 different recourse problems even on the same factual population.
-\section{Benchmark, methods, and controls}
+\section{Benchmark design, methods, and controls}
 \label{sec:setup}
 
 \subsection{Generators as challenge factors}
@@ -229,7 +229,7 @@ mechanism $F$, factual noise, and label function, enabling exact structural
 replay and validation of CF-faith, $D$, and $A/B/C$.
 LinearSCM-T is contractive by construction.  NlinearSCM-T is bounded but its
 spectral cap does not itself prove branch-level contraction.  SpringSCM-T is
-undamped and near-conservative.  This variation challenges the same audit
+undamped and near-conservative.  This variation challenges the same benchmark
 under different dynamics; it is not a controlled ablation of contraction.
 
 \subsection{Methods and controls}
@@ -248,7 +248,7 @@ Shift-VR is shifted/base validity when base validity is at least $0.30$; below
 that threshold both rates are retained and the unstable ratio is suppressed.
 No smoke configuration or dataset-level diagnostic enters a paper table.
 
-\section{Results}
+\section{Benchmark Results}
 \label{sec:results}
 
 The same proposals receive a conventional model-relative reading and a structural replay; the contrast demonstrates a measurement gap rather than an inferential ranking.
@@ -346,13 +346,13 @@ $D=75.0,59.7,73.0$.  The controls recover their construction and show why the
 intervention reading must be named.  In particular, the noiseless control is
 not a failed causal method when its Pearl score is zero: it intentionally
 answers a different counterfactual question.  Conversely, the Pearl control's
-unit do-complexity and perfect Pearl faithfulness show that the audit does not
+unit do-complexity and perfect Pearl faithfulness show that the benchmark does not
 penalise every long changed suffix merely because many values differ from the
 factual.  It distinguishes values generated by propagation from values that
 must be imposed.
 
 \paragraph{Mechanism consistency is largely absent.}
-\label{sec:res-audit}
+\label{sec:res-benchmark}
 
 For the four baselines, hard rollout CF-faith is zero in all $12$ cells and
 hard Pearl CF-faith is zero in nine.  Only M-CELS has nonzero Pearl fractions
@@ -367,11 +367,11 @@ $D$ and outcome replay to determine what was admitted.
 \begin{table}[H]
   \centering
   \scriptsize
-  \caption{Mechanism-relative audit.  R/P: rollout/Pearl hard CF-faith;
+  \caption{Mechanism-relative benchmark results.  R/P: rollout/Pearl hard CF-faith;
   $n_s$: scorable count; $D$: Pearl do-complexity; $A/B/C$: proposed-model /
   replayed-model / replayed-world rates.  Last: $\dotraj/\dooutcome/\dototal$.
   $^*$: threshold-sensitive; $\dagger$: foil; $\ddagger$: control.}
-  \label{tab:causal-audit-results}
+  \label{tab:mechanism-benchmark-results}
   \setlength{\tabcolsep}{2.5pt}
   \begin{tabular}{@{}llrrrrr@{}}
     \toprule
@@ -416,7 +416,7 @@ cannot generally be repaired by recalibrating the fixed LSTM on trajectories
 that the world actually produces: on those replays, the classifier and the
 known label rule nearly always agree.  Instead, the classifier is evaluated on
 a proposed trajectory that the corresponding intervention does not realise.
-The audit therefore changes the empirical question from ``did the edited input
+The benchmark therefore changes the empirical question from ``did the edited input
 flip the model?'' to ``did the stated action generate the edited input, and did
 its propagated consequences retain the target outcome?''
 
@@ -460,7 +460,7 @@ $56,88,64$ scorable, and Nlinear PearlSCMRecourse has $87$.
 \paragraph{Joint interpretation.}
 Read jointly, conventional validity and shift retention establish that the
 baselines often achieve their model-relative objectives, while the controls
-show that the audit recognises structural continuations under matching
+show that the benchmark recognises structural continuations under matching
 semantics.  Baseline proposals nevertheless rarely pass mechanism consistency,
 and their target-class rates fall after replay.  The decomposition assigns
 almost all of that fall to the proposed trajectory, while $D$ shows that a
@@ -489,7 +489,7 @@ These synthetic results establish a measurement failure that model-relative
 metrics cannot detect; they do not establish method rankings or real-world
 causal validity.  A temporal counterfactual evaluation should therefore report
 conventional metrics together with both CF-faith semantics, do-complexity
-$D$, $(\dotraj,\dooutcome,\dototal)$, the audit population, and
+$D$, $(\dotraj,\dooutcome,\dototal)$, the benchmark population, and
 $t_{\mathrm{label}}-t_0$.  Progress under this contract means proposals that
 are mechanism-consistent, require restrained intervention schedules, and have
 small $\lvert\dototal\rvert$ at a stated and feasible label distance.
@@ -506,7 +506,7 @@ small $\lvert\dototal\rvert$ at a stated and feasible label distance.
 Exactness is conditional on the written $G,F$ being the additive-noise
 data-generating SCM, positive lags, recoverable factual noise, and no unmeasured
 confounding; the presets also fix $L=1$.  A discovered, misspecified, or
-non-additive mechanism changes the estimand.  The audit also depends on the
+non-additive mechanism changes the estimand.  The benchmark also depends on the
 intervention reading and changed-coordinate tolerance, so CF-faith, $D$, and
 $\Delta$ must be interpreted jointly.  M-CELS's threshold sensitivity supports
 only an ordinal schedule comparison.
@@ -517,13 +517,13 @@ method gaps to label distance alone.  Finally, the point estimates do not
 quantify variation across independently generated SCMs or classifier fits.
 They demonstrate that measurement systems can disagree, not stable rankings,
 family-level causes, or real-world validity.  We propose an evaluation
-instrument, not a counterfactual generator.
+benchmark, not a counterfactual generator.
 
 The intervention schedule is reconstructed from changed coordinates using a
 $10^{-3}$ tolerance.  That rule is explicit and shared across metrics, but it
 is not uniquely mandated by causal semantics.  A method could regard a dense
 optimised trajectory as one high-level action, while the benchmark can only
-audit actions expressible in its observed variables and structural equations.
+evaluate actions expressible in its observed variables and structural equations.
 Our endpoint readings therefore diagnose the cost of two transparent
 interpretations; they do not settle which action language is appropriate for a
 deployment domain.  The strong threshold sensitivity for M-CELS shows why
@@ -537,11 +537,11 @@ trajectory features.  The experiment also uses one generated benchmark and
 one classifier fit per family.  Additional seeds would be required for
 uncertainty intervals and method comparisons; real data with an estimated SCM
 would conflate explanation error with mechanism-estimation error.  These
-limitations narrow the positive claim to the audit's construct validity and
+limitations narrow the positive claim to the benchmark's construct validity and
 the observed conventional--causal disagreement in the reported realizations.
 
-\section{Audit derivation and claim boundary}
-\label{app:audit-details}
+\section{Benchmark derivation and claim boundary}
+\label{app:benchmark-details}
 
 The oracle in Eq.~\eqref{eq:oracle-cf} is a unit-level counterfactual because
 it reuses the innovations abducted from the factual trajectory.  Drawing new
@@ -571,7 +571,7 @@ labels, $T-1-t_0$ merely happens to equal that distance.
 \section{Metric definitions and axis taxonomy}
 \label{app:metrics}
 
-The validity argument is in Section~\ref{sec:audit}.  This appendix records membership, populations, and the numerical conventions needed to reproduce a table.  Every reported quantity belongs to exactly one axis.  Axis~A scores the \emph{benchmark} (one number per generated dataset).  Axes~B and~C score \emph{methods}.  Presenting all three as parallel per-method columns is a category error.  A former concept-quality axis was deleted; there is no Axis~D.  The audit quantities $A$, $B$, $C$ in Eq.~\eqref{eq:abc} are not Axis~A/B/C.
+The validity argument is in Section~\ref{sec:benchmark}.  This appendix records membership, populations, and the numerical conventions needed to reproduce a table.  Every reported quantity belongs to exactly one axis.  Axis~A scores the \emph{benchmark} (one number per generated dataset).  Axes~B and~C score \emph{methods}.  Presenting all three as parallel per-method columns is a category error.  A former concept-quality axis was deleted; there is no Axis~D.  The benchmark quantities $A$, $B$, $C$ in Eq.~\eqref{eq:abc} are not Axis~A/B/C.
 
 \begin{table}[h]
   \centering
@@ -598,7 +598,7 @@ The validity argument is in Section~\ref{sec:audit}.  This appendix records memb
 A coordinate is changed when $\lvert\hat{x}_t^i-x_t^i\rvert>10^{-3}$.  That single threshold defines $t_0$ (the first changed timestep), CF-faith's retroactive gate, sparsity, and the action set $S_t$ inside $D$.  If no coordinate exceeds it, $t_0=T-1$ and the instance is CF-faith-degenerate.
 
 \paragraph{Axis C, model-relative.}
-Validity is the fraction of proposals with $h(\hat{\bx})=y^\star$.  It is reported with $t_{\mathrm{label}}$, $t_0$, and $t_{\mathrm{label}}-t_0$; without that distance it is not interpretable (Section~\ref{sec:audit}).  Proximity is $\lVert\hat{\bx}-\bx\rVert_p$ over the flattened $T\times k$ trajectory, $p\in\{1,2\}$.  Sparsity is the fraction of the $T\times k$ entries left \emph{unchanged} ($\lvert\Delta\rvert\le 10^{-3}$).  Higher means a sparser edit; $1$ means the proposal equals the factual.  This is the complement of an $L_0$ altered-fraction; we emit that complement as \texttt{frac\_altered} and do not treat the two as interchangeable.  Channel and timepoint variants are the fractions of channels (resp.\ timesteps) left entirely untouched.  OOD plausibility is the Isolation Forest decision score on the flattened trajectory (higher $=$ more in-distribution).  TRSI is implemented as a mechanism-free smoothness descriptor and is not reported here.
+Validity is the fraction of proposals with $h(\hat{\bx})=y^\star$.  It is reported with $t_{\mathrm{label}}$, $t_0$, and $t_{\mathrm{label}}-t_0$; without that distance it is not interpretable (Section~\ref{sec:benchmark}).  Proximity is $\lVert\hat{\bx}-\bx\rVert_p$ over the flattened $T\times k$ trajectory, $p\in\{1,2\}$.  Sparsity is the fraction of the $T\times k$ entries left \emph{unchanged} ($\lvert\Delta\rvert\le 10^{-3}$).  Higher means a sparser edit; $1$ means the proposal equals the factual.  This is the complement of an $L_0$ altered-fraction; we emit that complement as \texttt{frac\_altered} and do not treat the two as interchangeable.  Channel and timepoint variants are the fractions of channels (resp.\ timesteps) left entirely untouched.  OOD plausibility is the Isolation Forest decision score on the flattened trajectory (higher $=$ more in-distribution).  TRSI is implemented as a mechanism-free smoothness descriptor and is not reported here.
 
 \paragraph{CF-faith, both semantics.}
 Given $\hat{\bx}$ and $t_0$, CF-faith fails if any prefix coordinate is changed (retroactive edit).  Otherwise it compares the suffix with one of two continuations of $F$, never averaged.  Under \texttt{noiseless\_rollout} the reference is the deterministic skeleton (subsequent innovations set to zero).  Under \texttt{pearl\_delta} it is the abduction--action--prediction recursion of Eq.~\eqref{eq:oracle-cf}.  A proposal in a noisy SCM is not expected to be both.  The residual is the mean $L_1$ distance between the proposed suffix and the reference; the hard score is $1$ if that residual is below $10^{-3}$ and $0$ otherwise.  The soft score $\exp(-\mathrm{residual})$ is the graded companion.  This paper reports the hard fraction.  When $t_0\ge T-1$ both scores are NaN, not $1$: there is no suffix to test.  Aggregates use the scorable subset and are published with \texttt{frac\_degenerate} and \texttt{n\_cf\_faith\_scorable}.
@@ -620,7 +620,7 @@ Computed once per dataset against the written graph, not against any explainer. 
 
 The paper reports three families: LinearSCM-T, NlinearSCM-T, and SpringSCM-T.  Other generator scales exist in the code for plumbing and tests and are not reported.
 
-All three families share the same outer protocol.  A lagged graph $G\in\{0,1\}^{k\times k\times L}$ is drawn with independent Bernoulli($s$) edges, except that lag-1 self-loops are forbidden.  Innovations are additive Laplace with scale $0.1$.  A burn-in of $100$ steps is discarded.  The binary label is a median split, over the generated population, of channel~$0$ at $t_{\mathrm{label}}=T-1$, and the resulting threshold is recorded with the audit artifacts.  Observation is the identity: nonlinear mixing $x=g(z)$ is out of scope, because it would make abduction partial.
+All three families share the same outer protocol.  A lagged graph $G\in\{0,1\}^{k\times k\times L}$ is drawn with independent Bernoulli($s$) edges, except that lag-1 self-loops are forbidden.  Innovations are additive Laplace with scale $0.1$.  A burn-in of $100$ steps is discarded.  The binary label is a median split, over the generated population, of channel~$0$ at $t_{\mathrm{label}}=T-1$, and the resulting threshold is recorded with the benchmark artifacts.  Observation is the identity: nonlinear mixing $x=g(z)$ is out of scope, because it would make abduction partial.
 
 \paragraph{LinearSCM-T.}
 A stable VAR,
