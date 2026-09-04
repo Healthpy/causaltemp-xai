@@ -17,7 +17,7 @@
   switch, once, at a fixed deterministic timestep partway through each
   trajectory's *observed* horizon. Minimal viable design (two regimes, one
   switch point — no HMM, no learned transition probabilities); see
-  ``docs/m4_ablation_presets_smoke.md``.
+  ``docs/archive/m4_ablation_presets_smoke.md``.
 
 * :class:`HMMRegimeSwitchNlinearSCMT` — M4/H7 ablation, HMM variant: the same
   parameter-only regime switch, but driven by a genuine **hidden Markov
@@ -34,7 +34,7 @@ innovation distributions: Laplace (default), Uniform, or Gaussian
 (``noise_type="gaussian"`` — M4/H5 negative-control ablation, added
 2026-07-08; variance-matched to the default Laplace scale so the ablation
 isolates innovation *shape*, not scale — see :data:`_GAUSSIAN_STD` and
-``docs/m4_ablation_presets_smoke.md``).
+``docs/archive/m4_ablation_presets_smoke.md``).
 
 Scope (this iteration)
 ----------------------
@@ -43,7 +43,7 @@ only. Additive noise makes Pearl abduction an exact subtraction
 (``eps = x − f(parents)``), so CF-faith and the oracle structural-CF
 (:mod:`causaltemp_xai.benchmark.structural_cf`) remain valid on the nonlinear
 mechanisms. Two axes are deliberately **out of scope** and left as future
-stress tests (see ``docs/plans/nlinearscm-t/`` Backlog #1): nonlinear *mixing*
+stress tests (see ``docs/general_plan.md`` §10 (Scope Boundaries)): nonlinear *mixing*
 ``x = g(z)`` (an invertible observation map over latents — iVAE/CITRIS
 identifiability) and *non-additive* (location-scale) noise. Both degrade
 abduction from exact to **partial** identification, which is why they are not
@@ -56,19 +56,69 @@ from typing import Literal, Optional
 
 import numpy as np
 
-from causaltemp_xai.benchmarks.mechanisms import LinearMechanism, MLPMechanism
-
+from causaltemp_xai.benchmarks.labels import LabelFunctional, get_label_functional
+from causaltemp_xai.benchmarks.mechanisms import (
+    LinearMechanism,
+    MLPMechanism,
+    SpringMechanism,
+)
 
 _NOISE_TYPES = ("laplace", "uniform", "gaussian")
+
+
+def _apply_label(X: np.ndarray, functional: LabelFunctional) -> np.ndarray:
+    """Binary labels: median threshold on the functional's scalar reduction.
+
+    The median is taken across samples so classes are balanced by construction,
+    and it is **not persisted** — the world-side PNS terms recover it after the
+    fact (:func:`~causaltemp_xai.metrics.pns.recover_label_threshold`), which
+    only works because the rule is a clean threshold on a recomputable scalar.
+    Every generator routes through here so the four of them cannot drift.
+    """
+    latent = functional.latent_batch(X)
+    threshold = float(np.median(latent))
+    return (latent > threshold).astype(int)
+
 
 #: Std-dev for the Gaussian innovation branch (M4/H5 negative-control
 #: ablation). Chosen to match the *variance* of the default
 #: ``laplace(loc=0, scale=0.1)`` innovation exactly — a Laplace(0, b)'s
 #: variance is ``2 * b**2``, so ``std = b * sqrt(2)`` — so the ablation
 #: isolates innovation-distribution *shape* (kurtosis), not scale. See
-#: ``docs/m4_ablation_presets_smoke.md`` for the derivation and the
+#: ``docs/archive/m4_ablation_presets_smoke.md`` for the derivation and the
 #: pre-registered H5 expected direction.
 _GAUSSIAN_STD = 0.1 * float(np.sqrt(2.0))
+
+
+#: Expected **mean absolute innovation** ``E|eps|`` per noise family — the ``b``
+#: that :func:`~causaltemp_xai.metrics.axis_c.scm_noise_plausibility` compares a
+#: counterfactual's implied noise against.
+#:
+#: Not simply "the scale parameter": the three families are matched on *variance*
+#: (see :data:`_GAUSSIAN_STD`), so their mean absolute deviations differ.
+#: Laplace(0, b) has ``E|eps| = b = 0.1``; Uniform(-a, a) has ``a/2 = 0.085``;
+#: Normal(0, s) has ``s*sqrt(2/pi)``. Hardcoding 0.1 for all three would
+#: mis-scale the metric on two of them, so the mapping lives here beside the
+#: sampler it must track.
+_MEAN_ABS_NOISE = {
+    "laplace": 0.1,
+    "uniform": 0.17 / 2.0,
+    "gaussian": _GAUSSIAN_STD * float(np.sqrt(2.0 / np.pi)),
+}
+
+
+def expected_abs_noise(noise_type: str) -> float:
+    """``E|eps|`` for a generator's innovation distribution.
+
+    Single source of truth shared by the generators' ``_sample_noise`` and the
+    ground-truth plausibility metric; if one changes, this must change with it.
+    """
+    try:
+        return _MEAN_ABS_NOISE[noise_type]
+    except KeyError:
+        raise ValueError(
+            f"noise_type must be one of {tuple(_MEAN_ABS_NOISE)}, got {noise_type!r}"
+        ) from None
 
 
 def _sample_lag_mask(
@@ -88,9 +138,7 @@ def _sample_lag_mask(
     return mask
 
 
-def _sample_graph(
-    k: int, L: int, sparsity: float, rng: np.random.Generator
-) -> np.ndarray:
+def _sample_graph(k: int, L: int, sparsity: float, rng: np.random.Generator) -> np.ndarray:
     """Sample a lagged adjacency tensor ``(k, k, L)`` from ``rng``.
 
     Draws one Bernoulli mask per lag via :func:`_sample_lag_mask` (no self-loop at
@@ -102,6 +150,34 @@ def _sample_graph(
     for lag in range(L):
         graph[:, :, lag] = _sample_lag_mask(k, lag, sparsity, rng)
     return graph
+
+
+def exogenous_channels(graph: np.ndarray) -> list[int]:
+    """Channels with no incoming edge at any lag -- this SCM's exogenous variables.
+
+    A channel ``i`` with ``graph[i, :, :].sum() == 0`` has no causal parents, so
+    under this benchmark's additive-noise mechanisms its entire trajectory is
+    ``x_t[i] = eps_t[i]`` -- literally an exogenous noise process, the textbook
+    definition. ``L=1`` (every locked preset) makes this exact: lag-1 self-loops
+    are excluded by construction (:func:`_sample_lag_mask`), so a channel with no
+    incoming edges has no dependence on anything, including its own past.
+
+    This is the "dynamic exogenous" (``U_d``) half of the ``U_s``/``U_d``/``V``
+    typing `TSCausalCF` (was `CausalFeasibilityCF`; Bahri et al., IEEE BigData 2025) needs (M3,
+    milestone M3). ``U_s`` (static exogenous) has no counterpart here -- this
+    benchmark has no channel held constant across ``t`` -- so it is always empty;
+    every other channel is ``V`` (endogenous).
+
+    **Decided 2026-08-04 not to route around it:** at the
+    sparsity the paper-scale presets actually use (0.2, ``k=10``), this returns
+    ``[]`` for both ``full`` and ``full_nl`` -- every one of their 10 channels has
+    at least one parent. ``smoke`` (``k=5``) returns one channel. The empty case
+    is accepted, not engineered away: it is what "sparsity=0.2 at k=10" honestly
+    produces, and forcing a non-empty ``U_d`` there (e.g. by hand-picking a
+    preset or graph draw) would score the method against a fictional benchmark
+    rather than this one.
+    """
+    return [i for i in range(graph.shape[0]) if graph[i, :, :].sum() == 0]
 
 
 class LinearSCMT:
@@ -139,6 +215,8 @@ class LinearSCMT:
         T: int = 50,
         N: int = 200,
         seed: Optional[int] = 42,
+        label_fn: str | None = None,
+        label_params: dict | None = None,
     ) -> None:
         if noise_type not in _NOISE_TYPES:
             raise ValueError(f"noise_type must be one of {_NOISE_TYPES}, got {noise_type!r}")
@@ -149,6 +227,9 @@ class LinearSCMT:
         self.T = T
         self.N = N
         self.seed = seed
+        # Which scalar of the trajectory the binary label thresholds.
+        # None resolves to the original terminal-timestep rule (RISK-19).
+        self.label_functional = get_label_functional(label_fn, label_params)
         self._rng = np.random.default_rng(seed)
         # Build the lagged graph and mechanism once at construction.
         self.graph, self.mechanism = self._build_graph_and_mechanisms()
@@ -189,9 +270,7 @@ class LinearSCMT:
             X_full[:, lag, :] = self._sample_noise(self.N, self.k) * 0.1
 
         # Simulate VAR(L) forward
-        noise = self._sample_noise(self.N * total_T * self.k).reshape(
-            self.N, total_T, self.k
-        )
+        noise = self._sample_noise(self.N * total_T * self.k).reshape(self.N, total_T, self.k)
         for t in range(self.L, total_T):
             # Lag window ordered oldest→newest: (N, L, k). t >= L always holds
             # here, so the window is full (no zero-pad needed).
@@ -202,11 +281,7 @@ class LinearSCMT:
 
         X = X_full[:, burn_in:, :]  # shape (N, T, k)
 
-        # Labels: threshold on final-timestep value of variable 0
-        # Use the median across samples so classes are balanced by default
-        latent_final = X[:, -1, 0]
-        threshold = float(np.median(latent_final))
-        Y = (latent_final > threshold).astype(int)
+        Y = _apply_label(X, self.label_functional)
 
         return {
             "X": X,
@@ -302,7 +377,7 @@ class NlinearSCMT:
         monotonicity of the *hidden* representation varies — the mechanism's
         **output** branch is always ``tanh`` regardless of this choice. See
         :mod:`causaltemp_xai.benchmarks.mechanisms` and
-        ``docs/m4_ablation_presets_smoke.md``).
+        ``docs/archive/m4_ablation_presets_smoke.md``).
     clip:
         Divergence threshold; a trajectory whose ``max|x|`` exceeds ``clip`` (or
         goes non-finite) is resampled, then clipped if still diverging.
@@ -319,6 +394,8 @@ class NlinearSCMT:
         T: int = 50,
         N: int = 200,
         seed: Optional[int] = 42,
+        label_fn: str | None = None,
+        label_params: dict | None = None,
         hidden: int = 16,
         gain: float = 0.8,
         decay_range: tuple[float, float] = (0.3, 0.8),
@@ -337,6 +414,9 @@ class NlinearSCMT:
         self.T = T
         self.N = N
         self.seed = seed
+        # Which scalar of the trajectory the binary label thresholds.
+        # None resolves to the original terminal-timestep rule (RISK-19).
+        self.label_functional = get_label_functional(label_fn, label_params)
         self.hidden = hidden
         self.gain = gain
         self.decay_range = decay_range
@@ -348,7 +428,7 @@ class NlinearSCMT:
         self._rng = np.random.default_rng(seed)
         # Build graph + mechanism at construction, *before* any noise is drawn, so
         # a noise-only `shifted_config` yields a bit-identical graph + mechanism
-        # (Axis-D invariant). Graph first, then MLP weights (both from self._rng).
+        # (Axis-B invariant). Graph first, then MLP weights (both from self._rng).
         self.graph = _sample_graph(self.k, self.L, self.sparsity, self._rng)
         self.mechanism = MLPMechanism.random(
             self.graph,
@@ -388,10 +468,7 @@ class NlinearSCMT:
 
         X = X_full[:, burn_in:, :]  # shape (N, T, k)
 
-        # Labels: median threshold on final-step variable 0 (balanced by default).
-        latent_final = X[:, -1, 0]
-        threshold = float(np.median(latent_final))
-        Y = (latent_final > threshold).astype(int)
+        Y = _apply_label(X, self.label_functional)
 
         return {
             "X": X,
@@ -460,7 +537,7 @@ class NlinearSCMT:
 #: regimes have different effective parameters" is a deterministic, not
 #: merely probabilistic, structural property -- see
 #: ``tests/test_nlinear_generator.py::TestRegimeSwitchNlinearSCMT`` and
-#: ``docs/m4_ablation_presets_smoke.md``. Regime 2 is, if anything, *more*
+#: ``docs/archive/m4_ablation_presets_smoke.md``. Regime 2 is, if anything, *more*
 #: contractive than regime 1 (lower decay ceiling, lower gain, tighter
 #: spectral cap) -- a deliberately conservative choice so the ablation
 #: cannot itself introduce an instability the stability guard would need to
@@ -487,7 +564,7 @@ class RegimeSwitchNlinearSCMT:
     Minimal-viable regime-switching ablation: **two** regimes and **one**
     deterministic switch point — no HMM, no learned transition
     probabilities (explicitly out of scope; see
-    ``docs/m4_ablation_presets_smoke.md``). Both regimes share the *same*
+    ``docs/archive/m4_ablation_presets_smoke.md``). Both regimes share the *same*
     causal graph (:func:`_sample_graph`); only the per-node MLP mechanism's
     numeric parameters (``decay``, ``gain``, weights) differ between
     regimes — this is a **parameter** regime switch, not a graph change.
@@ -504,11 +581,11 @@ class RegimeSwitchNlinearSCMT:
     model of the world assumes.
 
     Downstream single-mechanism contract — read before using CF-faith /
-    oracle structural-CF / CARLA-style recourse on this preset
+    oracle structural-CF / NoiselessSCMRecourse-style recourse on this preset
     ---------------------------------------------------------------------
     Every other module in this codebase
     (:mod:`causaltemp_xai.metrics.cf_faith`,
-    :mod:`causaltemp_xai.benchmarks.structural_cf`, CARLA's on-manifold
+    :mod:`causaltemp_xai.benchmarks.structural_cf`, NoiselessSCMRecourse's on-manifold
     recourse) assumes **one** time-invariant
     :class:`~causaltemp_xai.benchmarks.mechanisms.Mechanism` per dataset —
     ``Mechanism.forward_numpy`` takes only a lag *window*, with no notion of
@@ -559,6 +636,8 @@ class RegimeSwitchNlinearSCMT:
         T: int = 50,
         N: int = 200,
         seed: Optional[int] = 42,
+        label_fn: str | None = None,
+        label_params: dict | None = None,
         hidden: int = 16,
         switch_frac: float = 0.5,
         regime1: dict | None = None,
@@ -577,6 +656,9 @@ class RegimeSwitchNlinearSCMT:
         self.T = T
         self.N = N
         self.seed = seed
+        # Which scalar of the trajectory the binary label thresholds.
+        # None resolves to the original terminal-timestep rule (RISK-19).
+        self.label_functional = get_label_functional(label_fn, label_params)
         self.hidden = hidden
         self.switch_frac = switch_frac
         self.clip = clip
@@ -605,7 +687,7 @@ class RegimeSwitchNlinearSCMT:
         note for how ``"mechanism"`` (regime 1) should be interpreted.
         """
         total_T = self.T + burn_in
-        switch_t_abs = burn_in + int(round(self.switch_frac * self.T))
+        switch_t_abs = burn_in + round(self.switch_frac * self.T)
         X_full = np.zeros((self.N, total_T, self.k))
 
         self._roll(X_full, np.arange(self.N), total_T, switch_t_abs)
@@ -619,9 +701,7 @@ class RegimeSwitchNlinearSCMT:
 
         X = X_full[:, burn_in:, :]  # shape (N, T, k)
 
-        latent_final = X[:, -1, 0]
-        threshold = float(np.median(latent_final))
-        Y = (latent_final > threshold).astype(int)
+        Y = _apply_label(X, self.label_functional)
 
         return {
             "X": X,
@@ -696,7 +776,7 @@ class HMMRegimeSwitchNlinearSCMT:
     probability (:attr:`p_stay`), so regimes *persist* and structural breaks
     occur at **random change-points** — a different number and placement of
     breaks per trajectory. ``R in {2, 3}`` regimes are supported (per
-    ``docs/updated_general_plan.md`` §Benchmarks, NlinearSCM-T
+    ``docs/general_plan.md`` §6, NlinearSCM-T
     regime-switching ablation).
 
     All regimes share the *same* causal graph (:func:`_sample_graph`); only
@@ -715,7 +795,7 @@ class HMMRegimeSwitchNlinearSCMT:
     Downstream single-mechanism contract
     -------------------------------------
     Identical in spirit to :class:`RegimeSwitchNlinearSCMT`: CF-faith,
-    oracle structural-CF, and CARLA-style recourse all assume **one**
+    oracle structural-CF, and NoiselessSCMRecourse-style recourse all assume **one**
     time-invariant mechanism per dataset. :meth:`generate` therefore returns
     regime 0 as the dataset's single ``"mechanism"`` — the *nominal* model —
     with the full regime set (``"mechanisms"``), the ``"transition_matrix"``,
@@ -761,6 +841,8 @@ class HMMRegimeSwitchNlinearSCMT:
         T: int = 50,
         N: int = 200,
         seed: Optional[int] = 42,
+        label_fn: str | None = None,
+        label_params: dict | None = None,
         hidden: int = 16,
         n_regimes: int = 3,
         p_stay: float = 0.9,
@@ -781,6 +863,9 @@ class HMMRegimeSwitchNlinearSCMT:
         self.T = T
         self.N = N
         self.seed = seed
+        # Which scalar of the trajectory the binary label thresholds.
+        # None resolves to the original terminal-timestep rule (RISK-19).
+        self.label_functional = get_label_functional(label_fn, label_params)
         self.hidden = hidden
         self.n_regimes = n_regimes
         self.p_stay = p_stay
@@ -843,9 +928,7 @@ class HMMRegimeSwitchNlinearSCMT:
         X = X_full[:, burn_in:, :]  # shape (N, T, k)
         regime_path = self._regime_path_full[:, burn_in:]  # (N, T)
 
-        latent_final = X[:, -1, 0]
-        threshold = float(np.median(latent_final))
-        Y = (latent_final > threshold).astype(int)
+        Y = _apply_label(X, self.label_functional)
 
         return {
             "X": X,
@@ -926,6 +1009,169 @@ class HMMRegimeSwitchNlinearSCMT:
         elif self.noise_type == "uniform":
             return self._rng.uniform(low=-0.17, high=0.17, size=size)  # std ≈ 0.1
         else:  # gaussian (M4/H5 negative-control ablation)
+            return self._rng.normal(loc=0.0, scale=_GAUSSIAN_STD, size=size)
+
+
+class SpringSCMT:
+    """Spring-coupled particle system generator (M4c, non-dissipative).
+
+    Shares :class:`NlinearSCMT`'s noise distributions, burn-in and
+    label-threshold rule, but the mechanism is
+    :class:`~causaltemp_xai.benchmarks.mechanisms.SpringMechanism`
+    (``L=1``, position **and** velocity as separate exposed channels,
+    ``k = 2 * n_particles``, one symplectic-Euler step per timestep). Unlike
+    every other family in this module, the dynamics are deliberately **not**
+    contractive — no decay term, no spectral cap — so validity/CF-faith can
+    be tested in the regime where causal effects *persist* rather than decay
+    (M4c's purpose: H8's horizon claim is weakest here). Adopted from Bahri
+    et al. (IEEE BigData 2025); see ``docs/method_provenance.md`` (this is a
+    benchmark SCM family, not a reimplementation of a published *method*, so
+    R3 does not apply).
+
+    **Graph shape differs from every other family**: ``(2*n_particles,
+    2*n_particles, 1)``, not the generic ``_sample_graph`` output — a
+    particle-level sparsity draw over the ``n_particles x n_particles``
+    adjacency (no self-coupling) is embedded into the velocity-row /
+    position-column block only (``graph[n_particles+i, j, 0]``), per
+    :class:`~causaltemp_xai.benchmarks.mechanisms.SpringMechanism`'s
+    docstring. Two particles (default: the last two — M4c's "particles
+    p4/p5") have their velocity row forced to zero after the random draw,
+    guaranteeing at least two exogenous (``U_d``) particles regardless of the
+    random sparsity draw — unlike :func:`exogenous_channels`'s general
+    "accepted, not engineered away" stance for the dissipative families
+    (2026-08-04), M4c's own DoD explicitly names p4/p5 as
+    required roots, so this family guarantees them by construction. See
+    :meth:`exogenous_particles` for the particle-level (not raw
+    per-channel) reading of ``U_d``.
+
+    Same divergence guard as :class:`NlinearSCMT` (resample, then clip) —
+    a genuinely undamped integrator with too large a ``dt``/``k_spring``
+    product is unstable and can blow up, unlike the dissipative families
+    where blow-up is already prevented by contractive weights.
+    """
+
+    def __init__(
+        self,
+        n_particles: int = 5,
+        sparsity: float = 0.3,
+        noise_type: Literal["laplace", "uniform", "gaussian"] = "laplace",
+        T: int = 50,
+        N: int = 200,
+        seed: Optional[int] = 42,
+        label_fn: str | None = None,
+        label_params: dict | None = None,
+        k_spring: float = 0.3,
+        dt: float = 0.1,
+        n_exogenous: int = 2,
+        clip: float = 1e3,
+        max_resample: int = 10,
+    ) -> None:
+        if noise_type not in _NOISE_TYPES:
+            raise ValueError(f"noise_type must be one of {_NOISE_TYPES}, got {noise_type!r}")
+        self.n_particles = n_particles
+        self.k = 2 * n_particles  # SpringMechanism's fixed layout: [pos..., vel...]
+        self.L = 1  # SpringMechanism's fixed requirement (no finite-diff velocity)
+        self.sparsity = sparsity
+        self.noise_type = noise_type
+        self.T = T
+        self.N = N
+        self.seed = seed
+        self.label_functional = get_label_functional(label_fn, label_params)
+        self.k_spring = k_spring
+        self.dt = dt
+        self.n_exogenous = n_exogenous
+        self.clip = clip
+        self.max_resample = max_resample
+        self._rng = np.random.default_rng(seed)
+        p = self.n_particles
+        # Particle-level sparsity draw (p x p, no self-coupling) -- the SCM
+        # graph, not the raw channel graph. Embedded into the velocity-row /
+        # position-col block only; every other entry of the (2p, 2p, 1)
+        # graph stays zero (position channels' true dependency is their own
+        # velocity, deliberately excluded -- see SpringMechanism docstring).
+        particle_mask = (self._rng.random((p, p)) < self.sparsity).astype(float)
+        np.fill_diagonal(particle_mask, 0.0)
+        # Force the last `n_exogenous` particles to have zero incoming
+        # spring edges ("particles p4/p5") -- guaranteed, not merely likely.
+        for i in range(max(0, p - self.n_exogenous), p):
+            particle_mask[i, :] = 0.0
+        self.graph = np.zeros((self.k, self.k, 1))
+        self.graph[p : 2 * p, 0:p, 0] = particle_mask
+        self.mechanism = SpringMechanism(self.graph, k_spring=self.k_spring, dt=self.dt)
+
+    def exogenous_particles(self) -> list[int]:
+        """Particle indices with no incoming spring coupling (M4c's ``U_d``).
+
+        Reads only the velocity half of :func:`exogenous_channels`'s output
+        on this family's graph -- the position half is always exogenous by
+        construction (see :class:`~causaltemp_xai.benchmarks.mechanisms.SpringMechanism`'s
+        docstring) and therefore uninformative about which *particles* are
+        actually uninfluenced by the rest of the system.
+        """
+        p = self.n_particles
+        raw = exogenous_channels(self.graph)
+        return sorted(i - p for i in raw if i >= p)
+
+    # ------------------------------------------------------------------
+    # Public API
+    # ------------------------------------------------------------------
+
+    def generate(self, burn_in: int = 100) -> dict:
+        """Generate a full spring-system dataset (same contract as :class:`NlinearSCMT`)."""
+        total_T = self.T + burn_in
+        X_full = np.zeros((self.N, total_T, self.k))
+
+        self._roll(X_full, np.arange(self.N), total_T)
+        for _ in range(self.max_resample):
+            bad = self._diverging(X_full)
+            if not bad.any():
+                break
+            self._roll(X_full, np.nonzero(bad)[0], total_T)
+        if self._diverging(X_full).any():
+            np.clip(X_full, -self.clip, self.clip, out=X_full)
+
+        X = X_full[:, burn_in:, :]
+        Y = _apply_label(X, self.label_functional)
+
+        return {
+            "X": X,
+            "Y": Y,
+            "graph": self.graph,
+            "mechanism": self.mechanism,
+        }
+
+    # ------------------------------------------------------------------
+    # Private helpers
+    # ------------------------------------------------------------------
+
+    def _roll(self, X_full: np.ndarray, rows: np.ndarray, total_T: int) -> None:
+        rows = np.sort(np.asarray(rows))
+        n = int(rows.size)
+        if n == 0:
+            return
+        sub = np.zeros((n, total_T, self.k))
+        for lag in range(self.L):
+            sub[:, lag, :] = self._sample_noise(n, self.k) * 0.1
+        noise = self._sample_noise(n * total_T * self.k).reshape(n, total_T, self.k)
+        for t in range(self.L, total_T):
+            window = sub[:, t - self.L : t, :]
+            x_t = noise[:, t, :].copy()
+            x_t += self.mechanism.forward_numpy(window)
+            sub[:, t, :] = x_t
+        X_full[rows] = sub
+
+    def _diverging(self, X_full: np.ndarray) -> np.ndarray:
+        finite = np.isfinite(X_full).all(axis=(1, 2))
+        bounded = np.abs(np.nan_to_num(X_full, nan=np.inf)).max(axis=(1, 2)) <= self.clip
+        return ~(finite & bounded)
+
+    def _sample_noise(self, *shape) -> np.ndarray:
+        size = shape if len(shape) > 1 else shape[0]
+        if self.noise_type == "laplace":
+            return self._rng.laplace(loc=0.0, scale=0.1, size=size)
+        elif self.noise_type == "uniform":
+            return self._rng.uniform(low=-0.17, high=0.17, size=size)
+        else:  # gaussian
             return self._rng.normal(loc=0.0, scale=_GAUSSIAN_STD, size=size)
 
 

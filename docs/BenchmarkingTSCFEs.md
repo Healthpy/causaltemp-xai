@@ -151,7 +151,7 @@ The intervention $do\!\left(X_{\mathcal{T}_{int}}^{(i)} = x'_{int}\right)$ is th
 The generated dataset is passed to a target black-box classifier $f(X)$.[11, 44] When a post-hoc explainer generates a counterfactual sequence $X'_{exp}$ to alter the model's prediction to $y^*$, its performance is evaluated across a multi-dimensional metric suite [4, 11, 25]:
 
 > **Superseded (2026-07-15).** This section records the *original* design. The
-> implemented protocol is defined in `docs/updated_general_plan.md` §Axis C and
+> implemented protocol is defined in `docs/general_plan.md` §Axis C and
 > reconciled in `docs/spec_code_reconciliation.md` §3–§4. Two changes matter
 > here: the DTW/MAE-to-oracle faithfulness measure below was **discarded** in
 > favour of mechanism-residual CF-faith under two semantics, and TRSI's role was

@@ -1,0 +1,11 @@
+{
+  "seed": 2,
+  "config": "full_seed2",
+  "git_commit": "a9148ca89639f03f97abef302f7ed73bfdec8059",
+  "git_dirty": true,
+  "SHD": 0.0,
+  "LagAcc": 1.0,
+  "LagF1": 1.0,
+  "ResidualDep": 0.0013639909208667293,
+  "note": "SHD/LagAcc computed against the graph itself (no graph-discovery method in this pipeline) -- trivially perfect; ResidualDep is the informative benchmark-structural diagnostic here."
+}

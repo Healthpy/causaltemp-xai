@@ -1,0 +1,27 @@
+{
+  "seed": 2,
+  "config": "full_seed2",
+  "git_commit": "a9148ca89639f03f97abef302f7ed73bfdec8059",
+  "git_dirty": true,
+  "CftsCOMTE": {
+    "validity_base": 1.0,
+    "validity_shift": 1.0,
+    "shift_vr": 1.0,
+    "n_base": 50,
+    "n_shift": 50
+  },
+  "CftsConfeti": {
+    "validity_base": 0.5,
+    "validity_shift": 0.46,
+    "shift_vr": 0.92,
+    "n_base": 50,
+    "n_shift": 50
+  },
+  "CftsCels": {
+    "validity_base": 0.46,
+    "validity_shift": 0.7,
+    "shift_vr": 1.5217391304347825,
+    "n_base": 50,
+    "n_shift": 50
+  }
+}

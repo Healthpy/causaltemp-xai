@@ -1,7 +1,7 @@
 """Bootstrap confidence intervals for aggregated benchmark metrics (M2, O2).
 
-Every headline number reported from M2 onward carries a 95% CI (plan Standing
-Decision #4, ``docs/PROJECT_PLAN.md``). Two estimators are provided:
+Every headline number reported from M2 onward carries a 95% CI (``docs/05_evaluation_plan.md`` §6,
+Statistical Requirements). Two estimators are provided:
 
 * :func:`bootstrap_ci` — a plain percentile bootstrap (Efron, 1979) over a
   flat, i.i.d. sample of per-instance values. Appropriate for a *single*
@@ -30,12 +30,25 @@ flat i.i.d. sample (or matched paired samples), which is exactly the case
 Both estimators are deterministic given the same ``seed`` argument (a
 :class:`numpy.random.Generator` seed for the *resampling*, unrelated to any
 experiment seed).
+
+A third, structurally different primitive lives here too: :func:`bootstrap_resample_indices`
+(M4f, added 2026-08-06) generates row indices for resampling **raw data before
+a refit** (e.g. which trajectories of a ``(N, T, k)`` dataset feed one
+DYNOTEARS fit), rather than resampling already-computed scalar metric values.
+Neither :func:`bootstrap_ci` nor :func:`hierarchical_bootstrap_ci` can be
+reused for this: both take a ``statistic`` callable that reduces an array of
+*already-scored* values to a scalar, never a raw ``(N, T, k)`` array that
+needs a model refit per resample. The indices this function returns are the
+same primitive :func:`bootstrap_ci` builds inline
+(``rng.integers(0, n, size=(n_boot, n))``), pulled out because a caller doing
+model-refitting needs the indices themselves, not a recomputed statistic.
 """
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Callable, Sequence
+from typing import Callable
 
 import numpy as np
 
@@ -47,8 +60,8 @@ class BootstrapResult:
     mean: float
     ci_lo: float
     ci_hi: float
-    n: int          #: total number of underlying (non-NaN) observations
-    n_boot: int     #: number of bootstrap resamples used
+    n: int  #: total number of underlying (non-NaN) observations
+    n_boot: int  #: number of bootstrap resamples used
 
     def as_dict(self, prefix: str = "") -> dict:
         """Flat ``{prefix + 'mean': ..., prefix + 'ci_lo': ..., ...}`` dict —
@@ -122,6 +135,48 @@ def bootstrap_ci(
     return BootstrapResult(mean=point, ci_lo=lo, ci_hi=hi, n=n, n_boot=n_boot)
 
 
+def bootstrap_resample_indices(n: int, n_boot: int, seed: int = 0) -> np.ndarray:
+    """Row indices for a nonparametric bootstrap over ``n`` i.i.d. units.
+
+    Returns an ``(n_boot, n)`` int array; row ``b`` is the ``b``-th resample's
+    indices into the original ``n`` units, drawn with replacement
+    (``rng.integers(0, n, size=(n_boot, n))`` -- the same primitive
+    :func:`bootstrap_ci` builds inline for its own resampling).
+
+    This exists separately from :func:`bootstrap_ci`/:func:`hierarchical_bootstrap_ci`
+    because those two resample **already-computed per-instance metric values**
+    and recompute a ``statistic`` over the resampled array; this function
+    instead hands back the **indices**, for a caller that needs to slice a raw
+    dataset (e.g. ``X_all[idx]``, shape ``(N, T, k)``) and refit a model once
+    per resample -- there is no scalar ``statistic`` to plug into their
+    ``Callable[[np.ndarray], float]`` signature for that use case.
+
+    Parameters
+    ----------
+    n:
+        Number of i.i.d. units to resample from (e.g. the dataset's N-axis).
+    n_boot:
+        Number of resamples to generate. Deliberately **required, no
+        default** -- unlike :func:`bootstrap_ci`'s ``n_boot=10000`` (cheap,
+        since it only recomputes a scalar statistic per resample), a caller
+        of this function typically refits an expensive model once per row of
+        the returned array, so silently reusing the 10,000 convention from
+        the other two functions would be a large, unintended cost multiplier.
+        Callers should pass a small, deliberate ensemble size instead (e.g.
+        M4f's DYNOTEARS ensemble uses B ~ 5-20).
+    seed:
+        Seed for the resampling RNG (deterministic given the same ``n``,
+        ``n_boot``, and ``seed``).
+
+    Returns
+    -------
+    np.ndarray
+        ``(n_boot, n)`` int array of indices in ``[0, n)``.
+    """
+    rng = np.random.default_rng(seed)
+    return rng.integers(0, n, size=(n_boot, n))
+
+
 def hierarchical_bootstrap_ci(
     groups: Sequence[Sequence[float]],
     n_boot: int = 10000,
@@ -189,3 +244,142 @@ def hierarchical_bootstrap_ci(
 
     lo, hi = _percentile_ci(boot, ci)
     return BootstrapResult(mean=point, ci_lo=lo, ci_hi=hi, n=n_total, n_boot=n_boot)
+
+
+@dataclass(frozen=True)
+class CrossingResult:
+    """Point estimate + bootstrap CI for where a curve crosses a threshold."""
+
+    horizon: float  #: NaN if the pooled curve never crosses within the tested range
+    ci_lo: float
+    ci_hi: float
+    n_seeds: int
+    n_boot: int
+    frac_boot_crossed: float  #: fraction of bootstrap resamples that found a crossing
+
+    def as_dict(self, prefix: str = "") -> dict:
+        return {
+            f"{prefix}horizon": self.horizon,
+            f"{prefix}ci_lo": self.ci_lo,
+            f"{prefix}ci_hi": self.ci_hi,
+            f"{prefix}n_seeds": self.n_seeds,
+            f"{prefix}frac_boot_crossed": self.frac_boot_crossed,
+        }
+
+
+def _first_falling_crossing(x: np.ndarray, y: np.ndarray, threshold: float) -> float:
+    """Smallest ``x`` at which ``y`` first drops to/below ``threshold``, linearly
+    interpolated between the bracketing grid points. ``x`` must be sorted
+    ascending. Returns ``nan`` if ``y`` never crosses (stays above threshold at
+    every point, or is already at/below it at the first point -- both are
+    genuinely unobserved crossings, not a crossing at ``x[0]``: the curve may
+    have crossed *before* the first tested horizon, which this grid cannot
+    see, so reporting ``x[0]`` would fabricate precision the data doesn't
+    support).
+    """
+    if y[0] <= threshold:
+        return float("nan")
+    for i in range(1, len(x)):
+        if y[i] <= threshold:
+            # Linear interpolation between (x[i-1], y[i-1]) and (x[i], y[i]).
+            if y[i - 1] == y[i]:
+                return float(x[i])
+            frac = (y[i - 1] - threshold) / (y[i - 1] - y[i])
+            return float(x[i - 1] + frac * (x[i] - x[i - 1]))
+    return float("nan")
+
+
+def collapse_horizon_ci(
+    horizons: Sequence[float],
+    validity_by_seed: Sequence[Sequence[float]],
+    threshold: float = 0.5,
+    n_boot: int = 10000,
+    ci: float = 0.95,
+    seed: int = 0,
+) -> CrossingResult:
+    """Bootstrap CI for the horizon at which a validity curve collapses.
+
+    Unlike :func:`bootstrap_ci` / :func:`hierarchical_bootstrap_ci`, the
+    quantity being estimated here is a property of the **seed-pooled mean
+    curve** (where does it cross ``threshold``), not a mean of per-instance
+    values -- so the resampling unit is the seed alone; there is no
+    within-seed instance level to resample a second time, because a "collapse
+    horizon" is not defined per instance.
+
+    Parameters
+    ----------
+    horizons:
+        Sorted ascending ``T - t0`` grid points swept (e.g. from
+        ``table_horizon_*.csv``'s ``T_minus_t0`` column).
+    validity_by_seed:
+        One row per seed, each a sequence of per-horizon validity means
+        aligned to ``horizons`` (same length, same order). A seed missing a
+        horizon should not be passed at all for that row's construction —
+        this function assumes a complete grid per seed.
+    threshold:
+        Validity level defining "collapsed" (default 0.5).
+    n_boot, ci, seed:
+        As in :func:`bootstrap_ci`.
+
+    Returns
+    -------
+    CrossingResult
+        ``horizon`` is the pooled-curve crossing point (mean validity across
+        all seeds at each horizon, then interpolated crossing). ``ci_lo``/
+        ``ci_hi`` come from resampling seeds with replacement and
+        recomputing the crossing on the resampled pooled curve each time;
+        resamples that never cross contribute ``nan`` and are excluded by
+        ``nanpercentile`` rather than treated as a crossing at either
+        boundary. ``frac_boot_crossed`` reports how many resamples actually
+        found a crossing -- a CI built from a small fraction is a much
+        weaker claim than one built from nearly all of them, so it ships
+        alongside the interval rather than being silently absorbed into it.
+    """
+    x = np.asarray(horizons, dtype=float)
+    order = np.argsort(x)
+    x = x[order]
+    Y = np.asarray(validity_by_seed, dtype=float)[:, order]  # (n_seeds, n_horizons)
+    n_seeds = Y.shape[0]
+
+    if n_seeds == 0 or Y.shape[1] != len(x):
+        return CrossingResult(
+            horizon=float("nan"),
+            ci_lo=float("nan"),
+            ci_hi=float("nan"),
+            n_seeds=n_seeds,
+            n_boot=n_boot,
+            frac_boot_crossed=0.0,
+        )
+
+    point = _first_falling_crossing(x, Y.mean(axis=0), threshold)
+
+    if n_seeds == 1:
+        crossed = not np.isnan(point)
+        return CrossingResult(
+            horizon=point,
+            ci_lo=point,
+            ci_hi=point,
+            n_seeds=1,
+            n_boot=n_boot,
+            frac_boot_crossed=1.0 if crossed else 0.0,
+        )
+
+    rng = np.random.default_rng(seed)
+    boot = np.empty(n_boot, dtype=float)
+    for b in range(n_boot):
+        chosen = rng.integers(0, n_seeds, size=n_seeds)
+        boot[b] = _first_falling_crossing(x, Y[chosen].mean(axis=0), threshold)
+
+    frac_crossed = float(np.mean(~np.isnan(boot)))
+    if frac_crossed == 0.0:
+        lo = hi = float("nan")
+    else:
+        lo, hi = _percentile_ci(boot, ci)
+    return CrossingResult(
+        horizon=point,
+        ci_lo=lo,
+        ci_hi=hi,
+        n_seeds=n_seeds,
+        n_boot=n_boot,
+        frac_boot_crossed=frac_crossed,
+    )

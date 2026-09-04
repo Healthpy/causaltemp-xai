@@ -1,0 +1,125 @@
+{
+  "seed": 0,
+  "config": "smoke_nl_seed0",
+  "git_commit": "d99f4146b7be05a97e81ac91b9d001676b5da473",
+  "git_dirty": true,
+  "provenance": {
+    "config": {
+      "k": 5,
+      "L": 1,
+      "sparsity": 0.2,
+      "noise_type": "laplace",
+      "T": 30,
+      "N": 500,
+      "seed": 0,
+      "name": "smoke_nl_seed0",
+      "mechanism_type": "mlp",
+      "nonlinear": {
+        "hidden": 16,
+        "gain": 0.8,
+        "decay_range": [
+          0.3,
+          0.8
+        ],
+        "spectral_cap": 0.9,
+        "init_gain": 0.7,
+        "activation": "tanh"
+      },
+      "label_fn": "terminal_threshold",
+      "label_params": null
+    },
+    "method": "pcmciplus",
+    "n_cf": 20,
+    "dynotears": null,
+    "pcmciplus": {
+      "source": "tigramite (github.com/jakobrunge/tigramite), PyPI dependency",
+      "tau_max": 1,
+      "pc_alpha": 0.05
+    }
+  },
+  "axis_a": {
+    "SHD": 4.0,
+    "LagAcc": 0.7142857142857143,
+    "LagF1": 0.7142857142857143,
+    "AUC": 0.8571428571428572,
+    "cf_faith_gt": 1.0,
+    "cf_faith_inferred": 0.9973754854042178,
+    "graph_error": 0.002624514595782168,
+    "propagation_error": 0.0
+  },
+  "oracle_decomposition": {
+    "cf_faith_gt": 1.0,
+    "cf_faith_inferred": 0.9973754854042178,
+    "graph_error": 0.002624514595782168,
+    "propagation_error": 0.0
+  },
+  "methods": [
+    {
+      "method": "CARLA",
+      "cf_faith_gt": 0.999999999370474,
+      "propagation_error": 6.295259868949188e-10,
+      "cf_faith_pearl_gt": 0.8841197091788506,
+      "propagation_error_pearl": 0.11588029082114937
+    },
+    {
+      "method": "CausalFeasibility",
+      "cf_faith_gt": 0.556690219125394,
+      "propagation_error": 0.44330978087460604,
+      "cf_faith_pearl_gt": 0.5504138028327327,
+      "propagation_error_pearl": 0.44958619716726733
+    },
+    {
+      "method": "CftsCels",
+      "cf_faith_gt": 0.8932396813938264,
+      "propagation_error": 0.10676031860617363,
+      "cf_faith_pearl_gt": 0.9911003749211675,
+      "propagation_error_pearl": 0.008899625078832463
+    },
+    {
+      "method": "CftsCOMTE",
+      "cf_faith_gt": 0.7944140631946073,
+      "propagation_error": 0.20558593680539272,
+      "cf_faith_pearl_gt": 0.8011151232944094,
+      "propagation_error_pearl": 0.19888487670559063
+    },
+    {
+      "method": "CftsConfeti",
+      "cf_faith_gt": 0.8904242610251486,
+      "propagation_error": 0.1095757389748514,
+      "cf_faith_pearl_gt": 0.920416810843394,
+      "propagation_error_pearl": 0.079583189156606
+    },
+    {
+      "method": "CftsCounts",
+      "cf_faith_gt": 0.989932889782953,
+      "propagation_error": 0.010067110217046982,
+      "cf_faith_pearl_gt": 0.8816522142310024,
+      "propagation_error_pearl": 0.11834778576899763
+    },
+    {
+      "method": "CftsWachter",
+      "cf_faith_gt": 0.8909212782567465,
+      "propagation_error": 0.1090787217432535,
+      "cf_faith_pearl_gt": 0.8518390032781511,
+      "propagation_error_pearl": 0.1481609967218489
+    },
+    {
+      "method": "PearlCARLA",
+      "cf_faith_gt": 0.8852194749604475,
+      "propagation_error": 0.1147805250395525,
+      "cf_faith_pearl_gt": 0.9999999933122657,
+      "propagation_error_pearl": 6.687734255272915e-09
+    },
+    {
+      "method": "TSCausal",
+      "cf_faith_gt": 0.556690219125394,
+      "propagation_error": 0.44330978087460604,
+      "cf_faith_pearl_gt": 0.5504138028327327,
+      "propagation_error_pearl": 0.44958619716726733
+    }
+  ],
+  "graph_quality_sweep": null,
+  "graph_quality_sweep_ensemble": null,
+  "inferred_edges": 7,
+  "true_edges": 7
+}

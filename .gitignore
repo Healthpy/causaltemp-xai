@@ -39,7 +39,6 @@ dmypy.json
 # Ruff cache
 .ruff_cache/
 
-causal_tscf_bench/
 .claude/
 
 # OS
@@ -72,3 +71,8 @@ eggs/
 MANIFEST
 
 AAAI_Position_Paper.pdf
+Improving_*.pdf
+docs/reviews/*
+manuscript/*
+results/**/*.npy
+docs/metrics*

@@ -1,0 +1,1310 @@
+{
+  "seed": 42,
+  "config": "full",
+  "git_commit": "18b21df04dc09fed0d676a0d7cab8ffa3504834b",
+  "git_dirty": false,
+  "git_worktree_dirty": true,
+  "method": "NoiselessSCMRecourse",
+  "instances": [
+    {
+      "attempted_lam_prox": [
+        0.5
+      ],
+      "selected_round": 0,
+      "selected_t0": 25,
+      "selected_effective_lam_prox": 0.5,
+      "selected_prediction_loss": 0.2774291932582855,
+      "selected_proximity": 8.675675780978054e-05,
+      "selected_delta_max": 0.005397511646151543,
+      "classifier_target_reached": true,
+      "found": true
+    },
+    {
+      "attempted_lam_prox": [
+        0.5
+      ],
+      "selected_round": 0,
+      "selected_t0": 25,
+      "selected_effective_lam_prox": 0.5,
+      "selected_prediction_loss": 0.27978911995887756,
+      "selected_proximity": 8.792210428509861e-05,
+      "selected_delta_max": 0.0054336655884981155,
+      "classifier_target_reached": true,
+      "found": true
+    },
+    {
+      "attempted_lam_prox": [
+        0.5
+      ],
+      "selected_round": 0,
+      "selected_t0": 25,
+      "selected_effective_lam_prox": 0.5,
+      "selected_prediction_loss": 0.27594852447509766,
+      "selected_proximity": 8.58690618770197e-05,
+      "selected_delta_max": 0.005369764752686024,
+      "classifier_target_reached": true,
+      "found": true
+    },
+    {
+      "attempted_lam_prox": [
+        0.5
+      ],
+      "selected_round": 0,
+      "selected_t0": 25,
+      "selected_effective_lam_prox": 0.5,
+      "selected_prediction_loss": 0.2799910604953766,
+      "selected_proximity": 8.804220124147832e-05,
+      "selected_delta_max": 0.00543732475489378,
+      "classifier_target_reached": true,
+      "found": true
+    },
+    {
+      "attempted_lam_prox": [
+        0.5
+      ],
+      "selected_round": 0,
+      "selected_t0": 25,
+      "selected_effective_lam_prox": 0.5,
+      "selected_prediction_loss": 0.2848382294178009,
+      "selected_proximity": 9.078295261133462e-05,
+      "selected_delta_max": 0.005521460436284542,
+      "classifier_target_reached": true,
+      "found": true
+    },
+    {
+      "attempted_lam_prox": [
+        0.5
+      ],
+      "selected_round": 0,
+      "selected_t0": 25,
+      "selected_effective_lam_prox": 0.5,
+      "selected_prediction_loss": 0.27814894914627075,
+      "selected_proximity": 8.708867244422436e-05,
+      "selected_delta_max": 0.005407725926488638,
+      "classifier_target_reached": true,
+      "found": true
+    },
+    {
+      "attempted_lam_prox": [
+        0.5
+      ],
+      "selected_round": 0,
+      "selected_t0": 25,
+      "selected_effective_lam_prox": 0.5,
+      "selected_prediction_loss": 0.2762877941131592,
+      "selected_proximity": 8.605630864622071e-05,
+      "selected_delta_max": 0.005375683773308992,
+      "classifier_target_reached": true,
+      "found": true
+    },
+    {
+      "attempted_lam_prox": [
+        0.5
+      ],
+      "selected_round": 0,
+      "selected_t0": 25,
+      "selected_effective_lam_prox": 0.5,
+      "selected_prediction_loss": 0.2845035493373871,
+      "selected_proximity": 9.054770634975284e-05,
+      "selected_delta_max": 0.005514021497219801,
+      "classifier_target_reached": true,
+      "found": true
+    },
+    {
+      "attempted_lam_prox": [
+        0.5
+      ],
+      "selected_round": 0,
+      "selected_t0": 25,
+      "selected_effective_lam_prox": 0.5,
+      "selected_prediction_loss": 0.28571608662605286,
+      "selected_proximity": 9.126091754296795e-05,
+      "selected_delta_max": 0.005535732489079237,
+      "classifier_target_reached": true,
+      "found": true
+    },
+    {
+      "attempted_lam_prox": [
+        0.5
+      ],
+      "selected_round": 0,
+      "selected_t0": 25,
+      "selected_effective_lam_prox": 0.5,
+      "selected_prediction_loss": 0.27793940901756287,
+      "selected_proximity": 8.690726826898754e-05,
+      "selected_delta_max": 0.0054021794348955154,
+      "classifier_target_reached": true,
+      "found": true
+    },
+    {
+      "attempted_lam_prox": [
+        0.5
+      ],
+      "selected_round": 0,
+      "selected_t0": 25,
+      "selected_effective_lam_prox": 0.5,
+      "selected_prediction_loss": 0.2766466438770294,
+      "selected_proximity": 8.628520299680531e-05,
+      "selected_delta_max": 0.005382695235311985,
+      "classifier_target_reached": true,
+      "found": true
+    },
+    {
+      "attempted_lam_prox": [
+        0.5
+      ],
+      "selected_round": 0,
+      "selected_t0": 25,
+      "selected_effective_lam_prox": 0.5,
+      "selected_prediction_loss": 0.2784612774848938,
+      "selected_proximity": 8.724410872673616e-05,
+      "selected_delta_max": 0.0054125492461025715,
+      "classifier_target_reached": true,
+      "found": true
+    },
+    {
+      "attempted_lam_prox": [
+        0.5
+      ],
+      "selected_round": 0,
+      "selected_t0": 25,
+      "selected_effective_lam_prox": 0.5,
+      "selected_prediction_loss": 0.27243050932884216,
+      "selected_proximity": 8.397016790695488e-05,
+      "selected_delta_max": 0.005310161039233208,
+      "classifier_target_reached": true,
+      "found": true
+    },
+    {
+      "attempted_lam_prox": [
+        0.5
+      ],
+      "selected_round": 0,
+      "selected_t0": 25,
+      "selected_effective_lam_prox": 0.5,
+      "selected_prediction_loss": 0.2802792191505432,
+      "selected_proximity": 8.819325739750639e-05,
+      "selected_delta_max": 0.005441941320896149,
+      "classifier_target_reached": true,
+      "found": true
+    },
+    {
+      "attempted_lam_prox": [
+        0.5
+      ],
+      "selected_round": 0,
+      "selected_t0": 25,
+      "selected_effective_lam_prox": 0.5,
+      "selected_prediction_loss": 0.2840300500392914,
+      "selected_proximity": 9.032862726598978e-05,
+      "selected_delta_max": 0.005507470574229956,
+      "classifier_target_reached": true,
+      "found": true
+    },
+    {
+      "attempted_lam_prox": [
+        0.5
+      ],
+      "selected_round": 0,
+      "selected_t0": 25,
+      "selected_effective_lam_prox": 0.5,
+      "selected_prediction_loss": 0.27798545360565186,
+      "selected_proximity": 8.69374125613831e-05,
+      "selected_delta_max": 0.005403138231486082,
+      "classifier_target_reached": true,
+      "found": true
+    },
+    {
+      "attempted_lam_prox": [
+        0.5
+      ],
+      "selected_round": 0,
+      "selected_t0": 25,
+      "selected_effective_lam_prox": 0.5,
+      "selected_prediction_loss": 0.2792598307132721,
+      "selected_proximity": 8.759748743614182e-05,
+      "selected_delta_max": 0.005423461087048054,
+      "classifier_target_reached": true,
+      "found": true
+    },
+    {
+      "attempted_lam_prox": [
+        0.5
+      ],
+      "selected_round": 0,
+      "selected_t0": 25,
+      "selected_effective_lam_prox": 0.5,
+      "selected_prediction_loss": 0.2812351584434509,
+      "selected_proximity": 8.881913527147844e-05,
+      "selected_delta_max": 0.005461365450173616,
+      "classifier_target_reached": true,
+      "found": true
+    },
+    {
+      "attempted_lam_prox": [
+        0.5
+      ],
+      "selected_round": 0,
+      "selected_t0": 25,
+      "selected_effective_lam_prox": 0.5,
+      "selected_prediction_loss": 0.2789433002471924,
+      "selected_proximity": 8.744607475819066e-05,
+      "selected_delta_max": 0.00541877094656229,
+      "classifier_target_reached": true,
+      "found": true
+    },
+    {
+      "attempted_lam_prox": [
+        0.5
+      ],
+      "selected_round": 0,
+      "selected_t0": 25,
+      "selected_effective_lam_prox": 0.5,
+      "selected_prediction_loss": 0.27811336517333984,
+      "selected_proximity": 8.704967331141233e-05,
+      "selected_delta_max": 0.005406506359577179,
+      "classifier_target_reached": true,
+      "found": true
+    },
+    {
+      "attempted_lam_prox": [
+        0.5
+      ],
+      "selected_round": 0,
+      "selected_t0": 25,
+      "selected_effective_lam_prox": 0.5,
+      "selected_prediction_loss": 0.27857550978660583,
+      "selected_proximity": 8.736975723877549e-05,
+      "selected_delta_max": 0.005416424013674259,
+      "classifier_target_reached": true,
+      "found": true
+    },
+    {
+      "attempted_lam_prox": [
+        0.5
+      ],
+      "selected_round": 0,
+      "selected_t0": 25,
+      "selected_effective_lam_prox": 0.5,
+      "selected_prediction_loss": 0.27842554450035095,
+      "selected_proximity": 8.718637400306761e-05,
+      "selected_delta_max": 0.005410955287516117,
+      "classifier_target_reached": true,
+      "found": true
+    },
+    {
+      "attempted_lam_prox": [
+        0.5
+      ],
+      "selected_round": 0,
+      "selected_t0": 25,
+      "selected_effective_lam_prox": 0.5,
+      "selected_prediction_loss": 0.27859410643577576,
+      "selected_proximity": 8.728889952180907e-05,
+      "selected_delta_max": 0.005414152517914772,
+      "classifier_target_reached": true,
+      "found": true
+    },
+    {
+      "attempted_lam_prox": [
+        0.5
+      ],
+      "selected_round": 0,
+      "selected_t0": 25,
+      "selected_effective_lam_prox": 0.5,
+      "selected_prediction_loss": 0.2718977630138397,
+      "selected_proximity": 8.37058832985349e-05,
+      "selected_delta_max": 0.005301649682223797,
+      "classifier_target_reached": true,
+      "found": true
+    },
+    {
+      "attempted_lam_prox": [
+        0.5
+      ],
+      "selected_round": 0,
+      "selected_t0": 25,
+      "selected_effective_lam_prox": 0.5,
+      "selected_prediction_loss": 0.2782961428165436,
+      "selected_proximity": 8.717435412108898e-05,
+      "selected_delta_max": 0.005410443525761366,
+      "classifier_target_reached": true,
+      "found": true
+    },
+    {
+      "attempted_lam_prox": [
+        0.5
+      ],
+      "selected_round": 0,
+      "selected_t0": 25,
+      "selected_effective_lam_prox": 0.5,
+      "selected_prediction_loss": 0.28432297706604004,
+      "selected_proximity": 9.049021900864318e-05,
+      "selected_delta_max": 0.005512368865311146,
+      "classifier_target_reached": true,
+      "found": true
+    },
+    {
+      "attempted_lam_prox": [
+        0.5
+      ],
+      "selected_round": 0,
+      "selected_t0": 25,
+      "selected_effective_lam_prox": 0.5,
+      "selected_prediction_loss": 0.27862152457237244,
+      "selected_proximity": 8.729774708626792e-05,
+      "selected_delta_max": 0.005414382088929415,
+      "classifier_target_reached": true,
+      "found": true
+    },
+    {
+      "attempted_lam_prox": [
+        0.5
+      ],
+      "selected_round": 0,
+      "selected_t0": 25,
+      "selected_effective_lam_prox": 0.5,
+      "selected_prediction_loss": 0.2718299925327301,
+      "selected_proximity": 8.368644921574742e-05,
+      "selected_delta_max": 0.0053010121919214725,
+      "classifier_target_reached": true,
+      "found": true
+    },
+    {
+      "attempted_lam_prox": [
+        0.5
+      ],
+      "selected_round": 0,
+      "selected_t0": 25,
+      "selected_effective_lam_prox": 0.5,
+      "selected_prediction_loss": 0.2764012813568115,
+      "selected_proximity": 8.611571684014052e-05,
+      "selected_delta_max": 0.005377591121941805,
+      "classifier_target_reached": true,
+      "found": true
+    },
+    {
+      "attempted_lam_prox": [
+        0.5
+      ],
+      "selected_round": 0,
+      "selected_t0": 25,
+      "selected_effective_lam_prox": 0.5,
+      "selected_prediction_loss": 0.28203508257865906,
+      "selected_proximity": 8.922071720007807e-05,
+      "selected_delta_max": 0.005473778583109379,
+      "classifier_target_reached": true,
+      "found": true
+    },
+    {
+      "attempted_lam_prox": [
+        0.5
+      ],
+      "selected_round": 0,
+      "selected_t0": 25,
+      "selected_effective_lam_prox": 0.5,
+      "selected_prediction_loss": 0.2754576504230499,
+      "selected_proximity": 8.562852599425241e-05,
+      "selected_delta_max": 0.005362337920814753,
+      "classifier_target_reached": true,
+      "found": true
+    },
+    {
+      "attempted_lam_prox": [
+        0.5
+      ],
+      "selected_round": 0,
+      "selected_t0": 25,
+      "selected_effective_lam_prox": 0.5,
+      "selected_prediction_loss": 0.27709129452705383,
+      "selected_proximity": 8.657928265165538e-05,
+      "selected_delta_max": 0.005391952581703663,
+      "classifier_target_reached": true,
+      "found": true
+    },
+    {
+      "attempted_lam_prox": [
+        0.5
+      ],
+      "selected_round": 0,
+      "selected_t0": 25,
+      "selected_effective_lam_prox": 0.5,
+      "selected_prediction_loss": 0.27357277274131775,
+      "selected_proximity": 8.46688708406873e-05,
+      "selected_delta_max": 0.005332052242010832,
+      "classifier_target_reached": true,
+      "found": true
+    },
+    {
+      "attempted_lam_prox": [
+        0.5
+      ],
+      "selected_round": 0,
+      "selected_t0": 25,
+      "selected_effective_lam_prox": 0.5,
+      "selected_prediction_loss": 0.27948474884033203,
+      "selected_proximity": 8.772869477979839e-05,
+      "selected_delta_max": 0.005427550990134478,
+      "classifier_target_reached": true,
+      "found": true
+    },
+    {
+      "attempted_lam_prox": [
+        0.5
+      ],
+      "selected_round": 0,
+      "selected_t0": 25,
+      "selected_effective_lam_prox": 0.5,
+      "selected_prediction_loss": 0.28274062275886536,
+      "selected_proximity": 8.960676495917141e-05,
+      "selected_delta_max": 0.0054854643531143665,
+      "classifier_target_reached": true,
+      "found": true
+    },
+    {
+      "attempted_lam_prox": [
+        0.5
+      ],
+      "selected_round": 0,
+      "selected_t0": 25,
+      "selected_effective_lam_prox": 0.5,
+      "selected_prediction_loss": 0.2750003933906555,
+      "selected_proximity": 8.532869105692953e-05,
+      "selected_delta_max": 0.005352789536118507,
+      "classifier_target_reached": true,
+      "found": true
+    },
+    {
+      "attempted_lam_prox": [
+        0.5
+      ],
+      "selected_round": 0,
+      "selected_t0": 25,
+      "selected_effective_lam_prox": 0.5,
+      "selected_prediction_loss": 0.27333781123161316,
+      "selected_proximity": 8.439256635028869e-05,
+      "selected_delta_max": 0.005323372781276703,
+      "classifier_target_reached": true,
+      "found": true
+    },
+    {
+      "attempted_lam_prox": [
+        0.5
+      ],
+      "selected_round": 0,
+      "selected_t0": 25,
+      "selected_effective_lam_prox": 0.5,
+      "selected_prediction_loss": 0.27467018365859985,
+      "selected_proximity": 8.515972149325535e-05,
+      "selected_delta_max": 0.005347627215087414,
+      "classifier_target_reached": true,
+      "found": true
+    },
+    {
+      "attempted_lam_prox": [
+        0.5
+      ],
+      "selected_round": 0,
+      "selected_t0": 25,
+      "selected_effective_lam_prox": 0.5,
+      "selected_prediction_loss": 0.28452345728874207,
+      "selected_proximity": 9.056372800841928e-05,
+      "selected_delta_max": 0.005514539312571287,
+      "classifier_target_reached": true,
+      "found": true
+    },
+    {
+      "attempted_lam_prox": [
+        0.5
+      ],
+      "selected_round": 0,
+      "selected_t0": 25,
+      "selected_effective_lam_prox": 0.5,
+      "selected_prediction_loss": 0.2758677303791046,
+      "selected_proximity": 8.586695184931159e-05,
+      "selected_delta_max": 0.005369614344090223,
+      "classifier_target_reached": true,
+      "found": true
+    },
+    {
+      "attempted_lam_prox": [
+        0.5
+      ],
+      "selected_round": 0,
+      "selected_t0": 25,
+      "selected_effective_lam_prox": 0.5,
+      "selected_prediction_loss": 0.27455469965934753,
+      "selected_proximity": 8.510675252182409e-05,
+      "selected_delta_max": 0.0053460015915334225,
+      "classifier_target_reached": true,
+      "found": true
+    },
+    {
+      "attempted_lam_prox": [
+        0.5
+      ],
+      "selected_round": 0,
+      "selected_t0": 25,
+      "selected_effective_lam_prox": 0.5,
+      "selected_prediction_loss": 0.2796056270599365,
+      "selected_proximity": 8.781465294305235e-05,
+      "selected_delta_max": 0.005430231336504221,
+      "classifier_target_reached": true,
+      "found": true
+    },
+    {
+      "attempted_lam_prox": [
+        0.5
+      ],
+      "selected_round": 0,
+      "selected_t0": 25,
+      "selected_effective_lam_prox": 0.5,
+      "selected_prediction_loss": 0.2771885395050049,
+      "selected_proximity": 8.660079765832052e-05,
+      "selected_delta_max": 0.005392645951360464,
+      "classifier_target_reached": true,
+      "found": true
+    },
+    {
+      "attempted_lam_prox": [
+        0.5
+      ],
+      "selected_round": 0,
+      "selected_t0": 25,
+      "selected_effective_lam_prox": 0.5,
+      "selected_prediction_loss": 0.28037315607070923,
+      "selected_proximity": 8.827763667795807e-05,
+      "selected_delta_max": 0.005444794427603483,
+      "classifier_target_reached": true,
+      "found": true
+    },
+    {
+      "attempted_lam_prox": [
+        0.5
+      ],
+      "selected_round": 0,
+      "selected_t0": 25,
+      "selected_effective_lam_prox": 0.5,
+      "selected_prediction_loss": 0.2793404161930084,
+      "selected_proximity": 8.773991430643946e-05,
+      "selected_delta_max": 0.0054280697368085384,
+      "classifier_target_reached": true,
+      "found": true
+    },
+    {
+      "attempted_lam_prox": [
+        0.5
+      ],
+      "selected_round": 0,
+      "selected_t0": 25,
+      "selected_effective_lam_prox": 0.5,
+      "selected_prediction_loss": 0.27902185916900635,
+      "selected_proximity": 8.760730270296335e-05,
+      "selected_delta_max": 0.005424025468528271,
+      "classifier_target_reached": true,
+      "found": true
+    },
+    {
+      "attempted_lam_prox": [
+        0.5
+      ],
+      "selected_round": 0,
+      "selected_t0": 25,
+      "selected_effective_lam_prox": 0.5,
+      "selected_prediction_loss": 0.2775639593601227,
+      "selected_proximity": 8.679634629515931e-05,
+      "selected_delta_max": 0.005398930516093969,
+      "classifier_target_reached": true,
+      "found": true
+    },
+    {
+      "attempted_lam_prox": [
+        0.5
+      ],
+      "selected_round": 0,
+      "selected_t0": 25,
+      "selected_effective_lam_prox": 0.5,
+      "selected_prediction_loss": 0.28209036588668823,
+      "selected_proximity": 8.926793816499412e-05,
+      "selected_delta_max": 0.005475148092955351,
+      "classifier_target_reached": true,
+      "found": true
+    },
+    {
+      "attempted_lam_prox": [
+        0.5
+      ],
+      "selected_round": 0,
+      "selected_t0": 25,
+      "selected_effective_lam_prox": 0.5,
+      "selected_prediction_loss": 0.2797861397266388,
+      "selected_proximity": 8.797559712547809e-05,
+      "selected_delta_max": 0.005435299593955278,
+      "classifier_target_reached": true,
+      "found": true
+    },
+    {
+      "attempted_lam_prox": [
+        0.5
+      ],
+      "selected_round": 0,
+      "selected_t0": 25,
+      "selected_effective_lam_prox": 0.5,
+      "selected_prediction_loss": 0.2809810936450958,
+      "selected_proximity": 8.863621769705787e-05,
+      "selected_delta_max": 0.005455680191516876,
+      "classifier_target_reached": true,
+      "found": true
+    },
+    {
+      "attempted_lam_prox": [
+        0.5
+      ],
+      "selected_round": 0,
+      "selected_t0": 25,
+      "selected_effective_lam_prox": 0.5,
+      "selected_prediction_loss": 0.27474066615104675,
+      "selected_proximity": 8.526221063220873e-05,
+      "selected_delta_max": 0.005350805819034576,
+      "classifier_target_reached": true,
+      "found": true
+    },
+    {
+      "attempted_lam_prox": [
+        0.5
+      ],
+      "selected_round": 0,
+      "selected_t0": 25,
+      "selected_effective_lam_prox": 0.5,
+      "selected_prediction_loss": 0.2797514498233795,
+      "selected_proximity": 8.793724555289373e-05,
+      "selected_delta_max": 0.005434154067188501,
+      "classifier_target_reached": true,
+      "found": true
+    },
+    {
+      "attempted_lam_prox": [
+        0.5
+      ],
+      "selected_round": 0,
+      "selected_t0": 25,
+      "selected_effective_lam_prox": 0.5,
+      "selected_prediction_loss": 0.28297269344329834,
+      "selected_proximity": 8.972887735581025e-05,
+      "selected_delta_max": 0.005489154253154993,
+      "classifier_target_reached": true,
+      "found": true
+    },
+    {
+      "attempted_lam_prox": [
+        0.5
+      ],
+      "selected_round": 0,
+      "selected_t0": 25,
+      "selected_effective_lam_prox": 0.5,
+      "selected_prediction_loss": 0.2766127288341522,
+      "selected_proximity": 8.621661982033402e-05,
+      "selected_delta_max": 0.005380555056035519,
+      "classifier_target_reached": true,
+      "found": true
+    },
+    {
+      "attempted_lam_prox": [
+        0.5
+      ],
+      "selected_round": 0,
+      "selected_t0": 25,
+      "selected_effective_lam_prox": 0.5,
+      "selected_prediction_loss": 0.27578720450401306,
+      "selected_proximity": 8.585195610066876e-05,
+      "selected_delta_max": 0.005369429010897875,
+      "classifier_target_reached": true,
+      "found": true
+    },
+    {
+      "attempted_lam_prox": [
+        0.5
+      ],
+      "selected_round": 0,
+      "selected_t0": 25,
+      "selected_effective_lam_prox": 0.5,
+      "selected_prediction_loss": 0.27954739332199097,
+      "selected_proximity": 8.789893036009744e-05,
+      "selected_delta_max": 0.005433044396340847,
+      "classifier_target_reached": true,
+      "found": true
+    },
+    {
+      "attempted_lam_prox": [
+        0.5
+      ],
+      "selected_round": 0,
+      "selected_t0": 25,
+      "selected_effective_lam_prox": 0.5,
+      "selected_prediction_loss": 0.2795637249946594,
+      "selected_proximity": 8.788699778961018e-05,
+      "selected_delta_max": 0.005432607140392065,
+      "classifier_target_reached": true,
+      "found": true
+    },
+    {
+      "attempted_lam_prox": [
+        0.5
+      ],
+      "selected_round": 0,
+      "selected_t0": 25,
+      "selected_effective_lam_prox": 0.5,
+      "selected_prediction_loss": 0.2772205173969269,
+      "selected_proximity": 8.65935071487911e-05,
+      "selected_delta_max": 0.005392308812588453,
+      "classifier_target_reached": true,
+      "found": true
+    },
+    {
+      "attempted_lam_prox": [
+        0.5
+      ],
+      "selected_round": 0,
+      "selected_t0": 25,
+      "selected_effective_lam_prox": 0.5,
+      "selected_prediction_loss": 0.2831399440765381,
+      "selected_proximity": 8.984480518847704e-05,
+      "selected_delta_max": 0.00549265556037426,
+      "classifier_target_reached": true,
+      "found": true
+    },
+    {
+      "attempted_lam_prox": [
+        0.5
+      ],
+      "selected_round": 0,
+      "selected_t0": 25,
+      "selected_effective_lam_prox": 0.5,
+      "selected_prediction_loss": 0.2813723683357239,
+      "selected_proximity": 8.887055446393788e-05,
+      "selected_delta_max": 0.005462881177663803,
+      "classifier_target_reached": true,
+      "found": true
+    },
+    {
+      "attempted_lam_prox": [
+        0.5
+      ],
+      "selected_round": 0,
+      "selected_t0": 25,
+      "selected_effective_lam_prox": 0.5,
+      "selected_prediction_loss": 0.2769651412963867,
+      "selected_proximity": 8.639406587462872e-05,
+      "selected_delta_max": 0.005386327393352985,
+      "classifier_target_reached": true,
+      "found": true
+    },
+    {
+      "attempted_lam_prox": [
+        0.5
+      ],
+      "selected_round": 0,
+      "selected_t0": 25,
+      "selected_effective_lam_prox": 0.5,
+      "selected_prediction_loss": 0.2840886414051056,
+      "selected_proximity": 9.040266741067171e-05,
+      "selected_delta_max": 0.0055095963180065155,
+      "classifier_target_reached": true,
+      "found": true
+    },
+    {
+      "attempted_lam_prox": [
+        0.5
+      ],
+      "selected_round": 0,
+      "selected_t0": 25,
+      "selected_effective_lam_prox": 0.5,
+      "selected_prediction_loss": 0.28225064277648926,
+      "selected_proximity": 8.93406686373055e-05,
+      "selected_delta_max": 0.005477194208651781,
+      "classifier_target_reached": true,
+      "found": true
+    },
+    {
+      "attempted_lam_prox": [
+        0.5
+      ],
+      "selected_round": 0,
+      "selected_t0": 25,
+      "selected_effective_lam_prox": 0.5,
+      "selected_prediction_loss": 0.27663081884384155,
+      "selected_proximity": 8.626196358818561e-05,
+      "selected_delta_max": 0.005381969269365072,
+      "classifier_target_reached": true,
+      "found": true
+    },
+    {
+      "attempted_lam_prox": [
+        0.5
+      ],
+      "selected_round": 0,
+      "selected_t0": 25,
+      "selected_effective_lam_prox": 0.5,
+      "selected_prediction_loss": 0.27490657567977905,
+      "selected_proximity": 8.529817569069564e-05,
+      "selected_delta_max": 0.005351902451366186,
+      "classifier_target_reached": true,
+      "found": true
+    },
+    {
+      "attempted_lam_prox": [
+        0.5
+      ],
+      "selected_round": 0,
+      "selected_t0": 25,
+      "selected_effective_lam_prox": 0.5,
+      "selected_prediction_loss": 0.2787938416004181,
+      "selected_proximity": 8.741482452023774e-05,
+      "selected_delta_max": 0.005417929496616125,
+      "classifier_target_reached": true,
+      "found": true
+    },
+    {
+      "attempted_lam_prox": [
+        0.5
+      ],
+      "selected_round": 0,
+      "selected_t0": 25,
+      "selected_effective_lam_prox": 0.5,
+      "selected_prediction_loss": 0.27620503306388855,
+      "selected_proximity": 8.596920088166371e-05,
+      "selected_delta_max": 0.005372919142246246,
+      "classifier_target_reached": true,
+      "found": true
+    },
+    {
+      "attempted_lam_prox": [
+        0.5
+      ],
+      "selected_round": 0,
+      "selected_t0": 25,
+      "selected_effective_lam_prox": 0.5,
+      "selected_prediction_loss": 0.2732330560684204,
+      "selected_proximity": 8.437933138338849e-05,
+      "selected_delta_max": 0.005322796758264303,
+      "classifier_target_reached": true,
+      "found": true
+    },
+    {
+      "attempted_lam_prox": [
+        0.5
+      ],
+      "selected_round": 0,
+      "selected_t0": 25,
+      "selected_effective_lam_prox": 0.5,
+      "selected_prediction_loss": 0.2746276259422302,
+      "selected_proximity": 8.514914952684194e-05,
+      "selected_delta_max": 0.005347316153347492,
+      "classifier_target_reached": true,
+      "found": true
+    },
+    {
+      "attempted_lam_prox": [
+        0.5
+      ],
+      "selected_round": 0,
+      "selected_t0": 25,
+      "selected_effective_lam_prox": 0.5,
+      "selected_prediction_loss": 0.27300018072128296,
+      "selected_proximity": 8.42384179122746e-05,
+      "selected_delta_max": 0.005318404175341129,
+      "classifier_target_reached": true,
+      "found": true
+    },
+    {
+      "attempted_lam_prox": [
+        0.5
+      ],
+      "selected_round": 0,
+      "selected_t0": 25,
+      "selected_effective_lam_prox": 0.5,
+      "selected_prediction_loss": 0.27715346217155457,
+      "selected_proximity": 8.655511192046106e-05,
+      "selected_delta_max": 0.0053910790011286736,
+      "classifier_target_reached": true,
+      "found": true
+    },
+    {
+      "attempted_lam_prox": [
+        0.5
+      ],
+      "selected_round": 0,
+      "selected_t0": 25,
+      "selected_effective_lam_prox": 0.5,
+      "selected_prediction_loss": 0.2745668292045593,
+      "selected_proximity": 8.511295891366899e-05,
+      "selected_delta_max": 0.0053462982177734375,
+      "classifier_target_reached": true,
+      "found": true
+    },
+    {
+      "attempted_lam_prox": [
+        0.5
+      ],
+      "selected_round": 0,
+      "selected_t0": 25,
+      "selected_effective_lam_prox": 0.5,
+      "selected_prediction_loss": 0.28370973467826843,
+      "selected_proximity": 9.01254898053594e-05,
+      "selected_delta_max": 0.00550104770809412,
+      "classifier_target_reached": true,
+      "found": true
+    },
+    {
+      "attempted_lam_prox": [
+        0.5
+      ],
+      "selected_round": 0,
+      "selected_t0": 25,
+      "selected_effective_lam_prox": 0.5,
+      "selected_prediction_loss": 0.276635080575943,
+      "selected_proximity": 8.622345194453374e-05,
+      "selected_delta_max": 0.005380821879953146,
+      "classifier_target_reached": true,
+      "found": true
+    },
+    {
+      "attempted_lam_prox": [
+        0.5
+      ],
+      "selected_round": 0,
+      "selected_t0": 25,
+      "selected_effective_lam_prox": 0.5,
+      "selected_prediction_loss": 0.27888792753219604,
+      "selected_proximity": 8.744360820855945e-05,
+      "selected_delta_max": 0.005418860819190741,
+      "classifier_target_reached": true,
+      "found": true
+    },
+    {
+      "attempted_lam_prox": [
+        0.5
+      ],
+      "selected_round": 0,
+      "selected_t0": 25,
+      "selected_effective_lam_prox": 0.5,
+      "selected_prediction_loss": 0.28108665347099304,
+      "selected_proximity": 8.870621240930632e-05,
+      "selected_delta_max": 0.005457826424390078,
+      "classifier_target_reached": true,
+      "found": true
+    },
+    {
+      "attempted_lam_prox": [
+        0.5
+      ],
+      "selected_round": 0,
+      "selected_t0": 25,
+      "selected_effective_lam_prox": 0.5,
+      "selected_prediction_loss": 0.27970972657203674,
+      "selected_proximity": 8.788543345872313e-05,
+      "selected_delta_max": 0.00543243857100606,
+      "classifier_target_reached": true,
+      "found": true
+    },
+    {
+      "attempted_lam_prox": [
+        0.5
+      ],
+      "selected_round": 0,
+      "selected_t0": 25,
+      "selected_effective_lam_prox": 0.5,
+      "selected_prediction_loss": 0.27474310994148254,
+      "selected_proximity": 8.52758385008201e-05,
+      "selected_delta_max": 0.005351611878722906,
+      "classifier_target_reached": true,
+      "found": true
+    },
+    {
+      "attempted_lam_prox": [
+        0.5
+      ],
+      "selected_round": 0,
+      "selected_t0": 25,
+      "selected_effective_lam_prox": 0.5,
+      "selected_prediction_loss": 0.27896448969841003,
+      "selected_proximity": 8.756913302931935e-05,
+      "selected_delta_max": 0.005422821268439293,
+      "classifier_target_reached": true,
+      "found": true
+    },
+    {
+      "attempted_lam_prox": [
+        0.5
+      ],
+      "selected_round": 0,
+      "selected_t0": 25,
+      "selected_effective_lam_prox": 0.5,
+      "selected_prediction_loss": 0.28458526730537415,
+      "selected_proximity": 9.059040166903287e-05,
+      "selected_delta_max": 0.005515521392226219,
+      "classifier_target_reached": true,
+      "found": true
+    },
+    {
+      "attempted_lam_prox": [
+        0.5
+      ],
+      "selected_round": 0,
+      "selected_t0": 25,
+      "selected_effective_lam_prox": 0.5,
+      "selected_prediction_loss": 0.2810104191303253,
+      "selected_proximity": 8.860536763677374e-05,
+      "selected_delta_max": 0.005454748868942261,
+      "classifier_target_reached": true,
+      "found": true
+    },
+    {
+      "attempted_lam_prox": [
+        0.5
+      ],
+      "selected_round": 0,
+      "selected_t0": 25,
+      "selected_effective_lam_prox": 0.5,
+      "selected_prediction_loss": 0.28275996446609497,
+      "selected_proximity": 8.9626970293466e-05,
+      "selected_delta_max": 0.005486059468239546,
+      "classifier_target_reached": true,
+      "found": true
+    },
+    {
+      "attempted_lam_prox": [
+        0.5
+      ],
+      "selected_round": 0,
+      "selected_t0": 25,
+      "selected_effective_lam_prox": 0.5,
+      "selected_prediction_loss": 0.2784869074821472,
+      "selected_proximity": 8.726731175556779e-05,
+      "selected_delta_max": 0.005413287319242954,
+      "classifier_target_reached": true,
+      "found": true
+    },
+    {
+      "attempted_lam_prox": [
+        0.5
+      ],
+      "selected_round": 0,
+      "selected_t0": 25,
+      "selected_effective_lam_prox": 0.5,
+      "selected_prediction_loss": 0.27037957310676575,
+      "selected_proximity": 8.284745854325593e-05,
+      "selected_delta_max": 0.005274511873722076,
+      "classifier_target_reached": true,
+      "found": true
+    },
+    {
+      "attempted_lam_prox": [
+        0.5
+      ],
+      "selected_round": 0,
+      "selected_t0": 25,
+      "selected_effective_lam_prox": 0.5,
+      "selected_prediction_loss": 0.27988699078559875,
+      "selected_proximity": 8.799389615887776e-05,
+      "selected_delta_max": 0.005435827188193798,
+      "classifier_target_reached": true,
+      "found": true
+    },
+    {
+      "attempted_lam_prox": [
+        0.5
+      ],
+      "selected_round": 0,
+      "selected_t0": 25,
+      "selected_effective_lam_prox": 0.5,
+      "selected_prediction_loss": 0.2830592095851898,
+      "selected_proximity": 8.983835141407326e-05,
+      "selected_delta_max": 0.005492575466632843,
+      "classifier_target_reached": true,
+      "found": true
+    },
+    {
+      "attempted_lam_prox": [
+        0.5
+      ],
+      "selected_round": 0,
+      "selected_t0": 25,
+      "selected_effective_lam_prox": 0.5,
+      "selected_prediction_loss": 0.28197625279426575,
+      "selected_proximity": 8.914399950299412e-05,
+      "selected_delta_max": 0.0054711950942873955,
+      "classifier_target_reached": true,
+      "found": true
+    },
+    {
+      "attempted_lam_prox": [
+        0.5
+      ],
+      "selected_round": 0,
+      "selected_t0": 25,
+      "selected_effective_lam_prox": 0.5,
+      "selected_prediction_loss": 0.2753840386867523,
+      "selected_proximity": 8.558941772207618e-05,
+      "selected_delta_max": 0.005360955838114023,
+      "classifier_target_reached": true,
+      "found": true
+    },
+    {
+      "attempted_lam_prox": [
+        0.5
+      ],
+      "selected_round": 0,
+      "selected_t0": 25,
+      "selected_effective_lam_prox": 0.5,
+      "selected_prediction_loss": 0.28655216097831726,
+      "selected_proximity": 9.16899589356035e-05,
+      "selected_delta_max": 0.00554896704852581,
+      "classifier_target_reached": true,
+      "found": true
+    },
+    {
+      "attempted_lam_prox": [
+        0.5
+      ],
+      "selected_round": 0,
+      "selected_t0": 25,
+      "selected_effective_lam_prox": 0.5,
+      "selected_prediction_loss": 0.27979254722595215,
+      "selected_proximity": 8.796562906354666e-05,
+      "selected_delta_max": 0.005435000639408827,
+      "classifier_target_reached": true,
+      "found": true
+    },
+    {
+      "attempted_lam_prox": [
+        0.5
+      ],
+      "selected_round": 0,
+      "selected_t0": 25,
+      "selected_effective_lam_prox": 0.5,
+      "selected_prediction_loss": 0.2756912112236023,
+      "selected_proximity": 8.579152199672535e-05,
+      "selected_delta_max": 0.005367474164813757,
+      "classifier_target_reached": true,
+      "found": true
+    },
+    {
+      "attempted_lam_prox": [
+        0.5
+      ],
+      "selected_round": 0,
+      "selected_t0": 25,
+      "selected_effective_lam_prox": 0.5,
+      "selected_prediction_loss": 0.28092852234840393,
+      "selected_proximity": 8.8605607743375e-05,
+      "selected_delta_max": 0.005454800091683865,
+      "classifier_target_reached": true,
+      "found": true
+    },
+    {
+      "attempted_lam_prox": [
+        0.5
+      ],
+      "selected_round": 0,
+      "selected_t0": 25,
+      "selected_effective_lam_prox": 0.5,
+      "selected_prediction_loss": 0.27589190006256104,
+      "selected_proximity": 8.585376053815708e-05,
+      "selected_delta_max": 0.005369213875383139,
+      "classifier_target_reached": true,
+      "found": true
+    },
+    {
+      "attempted_lam_prox": [
+        0.5
+      ],
+      "selected_round": 0,
+      "selected_t0": 25,
+      "selected_effective_lam_prox": 0.5,
+      "selected_prediction_loss": 0.2802410423755646,
+      "selected_proximity": 8.82778549566865e-05,
+      "selected_delta_max": 0.005444488488137722,
+      "classifier_target_reached": true,
+      "found": true
+    },
+    {
+      "attempted_lam_prox": [
+        0.5
+      ],
+      "selected_round": 0,
+      "selected_t0": 25,
+      "selected_effective_lam_prox": 0.5,
+      "selected_prediction_loss": 0.27909183502197266,
+      "selected_proximity": 8.758892363402992e-05,
+      "selected_delta_max": 0.005423407070338726,
+      "classifier_target_reached": true,
+      "found": true
+    },
+    {
+      "attempted_lam_prox": [
+        0.5
+      ],
+      "selected_round": 0,
+      "selected_t0": 25,
+      "selected_effective_lam_prox": 0.5,
+      "selected_prediction_loss": 0.28198516368865967,
+      "selected_proximity": 8.922405686462298e-05,
+      "selected_delta_max": 0.005473557393997908,
+      "classifier_target_reached": true,
+      "found": true
+    },
+    {
+      "attempted_lam_prox": [
+        0.5
+      ],
+      "selected_round": 0,
+      "selected_t0": 25,
+      "selected_effective_lam_prox": 0.5,
+      "selected_prediction_loss": 0.2741241157054901,
+      "selected_proximity": 8.488122693961486e-05,
+      "selected_delta_max": 0.005338709335774183,
+      "classifier_target_reached": true,
+      "found": true
+    },
+    {
+      "attempted_lam_prox": [
+        0.5
+      ],
+      "selected_round": 0,
+      "selected_t0": 25,
+      "selected_effective_lam_prox": 0.5,
+      "selected_prediction_loss": 0.28306421637535095,
+      "selected_proximity": 8.972675277618691e-05,
+      "selected_delta_max": 0.005489264614880085,
+      "classifier_target_reached": true,
+      "found": true
+    },
+    {
+      "attempted_lam_prox": [
+        0.5
+      ],
+      "selected_round": 0,
+      "selected_t0": 25,
+      "selected_effective_lam_prox": 0.5,
+      "selected_prediction_loss": 0.2793189585208893,
+      "selected_proximity": 8.777411858318374e-05,
+      "selected_delta_max": 0.005429091863334179,
+      "classifier_target_reached": true,
+      "found": true
+    },
+    {
+      "attempted_lam_prox": [
+        0.5
+      ],
+      "selected_round": 0,
+      "selected_t0": 25,
+      "selected_effective_lam_prox": 0.5,
+      "selected_prediction_loss": 0.2834586501121521,
+      "selected_proximity": 9.00060695130378e-05,
+      "selected_delta_max": 0.005497615784406662,
+      "classifier_target_reached": true,
+      "found": true
+    }
+  ]
+}

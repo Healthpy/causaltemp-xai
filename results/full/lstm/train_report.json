@@ -1,4 +1,7 @@
 {
+  "seed": 42,
+  "git_commit": "9eaa906d5ea9f3abb93b3d558ca6b2eaa26fa13b",
+  "git_dirty": true,
   "config": "full",
   "accuracies": {
     "train": 0.9973333333333333,

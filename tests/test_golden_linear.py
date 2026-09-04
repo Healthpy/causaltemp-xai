@@ -115,9 +115,7 @@ class TestGoldenL1:
         # Captured full-X checksum (RNG-order-regression guard, L=1 is tame).
         # rtol=1e-12 per the golden policy: BLAS re-association moves the sum
         # at the ULP; an RNG-order regression would move it at O(1).
-        np.testing.assert_allclose(
-            float(data["X"].sum()), GOLDEN["L1"]["X_sum"], rtol=1e-12
-        )
+        np.testing.assert_allclose(float(data["X"].sum()), GOLDEN["L1"]["X_sum"], rtol=1e-12)
 
     def test_labels(self):
         data = _build(1)
@@ -145,9 +143,7 @@ class TestGoldenL2:
         # Diverging trajectory (~1e11): ULP-level re-association is expected,
         # so a tight rtol catches an RNG-order regression without flagging the
         # benign float-associativity difference.
-        np.testing.assert_allclose(
-            float(data["X"].sum()), GOLDEN["L2"]["X_sum"], rtol=1e-9
-        )
+        np.testing.assert_allclose(float(data["X"].sum()), GOLDEN["L2"]["X_sum"], rtol=1e-9)
 
     def test_labels(self):
         data = _build(2)

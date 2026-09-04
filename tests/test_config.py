@@ -33,8 +33,7 @@ class TestSeededVariant:
         variant = seeded_variant(SMOKE, seed=7)
         assert variant.seed == 7
         assert variant.name == "smoke_seed7"
-        for field in ("k", "L", "sparsity", "noise_type", "T", "N",
-                      "mechanism_type", "nonlinear"):
+        for field in ("k", "L", "sparsity", "noise_type", "T", "N", "mechanism_type", "nonlinear"):
             assert getattr(variant, field) == getattr(SMOKE, field)
 
     def test_distinct_name_even_when_seed_equals_base_seed(self):
@@ -63,10 +62,24 @@ class TestSeededVariant:
         v_a = seeded_variant(SMOKE, seed=1)
         v_b = seeded_variant(SMOKE, seed=2)
 
-        gen_a = LinearSCMT(k=v_a.k, L=v_a.L, sparsity=v_a.sparsity,
-                            noise_type=v_a.noise_type, T=v_a.T, N=v_a.N, seed=v_a.seed)
-        gen_b = LinearSCMT(k=v_b.k, L=v_b.L, sparsity=v_b.sparsity,
-                            noise_type=v_b.noise_type, T=v_b.T, N=v_b.N, seed=v_b.seed)
+        gen_a = LinearSCMT(
+            k=v_a.k,
+            L=v_a.L,
+            sparsity=v_a.sparsity,
+            noise_type=v_a.noise_type,
+            T=v_a.T,
+            N=v_a.N,
+            seed=v_a.seed,
+        )
+        gen_b = LinearSCMT(
+            k=v_b.k,
+            L=v_b.L,
+            sparsity=v_b.sparsity,
+            noise_type=v_b.noise_type,
+            T=v_b.T,
+            N=v_b.N,
+            seed=v_b.seed,
+        )
 
         graph_a, graph_b = gen_a.graph, gen_b.graph
         same_graph = np.array_equal(graph_a, graph_b)
@@ -83,10 +96,24 @@ class TestSeededVariant:
         twice must yield bit-identical generated data (determinism)."""
         v1 = seeded_variant(SMOKE, seed=9)
         v2 = seeded_variant(SMOKE, seed=9)
-        gen1 = LinearSCMT(k=v1.k, L=v1.L, sparsity=v1.sparsity, noise_type=v1.noise_type,
-                           T=v1.T, N=v1.N, seed=v1.seed)
-        gen2 = LinearSCMT(k=v2.k, L=v2.L, sparsity=v2.sparsity, noise_type=v2.noise_type,
-                           T=v2.T, N=v2.N, seed=v2.seed)
+        gen1 = LinearSCMT(
+            k=v1.k,
+            L=v1.L,
+            sparsity=v1.sparsity,
+            noise_type=v1.noise_type,
+            T=v1.T,
+            N=v1.N,
+            seed=v1.seed,
+        )
+        gen2 = LinearSCMT(
+            k=v2.k,
+            L=v2.L,
+            sparsity=v2.sparsity,
+            noise_type=v2.noise_type,
+            T=v2.T,
+            N=v2.N,
+            seed=v2.seed,
+        )
         np.testing.assert_array_equal(gen1.graph, gen2.graph)
         data1, data2 = gen1.generate(), gen2.generate()
         np.testing.assert_array_equal(data1["X"], data2["X"])
@@ -100,7 +127,7 @@ class TestSeededVariant:
 # tests/test_generator.py, tests/test_nlinear_generator.py, and
 # tests/test_mechanisms.py for the generator/mechanism-level structural
 # properties (non-monotonicity, regime-parameter difference, noise-shape
-# distinguishability), and docs/m4_ablation_presets_smoke.md for the design
+# distinguishability), and docs/archive/m4_ablation_presets_smoke.md for the design
 # + smoke-scale preliminary findings. No full-scale variant of any of these
 # three presets exists.
 # ---------------------------------------------------------------------------
@@ -113,8 +140,7 @@ class TestSmokeGaussianPreset:
         assert CONFIGS["smoke_gaussian"] is SMOKE_GAUSSIAN
         assert SMOKE_GAUSSIAN.noise_type == "gaussian"
         assert SMOKE_GAUSSIAN.name == "smoke_gaussian"
-        for field in ("k", "L", "sparsity", "T", "N", "seed",
-                      "mechanism_type", "nonlinear"):
+        for field in ("k", "L", "sparsity", "T", "N", "seed", "mechanism_type", "nonlinear"):
             assert getattr(SMOKE_GAUSSIAN, field) == getattr(SMOKE, field)
 
     def test_build_generator_dispatches_linear_with_gaussian_noise(self):

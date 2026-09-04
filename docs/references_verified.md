@@ -1,6 +1,6 @@
 # Reference and Novelty Verification — `BenchmarkingTSCFEs.md`
 
-**Owner:** Literature Intelligence Scientist (M6, per `docs/PROJECT_PLAN.md`)
+**Owner:** Literature Intelligence Scientist (M6, per `ROADMAP.md` M6)
 **Date:** 2026-07-08
 **Scope:** (1) verification of all 46 references in `docs/BenchmarkingTSCFEs.md`; (2) novelty-ledger stress test of the central benchmarking-gap claim; (3) venue deadline check for NeurIPS 2027 D&B, ICLR 2027, AAAI 2027.
 **Method:** Direct URL fetch (WebFetch) where the tool could render the page; targeted web search (WebSearch, Google-backed) for cross-corroboration and where direct fetch failed (PDF binaries, CAPTCHA walls, bot-blocked domains). No Google Scholar/Semantic Scholar/PubMed API access beyond one rate-limited Semantic Scholar attempt (429, not retried). No paywalled full-text was purchased or bypassed.
@@ -131,7 +131,7 @@ The draft's prose refers to **"Table 1"** (comparative explainer-paradigm mechan
 
 ## Deliverable 2 — Novelty ledger
 
-**Central claim under test** (from `docs/BenchmarkingTSCFEs.md` and `docs/PROJECT_PLAN.md` §1): *"No existing public benchmark jointly provides (i) ground-truth causal variables, (ii) a ground-truth lagged causal graph, and (iii) analytically exact structural counterfactuals in a temporal **classification** setting."*
+**Central claim under test** (from `docs/BenchmarkingTSCFEs.md` and `docs/general_plan.md` §3): *"No existing public benchmark jointly provides (i) ground-truth causal variables, (ii) a ground-truth lagged causal graph, and (iii) analytically exact structural counterfactuals in a temporal **classification** setting."*
 
 I checked all works the task named, plus what I could find as 2025–2026 successors. Each row is independent evidence, not cumulative with the others unless stated.
 
@@ -161,7 +161,7 @@ Confidence in this overall verdict: **Medium-High** — based on a same-day, bro
 
 ---
 
-## M6 follow-up pass (2026-07-08) — the three open items from PI review §9.3 / `PROJECT_PLAN.md` P0 item 7 and P2 item 30
+## M6 follow-up pass (2026-07-08) — the three open items from PI review §9.3 (former `PROJECT_PLAN.md`, deleted 2026-07-31)
 
 **Owner:** Literature Intelligence. **Dispatched by:** PI, same-day, as the three explicit follow-ups the M6 novelty-ledger review left open (§9.3: "substantially done, not fully closed"). **Method:** live retrieval only — WebFetch against arXiv abstract/HTML/PDF pages, a second independent rendering (`ar5iv.labs.arxiv.org`) used as a cross-check for one paper whose PDF could not be rendered directly in this environment, and WebSearch for venue/DOI corroboration. No claim below rests on parametric/training memory alone; every claim is confidence-tagged per lab policy, and "verified" is distinguished from "recalled." **Scope discipline observed:** no code, no experiments, no files outside `docs/references_verified.md` touched.
 
@@ -231,10 +231,358 @@ No other content in this document was touched. The Deliverable 2 "Verdict" parag
 
 ### Recommendation
 
-Given the project's own critical-path estimate (12–16 weeks from 2026-07-08 to submission-ready without SepsisSim, i.e. roughly late September–November 2026, per `docs/PROJECT_PLAN.md` §4):
+Given the project's own critical-path estimate (12–16 weeks from 2026-07-08 to submission-ready without SepsisSim, i.e. roughly late September–November 2026, per `ROADMAP.md`):
 
 - **AAAI 2027 is not reachable.** Its deadline (21/28 July 2026) is approximately **2–3 weeks from today** and the project is still mid-M2 (multi-seed/CI infrastructure, Transformer classifier, Pearl-CARLA in flight); M1–M4 plus a manuscript skeleton cannot realistically land in three weeks. Recommend dropping AAAI 2027 as a live target for this project cycle (it could remain relevant for a future, separate submission, e.g. a workshop spin-off of the frozen v0.1 phenomenon, per the plan's own P2 item 28 — but not for the full benchmark paper).
 - **ICLR 2027 is very tight even on the unverified aggregator estimate** (~19–24 Sept 2026): that is roughly 10–11 weeks from today, which is within the plan's own 12–16-week envelope only optimistically, and the ICLR estimate itself cannot yet be confirmed against the official source. Treat as a stretch target at best, not a plan of record, until iclr.cc actually publishes its 2027 CFP (worth re-checking monthly).
 - **NeurIPS 2027 (whatever the Datasets & Benchmarks-equivalent track ends up named) remains the most realistic primary target**, consistent with the project plan's own existing judgment call (§2, "primary — NeurIPS Datasets & Benchmarks 2027 or ICLR 2027"). If the 2027 cycle follows the same rough pattern as 2026 (May submission, roughly 10 months after a July restart point), a manuscript that is submission-ready by November 2026 would comfortably precede it. **Recommend the plan's primary-target line be updated to name the track "NeurIPS 2027 Datasets & Benchmarks (or its renamed successor, currently 'Evaluations & Datasets' as of the 2026 cycle)"** so the manuscript's own framing doesn't get caught out by the same rename the 2026 cycle just underwent.
 
 All three figures above should be re-verified directly against the official conference sites again in Q4 2026, once M2–M4 are closer to done and a real target date is being locked in — deadlines this far out (especially ICLR's and NeurIPS's 2027 cycles) are not yet officially published and everything above the AAAI row is, by the nature of the question, provisional.
+
+---
+
+## Deliverable 4 — Axis-metric grounding references (2026-07-17)
+
+**Scope:** the sources backing the Axis A–D evaluation metrics, per the grounding table
+in `docs/axis_metrics_report.md`. **Verification standard (PI decision 2026-07-17):**
+bibliographic identity (title, authors, venue/year) confirmed by domain knowledge;
+full-text reading not a precondition. These are foundational, uncontested references in
+the counterfactual-explanation, disentanglement, and causal-discovery literatures. The
+one previously-uncertain entry (Song et al. 2024) was re-verified 2026-07-23 via web
+search (arXiv + NeurIPS proceedings + OpenReview); see note below the table.
+
+| Metric(s) | BibTeX |
+|---|---|
+| Validity, Proximity | `@article{wachter2017counterfactual, author={Wachter, Sandra and Mittelstadt, Brent and Russell, Chris}, title={Counterfactual Explanations without Opening the Black Box: Automated Decisions and the GDPR}, journal={Harvard Journal of Law \& Technology}, volume={31}, number={2}, pages={841--887}, year={2017}}` |
+| Validity, Proximity, Sparsity | `@inproceedings{mothilal2020dice, author={Mothilal, Ramaravind K. and Sharma, Amit and Tan, Chenhao}, title={Explaining Machine Learning Classifiers through Diverse Counterfactual Explanations}, booktitle={ACM FAT*}, year={2020}}` |
+| Sparsity | `@inproceedings{dandl2020multiobjective, author={Dandl, Susanne and Molnar, Christoph and Binder, Martin and Bischl, Bernd}, title={Multi-Objective Counterfactual Explanations}, booktitle={PPSN}, year={2020}}` |
+| OOD (estimator) | `@inproceedings{liu2008isolation, author={Liu, Fei Tony and Ting, Kai Ming and Zhou, Zhi-Hua}, title={Isolation Forest}, booktitle={IEEE ICDM}, year={2008}}` |
+| OOD (plausibility criterion) | `@inproceedings{poyiadzi2020face, author={Poyiadzi, Rafael and Sokol, Kacper and Santos-Rodriguez, Raul and De Bie, Tijl and Flach, Peter}, title={FACE: Feasible and Actionable Counterfactual Explanations}, booktitle={AAAI/ACM AIES}, year={2020}}` |
+| OOD (plausibility criterion) | `@inproceedings{laugel2019dangers, author={Laugel, Thibault and Lesot, Marie-Jeanne and Marsala, Christophe and Renard, Xavier and Detyniecki, Marcin}, title={The Dangers of Post-hoc Interpretability: Unjustified Counterfactual Explanations}, booktitle={IJCAI}, year={2019}}` |
+| CF-faith (foundation) | `@book{pearl2009causality, author={Pearl, Judea}, title={Causality: Models, Reasoning, and Inference}, edition={2nd}, publisher={Cambridge University Press}, year={2009}}` |
+| CF-faith (additive-noise abduction) | `@inproceedings{hoyer2008anm, author={Hoyer, Patrik O. and Janzing, Dominik and Mooij, Joris M. and Peters, Jonas and Sch{\"o}lkopf, Bernhard}, title={Nonlinear Causal Discovery with Additive Noise Models}, booktitle={NeurIPS}, year={2008}}` |
+| CF-faith (recourse framing) | `@inproceedings{karimi2021recourse, author={Karimi, Amir-Hossein and Sch{\"o}lkopf, Bernhard and Valera, Isabel}, title={Algorithmic Recourse: from Counterfactual Explanations to Interventions}, booktitle={ACM FAccT}, year={2021}}` |
+| Shift-VR, Input-sensitivity | `@inproceedings{alvarezmelis2018robustness, author={Alvarez-Melis, David and Jaakkola, Tommi S.}, title={On the Robustness of Interpretability Methods}, booktitle={ICML WHI Workshop}, year={2018}}` |
+| Shift-VR (CF robustness) | `@inproceedings{artelt2021robustness, author={Artelt, Andr{\'e} and Vaquet, Valerie and Velioglu, Riza and Hinder, Fabian and Brinkrolf, Johannes and Schilling, Malte and Hammer, Barbara}, title={Evaluating Robustness of Counterfactual Explanations}, booktitle={IEEE SSCI}, year={2021}}` |
+| Input-sensitivity | `@inproceedings{yeh2019infidelity, author={Yeh, Chih-Kuan and Hsieh, Cheng-Yu and Suggala, Arun Sai and Inouye, David I. and Ravikumar, Pradeep}, title={On the (In)fidelity and Sensitivity of Explanations}, booktitle={NeurIPS}, year={2019}}` |
+| Input-sensitivity | `@inproceedings{hsieh2021robustness, author={Hsieh, Cheng-Yu and Yeh, Chih-Kuan and Liu, Xuanqing and Ravikumar, Pradeep and Kim, Seungyeon and Kumar, Sanjiv and Hsieh, Cho-Jui}, title={Evaluations and Methods for Explanation through Robustness Analysis}, booktitle={ICLR}, year={2021}}` |
+| Input-sensitivity | `@inproceedings{ghorbani2019fragile, author={Ghorbani, Amirata and Abid, Abubakar and Zou, James}, title={Interpretation of Neural Networks is Fragile}, booktitle={AAAI}, year={2019}}` |
+| Concept-stability | `@inproceedings{kim2018tcav, author={Kim, Been and Wattenberg, Martin and Gilmer, Justin and Cai, Carrie and Wexler, James and Viegas, Fernanda and Sayres, Rory}, title={Interpretability Beyond Feature Attribution: Quantitative Testing with Concept Activation Vectors (TCAV)}, booktitle={ICML}, year={2018}}` |
+| MIG | `@inproceedings{chen2018betatcvae, author={Chen, Ricky T. Q. and Li, Xuechen and Grosse, Roger and Duvenaud, David}, title={Isolating Sources of Disentanglement in Variational Autoencoders}, booktitle={NeurIPS}, year={2018}}` |
+| DCI | `@inproceedings{eastwood2018dci, author={Eastwood, Cian and Williams, Christopher K. I.}, title={A Framework for the Quantitative Evaluation of Disentangled Representations}, booktitle={ICLR}, year={2018}}` |
+| MCC, ICC (identifiability) | `@inproceedings{hyvarinen2019nonlinearica, author={Hyv{\"a}rinen, Aapo and Sasaki, Hiroaki and Turner, Richard E.}, title={Nonlinear ICA Using Auxiliary Variables and Generalized Contrastive Learning}, booktitle={AISTATS}, year={2019}}` |
+| MCC, ICC (iVAE) | `@inproceedings{khemakhem2020ivae, author={Khemakhem, Ilyes and Kingma, Diederik P. and Monti, Ricardo Pio and Hyv{\"a}rinen, Aapo}, title={Variational Autoencoders and Nonlinear ICA: A Unifying Framework}, booktitle={AISTATS}, year={2020}}` |
+| SHD | `@article{tsamardinos2006mmhc, author={Tsamardinos, Ioannis and Brown, Laura E. and Aliferis, Constantin F.}, title={The Max-Min Hill-Climbing Bayesian Network Structure Learning Algorithm}, journal={Machine Learning}, volume={65}, number={1}, pages={31--78}, year={2006}}` |
+| Lag accuracy, Graph AUC | `@article{runge2019pcmci, author={Runge, Jakob and Nowack, Peer and Kretschmer, Marlene and Flaxman, Seth and Sejdinovic, Dino}, title={Detecting and Quantifying Causal Associations in Large Nonlinear Time Series Datasets}, journal={Science Advances}, volume={5}, number={11}, pages={eaau4996}, year={2019}}` |
+| DYNOTEARS (Phase 07) | `@inproceedings{pamfil2020dynotears, author={Pamfil, Roxana and Sriwattanaworachai, Nisara and Desai, Shaan and Pilgerstorfer, Philip and Georgatzis, Konstantinos and Beaumont, Paul and Aragam, Bryon}, title={DYNOTEARS: Structure Learning from Time-Series Data}, booktitle={AISTATS}, year={2020}}` |
+| MCC, ICC (Song 2024, sparse-transition identifiability) | `@inproceedings{song2024ctrlns, author={Song, Xiangchen and Li, Zijian and Chen, Guangyi and Zheng, Yujia and Fan, Yewen and Dong, Xinshuai and Zhang, Kun}, title={Causal Temporal Representation Learning with Nonstationary Sparse Transition}, booktitle={Advances in Neural Information Processing Systems (NeurIPS)}, volume={37}, year={2024}}` |
+
+> **DYNOTEARS row, note added 2026-08-06 (M4f, `DECISIONS.md`).** The
+> bootstrap-ensemble extension (`_fit_dynotears_ensemble`/
+> `_graph_quality_sweep_ensemble`, `experiments/07_auxiliary_methods.py`) is
+> this benchmark's own uncertainty-quantification wrapper around Pamfil et
+> al.'s solver — resampling and refitting is not something their paper
+> specifies, so the ensemble is a novel-to-benchmark *application* of the
+> adopted method, not a change to the method's provenance or an additional
+> citation. Same pattern as CF-faith's own "adapted foundation, novel
+> operationalization" distinction (`docs/method_provenance.md`).
+
+> **Resolved 2026-07-23 (was "Flagged, not asserted").** `axis_a.py` line 37 cites
+> *"Song et al. (2024). 'Identifiability of Sparse Causal Representations.' NeurIPS."* —
+> **VERIFIED with a caveat**, not a verbatim match.
+>
+> **What was found (High confidence on paper identity, Medium confidence this is the
+> paper the author meant):** Xiangchen Song, Zijian Li, Guangyi Chen, Yujia Zheng, Yewen
+> Fan, Xinshuai Dong, Kun Zhang, **"Causal Temporal Representation Learning with
+> Nonstationary Sparse Transition,"** NeurIPS 2024 (preprint: arXiv:2409.03142;
+> proceedings: `proceedings.neurips.cc/paper_files/paper/2024/.../8cef4e4bcb85f7d4a1005a9db018d6b6-Paper-Conference.pdf`;
+> OpenReview: `openreview.net/forum?id=J709rtAUD1`). Confirmed via web search cross-checking
+> arXiv, the NeurIPS 2024 proceedings site, and OpenReview — all three agree on title,
+> author list, and venue/year.
+>
+> **The gap:** the docstring's title — *"Identifiability of Sparse Causal
+> Representations"* — is **not** this paper's actual title. No paper by any Song with
+> that exact title was found on arXiv, Semantic Scholar-indexed search, or NeurIPS 2024
+> proceedings. The CtrlNS paper is the only Song-et-al.-2024 causal-representation paper
+> that matches the surrounding claim in `axis_a.py` (nonlinear-ICA-style identifiability
+> of latent factors under a **sparsity** assumption, building on Hyvärinen & Morioka
+> 2019) — first author Song, 2024, NeurIPS, sparse + causal + representation +
+> identifiability all present. This is very likely what was meant, but the docstring
+> title itself is either a paraphrase/misremembering or refers to a different, unfound
+> paper.
+>
+> **Recommendation (code-level, NOT made here per R3 — flag for PI/Methodology review):**
+> update the `axis_a.py` docstring (line 37, and the ICC comment on lines 9–12 if it
+> still reads "Song (2024)") to cite the CtrlNS paper above by its real title, or attach
+> an explicit note if the author intended a different, still-unidentified paper. This is
+> a one-line docstring string change with no code-behavior impact, but touches method
+> provenance (R3) so is left for PI sign-off rather than edited directly by this review.
+>
+> Confidence: Medium (paper exists and is real — High; it is *the* paper the docstring
+> meant — Medium, since the title itself doesn't match and no closer alternative was
+> found).
+
+---
+
+## Deliverable 5 — Manuscript bibliography audit (2026-08-06, M6 drafting pass)
+
+**Why this deliverable exists.** Deliverables 1–2 verify the 46 (+4) references of
+`docs/BenchmarkingTSCFEs.md` — a *survey draft*, not the manuscript. Deliverable 4
+verifies the axis-metric grounding references. **Neither covers the citation set the
+manuscript itself needs**, which is driven by `docs/general_plan.md` §3/§4 and
+`docs/04_literature_gaps.md`. This deliverable audits that third set.
+
+**Correction to two standing claims, recorded rather than silently fixed:**
+
+1. `docs/04_literature_gaps.md` §6 states *"`docs/references_verified.md` was generated
+   but then lost from disk. Must be regenerated before the manuscript is written."*
+   **This is false.** The file exists, is git-tracked (`8ae4f9f`, 2026-07-31), and is
+   313 lines. Same stale claim appears in `ROADMAP.md`'s M6 DoD line. Both corrected
+   2026-08-06.
+2. `docs/reviews/m6_scoping.md` (written earlier the same day) called the file
+   "already current, contra the stale ROADMAP text" on the strength of a **two-citation
+   spot check** (`arXiv 2603.11090`, `arXiv 2606.21776`). That spot check was too
+   narrow to support the conclusion: both hits landed in Deliverable 1's set, which is
+   the survey draft's bibliography, not the manuscript's. The audit below is what the
+   claim should have rested on. Corrected in that document the same day.
+
+### 5a — Already verified, reusable directly
+
+| Citation | Where verified | Standard |
+|---|---|---|
+| Wachter et al. 2017; Mothilal et al. 2020 (DiCE); Pearl 2009; Karimi et al. 2021 (recourse); Hoyer et al. 2008 (ANM); Pamfil et al. 2020 (DYNOTEARS); Runge et al. 2019 (PCMCI) | Deliverable 4 | Bibliographic identity by domain knowledge (PI decision 2026-07-17) |
+| CausalTime (2310.01753); CausalDynamics (2505.16620); TimeGraph (2506.01361); CAUKER (2508.02879); Causal-DAG-Prior (2606.21776); DoFlow (2511.02137); CausalProfiler (2511.22842); XTSC-Bench (2310.14957); AMEE (2306.05501); ExplainTS; CausalTimePrior (2603.11090) | Deliverables 1–2 | Live retrieval, cross-corroborated |
+| **Bahri et al., IEEE BigData 2025** — the primary Related Work foil | `docs/method_provenance.md`, entry `TSCausalCF` (was `CausalFeasibilityCF`, renamed 2026-08-06) | **Read from the paper's own PDF directly, 2026-08-04**, to the level of implementing its Eq. 5. Stronger than any other row here |
+
+### 5b — Manuscript-critical and NOT yet verified anywhere
+
+These are cited (or will be) by `general_plan.md` / `04_literature_gaps.md` and have no
+verification row in any deliverable. **None may enter the manuscript until checked.**
+
+| Citation | Cited for | Risk if wrong |
+|---|---|---|
+| ~~**Galhotra et al. 2021 (LEWIS)**; **Watson et al. 2021**~~ | — | **RESOLVED 2026-08-06 — both verified, see 5c below** |
+| **Ates et al. 2021 (COMTE)** | An evaluated method (`CftsCOMTE`) | Method table correctness |
+| **CONFETI**; **CELS / M-CELS**; **CounTS** | Evaluated methods (`CftsConfeti`, `CftsCels`, `CftsCounts`) | Method table correctness; `04_literature_gaps.md` §1 cites all three with no author/year at all |
+| **Pawelczyk et al. 2021 (CARLA benchmark library)** | `04_literature_gaps.md` §5, as the four-axis benchmark Axis C adapts | See the name-collision note below — this one is actively hazardous |
+| **Kipf et al. (NRI)** | Provenance of the Spring/Kuramoto mechanism families (M4c) | Benchmark-construction provenance |
+| **Lippe et al. 2022 (CITRIS)** | Cited in §4 of the gap doc as literature; the code was vendored in `third_party/citris_repo/` through 2026-08-06 and was then fully deleted (M4h, `DECISIONS.md`) — no longer R3-adjacent, since no code claims to implement it | Low |
+| **Delaney et al. 2021** | `04_literature_gaps.md` §2, "evaluation of CF methods for time-series" | Related Work completeness |
+| **Peters et al. 2017**, *Elements of Causal Inference* | Listed in the gap doc's priority list | Low (textbook), but note "Peters" currently appears in this file **only** as a co-author of Hoyer et al. 2008 — not as this book |
+| **Ustun et al. 2019**; **Joshi et al. 2019** | `04_literature_gaps.md` §3, recourse literature | Related Work completeness |
+| **TSEvo**; **Glacier** | `04_literature_gaps.md` §1, "native temporal methods" | TSEvo *is* verified as Deliverable 1 row 35 (Höllig et al., ICMLA 2022) — reuse that row. Glacier is unverified |
+
+> **Name collision — flag before drafting, not after.** The manuscript is on track to
+> cite **two different papers both called CARLA**: Karimi et al. 2021 (algorithmic
+> recourse — the semantics this benchmark's `CARLARecourse` implements, Deliverable 4)
+> and Pawelczyk et al. 2021 (the *benchmarking library*, cited in `04_literature_gaps.md`
+> §5). `docs/method_provenance.md`'s "Naming disclosure" already records that
+> `CARLARecourse`'s docstring wrongly cited Pawelczyk as its provenance (corrected
+> 2026-08-05) and leaves the class-rename question open for the PI. **The manuscript must
+> disambiguate on first use of each**, or a reviewer reads the positive control as an
+> implementation of a benchmark library it has nothing to do with.
+
+### 5c — The two necessity/sufficiency antecedents, verified live (2026-08-06)
+
+**Method:** WebSearch, each cross-corroborated against ≥ 2 independent hosts (publisher
+proceedings + institutional repository / arXiv). Not asserted from recall.
+
+**Galhotra, Pradhan & Salimi (2021) — "LEWIS". Verified. High confidence.**
+Real title is *"Explaining Black-Box Algorithms Using Probabilistic Contrastive
+Counterfactuals"*, **SIGMOD '21** (Proc. 2021 Int. Conf. on Management of Data), June
+2021; also arXiv 2103.11972. Corroborated via the second author's own institutional PDF
+(`romilapradhan.github.io`), the arXiv PDF, and the project site
+(`lewis-system.github.io`). Its explanations are stated in terms of three measures —
+**necessity score, sufficiency score, and necessity-and-sufficiency score** — computed
+per attribute value in a given context, supporting global, local and contextual
+explanations. **Note for the manuscript:** there is a *separate* VLDB 2021 demo paper
+(Wang, Galhotra, Pradhan & Salimi, *PVLDB* 14, 2787–2790) describing the same system —
+cite the SIGMOD paper for the method, not the demo.
+
+**Watson, Gultchin, Taly & Floridi (2021). Verified. High confidence.**
+*"Local Explanations via Necessity and Sufficiency: Unifying Theory and Practice"*,
+**UAI 2021**, PMLR **161**:1382–1392; also arXiv 2103.14651. Corroborated via PMLR's
+own proceedings page, UCL Discovery, and KCL Pure. **Citation hazard to note:** a
+journal version exists in *Minds and Machines* (2022), DOI 10.1007/s11023-022-09598-7 —
+`general_plan.md` cites "Watson et al. 2021", which correctly denotes the UAI version;
+keep year and venue consistent so the two are not conflated.
+
+**Bearing on the novelty narrowing (RISK-14).** Both confirm the framing in
+`general_plan.md` §3: necessity/sufficiency for explanation is established prior art,
+and a novelty claim on PNS *per se* would not survive review. Both are also **static /
+tabular** — neither addresses the temporal setting — which is the axis the claim is
+narrowed to. The further clause that these approaches are *"necessarily answered with
+Tian–Pearl bounds"* is a substantive claim about their estimands rather than their
+bibliographic identity; it is consistent with what these two papers do (identification
+of PN/PS from observational data requires bounds absent monotonicity/exogeneity
+assumptions) but has **not** been full-text verified here. Flagged, not asserted — do a
+targeted full-text check of that specific clause before it appears in the manuscript.
+
+### 5d — The evaluated-method citations, verified live (2026-08-06)
+
+`04_literature_gaps.md` §1 cited these with no author or year. All resolved; **three
+name defects and one novelty flag** found, which is why this pass was worth doing.
+
+| Codebase name | Actual paper | Status |
+|---|---|---|
+| `CftsCOMTE` | **CoMTE** — Ates, Aksar, Leung & Coskun, *Counterfactual Explanations for Multivariate Time Series*, 2021. Code: `github.com/peaclab/CoMTE` | ✅ Verified. **Spelling:** the method is **CoMTE**, not "COMTE" |
+| `CftsCelsCF` | **M-CELS** — *Counterfactual Explanation for Multivariate Time Series Data Guided by Learned Saliency Maps*, arXiv 2411.02649, IEEE (Xplore doc 10903326). The univariate predecessor is **CELS**, *Counterfactual Explanations for Time Series Data via Learned Saliency Maps* | ✅ Verified. **Cite M-CELS**, not CELS — `method_provenance.md` already records the adapter wraps `cels_auto` = *M-CELS*. Citing "CELS" for multivariate data would be the wrong paper |
+| `CftsConfeti` | **CONFETTI** — generates CFs for a single dimension of a multivariate time series | ⚠️ Verified as a real method, but **the name is CONFETTI (double T)**; the codebase and all governance docs spell it "CONFETI". Full author/venue metadata not yet pinned — needs one more targeted pass |
+| `CftsCountsCF` | **CounTS** — Yan, Wang et al., *Self-Interpretable Time Series Prediction with Counterfactual Explanations*, **ICML 2023**, PMLR v202; arXiv 2306.06024 | ✅ Verified. **See the novelty flag below** |
+| (not wired) | **Glacier** — Wang et al., 2024, guided locally constrained CFs for TS classification | ✅ Verified as real; cite only if it enters Related Work |
+| (not wired) | **SETS** — *Shapelet-Based Counterfactual Explanations for Multivariate Time Series*, arXiv 2208.10462 | ✅ Verified; a natural Related Work addition for the shapelet family |
+
+> ### ⚠️ Novelty flag — CounTS performs abduction–action–prediction on time series
+>
+> **Raised 2026-08-06; not previously in the novelty ledger (Deliverable 2), which
+> covered benchmarks and generators but not the evaluated explainers themselves.**
+>
+> CounTS' own abstract states it *"formalizes the problem of time series counterfactual
+> explanations, establishes associated evaluation protocols, and proposes a variational
+> Bayesian deep learning model equipped with counterfactual inference capability of time
+> series **abduction, action, and prediction**."*
+>
+> `general_plan.md` §3's one-sentence Related Work framing is: *"the field uses
+> structural causal models to **penalise** counterfactuals; nobody uses them to
+> **derive** the counterfactual the proposal is scored against."* CounTS is the closest
+> thing found so far to a counterexample — it names the same three Pearl steps this
+> benchmark's oracle is built on, in the same modality, **and it is already wired into
+> this codebase as `CftsCountsCF`**.
+>
+> **Why the claim plausibly still holds, and what must be checked before it is asserted:**
+> CounTS is a *self-interpretable model* that produces counterfactual explanations of its
+> own predictions — abduction over its own learned latent variables. This benchmark's
+> oracle abducts noise from a **known ground-truth mechanism** and uses it to score
+> **independently-produced, post-hoc** explainers. That is the same distinction
+> Deliverable 2 row 8 used to survive DoFlow, and it is the narrowing the verdict
+> paragraph already recommends. But the distinction is now load-bearing against a method
+> in our own method table, so it must be stated explicitly rather than assumed.
+>
+> **RESOLVED 2026-08-06 by full-text read — see 5e below.** Verdict: the contribution
+> survives, but **`general_plan.md` §3's one-sentence framing is too strong as literally
+> written and must be reworded before it reaches the manuscript.**
+
+### 5e — CounTS full-text read (arXiv 2306.06024v3, ICML 2023)
+
+**Method:** the PDF was fetched and read directly, pages 1–6 (Abstract through §5.3),
+covering the causal model (§3), the full method (§4.1–4.2.2), and the experimental
+protocol and baselines (§5.1–5.3). Not an abstract-only or search-snippet assessment.
+
+**(a) What CounTS abducts over: its own learned latent variables, not a known
+mechanism's exogenous noise.** Its causal graph (Fig. 1 left) has five nodes —
+`x` (the input series), `z` (a learned representation of `x`), `y` (the label), and two
+**exogenous confounders** `u_l` (local, may differ per timestep) and `u_g` (global,
+shared across timesteps). Abduction is the posterior `p(u | x = x, y = y^pred)`,
+*approximated by a variational inference network* `q_φ(u_l, u_g | x, y)` (Eqns. 2–3,
+12–13). Every quantity abducted is a latent of CounTS's own trained VAE-style model.
+By contrast this benchmark abducts `eps = x − f(parents)` from the **true generating
+mechanism**, exactly and without approximation.
+
+**(b) Its causal graph is atemporal, over whole-trajectory nodes.** `x ∈ ℝ^{D×T}` is a
+*single node*. There are no lagged edges and no time-indexed variables in the graph;
+the only per-timestep object is `u_l`, a confounder, not a graph structure. **This is
+precisely the same distinction Task 1 of the 2026-07-08 follow-up pass established
+against CAUKER and the Causal-DAG-Prior paper** — an atemporal per-instance DAG over
+whole-series nodes, versus this project's per-`(variable, lag)` graph. The pillar-(ii)
+defence transfers unchanged.
+
+**(c) It DOES benchmark third-party explainers — but never against a ground-truth
+counterfactual.** §5.1 compares CounTS against RGD (Wachter et al.), GradCAM,
+GradSHAP, LIME, FIT, CAP and CounteRGAN. So the claim that it scores "only its own
+outputs" would have been **wrong**, and it is good this was checked rather than
+assumed. What it scores them *with*, however, is: prediction accuracy, **counterfactual
+accuracy** (= "percentage of time series where `x^cf` successfully change the model's
+prediction to `y^cf`" — this is validity, measured against *the model*), and **CCR**,
+a ratio of how much the CF perturbs label-related versus label-agnostic channels,
+`CCR = mean ‖m ⊙ (x − x^cf)‖₁ / ‖(1−m) ⊙ (x − x^cf)‖₁`, where the mask `m` is known
+only because their toy/Spike datasets are synthesised with a hand-placed mask. **That
+is a localisation-of-edits measure, not a test of whether the world realises the
+proposed intervention.** No structural counterfactual is ever computed for a
+third-party method's proposal and compared against it.
+
+#### Consequence for the claim — a wording change, not a scope change
+
+`general_plan.md` §3 currently reads: *"the field uses structural causal models to
+**penalise** counterfactuals; nobody uses them to **derive** the counterfactual the
+proposal is scored against."* **The first half of that disjunction is now falsified:**
+CounTS *derives* its counterfactual from a causal model via genuine
+abduction–action–prediction (§3, following Pearl 2009 explicitly). A reviewer who knows
+CounTS — and it is an ICML 2023 paper **already wired into this benchmark's own method
+table** as `CftsCountsCF` — will catch this immediately.
+
+What survives, and is if anything sharper, is the conjunction of three properties that
+CounTS lacks:
+
+1. the mechanism the counterfactual is derived from is **ground truth**, not a learned
+   approximation whose own fidelity is unaudited;
+2. the graph is **lagged over time-indexed variables**, not atemporal over
+   whole-trajectory nodes;
+3. the derived counterfactual is used as an **oracle to score independently-produced,
+   post-hoc explainers' proposals** — not as the method's own generative machinery, and
+   not merely as a model-relative validity/localisation score.
+
+Property 3 is the same narrowing Deliverable 2's Verdict already recommends for DoFlow
+and CAUKER. This finding does not require a new narrowing; it requires the **existing**
+one to be applied to a sentence that predates it. Suggested replacement, for PI
+approval: *"the field either uses structural causal models to **penalise**
+counterfactuals (Bahri et al. 2025), or derives them from a **learned** causal model to
+explain that model's own predictions (CounTS, Yan & Wang 2023). Neither derives the
+counterfactual from a **known** mechanism in order to score an independently-produced
+explanation against it."*
+
+**Flagged for PI decision, not applied.** `docs/general_plan.md` is the single source of
+truth for the scientific claim; changing its Related Work framing sentence is a
+claim-level edit, so it is recorded here and left for sign-off rather than edited
+unilaterally.
+
+> **Secondary note.** CounTS is excluded from `full`/`full_nl` multi-method runs
+> (known to hang at scale), so it appears in the method table without full-scale
+> numbers. If the manuscript discusses CounTS as the closest derive-style prior work,
+> that exclusion becomes reader-visible and should be stated plainly rather than left
+> to be noticed.
+
+### Recommended verification standard for the remainder of 5b
+
+Apply the same split the project already uses: **Ates** *(now verified above)*,
+**Pawelczyk, Kipf, Lippe, Peters, Ustun, Joshi, Delaney** are foundational/uncontested
+and clear under the Deliverable 4 standard (bibliographic identity by domain knowledge,
+PI decision 2026-07-17). Remaining live-retrieval items: **CONFETTI**'s full
+author/venue metadata, and the CounTS full-text read flagged above.
+
+### 5f — CONFETTI full metadata, resolved (2026-08-06)
+
+**Verified.** Paredes Cetina, A. G., Benguessoum, K., Lourenço, R., & Kubler, S.
+(2025). *CONFETTI: [multi-objective counterfactual explanation for multivariate time
+series]*. University of Luxembourg (SnT). arXiv:**2511.13237**, v2 24 Nov 2025.
+Confirmed via the arXiv abstract page directly. **Spelling confirmed: CONFETTI
+(double T)**, not "CONFETI" as spelled throughout this codebase
+(`CftsConfeti`/`TSCausalCF` (was `CausalFeasibilityCF`) docs) and `general_plan.md`/`ROADMAP.md`. Flagged
+for a PI decision on whether to fix the spelling project-wide (touches exported class
+names, R9-adjacent) or only the manuscript prose — not decided here.
+
+`@misc{paredescetina2025confetti, author={Paredes Cetina, Alan G. and Benguessoum,
+Kaouther and Lourenço, Raoni and Kubler, Sylvain}, title={CONFETTI: A Multi-Objective
+Counterfactual Explanation Method for Multivariate Time Series}, year={2025},
+eprint={2511.13237}, archivePrefix={arXiv}}`
+
+**M-CELS, full metadata:** Li, P., Bahri, O., Filali Boubrahimi, S., & Hamdi, S. M.
+(2024). *M-CELS: Counterfactual Explanation for Multivariate Time Series Data Guided
+by Learned Saliency Maps*. ICMLA 2024 (IEEE Xplore doc 10903326). arXiv:2411.02649.
+
+`@inproceedings{li2024mcels, author={Li, Peiyu and Bahri, Omar and Filali Boubrahimi,
+Soukaina and Hamdi, Shah Muhammad}, title={M-CELS: Counterfactual Explanation for
+Multivariate Time Series Data Guided by Learned Saliency Maps}, booktitle={IEEE
+International Conference on Machine Learning and Applications (ICMLA)}, year={2024},
+eprint={2411.02649}, archivePrefix={arXiv}}`
+
+> **Authorship overlap, noted for completeness, not a defect.** M-CELS (one of this
+> benchmark's evaluated baselines, `CftsCelsCF`) and Bahri et al. 2025 (the primary
+> Related Work foil, `general_plan.md` §3) share two authors — Bahri and Filali
+> Boubrahimi — evidently a single research cluster (Utah State) publishing
+> sequentially on saliency-guided and then SCM-regularised temporal CF. This does not
+> change either paper's provenance or this benchmark's independence from both; noted
+> only so the manuscript's Related Work and Methods sections do not read as
+> coincidence if a reviewer cross-checks author lists.
+
+**Both 5b/5d gaps are now closed.** No unresolved manuscript-critical citation remains
+in this deliverable as of 2026-08-06.

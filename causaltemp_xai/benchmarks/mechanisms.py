@@ -3,7 +3,7 @@
 A :class:`Mechanism` maps a lag *window* of recent states to the
 **deterministic next-step mean** (pre-noise). It is the single abstraction every
 ``A @ x`` call site routes through, so the same SCM can be evaluated in numpy
-(generation, CF-faith) and in differentiable torch (CARLA), and serialized to
+(generation, CF-faith) and in differentiable torch (NoiselessSCMRecourse), and serialized to
 disk — without any site hard-coding linearity.
 
 Window contract
@@ -13,7 +13,7 @@ oldest rows when fewer than ``L`` are available. Concretely ``history[..., -1, :
 is lag 1 (``x_{t-1}``) and ``history[..., -L, :]`` is lag ``L`` (``x_{t-L}``). A
 lag that would reach before ``t=0`` is therefore a zero row and contributes
 nothing — preserving the ``if lag_t >= 0`` guard the original ``cf_faith`` /
-``carla`` loops used. This is a no-op for ``L=1`` but is the correctness landmine
+SCM-recourse loops used. This is a no-op for ``L=1`` but is the correctness landmine
 for ``L>1`` with an early ``intervention_t``.
 
 Shapes: ``forward_*`` accepts a single window ``(L, k)`` → returns ``(k,)``, or a
@@ -38,8 +38,6 @@ what keeps Pearl abduction an exact subtraction downstream. Nonlinear *mixing*
 """
 
 from __future__ import annotations
-
-from typing import Union
 
 import numpy as np
 
@@ -89,7 +87,7 @@ class Mechanism:
         """Deterministic next-step mean from a ``(L, k)`` or ``(N, L, k)`` window."""
         raise NotImplementedError
 
-    def forward_torch(self, history):  # noqa: ANN001 - torch.Tensor
+    def forward_torch(self, history):
         """Differentiable next-step mean from a ``(L, k)`` or ``(N, L, k)`` window."""
         raise NotImplementedError
 
@@ -98,7 +96,7 @@ class Mechanism:
         raise NotImplementedError
 
     @classmethod
-    def from_state_dict(cls, d: dict) -> "Mechanism":
+    def from_state_dict(cls, d: dict) -> Mechanism:
         """Reconstruct a mechanism from :meth:`state_dict` output.
 
         Implementations must coerce non-array scalar/string fields (which
@@ -143,7 +141,7 @@ class LinearMechanism(Mechanism):
             result += history[:, -(l + 1), :] @ A.T
         return result
 
-    def forward_torch(self, history):  # noqa: ANN001
+    def forward_torch(self, history):
         if history.ndim == 2:  # (L, k) -> (k,)
             acc = torch.zeros(self.k, dtype=history.dtype)
             for l in range(self.L):
@@ -168,7 +166,7 @@ class LinearMechanism(Mechanism):
         return d
 
     @classmethod
-    def from_state_dict(cls, d: dict) -> "LinearMechanism":
+    def from_state_dict(cls, d: dict) -> LinearMechanism:
         # Restore lag order by sorting A_<l> keys (mirror data_io.load_dataset).
         a_keys = sorted(
             (key for key in d if str(key).startswith("A_")),
@@ -183,7 +181,7 @@ class LinearMechanism(Mechanism):
 #: ``[-1, 1]`` and 1-Lipschitz (``|cos| <= 1``) just like ``tanh``, so it
 #: shares tanh's boundedness/Lipschitz properties exactly, but is genuinely
 #: non-monotonic (a local max at ``pi/2``, unlike strictly-increasing
-#: ``tanh``) -- see ``docs/m4_ablation_presets_smoke.md``.
+#: ``tanh``) -- see ``docs/archive/m4_ablation_presets_smoke.md``.
 _ACTIVATIONS_NP = {"tanh": np.tanh, "nonmonotonic": np.sin}
 
 
@@ -231,7 +229,7 @@ class MLPMechanism(Mechanism):
         Hidden-layer activation: ``"tanh"`` (default, monotonic) or
         ``"nonmonotonic"`` (M4/H6 ablation -- ``sin``, bounded in ``[-1, 1]``
         and 1-Lipschitz like ``tanh``, but not monotonic; see
-        ``docs/m4_ablation_presets_smoke.md``). The **output** branch is
+        ``docs/archive/m4_ablation_presets_smoke.md``). The **output** branch is
         always ``tanh`` regardless of this choice, so the mechanism's global
         boundedness guarantee is unaffected by which hidden activation is
         selected -- only the hidden representation's monotonicity varies.
@@ -239,9 +237,27 @@ class MLPMechanism(Mechanism):
     Notes
     -----
     The masked input of each node is scaled by ``1/√(max(n_active_parents, 1))``
-    so pre-activations land in ``tanh``'s curved region (genuine nonlinearity).
-    The ``max(·, 1)`` guard makes a 0-parent node reduce to pure decay
+    to keep the pre-activation scale independent of in-degree. The ``max(·, 1)``
+    guard makes a 0-parent node reduce to pure decay
     (``mean_i = decay_i · x_{t-1}^i``) instead of dividing by zero.
+
+    .. warning::
+
+       This normalisation does **not** by itself place pre-activations in
+       ``tanh``'s curved region -- an earlier version of this docstring claimed
+       it did, and instrumentation on 2026-08-11 refuted that: under the
+       then-shipped ``_NL_HYPERPARAMS`` the pre-activations sat at
+       ``|z| ~ 0.015``, where ``tanh`` is the identity to 4 decimal places, so
+       the "nonlinear" family was a linear VAR (affine fit ``R² = 1.000000``).
+       Where ``|z|`` lands is set by ``init_gain``/``spectral_cap`` against the
+       realised state scale, *not* by this term. See
+       ``causaltemp_xai/config.py::_NL_HYPERPARAMS`` for the retuned values and
+       the measured result, and ``tests/test_mechanisms.py`` for the gates.
+
+       Note also that a randomly-initialised 2-layer net is close to its own
+       linearisation regardless of ``|z|`` (the "lazy regime"): per-unit
+       curvature cancels across the hidden layer, so raising ``|z|`` alone
+       buys far less nonlinearity than it appears to.
     """
 
     def __init__(
@@ -295,12 +311,22 @@ class MLPMechanism(Mechanism):
         spectral_cap: float = 0.9,
         init_gain: float = 0.7,
         activation: str = "tanh",
-    ) -> "MLPMechanism":
+    ) -> MLPMechanism:
         """Sample + stabilize a random per-node MLP mechanism.
 
         Weights use ``std = init_gain · √(1/fan_in)`` (bias 0) and each per-node
-        weight matrix is spectral-norm-capped at ``spectral_cap`` (Lipschitz < 1
-        for the nonlinear branch).
+        weight matrix is spectral-norm-capped at ``spectral_cap``.
+
+        ``spectral_cap < 1`` makes the nonlinear branch Lipschitz-contractive on
+        its own. The shipped ``_NL_HYPERPARAMS`` no longer satisfies that (it
+        uses ``6.0``, raised from ``0.9`` under P0-2 to lift pre-activations off
+        the origin), so **branch-level contraction is no longer implied by this
+        cap alone**. Whole-mechanism stability still holds -- the output branch
+        is ``gain · tanh(·)``, bounded by ``gain`` regardless of ``spectral_cap``,
+        and ``decay < 1`` -- but it is now an empirical property rather than a
+        constructive one, so it is measured directly with
+        :func:`~causaltemp_xai.benchmarks.diagnostics.empirical_contraction_rate`
+        (``-0.63`` to ``-1.00`` on the retuned values) rather than assumed.
         """
         graph = np.asarray(graph, dtype=float)
         k, _, L = graph.shape
@@ -359,7 +385,7 @@ class MLPMechanism(Mechanism):
         result = self.decay * history[:, -1, :] + self.gain * np.tanh(out)  # (N, k)
         return result[0] if single else result
 
-    def _torch_weights(self, like):  # noqa: ANN001 - torch.Tensor
+    def _torch_weights(self, like):
         key = (like.dtype, like.device)
         cached = self._torch_cache.get(key)
         if cached is None:
@@ -377,7 +403,7 @@ class MLPMechanism(Mechanism):
             self._torch_cache[key] = cached
         return cached
 
-    def forward_torch(self, history):  # noqa: ANN001 - torch.Tensor
+    def forward_torch(self, history):
         single = history.ndim == 2
         if single:
             history = history.unsqueeze(0)  # (1, L, k)
@@ -416,7 +442,7 @@ class MLPMechanism(Mechanism):
         }
 
     @classmethod
-    def from_state_dict(cls, d: dict) -> "MLPMechanism":
+    def from_state_dict(cls, d: dict) -> MLPMechanism:
         # np.load returns scalars/strings as 0-d arrays — coerce them.
         activation = d["activation"]
         if not isinstance(activation, str):
@@ -434,17 +460,150 @@ class MLPMechanism(Mechanism):
         )
 
 
+class SpringMechanism(Mechanism):
+    """Additive-noise spring-coupled particle system (M4c, non-dissipative).
+
+    ``n_particles`` particles, each exposed as **two** channels (position,
+    velocity), so ``k = 2 * n_particles``, ``L=1``. Channel layout:
+    ``history[..., 0:n_particles]`` = positions, ``history[..., n_particles:]``
+    = velocities. One symplectic-Euler step per timestep::
+
+        a_i(x_{t-1})   =  -sum_j K[i, j] * (x_{t-1}^i - x_{t-1}^j)   (graph neighbors j)
+        mean(v_t^i)    =  v_{t-1}^i + dt * a_i(x_{t-1})
+        mean(x_t^i)    =  x_{t-1}^i + dt * v_{t-1}^i               (position uses the
+                                                                      *previous* velocity,
+                                                                      per symplectic Euler)
+
+    **Velocity is a genuine exposed state channel, not reconstructed by
+    finite-differencing noisy position history.** An earlier design (``L=2``,
+    ``v ~= (x_{t-1}-x_{t-2})/dt``) was rejected after a smoke-scale test
+    showed it amplifies each step's additive noise by ``1/dt`` and compounds
+    over the trajectory -- a controlled test isolated this precisely: the
+    deterministic integrator alone stayed bounded (``max|x| = 0.01`` over 130
+    steps from a ``0.01`` initial kick), but adding per-step ``Laplace(0,
+    0.1)`` noise blew the same run up to ``max|x| > 160`` by step 129. This
+    design avoids that failure mode entirely: each channel's own noise is
+    added once per step, never re-differentiated.
+
+    Deliberately **no damping term** -- the coupling is a directed SCM
+    influence (``graph[vel_i, pos_j, 0]`` = "particle j's position causes
+    particle i's velocity"), not a literal symmetric physical spring network,
+    and the only source of energy drift is symplectic Euler's own
+    finite-``dt`` error. That drift is exactly what
+    ``causaltemp_xai.benchmarks.diagnostics.empirical_contraction_rate`` is
+    for measuring empirically (M4c DoD: "do not assume rho ~= 1").
+
+    ``graph`` encodes only **cross-particle** coupling: ``graph[vel_i, pos_j,
+    0] = 1`` for spring-neighbors ``j != i``. The internal position<-velocity
+    relationship (every particle's position is driven by its own velocity)
+    and each particle's own position term in its own acceleration are both
+    treated as baseline/structural, not graph-worthy -- the same convention
+    :class:`MLPMechanism` uses for its ``decay_i * x_{t-1}^i`` term. A
+    consequence: **every** position channel has zero in-degree by
+    construction (its only true dependency is its own velocity, deliberately
+    excluded from `graph`), so :func:`exogenous_channels` on the full
+    ``2 * n_particles``-channel graph is not directly "uninfluenced
+    particle" -- only the **velocity** half of its output identifies M4c's
+    "particles p4/p5" (an isolated particle's velocity has no incoming
+    graph edge; every particle's position never does, non-informatively).
+    See ``SpringSCMT`` for the particle-level wrapper.
+
+    Mass is fixed at 1 for every particle (minimal viable design, matching
+    this codebase's convention elsewhere of keeping ablation families to one
+    or two free scalars).
+    """
+
+    def __init__(
+        self,
+        graph: np.ndarray,
+        k_spring: float,
+        dt: float,
+    ) -> None:
+        self.graph = np.asarray(graph, dtype=float)
+        self.k, _, self.L = self.graph.shape
+        if self.L != 1:
+            raise ValueError(f"SpringMechanism requires L=1, got L={self.L}")
+        if self.k % 2 != 0:
+            raise ValueError(f"SpringMechanism requires an even k (2*n_particles), got k={self.k}")
+        self.n_particles = self.k // 2
+        self.k_spring = float(k_spring)
+        self.dt = float(dt)
+        p = self.n_particles
+        # Directed coupling K[i, j]: influence of particle j's position on
+        # particle i's acceleration, read from the velocity-row / position-col
+        # block of `graph` (graph[p+i, j, 0] = 1 iff j couples into i).
+        self.K = self.k_spring * self.graph[p : 2 * p, 0:p, 0]
+
+    # ------------------------------------------------------------------
+    # Forward evaluation
+    # ------------------------------------------------------------------
+
+    def forward_numpy(self, history: np.ndarray) -> np.ndarray:
+        history = np.asarray(history, dtype=float)
+        single = history.ndim == 2
+        if single:
+            history = history[None]  # (1, L, k)
+        p = self.n_particles
+        state = history[:, -1, :]  # (N, 2p)
+        pos, vel = state[:, :p], state[:, p:]  # (N, p) each
+        diff = pos[:, :, None] - pos[:, None, :]  # (N, p, p): [n,i,j] = x_i - x_j
+        accel = -np.einsum("ij,nij->ni", self.K, diff)  # (N, p)
+        new_pos = pos + self.dt * vel  # symplectic Euler: position uses OLD velocity
+        new_vel = vel + self.dt * accel
+        result = np.concatenate([new_pos, new_vel], axis=1)  # (N, 2p)
+        return result[0] if single else result
+
+    def forward_torch(self, history):
+        single = history.ndim == 2
+        if single:
+            history = history.unsqueeze(0)
+        p = self.n_particles
+        K = torch.as_tensor(self.K, dtype=history.dtype, device=history.device)
+        state = history[:, -1, :]
+        pos, vel = state[:, :p], state[:, p:]
+        diff = pos.unsqueeze(2) - pos.unsqueeze(1)  # (N, p, p)
+        accel = -torch.einsum("ij,nij->ni", K, diff)
+        new_pos = pos + self.dt * vel
+        new_vel = vel + self.dt * accel
+        result = torch.cat([new_pos, new_vel], dim=1)
+        return result.squeeze(0) if single else result
+
+    # ------------------------------------------------------------------
+    # Serialization
+    # ------------------------------------------------------------------
+
+    def state_dict(self) -> dict:
+        return {
+            "__type__": "spring",
+            "graph": np.asarray(self.graph, dtype=float),
+            "k_spring": float(self.k_spring),
+            "dt": float(self.dt),
+        }
+
+    @classmethod
+    def from_state_dict(cls, d: dict) -> SpringMechanism:
+        return cls(
+            graph=np.asarray(d["graph"], dtype=float),
+            k_spring=float(np.asarray(d["k_spring"]).item()),
+            dt=float(np.asarray(d["dt"]).item()),
+        )
+
+
 def mechanism_from_state_dict(d: dict) -> Mechanism:
     """Dispatch on the ``"__type__"`` discriminator to the right subclass.
 
     Coerces the discriminator with ``str(...)`` because ``np.load`` returns it as
     a 0-d array.
     """
-    mech_type = str(np.asarray(d["__type__"]).item()) if not isinstance(
-        d["__type__"], str
-    ) else d["__type__"]
+    mech_type = (
+        str(np.asarray(d["__type__"]).item())
+        if not isinstance(d["__type__"], str)
+        else d["__type__"]
+    )
     if mech_type == "linear":
         return LinearMechanism.from_state_dict(d)
     if mech_type == "mlp":
         return MLPMechanism.from_state_dict(d)
+    if mech_type == "spring":
+        return SpringMechanism.from_state_dict(d)
     raise ValueError(f"unknown mechanism __type__: {mech_type!r}")

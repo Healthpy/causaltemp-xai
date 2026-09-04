@@ -1,0 +1,5 @@
+config,method,threshold,collapse_horizon,collapse_horizon_lo,collapse_horizon_hi,n_seeds,frac_boot_crossed,horizons_swept
+smoke,CARLA,0.5,nan,nan,nan,1,0.0,"2,5,12,15,20,25"
+smoke,PearlCARLA,0.5,nan,nan,nan,1,0.0,"2,5,12,15,20,25"
+smoke_interior_label,CARLA,0.5,nan,nan,nan,1,0.0,"2,5,12,15,20,25"
+smoke_interior_label,PearlCARLA,0.5,nan,nan,nan,1,0.0,"2,5,12,15,20,25"

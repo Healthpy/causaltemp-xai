@@ -1,0 +1,37 @@
+{
+  "seed": 0,
+  "config": "real_epilepsy",
+  "git_commit": "d99f4146b7be05a97e81ac91b9d001676b5da473",
+  "git_dirty": true,
+  "runs": [
+    {
+      "path": "C:\\Users\\20235732\\OneDrive - TU Eindhoven\\Desktop\\XAI\\causaltemp-xai\\results\\real_basicmotions\\tier3\\discover\\graph_agreement.json",
+      "dataset": "basicmotions",
+      "mode": "discover",
+      "ensemble_b": 5,
+      "pc_alpha": 0.05,
+      "threshold": 0.1
+    },
+    {
+      "path": "C:\\Users\\20235732\\OneDrive - TU Eindhoven\\Desktop\\XAI\\causaltemp-xai\\results\\real_basicmotions\\tier3\\domain\\graph_agreement.json",
+      "dataset": "basicmotions",
+      "mode": "domain",
+      "mechanism_file": "test_mech_tmp.npz"
+    },
+    {
+      "path": "C:\\Users\\20235732\\OneDrive - TU Eindhoven\\Desktop\\XAI\\causaltemp-xai\\results\\real_basicmotions\\tier3\\known\\graph_agreement.json",
+      "dataset": "basicmotions",
+      "mode": "known",
+      "graph_file": "test_graph_tmp.npy",
+      "mechanism_file": "test_mech_tmp.npz"
+    },
+    {
+      "path": "C:\\Users\\20235732\\OneDrive - TU Eindhoven\\Desktop\\XAI\\causaltemp-xai\\results\\real_epilepsy\\tier3\\discover\\graph_agreement.json",
+      "dataset": "epilepsy",
+      "mode": "discover",
+      "ensemble_b": 3,
+      "pc_alpha": 0.05,
+      "threshold": 0.1
+    }
+  ]
+}

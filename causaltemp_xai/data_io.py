@@ -41,6 +41,7 @@ from causaltemp_xai.benchmarks.generator import (
     LinearSCMT,
     NlinearSCMT,
     RegimeSwitchNlinearSCMT,
+    SpringSCMT,
 )
 from causaltemp_xai.benchmarks.mechanisms import mechanism_from_state_dict
 from causaltemp_xai.config import (
@@ -78,8 +79,8 @@ def stratified_split(
         idx = np.where(Y == cls)[0]
         rng.shuffle(idx)
         n = len(idx)
-        n_train = int(round(n * fractions[0]))
-        n_val = int(round(n * fractions[1]))
+        n_train = round(n * fractions[0])
+        n_val = round(n * fractions[1])
         train_idx.append(idx[:n_train])
         val_idx.append(idx[n_train : n_train + n_val])
         test_idx.append(idx[n_train + n_val :])
@@ -121,6 +122,8 @@ def build_generator(config: BenchmarkConfig):
             T=config.T,
             N=config.N,
             seed=config.seed,
+            label_fn=config.label_fn,
+            label_params=config.label_params,
         )
     if config.mechanism_type == "mlp":
         nl = dict(config.nonlinear or {})
@@ -134,6 +137,8 @@ def build_generator(config: BenchmarkConfig):
             T=config.T,
             N=config.N,
             seed=config.seed,
+            label_fn=config.label_fn,
+            label_params=config.label_params,
             **nl,
         )
     if config.mechanism_type == "mlp_regime_switch":
@@ -152,6 +157,8 @@ def build_generator(config: BenchmarkConfig):
             T=config.T,
             N=config.N,
             seed=config.seed,
+            label_fn=config.label_fn,
+            label_params=config.label_params,
             hidden=nl.get("hidden", 16),
             switch_frac=nl.get("switch_frac", 0.5),
             regime1=regime1 or None,
@@ -162,9 +169,7 @@ def build_generator(config: BenchmarkConfig):
         regimes = nl.get("regimes")
         if regimes is not None:
             regimes = [
-                {**r, "decay_range": tuple(r["decay_range"])}
-                if "decay_range" in r
-                else dict(r)
+                {**r, "decay_range": tuple(r["decay_range"])} if "decay_range" in r else dict(r)
                 for r in regimes
             ]
         return HMMRegimeSwitchNlinearSCMT(
@@ -175,14 +180,35 @@ def build_generator(config: BenchmarkConfig):
             T=config.T,
             N=config.N,
             seed=config.seed,
+            label_fn=config.label_fn,
+            label_params=config.label_params,
             hidden=nl.get("hidden", 16),
             n_regimes=nl.get("n_regimes", 3),
             p_stay=nl.get("p_stay", 0.9),
             regimes=regimes,
         )
+    if config.mechanism_type == "spring":
+        nl = dict(config.nonlinear or {})
+        # config.k is the exposed channel count (2 * n_particles), matching
+        # every other family's "config.k == X.shape[-1]" convention --
+        # SpringSCMT itself takes n_particles, so it's derived here.
+        if config.k % 2 != 0:
+            raise ValueError(f"'spring' mechanism_type requires an even config.k, got {config.k}")
+        return SpringSCMT(
+            n_particles=config.k // 2,
+            sparsity=config.sparsity,
+            noise_type=config.noise_type,
+            T=config.T,
+            N=config.N,
+            seed=config.seed,
+            label_fn=config.label_fn,
+            label_params=config.label_params,
+            **nl,
+        )
     raise ValueError(
         f"unknown mechanism_type {config.mechanism_type!r}; "
-        "expected 'linear', 'mlp', 'mlp_regime_switch', or 'mlp_regime_hmm'"
+        "expected 'linear', 'mlp', 'mlp_regime_switch', 'mlp_regime_hmm', "
+        "or 'spring'"
     )
 
 
@@ -241,10 +267,8 @@ def generate_and_save(
         "mechanism_type": str(mechanism.state_dict()["__type__"]),
         "nonlinear": config.nonlinear,
         "split_fractions": list(SPLIT_FRACTIONS),
-        "split_sizes": {name: int(len(idx)) for name, idx in splits.items()},
-        "class_balance": {
-            name: _class_balance(Y[idx]) for name, idx in splits.items()
-        },
+        "split_sizes": {name: len(idx) for name, idx in splits.items()},
+        "class_balance": {name: _class_balance(Y[idx]) for name, idx in splits.items()},
         "shapes": {
             "X_train": list(X[train_idx].shape),
             "graph": list(graph.shape),

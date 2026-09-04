@@ -1,0 +1,23 @@
+{
+  "seed": 0,
+  "config": "real_basicmotions",
+  "git_commit": "d99f4146b7be05a97e81ac91b9d001676b5da473",
+  "git_dirty": true,
+  "datasets": [
+    {
+      "dataset": "basicmotions",
+      "k": 6,
+      "n_classes": 4,
+      "test_acc": 0.925,
+      "shd_between_methods": 8.0,
+      "cf_faith_discovered_rollout_by_method": {
+        "CftsCels": 0.3266916899452143,
+        "CftsCOMTE": 0.13690560783822253,
+        "CftsConfeti": 0.08056261751675309,
+        "CftsCounts": 0.4689334420369093,
+        "CftsWachter": 0.18638993341261095
+      },
+      "note": "structural agreement only, no correctness claim possible without ground truth -- real data has no true graph to compare either method against. See docs/risk_register.md RISK-22 and the Tier-1 version of this check (experiments/07_auxiliary_methods.py::run_cross_method_agreement) for the AUC-vs-truth comparison this cannot provide."
+    }
+  ]
+}

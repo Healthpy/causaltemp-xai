@@ -1,0 +1,15 @@
+{
+  "job_id": "21243871",
+  "git_commit": "18b21df04dc09fed0d676a0d7cab8ffa3504834b",
+  "machine": "aarch64",
+  "python": "3.13.5",
+  "torch": "2.9.0+cu129",
+  "cuda": "12.9",
+  "gpu": "NVIDIA GH200 120GB",
+  "configs": [
+    "full",
+    "full_nl",
+    "smoke_spring"
+  ],
+  "gpu_matmul_checksum": -4163.7998046875
+}

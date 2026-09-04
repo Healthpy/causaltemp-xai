@@ -1,57 +1,45 @@
-"""Counterfactual and attribution methods.
+"""Counterfactual and causal methods.
 
 The top-level namespace re-exports the most commonly used classes.
 The full method collections are available in the subpackages:
-  - causaltemp_xai.methods.counterfactual  (WachterCF, DiCECF, CARLARecourse,
-                                             PearlCARLARecourse, cfts_*)
-  - causaltemp_xai.methods.attribution     (integrated_gradients, TimeSHAP, Dynamask, ...)
-  - causaltemp_xai.methods.concept         (CBMT, iVAE)
-  - causaltemp_xai.methods.causal          (CITRIS)
-"""
+  - causaltemp_xai.methods.counterfactual  (NoiselessSCMRecourse, PearlSCMRecourse,
+                                             TSCausalCF, cfts_*)
+  - causaltemp_xai.methods.causal          (DYNOTEARS, PCMCIPlus)
 
-from .base import CFExplainer, AttributionMethod
-from .counterfactual.wachter import WachterCF
-from .counterfactual.dice import DiCECF
-from .counterfactual.carla import CARLARecourse, PearlCARLARecourse
-from .counterfactual.cfts_methods import (
-    CftsWachterCF,
-    CftsNativeGuideCF,
-    CftsCOMTECF,
-    CftsConfetiCF,
-    CftsCountsCF,
-    CftsCelsCF,
-)
-from .attribution.integrated_gradients import integrated_gradients
-from .attribution.perturbation_curves import deletion_curve, insertion_curve
-from .attribution.timeshap import TimeSHAP
-from .attribution.dynamask import Dynamask
-from .concept.cbm_t import CBMT
-from .concept.ivae import iVAE
-from .causal.citris import CITRIS
+The native from-scratch ``WachterCF`` was removed 2026-08-05:
+``CftsWachterCF`` wraps the genuine vendored ``cfts`` implementation and was
+already what the pipeline used, so the from-scratch reimplementation was
+redundant duplication, not a distinct method.
+"""
 
 # Backward-compat: derive_intervention_t moved to scm.intervention
 from causaltemp_xai.scm.intervention import derive_intervention_t
 
+from .base import AttributionMethod, CFExplainer
+from .causal.pcmci import PCMCIPlus
+from .counterfactual.causal_feasibility import TSCausalCF
+from .counterfactual.cfts_methods import (
+    CftsCelsCF,
+    CftsCOMTECF,
+    CftsConfetiCF,
+    CftsCountsCF,
+    CftsNativeGuideCF,
+    CftsWachterCF,
+)
+from .counterfactual.scm_recourse import NoiselessSCMRecourse, PearlSCMRecourse
+
 __all__ = [
-    "CFExplainer",
     "AttributionMethod",
-    "WachterCF",
-    "DiCECF",
-    "CARLARecourse",
-    "PearlCARLARecourse",
-    "CftsWachterCF",
-    "CftsNativeGuideCF",
+    "CFExplainer",
     "CftsCOMTECF",
+    "CftsCelsCF",
     "CftsConfetiCF",
     "CftsCountsCF",
-    "CftsCelsCF",
-    "integrated_gradients",
-    "deletion_curve",
-    "insertion_curve",
-    "TimeSHAP",
-    "Dynamask",
-    "CBMT",
-    "iVAE",
-    "CITRIS",
+    "CftsNativeGuideCF",
+    "CftsWachterCF",
+    "NoiselessSCMRecourse",
+    "PCMCIPlus",
+    "PearlSCMRecourse",
+    "TSCausalCF",
     "derive_intervention_t",
 ]

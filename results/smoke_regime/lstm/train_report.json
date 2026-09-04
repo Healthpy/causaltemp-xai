@@ -1,9 +1,0 @@
-{
-  "config": "smoke_regime",
-  "accuracies": {
-    "train": 0.9933333333333333,
-    "val": 0.9,
-    "test": 0.94
-  },
-  "target_acc": 0.9
-}

@@ -13,16 +13,14 @@ Validates abduction-action-prediction on a nonlinear ``NlinearSCMT`` SCM:
 from __future__ import annotations
 
 import numpy as np
-import pytest
 
-from causaltemp_xai.benchmarks.generator import NlinearSCMT
+from causaltemp_xai.benchmarks.generator import NlinearSCMT, SpringSCMT
 from causaltemp_xai.benchmarks.structural_cf import (
     _window,
     abduct_noise,
     structural_counterfactual,
 )
 from causaltemp_xai.metrics.cf_faith import CFfaith
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -32,6 +30,13 @@ from causaltemp_xai.metrics.cf_faith import CFfaith
 def _make_nlinear(k: int = 3, L: int = 2, T: int = 25, seed: int = 7):
     """Return (x_original, graph, mechanism) from a SMOKE-scale NlinearSCMT."""
     gen = NlinearSCMT(k=k, L=L, T=T, N=4, seed=seed, hidden=8)
+    data = gen.generate(burn_in=20)
+    return data["X"][0], data["graph"], data["mechanism"]
+
+
+def _make_spring(n_particles: int = 3, T: int = 25, seed: int = 7):
+    """Return (x_original, graph, mechanism) from a small SpringSCMT (M4c)."""
+    gen = SpringSCMT(n_particles=n_particles, T=T, N=4, seed=seed)
     data = gen.generate(burn_in=20)
     return data["X"][0], data["graph"], data["mechanism"]
 
@@ -59,6 +64,28 @@ class TestAbduction:
         x_rec = _reconstruct(eps, mechanism)
         assert np.abs(x_rec - x_orig).max() < 1e-6
 
+    def test_abduction_reconstructs_factual_spring(self):
+        """M4c: SpringMechanism abduction is exact too (additive noise, L=1)."""
+        x_orig, _, mechanism = _make_spring()
+        eps = abduct_noise(x_orig, mechanism)
+        x_rec = _reconstruct(eps, mechanism)
+        assert np.abs(x_rec - x_orig).max() < 1e-6
+
+
+class TestNullIntervention:
+    """M4c DoD: 'assert the oracle reproduces the factual under a null
+    intervention' -- do(x[t0, node] = x_orig[t0, node]) reuses the abducted
+    factual noise and re-imposes the *same* value already there, so the
+    entire oracle trajectory (not just the abducted noise) must equal
+    x_orig exactly.
+    """
+
+    def test_null_intervention_reproduces_factual_spring(self):
+        x_orig, _, mechanism = _make_spring()
+        t0, node = 6, 0
+        x_cf = structural_counterfactual(x_orig, mechanism, t0, node, x_orig[t0, node])
+        assert np.abs(x_cf - x_orig).max() < 1e-6
+
 
 # ---------------------------------------------------------------------------
 # Positive control: oracle CF is faithful by construction
@@ -73,9 +100,7 @@ class TestOraclePositiveControl:
         value = x_orig[t0, node] + 0.5
         x_cf = structural_counterfactual(x_orig, mechanism, t0, node, value)
 
-        r = CFfaith(tol=1e-4, semantics="pearl_delta").score(
-            x_orig, x_cf, t0, graph, mechanism
-        )
+        r = CFfaith(tol=1e-4, semantics="pearl_delta").score(x_orig, x_cf, t0, graph, mechanism)
         assert r["hard"] == 1.0, f"pearl oracle should be faithful, got {r}"
 
     def test_noiseless_oracle_is_rollout_faithful(self):
@@ -83,9 +108,7 @@ class TestOraclePositiveControl:
         x_orig, graph, mechanism = _make_nlinear()
         t0, node = 6, 1
         value = x_orig[t0, node] + 0.5
-        x_cf = structural_counterfactual(
-            x_orig, mechanism, t0, node, value, noiseless=True
-        )
+        x_cf = structural_counterfactual(x_orig, mechanism, t0, node, value, noiseless=True)
 
         r = CFfaith(tol=1e-4, semantics="noiseless_rollout").score(
             x_orig, x_cf, t0, graph, mechanism
@@ -106,9 +129,7 @@ class TestMutualExclusivity:
         value = x_orig[t0, node] + 0.5
         x_cf = structural_counterfactual(x_orig, mechanism, t0, node, value)
 
-        pearl = CFfaith(tol=1e-4, semantics="pearl_delta").score(
-            x_orig, x_cf, t0, graph, mechanism
-        )
+        pearl = CFfaith(tol=1e-4, semantics="pearl_delta").score(x_orig, x_cf, t0, graph, mechanism)
         rollout = CFfaith(tol=1e-4, semantics="noiseless_rollout").score(
             x_orig, x_cf, t0, graph, mechanism
         )
@@ -120,16 +141,12 @@ class TestMutualExclusivity:
         x_orig, graph, mechanism = _make_nlinear()
         t0, node = 6, 1
         value = x_orig[t0, node] + 0.5
-        x_cf = structural_counterfactual(
-            x_orig, mechanism, t0, node, value, noiseless=True
-        )
+        x_cf = structural_counterfactual(x_orig, mechanism, t0, node, value, noiseless=True)
 
         rollout = CFfaith(tol=1e-4, semantics="noiseless_rollout").score(
             x_orig, x_cf, t0, graph, mechanism
         )
-        pearl = CFfaith(tol=1e-4, semantics="pearl_delta").score(
-            x_orig, x_cf, t0, graph, mechanism
-        )
+        pearl = CFfaith(tol=1e-4, semantics="pearl_delta").score(x_orig, x_cf, t0, graph, mechanism)
         assert rollout["hard"] == 1.0
         assert pearl["hard"] == 0.0, f"noiseless oracle must not be pearl-faithful, {pearl}"
 
@@ -149,9 +166,7 @@ class TestNegativeControls:
         x_cf[t0 - 3, 0] += 5.0  # retroactive change before t0
 
         for sem in CFfaith.SEMANTICS:
-            r = CFfaith(tol=1e-4, semantics=sem).score(
-                x_orig, x_cf, t0, graph, mechanism
-            )
+            r = CFfaith(tol=1e-4, semantics=sem).score(x_orig, x_cf, t0, graph, mechanism)
             assert r["hard"] == 0.0, f"{sem} should reject retroactive, got {r}"
 
     def test_random_perturbation_cf_unfaithful(self):
@@ -163,8 +178,6 @@ class TestNegativeControls:
         x_cf[t0:] += rng.uniform(-0.5, 0.5, x_orig[t0:].shape)
 
         for sem in CFfaith.SEMANTICS:
-            r = CFfaith(tol=1e-4, semantics=sem).score(
-                x_orig, x_cf, t0, graph, mechanism
-            )
+            r = CFfaith(tol=1e-4, semantics=sem).score(x_orig, x_cf, t0, graph, mechanism)
             assert r["hard"] == 0.0, f"{sem} random CF should be hard=0, got {r}"
             assert r["soft"] < 1.0, f"{sem} random CF should be soft<1, got {r}"

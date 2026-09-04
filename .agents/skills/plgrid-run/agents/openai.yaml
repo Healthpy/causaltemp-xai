@@ -1,0 +1,4 @@
+interface:
+  display_name: "Run PLGrid Workloads"
+  short_description: "Set up PLGrid and run Slurm experiments"
+  default_prompt: "Use $plgrid-run to set up a PLGrid environment and run a GPU experiment safely."

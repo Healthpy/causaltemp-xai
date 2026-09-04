@@ -1,0 +1,13 @@
+{
+  "seed": 42,
+  "git_commit": "18b21df04dc09fed0d676a0d7cab8ffa3504834b",
+  "git_dirty": false,
+  "git_worktree_dirty": true,
+  "config": "full_spring",
+  "accuracies": {
+    "train": 0.9971666666666666,
+    "val": 0.9955,
+    "test": 0.9935
+  },
+  "target_acc": 0.9
+}

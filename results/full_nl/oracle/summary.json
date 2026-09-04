@@ -1,0 +1,85 @@
+{
+  "seed": 42,
+  "config": "full_nl",
+  "git_commit": "a38b097d6244f6c72dac75ce9757eedf46af23c9",
+  "git_dirty": false,
+  "provenance": {
+    "config": {
+      "k": 10,
+      "L": 1,
+      "sparsity": 0.2,
+      "noise_type": "laplace",
+      "T": 100,
+      "N": 10000,
+      "seed": 42,
+      "name": "full_nl",
+      "mechanism_type": "mlp",
+      "nonlinear": {
+        "hidden": 16,
+        "gain": 0.8,
+        "decay_range": [
+          0.3,
+          0.8
+        ],
+        "spectral_cap": 0.9,
+        "init_gain": 0.7,
+        "activation": "tanh"
+      },
+      "label_fn": "terminal_threshold",
+      "label_params": null
+    },
+    "seed": 42,
+    "n_cf": 100,
+    "mechanism_type": "mlp"
+  },
+  "methods": [
+    {
+      "benchmark": "full_nl",
+      "classifier": "oracle",
+      "method": "OracleCF-Pearl",
+      "n": 100,
+      "validity": null,
+      "proximity_l1": 4.353872976472301,
+      "proximity_l2": 1.8551282554258461,
+      "sparsity": 0.93946,
+      "sparsity_channels": 0.47,
+      "sparsity_timepoints": 0.824,
+      "trsi": 0.9133757626964806,
+      "scm_noise_plausibility": 0.9788007732638636,
+      "cf_faith_rollout_hard": 0.0,
+      "cf_faith_rollout_soft": 0.8817469736907866,
+      "cf_faith_pearl_hard": 1.0,
+      "cf_faith_pearl_soft": 0.9999999971585387,
+      "n_cf_faith_scorable": 100,
+      "frac_degenerate": 0.0,
+      "n_vacuous": 0,
+      "frac_vacuous": 0.0,
+      "cf_faith_rollout_hard_valid": null,
+      "cf_faith_pearl_hard_valid": null
+    },
+    {
+      "benchmark": "full_nl",
+      "classifier": "oracle",
+      "method": "OracleCF-Rollout",
+      "n": 100,
+      "validity": null,
+      "proximity_l1": 65.94483207636468,
+      "proximity_l2": 4.241184276187516,
+      "sparsity": 0.5119199999999999,
+      "sparsity_channels": 0.0,
+      "sparsity_timepoints": 0.5,
+      "trsi": 0.9434066809073606,
+      "scm_noise_plausibility": 0.5181689574296946,
+      "cf_faith_rollout_hard": 1.0,
+      "cf_faith_rollout_soft": 0.9999999997499216,
+      "cf_faith_pearl_hard": 0.0,
+      "cf_faith_pearl_soft": 0.8817469736562086,
+      "n_cf_faith_scorable": 100,
+      "frac_degenerate": 0.0,
+      "n_vacuous": 0,
+      "frac_vacuous": 0.0,
+      "cf_faith_rollout_hard_valid": null,
+      "cf_faith_pearl_hard_valid": null
+    }
+  ]
+}

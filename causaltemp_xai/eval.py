@@ -8,10 +8,10 @@ batch.
 The intervention timestep for each ``(x, x_cf)`` pair is derived uniformly via
 :func:`~causaltemp_xai.methods.intervention.derive_intervention_t` (first
 timestep where ``|x_cf - x| > tol``), so CF-faith is comparable across methods
-that do not declare an intervention point themselves (Wachter, DiCE).
+that do not declare an intervention point themselves (e.g. Wachter).
 
 Both CF-faith metrics are reported per the plan's "keep both CF-faith metrics"
-decision: ``cf_faith_rollout_*`` (noiseless-rollout semantics, which CARLA is
+decision: ``cf_faith_rollout_*`` (noiseless-rollout semantics, which NoiselessSCMRecourse is
 built to satisfy) and ``cf_faith_pearl_*`` (Pearl delta-recursion). A single CF
 cannot be ``hard=1`` under both; the contrast is itself a benchmark result.
 """
@@ -22,7 +22,6 @@ import inspect
 
 import numpy as np
 
-from causaltemp_xai.scm.intervention import derive_intervention_t
 from causaltemp_xai.metrics.axis_c import (
     ood_plausibility,
     proximity,
@@ -30,6 +29,8 @@ from causaltemp_xai.metrics.axis_c import (
     validity,
 )
 from causaltemp_xai.metrics.cf_faith import CFfaith
+from causaltemp_xai.metrics.pns import do_complexity, do_complexity_stability
+from causaltemp_xai.scm.intervention import derive_intervention_t, is_vacuous_intervention
 
 
 def evaluate_method(
@@ -40,6 +41,7 @@ def evaluate_method(
     graph: np.ndarray,
     mechanism,
     target_class: int = 1,
+    no_cf_found: np.ndarray | None = None,
 ) -> dict:
     """Compute the batch-averaged metric suite for one CF method.
 
@@ -61,6 +63,10 @@ def evaluate_method(
         transition), passed through to CF-faith.
     target_class:
         Desired output class for validity.
+    no_cf_found:
+        Optional Boolean failed-search vector aligned with ``CFs``. It is
+        reported as a separate diagnostic and never changes classifier
+        validity or any faithfulness score.
 
     Returns
     -------
@@ -77,8 +83,45 @@ def evaluate_method(
         a near-no-op CF can pass the faithfulness check without consulting
         the SCM, but it then fails to flip the classifier, so it earns no
         joint credit. No proximity floor is needed — a CF that is tiny *and*
-        valid *and* faithful is genuinely good, not gaming.  Also includes
-        ``n`` (batch size).
+        valid *and* faithful is genuinely good, not gaming. The separately
+        named ``cf_faith_{rollout,pearl}_hard_given_valid`` keys condition on
+        classifier validity and are NaN only when the valid set is empty.
+        Also includes ``n`` (batch size).
+
+        **Degeneracy (2026-07-30).** The four CF-faith means are ``nanmean``
+        over the batch: instances with ``intervention_t >= T-1`` score NaN
+        (CF-faith is undefined there — see :class:`CFfaith`) and abstain
+        instead of contributing a free 1.0. Two diagnostics are published
+        alongside: ``n_cf_faith_scorable`` (instances CF-faith could be
+        computed on) and ``frac_degenerate``. **A high ``frac_degenerate``
+        invalidates that method's CF-faith columns regardless of their
+        value** — read the two together, never the CF-faith mean alone. When
+        every instance is degenerate the means are NaN, not 1.0.
+
+        **Vacuity (2026-07-31, RISK-17).** ``frac_vacuous`` is the fraction of
+        the batch whose CF encodes **no intervention at all** — ``x_cf``
+        differs from ``x``, but ``x_cf[t0]`` is exactly what the mechanism
+        predicts from ``x_cf``'s own prefix, so the whole departure from the
+        factual is continuation rather than action (see
+        :func:`~causaltemp_xai.scm.intervention.is_vacuous_intervention`).
+        This catches what ``frac_degenerate`` cannot: a *noiseless-rollout* CF
+        with a zero perturbation drops the factual exogenous noise from ``t0``
+        onward, so it registers a changed timestep (no degeneracy), leaves the
+        prefix untouched (no retroactive edit), and *is* its own noiseless
+        rollout — scoring ``cf_faith_rollout_hard = 1.0`` on a CF that
+        intervened on nothing, with a large ``proximity_l1`` made entirely of
+        deleted noise. **A high ``frac_vacuous`` invalidates that method's
+        ``cf_faith_rollout_*`` and proximity/sparsity columns regardless of
+        their value.** It is *not* a strict superset of ``frac_degenerate``: a
+        literal no-op is both, but a genuine intervention landing at ``T-1``
+        is degenerate without being vacuous.
+
+        Deliberately reported as a diagnostic rather than folded into
+        CF-faith: CF-faith measures mechanism consistency and answers that
+        question correctly on these CFs. "Did an intervention happen at all?"
+        is a separate predicate, so every existing CF-faith number is
+        unchanged by this column (R5 — no silent redefinition of a scored
+        metric).
 
         **Structured sparsity.** ``sparsity`` is a flat count over all ``T×k``
         features and so is blind to the *shape* of the edit. The two structured
@@ -99,9 +142,17 @@ def evaluate_method(
     if CFs.ndim == 2:
         CFs = CFs[np.newaxis]
     if len(X_orig) != len(CFs):
-        raise ValueError(
-            f"X_orig ({len(X_orig)}) and CFs ({len(CFs)}) batch sizes differ"
-        )
+        raise ValueError(f"X_orig ({len(X_orig)}) and CFs ({len(CFs)}) batch sizes differ")
+    if no_cf_found is None:
+        no_cf_found_a = np.zeros(len(CFs), dtype=bool)
+    else:
+        no_cf_found_a = np.asarray(no_cf_found)
+        if no_cf_found_a.dtype != np.bool_:
+            raise TypeError(f"no_cf_found must have bool dtype, got {no_cf_found_a.dtype}")
+        if no_cf_found_a.shape != (len(CFs),):
+            raise ValueError(
+                f"no_cf_found shape {no_cf_found_a.shape} does not match CF batch ({len(CFs)},)"
+            )
 
     # Instantiate the two scorers once (outside the loop).
     rollout = CFfaith(semantics="noiseless_rollout")
@@ -116,6 +167,9 @@ def evaluate_method(
     prox_l1, prox_l2, spars = [], [], []
     spars_ch, spars_tp = [], []
     r_hard, r_soft, p_hard, p_soft = [], [], [], []
+    vacuous = []
+    do_c = []
+    do_stab = []
 
     for x, x_cf in zip(X_orig, CFs):
         prox_l1.append(proximity(x, x_cf, norm="l1"))
@@ -135,12 +189,54 @@ def evaluate_method(
         r_soft.append(r["soft"])
         p_hard.append(p["hard"])
         p_soft.append(p["soft"])
+        # RISK-17: does this CF encode a do() at all? Reuses the same t0 the
+        # CF-faith scores above were computed at, so the two always agree on
+        # which timestep is under discussion.
+        vacuous.append(float(is_vacuous_intervention(x, x_cf, mechanism, t0=t)))
+        # RISK-18: how many timesteps this CF must declare as do() before the
+        # mechanism can produce it. Read against the Pearl continuation, which
+        # is the oracle the PNS audit scores against, so the two agree on what
+        # "the method's intervention" means. D == 0 is a Pearl-semantic empty
+        # schedule; it is deliberately independent of the noiseless-semantic
+        # vacuity predicate above.
+        do_c.append(do_complexity(x, x_cf, mechanism))
+        # RISK-20: is this row's D threshold-independent? 1.0 = yes.
+        do_stab.append(do_complexity_stability(x, x_cf, mechanism))
 
     ood_scores = np.atleast_1d(ood_plausibility(X_train, CFs))
     sparsity_mean = float(np.mean(spars))
 
+    # CF-faith is NaN on degenerate instances (intervention_t >= T-1: no
+    # post-intervention trajectory exists to check — see CFfaith's docstring).
+    # Aggregate with nanmean so those instances abstain rather than posting a
+    # free 1.0, and publish the degenerate fraction so a method that games the
+    # boundary by only ever editing the last timestep is visible in the table
+    # instead of silently topping it.
+    r_hard_a = np.asarray(r_hard, dtype=float)
+    p_hard_a = np.asarray(p_hard, dtype=float)
+    scorable = ~np.isnan(r_hard_a)
+    n_scorable = int(scorable.sum())
+    do_c_a = np.asarray(do_c, dtype=float)
+    do_scorable = do_c_a > 0
+    n_do_scorable = int(do_scorable.sum())
+    n_valid = int(valid_i.sum())
+
+    def _nanmean(a):
+        # all-NaN would warn and return NaN; return NaN explicitly instead.
+        a = np.asarray(a, dtype=float)
+        return float(np.nanmean(a)) if np.any(~np.isnan(a)) else float("nan")
+
+    def _hard_given_valid(hard):
+        if n_valid == 0:
+            return float("nan")
+        hard_a = np.asarray(hard, dtype=float)
+        return float(np.sum(np.nan_to_num(hard_a) * valid_i) / n_valid)
+
+    do_mean_all = float(np.mean(do_c_a)) if len(do_c_a) else float("nan")
+    do_mean_scorable = float(np.mean(do_c_a[do_scorable])) if n_do_scorable else float("nan")
+
     return {
-        "n": int(len(CFs)),
+        "n": len(CFs),
         "validity": float(np.mean(valid_i)),
         "proximity_l1": float(np.mean(prox_l1)),
         "proximity_l2": float(np.mean(prox_l2)),
@@ -149,14 +245,58 @@ def evaluate_method(
         "sparsity_channels": float(np.mean(spars_ch)),
         "sparsity_timepoints": float(np.mean(spars_tp)),
         "ood": float(np.mean(ood_scores)),
-        "cf_faith_rollout_hard": float(np.mean(r_hard)),
-        "cf_faith_rollout_soft": float(np.mean(r_soft)),
-        "cf_faith_pearl_hard": float(np.mean(p_hard)),
-        "cf_faith_pearl_soft": float(np.mean(p_soft)),
-        # Joint faithfulness-validity criterion (anti-gameability, M1):
-        # fraction of instances that are BOTH hard-faithful AND valid.
-        "cf_faith_rollout_hard_valid": float(np.mean(np.asarray(r_hard) * valid_i)),
-        "cf_faith_pearl_hard_valid": float(np.mean(np.asarray(p_hard) * valid_i)),
+        "cf_faith_rollout_hard": _nanmean(r_hard),
+        "cf_faith_rollout_soft": _nanmean(r_soft),
+        "cf_faith_pearl_hard": _nanmean(p_hard),
+        "cf_faith_pearl_soft": _nanmean(p_soft),
+        # Degeneracy diagnostics (2026-07-30): how much of the batch CF-faith
+        # could actually be computed on. A high frac_degenerate invalidates
+        # the CF-faith columns for that method regardless of their value.
+        "n_cf_faith_scorable": n_scorable,
+        "frac_degenerate": float(1.0 - n_scorable / len(CFs)) if len(CFs) else float("nan"),
+        # Vacuity diagnostic (2026-07-31, RISK-17): fraction of the batch whose
+        # CF contains no intervention. Unlike frac_degenerate this catches the
+        # zero-perturbation noiseless rollout, which clears every existing gate
+        # and posts cf_faith_rollout_hard=1.0 on a CF that did nothing.
+        "n_vacuous": int(np.sum(vacuous)),
+        "frac_vacuous": float(np.mean(vacuous)) if len(CFs) else float("nan"),
+        # Search outcome from the generator. This is deliberately separate
+        # from classifier validity: a returned trajectory can reach the target
+        # because of noiseless continuation even when no actionable CF exists.
+        "n_no_cf_found": int(no_cf_found_a.sum()),
+        "frac_no_cf_found": (float(no_cf_found_a.mean()) if len(no_cf_found_a) else float("nan")),
+        # Do-complexity diagnostic (2026-08-03, RISK-18): how densely the method
+        # has to intervene for the mechanism to reproduce its own proposal.
+        # This is Pearl-semantic and does not generalise the separately reported
+        # noiseless-semantic frac_vacuous predicate. Reported so that
+        # any delta_trajectory in the PNS table can be read against how much of
+        # the proposal the single-slice audit is modelling — a method with
+        # D >> 1 is not being scored on the intervention it actually made.
+        "do_complexity_mean_all": do_mean_all,
+        "do_complexity_mean_pearl_scorable": do_mean_scorable,
+        "n_do_scorable": n_do_scorable,
+        "frac_no_do_schedule": (
+            float(1.0 - n_do_scorable / len(CFs)) if len(CFs) else float("nan")
+        ),
+        # Migration alias. This remains the all-instance mean and must never be
+        # repurposed for the conditional Pearl-scorable value.
+        "do_complexity_mean": do_mean_all,
+        "do_complexity_median": float(np.median(do_c)) if len(CFs) else float("nan"),
+        # Threshold-stability of the D column above (RISK-20). 1.0 means D is
+        # threshold-independent for this method; a large value means D must not
+        # be cited as a precise value on this row, only as a group placement.
+        "do_complexity_stability": _nanmean(do_stab),
+        # Joint faithfulness-validity criterion (anti-gameability, M1).
+        # NaN-degenerate instances count as 0 here (not faithful-and-valid):
+        # this is a fraction-of-batch criterion, so an instance that cannot be
+        # shown faithful must not be credited to it.
+        "cf_faith_rollout_hard_valid": float(np.mean(np.nan_to_num(r_hard_a) * valid_i)),
+        "cf_faith_pearl_hard_valid": float(np.mean(np.nan_to_num(p_hard_a) * valid_i)),
+        # Conditional faithfulness among classifier-valid counterfactuals.
+        # Degenerate hard scores receive no conditional credit. Unlike the
+        # joint rates above, these are undefined when no CF is valid.
+        "cf_faith_rollout_hard_given_valid": _hard_given_valid(r_hard_a),
+        "cf_faith_pearl_hard_given_valid": _hard_given_valid(p_hard_a),
     }
 
 
@@ -173,7 +313,7 @@ MIN_VALIDITY_BASE_FOR_RATIO = 0.3
 def _generate_batch(method, X, model, graph, mechanism):
     """Call ``method.generate_batch`` with the right signature.
 
-    CARLA-style recourse needs ``graph``/``mechanism``; Wachter/DiCE do not.
+    NoiselessSCMRecourse-style recourse needs ``graph``/``mechanism``; Wachter/cfts-* do not.
     We inspect the signature rather than special-casing class names.
     """
     params = inspect.signature(method.generate_batch).parameters
@@ -192,7 +332,7 @@ def shift_vr(
     target_class: int = 1,
     cf_base: dict | None = None,
 ) -> dict:
-    """Shift-VR-lite validity-retention metric (Axis D).
+    """Shift-VR-lite validity-retention metric (Axis B).
 
     Protocol (pinned — see ``resources/configs.md``): keep the **frozen base
     classifier** (no retraining). For each method, generate *fresh* CFs for the
@@ -209,7 +349,7 @@ def shift_vr(
         The frozen base classifier (exposing ``predict`` / ``torch_logits``).
     methods:
         Mapping ``{name: cf_method}``; each value exposes ``generate_batch``
-        (Wachter/DiCE: ``(X, model)``; CARLA: ``(X, model, graph, mechanism)``).
+        (Wachter/cfts-*: ``(X, model)``; NoiselessSCMRecourse: ``(X, model, graph, mechanism)``).
     X_base_test, X_shift_test:
         Test inputs ``(N, T, k)`` from the base and shifted environments.
     graph, mechanism:

@@ -1,0 +1,44 @@
+{
+  "seed": 0,
+  "config": "smoke",
+  "git_commit": "505ab5b5cc5d2ba9501e0dcd71737397a629f748",
+  "git_dirty": true,
+  "git_worktree_dirty": true,
+  "methods": {
+    "NoiselessSCMRecourse": {
+      "source": "generated",
+      "n": 20,
+      "n_no_cf_found": 0
+    },
+    "PearlSCMRecourse": {
+      "source": "generated",
+      "n": 20,
+      "n_no_cf_found": 0
+    },
+    "CftsWachter": {
+      "source": "inferred",
+      "n": 20,
+      "n_no_cf_found": 0
+    },
+    "CftsCOMTE": {
+      "source": "inferred",
+      "n": 20,
+      "n_no_cf_found": 0
+    },
+    "CftsCounts": {
+      "source": "inferred",
+      "n": 20,
+      "n_no_cf_found": 0
+    },
+    "CftsCels": {
+      "source": "inferred",
+      "n": 20,
+      "n_no_cf_found": 0
+    },
+    "TSCausal": {
+      "source": "generated",
+      "n": 20,
+      "n_no_cf_found": 0
+    }
+  }
+}

@@ -1,0 +1,703 @@
+dataset,classifier,method,metric,change_kind,value_run1,value_run2,delta,attribution
+smoke,lstm,CftsCOMTE,cf_faith_pearl_hard_given_valid,new_metric,,0,,Stage 2 D5 conditional-faithfulness metric
+smoke,lstm,CftsCOMTE,cf_faith_pearl_soft,changed_value,0.750346978467,0.886044550142,0.135697571674,User-requested CFTS update 2fb4921→f925d1a and adapter migration; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92
+smoke,lstm,CftsCOMTE,cf_faith_rollout_hard_given_valid,new_metric,,0,,Stage 2 D5 conditional-faithfulness metric
+smoke,lstm,CftsCOMTE,cf_faith_rollout_soft,changed_value,0.662557172735,0.771287844508,0.108730671773,User-requested CFTS update 2fb4921→f925d1a and adapter migration; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92
+smoke,lstm,CftsCOMTE,do_complexity_mean_all,new_metric,,30,,Stage 2 D4 explicit do-complexity denominators
+smoke,lstm,CftsCOMTE,do_complexity_mean_pearl_scorable,new_metric,,30,,Stage 2 D4 explicit do-complexity denominators
+smoke,lstm,CftsCOMTE,do_complexity_stability,changed_value,1,1.00172413793,0.00172413793103,User-requested CFTS update 2fb4921→f925d1a and adapter migration; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92
+smoke,lstm,CftsCOMTE,frac_no_do_schedule,new_metric,,0,,Stage 2 D4 explicit do-complexity denominators
+smoke,lstm,CftsCOMTE,n,changed_value,5,20,15,User-requested CFTS update 2fb4921→f925d1a and adapter migration; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92
+smoke,lstm,CftsCOMTE,n_cf_faith_scorable,changed_value,5,20,15,User-requested CFTS update 2fb4921→f925d1a and adapter migration; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92
+smoke,lstm,CftsCOMTE,n_do_scorable,new_metric,,20,,Stage 2 D4 explicit do-complexity denominators
+smoke,lstm,CftsCOMTE,ood,changed_value,-0.011501729307,0.0604806186173,0.0719823479243,User-requested CFTS update 2fb4921→f925d1a and adapter migration; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92
+smoke,lstm,CftsCOMTE,pns_PS_C_world_oracle,changed_value,0,0.05,0.05,User-requested CFTS update 2fb4921→f925d1a and adapter migration; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92
+smoke,lstm,CftsCOMTE,pns_PS_delta_outcome,changed_value,0,-0.05,-0.05,User-requested CFTS update 2fb4921→f925d1a and adapter migration; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92
+smoke,lstm,CftsCOMTE,pns_PS_delta_total,changed_value,1,0.95,-0.05,User-requested CFTS update 2fb4921→f925d1a and adapter migration; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92
+smoke,lstm,CftsCOMTE,pns_PS_n,changed_value,5,20,15,User-requested CFTS update 2fb4921→f925d1a and adapter migration; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92
+smoke,lstm,CftsCOMTE,pns_PS_n_scorable,changed_value,5,20,15,User-requested CFTS update 2fb4921→f925d1a and adapter migration; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92
+smoke,lstm,CftsCOMTE,proximity_l1,changed_value,41.9982708359,16.1809494977,-25.8173213381,User-requested CFTS update 2fb4921→f925d1a and adapter migration; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92
+smoke,lstm,CftsCOMTE,proximity_l2,changed_value,3.60047691356,3.14866839002,-0.451808523538,User-requested CFTS update 2fb4921→f925d1a and adapter migration; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92
+smoke,lstm,CftsCOMTE,scm_noise_plausibility,changed_value,0.295526442952,0.417442574139,0.121916131187,User-requested CFTS update 2fb4921→f925d1a and adapter migration; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92
+smoke,lstm,CftsCOMTE,sparsity,changed_value,0,0.740333333333,0.740333333333,User-requested CFTS update 2fb4921→f925d1a and adapter migration; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92
+smoke,lstm,CftsCOMTE,sparsity_channels,changed_value,0,0.74,0.74,User-requested CFTS update 2fb4921→f925d1a and adapter migration; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92
+smoke,lstm,CftsCOMTE,sparsity_timepoints,changed_value,0,0.00166666666667,0.00166666666667,User-requested CFTS update 2fb4921→f925d1a and adapter migration; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92
+smoke,lstm,CftsCOMTE,trsi,changed_value,0.513376330644,1.32361845871,0.810242128068,User-requested CFTS update 2fb4921→f925d1a and adapter migration; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92
+smoke,lstm,CftsCels,cf_faith_pearl_hard_given_valid,new_metric,,0,,Stage 2 D5 conditional-faithfulness metric
+smoke,lstm,CftsCels,cf_faith_pearl_soft,changed_value,0.980609825903,0.980735098112,0.000125272208263,User-requested CFTS update 2fb4921→f925d1a and adapter migration; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92
+smoke,lstm,CftsCels,cf_faith_rollout_hard_given_valid,new_metric,,0,,Stage 2 D5 conditional-faithfulness metric
+smoke,lstm,CftsCels,cf_faith_rollout_soft,changed_value,0.768456886555,0.788388337638,0.019931451082,User-requested CFTS update 2fb4921→f925d1a and adapter migration; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92
+smoke,lstm,CftsCels,do_complexity_mean,changed_value,21.8,18.6,-3.2,User-requested CFTS update 2fb4921→f925d1a and adapter migration; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92
+smoke,lstm,CftsCels,do_complexity_mean_all,new_metric,,18.6,,Stage 2 D4 explicit do-complexity denominators
+smoke,lstm,CftsCels,do_complexity_mean_pearl_scorable,new_metric,,18.6,,Stage 2 D4 explicit do-complexity denominators
+smoke,lstm,CftsCels,do_complexity_median,changed_value,24,19,-5,User-requested CFTS update 2fb4921→f925d1a and adapter migration; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92
+smoke,lstm,CftsCels,do_complexity_stability,changed_value,3.673647343,3.3875070028,-0.286140340194,User-requested CFTS update 2fb4921→f925d1a and adapter migration; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92
+smoke,lstm,CftsCels,frac_no_do_schedule,new_metric,,0,,Stage 2 D4 explicit do-complexity denominators
+smoke,lstm,CftsCels,n,changed_value,5,20,15,User-requested CFTS update 2fb4921→f925d1a and adapter migration; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92
+smoke,lstm,CftsCels,n_cf_faith_scorable,changed_value,5,20,15,User-requested CFTS update 2fb4921→f925d1a and adapter migration; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92
+smoke,lstm,CftsCels,n_do_scorable,new_metric,,20,,Stage 2 D4 explicit do-complexity denominators
+smoke,lstm,CftsCels,ood,changed_value,0.0621594706816,0.0632195202697,0.00106004958814,User-requested CFTS update 2fb4921→f925d1a and adapter migration; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92
+smoke,lstm,CftsCels,pns_PS_C_world_oracle,changed_value,0,0.05,0.05,User-requested CFTS update 2fb4921→f925d1a and adapter migration; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92
+smoke,lstm,CftsCels,pns_PS_delta_outcome,changed_value,0,-0.05,-0.05,User-requested CFTS update 2fb4921→f925d1a and adapter migration; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92
+smoke,lstm,CftsCels,pns_PS_delta_total,changed_value,1,0.95,-0.05,User-requested CFTS update 2fb4921→f925d1a and adapter migration; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92
+smoke,lstm,CftsCels,pns_PS_do_complexity_mean,changed_value,21.8,18.6,-3.2,User-requested CFTS update 2fb4921→f925d1a and adapter migration; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92
+smoke,lstm,CftsCels,pns_PS_do_complexity_median,changed_value,24,19,-5,User-requested CFTS update 2fb4921→f925d1a and adapter migration; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92
+smoke,lstm,CftsCels,pns_PS_n,changed_value,5,20,15,User-requested CFTS update 2fb4921→f925d1a and adapter migration; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92
+smoke,lstm,CftsCels,pns_PS_n_scorable,changed_value,5,20,15,User-requested CFTS update 2fb4921→f925d1a and adapter migration; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92
+smoke,lstm,CftsCels,proximity_l1,changed_value,2.45460342846,2.03781267448,-0.416790753976,User-requested CFTS update 2fb4921→f925d1a and adapter migration; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92
+smoke,lstm,CftsCels,proximity_l2,changed_value,0.827243045374,0.860759312515,0.0335162671412,User-requested CFTS update 2fb4921→f925d1a and adapter migration; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92
+smoke,lstm,CftsCels,scm_noise_plausibility,changed_value,0.922338056281,0.931201234343,0.00886317806142,User-requested CFTS update 2fb4921→f925d1a and adapter migration; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92
+smoke,lstm,CftsCels,sparsity,changed_value,0.501333333333,0.603666666667,0.102333333333,User-requested CFTS update 2fb4921→f925d1a and adapter migration; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92
+smoke,lstm,CftsCels,sparsity_timepoints,changed_value,0.233333333333,0.348333333333,0.115,User-requested CFTS update 2fb4921→f925d1a and adapter migration; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92
+smoke,lstm,CftsCels,trsi,changed_value,1.11733644413,1.09491805426,-0.0224183898637,User-requested CFTS update 2fb4921→f925d1a and adapter migration; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92
+smoke,lstm,CftsConfeti,cf_faith_pearl_hard_given_valid,new_metric,,0,,Stage 2 D5 conditional-faithfulness metric
+smoke,lstm,CftsConfeti,cf_faith_pearl_soft,changed_value,0.832554280537,0.831220154621,-0.00133412591542,User-requested CFTS update 2fb4921→f925d1a and adapter migration; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92
+smoke,lstm,CftsConfeti,cf_faith_rollout_hard_given_valid,new_metric,,0,,Stage 2 D5 conditional-faithfulness metric
+smoke,lstm,CftsConfeti,cf_faith_rollout_soft,changed_value,0.790144066086,0.77780215732,-0.0123419087659,User-requested CFTS update 2fb4921→f925d1a and adapter migration; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92
+smoke,lstm,CftsConfeti,do_complexity_mean,changed_value,17.8,12,-5.8,User-requested CFTS update 2fb4921→f925d1a and adapter migration; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92
+smoke,lstm,CftsConfeti,do_complexity_mean_all,new_metric,,12,,Stage 2 D4 explicit do-complexity denominators
+smoke,lstm,CftsConfeti,do_complexity_mean_pearl_scorable,new_metric,,30,,Stage 2 D4 explicit do-complexity denominators
+smoke,lstm,CftsConfeti,do_complexity_median,changed_value,29,0,-29,User-requested CFTS update 2fb4921→f925d1a and adapter migration; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92
+smoke,lstm,CftsConfeti,frac_degenerate,changed_value,0.4,0.6,0.2,User-requested CFTS update 2fb4921→f925d1a and adapter migration; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92
+smoke,lstm,CftsConfeti,frac_no_do_schedule,new_metric,,0.6,,Stage 2 D4 explicit do-complexity denominators
+smoke,lstm,CftsConfeti,frac_vacuous,changed_value,0.4,0.6,0.2,User-requested CFTS update 2fb4921→f925d1a and adapter migration; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92
+smoke,lstm,CftsConfeti,n,changed_value,5,20,15,User-requested CFTS update 2fb4921→f925d1a and adapter migration; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92
+smoke,lstm,CftsConfeti,n_cf_faith_scorable,changed_value,3,8,5,User-requested CFTS update 2fb4921→f925d1a and adapter migration; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92
+smoke,lstm,CftsConfeti,n_do_scorable,new_metric,,8,,Stage 2 D4 explicit do-complexity denominators
+smoke,lstm,CftsConfeti,ood,changed_value,0.054868428439,0.0507121809076,-0.00415624753142,User-requested CFTS update 2fb4921→f925d1a and adapter migration; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92
+smoke,lstm,CftsConfeti,pns_PS_A_model_proposed,changed_value,0.666666666667,1,0.333333333333,User-requested CFTS update 2fb4921→f925d1a and adapter migration; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92
+smoke,lstm,CftsConfeti,pns_PS_C_world_oracle,changed_value,0,0.125,0.125,User-requested CFTS update 2fb4921→f925d1a and adapter migration; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92
+smoke,lstm,CftsConfeti,pns_PS_delta_outcome,changed_value,0,-0.125,-0.125,User-requested CFTS update 2fb4921→f925d1a and adapter migration; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92
+smoke,lstm,CftsConfeti,pns_PS_delta_total,changed_value,0.666666666667,0.875,0.208333333333,User-requested CFTS update 2fb4921→f925d1a and adapter migration; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92
+smoke,lstm,CftsConfeti,pns_PS_delta_trajectory,changed_value,0.666666666667,1,0.333333333333,User-requested CFTS update 2fb4921→f925d1a and adapter migration; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92
+smoke,lstm,CftsConfeti,pns_PS_do_complexity_mean,changed_value,29.6666666667,30,0.333333333333,User-requested CFTS update 2fb4921→f925d1a and adapter migration; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92
+smoke,lstm,CftsConfeti,pns_PS_frac_no_intervention,changed_value,0.4,0.6,0.2,User-requested CFTS update 2fb4921→f925d1a and adapter migration; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92
+smoke,lstm,CftsConfeti,pns_PS_n,changed_value,5,20,15,User-requested CFTS update 2fb4921→f925d1a and adapter migration; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92
+smoke,lstm,CftsConfeti,pns_PS_n_scorable,changed_value,3,8,5,User-requested CFTS update 2fb4921→f925d1a and adapter migration; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92
+smoke,lstm,CftsConfeti,proximity_l1,changed_value,12.8129046854,9.84195741183,-2.9709472736,User-requested CFTS update 2fb4921→f925d1a and adapter migration; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92
+smoke,lstm,CftsConfeti,proximity_l2,changed_value,2.04594410138,1.53400821588,-0.511935885493,User-requested CFTS update 2fb4921→f925d1a and adapter migration; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92
+smoke,lstm,CftsConfeti,scm_noise_plausibility,changed_value,0.629697289074,0.717666272032,0.0879689829582,User-requested CFTS update 2fb4921→f925d1a and adapter migration; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92
+smoke,lstm,CftsConfeti,sparsity,changed_value,0.728,0.807666666667,0.0796666666667,User-requested CFTS update 2fb4921→f925d1a and adapter migration; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92
+smoke,lstm,CftsConfeti,sparsity_channels,changed_value,0.4,0.6,0.2,User-requested CFTS update 2fb4921→f925d1a and adapter migration; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92
+smoke,lstm,CftsConfeti,sparsity_timepoints,changed_value,0.44,0.61,0.17,User-requested CFTS update 2fb4921→f925d1a and adapter migration; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92
+smoke,lstm,CftsConfeti,trsi,changed_value,1.4433854731,1.4451062459,0.00172077280032,User-requested CFTS update 2fb4921→f925d1a and adapter migration; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92
+smoke,lstm,CftsWachter,cf_faith_pearl_hard_given_valid,new_metric,,0,,Stage 2 D5 conditional-faithfulness metric
+smoke,lstm,CftsWachter,cf_faith_pearl_soft,changed_value,0.713185495885,0.684275858133,-0.0289096377516,User-requested CFTS update 2fb4921→f925d1a and adapter migration; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92
+smoke,lstm,CftsWachter,cf_faith_rollout_hard_given_valid,new_metric,,0,,Stage 2 D5 conditional-faithfulness metric
+smoke,lstm,CftsWachter,cf_faith_rollout_soft,changed_value,0.766529275582,0.746656019703,-0.0198732558792,User-requested CFTS update 2fb4921→f925d1a and adapter migration; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92
+smoke,lstm,CftsWachter,do_complexity_mean_all,new_metric,,30,,Stage 2 D4 explicit do-complexity denominators
+smoke,lstm,CftsWachter,do_complexity_mean_pearl_scorable,new_metric,,30,,Stage 2 D4 explicit do-complexity denominators
+smoke,lstm,CftsWachter,frac_no_do_schedule,new_metric,,0,,Stage 2 D4 explicit do-complexity denominators
+smoke,lstm,CftsWachter,n,changed_value,5,20,15,User-requested CFTS update 2fb4921→f925d1a and adapter migration; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92
+smoke,lstm,CftsWachter,n_cf_faith_scorable,changed_value,5,20,15,User-requested CFTS update 2fb4921→f925d1a and adapter migration; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92
+smoke,lstm,CftsWachter,n_do_scorable,new_metric,,20,,Stage 2 D4 explicit do-complexity denominators
+smoke,lstm,CftsWachter,ood,changed_value,0.0503317744205,0.0454017667781,-0.00493000764241,User-requested CFTS update 2fb4921→f925d1a and adapter migration; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92
+smoke,lstm,CftsWachter,pns_PS_C_world_oracle,changed_value,0,0.05,0.05,User-requested CFTS update 2fb4921→f925d1a and adapter migration; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92
+smoke,lstm,CftsWachter,pns_PS_delta_outcome,changed_value,0,-0.05,-0.05,User-requested CFTS update 2fb4921→f925d1a and adapter migration; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92
+smoke,lstm,CftsWachter,pns_PS_delta_total,changed_value,1,0.95,-0.05,User-requested CFTS update 2fb4921→f925d1a and adapter migration; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92
+smoke,lstm,CftsWachter,pns_PS_n,changed_value,5,20,15,User-requested CFTS update 2fb4921→f925d1a and adapter migration; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92
+smoke,lstm,CftsWachter,pns_PS_n_scorable,changed_value,5,20,15,User-requested CFTS update 2fb4921→f925d1a and adapter migration; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92
+smoke,lstm,CftsWachter,proximity_l1,changed_value,54.5762027907,62.9255013626,8.34929857189,User-requested CFTS update 2fb4921→f925d1a and adapter migration; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92
+smoke,lstm,CftsWachter,proximity_l2,changed_value,6.59069838603,7.48709278418,0.89639439815,User-requested CFTS update 2fb4921→f925d1a and adapter migration; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92
+smoke,lstm,CftsWachter,scm_noise_plausibility,changed_value,0.840639421341,0.720705016095,-0.119934405246,User-requested CFTS update 2fb4921→f925d1a and adapter migration; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92
+smoke,lstm,CftsWachter,sparsity,changed_value,0.00266666666667,0.00733333333333,0.00466666666667,User-requested CFTS update 2fb4921→f925d1a and adapter migration; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92
+smoke,lstm,CftsWachter,trsi,changed_value,1.22181861261,1.15699388718,-0.0648247254362,User-requested CFTS update 2fb4921→f925d1a and adapter migration; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92
+smoke,lstm,NoiselessSCMRecourse,cf_faith_pearl_hard_given_valid,new_metric,,0,,Stage 2 D5 conditional-faithfulness metric
+smoke,lstm,NoiselessSCMRecourse,cf_faith_pearl_soft,changed_value,0.758145803251,0.776812026161,0.0186662229097,Stage 1 proximity rescaling and bounded prediction-only fallback; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92
+smoke,lstm,NoiselessSCMRecourse,cf_faith_rollout_hard_given_valid,new_metric,,1,,Stage 2 D5 conditional-faithfulness metric
+smoke,lstm,NoiselessSCMRecourse,cf_faith_rollout_soft,changed_value,0.99999999456,0.99999999129,-3.27007343426e-09,Stage 1 proximity rescaling and bounded prediction-only fallback; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92
+smoke,lstm,NoiselessSCMRecourse,do_complexity_mean,changed_value,17.8,16.75,-1.05,Stage 1 proximity rescaling and bounded prediction-only fallback; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92
+smoke,lstm,NoiselessSCMRecourse,do_complexity_mean_all,new_metric,,16.75,,Stage 2 D4 explicit do-complexity denominators
+smoke,lstm,NoiselessSCMRecourse,do_complexity_mean_pearl_scorable,new_metric,,16.75,,Stage 2 D4 explicit do-complexity denominators
+smoke,lstm,NoiselessSCMRecourse,do_complexity_stability,changed_value,1,1.00357142857,0.00357142857143,Stage 1 proximity rescaling and bounded prediction-only fallback; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92
+smoke,lstm,NoiselessSCMRecourse,frac_no_do_schedule,new_metric,,0,,Stage 2 D4 explicit do-complexity denominators
+smoke,lstm,NoiselessSCMRecourse,n,changed_value,5,20,15,Stage 1 proximity rescaling and bounded prediction-only fallback; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92
+smoke,lstm,NoiselessSCMRecourse,n_cf_faith_scorable,changed_value,5,20,15,Stage 1 proximity rescaling and bounded prediction-only fallback; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92
+smoke,lstm,NoiselessSCMRecourse,n_do_scorable,new_metric,,20,,Stage 2 D4 explicit do-complexity denominators
+smoke,lstm,NoiselessSCMRecourse,ood,changed_value,0.0872406471561,0.0767774723832,-0.0104631747729,Stage 1 proximity rescaling and bounded prediction-only fallback; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92
+smoke,lstm,NoiselessSCMRecourse,pns_PS_B_model_oracle,changed_value,0.2,0.05,-0.15,Stage 1 proximity rescaling and bounded prediction-only fallback; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92
+smoke,lstm,NoiselessSCMRecourse,pns_PS_C_world_oracle,changed_value,0,0.05,0.05,Stage 1 proximity rescaling and bounded prediction-only fallback; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92
+smoke,lstm,NoiselessSCMRecourse,pns_PS_delta_outcome,changed_value,0.2,0,-0.2,Stage 1 proximity rescaling and bounded prediction-only fallback; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92
+smoke,lstm,NoiselessSCMRecourse,pns_PS_delta_total,changed_value,1,0.95,-0.05,Stage 1 proximity rescaling and bounded prediction-only fallback; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92
+smoke,lstm,NoiselessSCMRecourse,pns_PS_delta_trajectory,changed_value,0.8,0.95,0.15,Stage 1 proximity rescaling and bounded prediction-only fallback; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92
+smoke,lstm,NoiselessSCMRecourse,pns_PS_do_complexity_mean,changed_value,17.8,16.75,-1.05,Stage 1 proximity rescaling and bounded prediction-only fallback; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92
+smoke,lstm,NoiselessSCMRecourse,pns_PS_n,changed_value,5,20,15,Stage 1 proximity rescaling and bounded prediction-only fallback; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92
+smoke,lstm,NoiselessSCMRecourse,pns_PS_n_scorable,changed_value,5,20,15,Stage 1 proximity rescaling and bounded prediction-only fallback; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92
+smoke,lstm,NoiselessSCMRecourse,proximity_l1,changed_value,30.4630067698,27.2599806903,-3.20302607943,Stage 1 proximity rescaling and bounded prediction-only fallback; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92
+smoke,lstm,NoiselessSCMRecourse,proximity_l2,changed_value,4.61012330612,4.2293552127,-0.380768093423,Stage 1 proximity rescaling and bounded prediction-only fallback; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92
+smoke,lstm,NoiselessSCMRecourse,scm_noise_plausibility,changed_value,0.45992480615,0.467849426746,0.00792462059601,Stage 1 proximity rescaling and bounded prediction-only fallback; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92
+smoke,lstm,NoiselessSCMRecourse,sparsity,changed_value,0.408,0.448666666667,0.0406666666667,Stage 1 proximity rescaling and bounded prediction-only fallback; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92
+smoke,lstm,NoiselessSCMRecourse,sparsity_timepoints,changed_value,0.406666666667,0.441666666667,0.035,Stage 1 proximity rescaling and bounded prediction-only fallback; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92
+smoke,lstm,NoiselessSCMRecourse,trsi,changed_value,0.941589504631,1.06972020043,0.1281306958,Stage 1 proximity rescaling and bounded prediction-only fallback; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92
+smoke,lstm,PearlSCMRecourse,cf_faith_pearl_hard_given_valid,new_metric,,1,,Stage 2 D5 conditional-faithfulness metric
+smoke,lstm,PearlSCMRecourse,cf_faith_pearl_hard_valid,changed_value,0.8,1,0.2,Stage 1 proximity rescaling and bounded prediction-only fallback; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92
+smoke,lstm,PearlSCMRecourse,cf_faith_pearl_soft,changed_value,0.999999961469,0.999999954951,-6.51810283525e-09,Stage 1 proximity rescaling and bounded prediction-only fallback; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92
+smoke,lstm,PearlSCMRecourse,cf_faith_rollout_hard_given_valid,new_metric,,0,,Stage 2 D5 conditional-faithfulness metric
+smoke,lstm,PearlSCMRecourse,cf_faith_rollout_soft,changed_value,0.753253901079,0.787220572295,0.0339666712158,Stage 1 proximity rescaling and bounded prediction-only fallback; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92
+smoke,lstm,PearlSCMRecourse,do_complexity_mean_all,new_metric,,1,,Stage 2 D4 explicit do-complexity denominators
+smoke,lstm,PearlSCMRecourse,do_complexity_mean_pearl_scorable,new_metric,,1,,Stage 2 D4 explicit do-complexity denominators
+smoke,lstm,PearlSCMRecourse,frac_no_do_schedule,new_metric,,0,,Stage 2 D4 explicit do-complexity denominators
+smoke,lstm,PearlSCMRecourse,n,changed_value,5,20,15,Stage 1 proximity rescaling and bounded prediction-only fallback; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92
+smoke,lstm,PearlSCMRecourse,n_cf_faith_scorable,changed_value,5,20,15,Stage 1 proximity rescaling and bounded prediction-only fallback; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92
+smoke,lstm,PearlSCMRecourse,n_do_scorable,new_metric,,20,,Stage 2 D4 explicit do-complexity denominators
+smoke,lstm,PearlSCMRecourse,ood,changed_value,0.034966683315,0.0161846004304,-0.0187820828846,Stage 1 proximity rescaling and bounded prediction-only fallback; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92
+smoke,lstm,PearlSCMRecourse,pns_PS_A_model_proposed,changed_value,0.8,1,0.2,Stage 1 proximity rescaling and bounded prediction-only fallback; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92
+smoke,lstm,PearlSCMRecourse,pns_PS_B_model_oracle,changed_value,0.8,1,0.2,Stage 1 proximity rescaling and bounded prediction-only fallback; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92
+smoke,lstm,PearlSCMRecourse,pns_PS_C_world_oracle,changed_value,0.8,0.85,0.05,Stage 1 proximity rescaling and bounded prediction-only fallback; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92
+smoke,lstm,PearlSCMRecourse,pns_PS_delta_outcome,changed_value,0,0.15,0.15,Stage 1 proximity rescaling and bounded prediction-only fallback; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92
+smoke,lstm,PearlSCMRecourse,pns_PS_delta_total,changed_value,0,0.15,0.15,Stage 1 proximity rescaling and bounded prediction-only fallback; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92
+smoke,lstm,PearlSCMRecourse,pns_PS_n,changed_value,5,20,15,Stage 1 proximity rescaling and bounded prediction-only fallback; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92
+smoke,lstm,PearlSCMRecourse,pns_PS_n_scorable,changed_value,5,20,15,Stage 1 proximity rescaling and bounded prediction-only fallback; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92
+smoke,lstm,PearlSCMRecourse,proximity_l1,changed_value,32.7981793657,48.8699454739,16.0717661082,Stage 1 proximity rescaling and bounded prediction-only fallback; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92
+smoke,lstm,PearlSCMRecourse,proximity_l2,changed_value,6.22019755163,9.14243956608,2.92224201446,Stage 1 proximity rescaling and bounded prediction-only fallback; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92
+smoke,lstm,PearlSCMRecourse,scm_noise_plausibility,changed_value,0.898692523034,0.883579984891,-0.0151125381432,Stage 1 proximity rescaling and bounded prediction-only fallback; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92
+smoke,lstm,PearlSCMRecourse,shift_vr,changed_value,1.25,1,-0.25,Stage 1 proximity rescaling and bounded prediction-only fallback; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92
+smoke,lstm,PearlSCMRecourse,sparsity,changed_value,0.557333333333,0.593666666667,0.0363333333333,Stage 1 proximity rescaling and bounded prediction-only fallback; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92
+smoke,lstm,PearlSCMRecourse,sparsity_timepoints,changed_value,0.453333333333,0.5,0.0466666666667,Stage 1 proximity rescaling and bounded prediction-only fallback; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92
+smoke,lstm,PearlSCMRecourse,trsi,changed_value,0.953929839371,0.89078047795,-0.0631493614215,Stage 1 proximity rescaling and bounded prediction-only fallback; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92
+smoke,lstm,PearlSCMRecourse,validity,changed_value,0.8,1,0.2,Stage 1 proximity rescaling and bounded prediction-only fallback; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92
+smoke,lstm,PearlSCMRecourse,validity_base,changed_value,0.8,1,0.2,Stage 1 proximity rescaling and bounded prediction-only fallback; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92
+smoke,lstm,TSCausal,cf_faith_pearl_hard_given_valid,new_metric,,0,,Stage 2 D5 conditional-faithfulness metric
+smoke,lstm,TSCausal,cf_faith_pearl_soft,changed_value,0.317486061657,0.450884223831,0.133398162173,"Fresh local classifier/CF regeneration; diagnostic only, not a fix claim; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92"
+smoke,lstm,TSCausal,cf_faith_rollout_hard_given_valid,new_metric,,0,,Stage 2 D5 conditional-faithfulness metric
+smoke,lstm,TSCausal,cf_faith_rollout_soft,changed_value,0.314677871856,0.428493090049,0.113815218193,"Fresh local classifier/CF regeneration; diagnostic only, not a fix claim; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92"
+smoke,lstm,TSCausal,do_complexity_mean_all,new_metric,,30,,Stage 2 D4 explicit do-complexity denominators
+smoke,lstm,TSCausal,do_complexity_mean_pearl_scorable,new_metric,,30,,Stage 2 D4 explicit do-complexity denominators
+smoke,lstm,TSCausal,frac_no_do_schedule,new_metric,,0,,Stage 2 D4 explicit do-complexity denominators
+smoke,lstm,TSCausal,n,changed_value,5,20,15,"Fresh local classifier/CF regeneration; diagnostic only, not a fix claim; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92"
+smoke,lstm,TSCausal,n_cf_faith_scorable,changed_value,5,20,15,"Fresh local classifier/CF regeneration; diagnostic only, not a fix claim; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92"
+smoke,lstm,TSCausal,n_do_scorable,new_metric,,20,,Stage 2 D4 explicit do-complexity denominators
+smoke,lstm,TSCausal,ood,changed_value,-0.181547035447,-0.118306143818,0.0632408916292,"Fresh local classifier/CF regeneration; diagnostic only, not a fix claim; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92"
+smoke,lstm,TSCausal,pns_PS_A_model_proposed,changed_value,1,0.95,-0.05,"Fresh local classifier/CF regeneration; diagnostic only, not a fix claim; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92"
+smoke,lstm,TSCausal,pns_PS_delta_total,changed_value,1,0.95,-0.05,"Fresh local classifier/CF regeneration; diagnostic only, not a fix claim; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92"
+smoke,lstm,TSCausal,pns_PS_delta_trajectory,changed_value,1,0.95,-0.05,"Fresh local classifier/CF regeneration; diagnostic only, not a fix claim; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92"
+smoke,lstm,TSCausal,pns_PS_n,changed_value,5,20,15,"Fresh local classifier/CF regeneration; diagnostic only, not a fix claim; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92"
+smoke,lstm,TSCausal,pns_PS_n_scorable,changed_value,5,20,15,"Fresh local classifier/CF regeneration; diagnostic only, not a fix claim; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92"
+smoke,lstm,TSCausal,proximity_l1,changed_value,189.11685054,133.279132292,-55.8377182485,"Fresh local classifier/CF regeneration; diagnostic only, not a fix claim; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92"
+smoke,lstm,TSCausal,proximity_l2,changed_value,22.3854869619,16.0074832182,-6.3780037438,"Fresh local classifier/CF regeneration; diagnostic only, not a fix claim; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92"
+smoke,lstm,TSCausal,scm_noise_plausibility,changed_value,0.0926808506158,0.115826732778,0.0231458821622,"Fresh local classifier/CF regeneration; diagnostic only, not a fix claim; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92"
+smoke,lstm,TSCausal,sparsity,changed_value,0.008,0.00833333333333,0.000333333333333,"Fresh local classifier/CF regeneration; diagnostic only, not a fix claim; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92"
+smoke,lstm,TSCausal,trsi,changed_value,1.25292656511,1.42064264638,0.167716081279,"Fresh local classifier/CF regeneration; diagnostic only, not a fix claim; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92"
+smoke,lstm,TSCausal,validity,changed_value,1,0.95,-0.05,"Fresh local classifier/CF regeneration; diagnostic only, not a fix claim; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92"
+smoke,lstm,TSCausal,validity_base,changed_value,1,0.95,-0.05,"Fresh local classifier/CF regeneration; diagnostic only, not a fix claim; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92"
+smoke,lstm,TSCausal,validity_shift,changed_value,1,0.95,-0.05,"Fresh local classifier/CF regeneration; diagnostic only, not a fix claim; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92"
+smoke,oracle,OracleCF-Pearl,cf_faith_pearl_hard_given_valid,new_metric,,1,,Stage 2 D5 conditional-faithfulness metric
+smoke,oracle,OracleCF-Pearl,cf_faith_pearl_hard_valid,new_metric,,0.65,,Stage 2 D8 expanded oracle coverage
+smoke,oracle,OracleCF-Pearl,cf_faith_rollout_hard_given_valid,new_metric,,0,,Stage 2 D5 conditional-faithfulness metric
+smoke,oracle,OracleCF-Pearl,cf_faith_rollout_hard_valid,new_metric,,0,,Stage 2 D8 expanded oracle coverage
+smoke,oracle,OracleCF-Pearl,cf_faith_rollout_soft,changed_value,0.693561508476,0.769661847113,0.0761003386361,Stage 2 D8 oracle rescoring on the regenerated local substrate; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92
+smoke,oracle,OracleCF-Pearl,do_complexity_mean,new_metric,,1,,Stage 2 D8 expanded oracle coverage
+smoke,oracle,OracleCF-Pearl,do_complexity_mean_all,new_metric,,1,,Stage 2 D4 explicit do-complexity denominators
+smoke,oracle,OracleCF-Pearl,do_complexity_mean_pearl_scorable,new_metric,,1,,Stage 2 D4 explicit do-complexity denominators
+smoke,oracle,OracleCF-Pearl,do_complexity_median,new_metric,,1,,Stage 2 D8 expanded oracle coverage
+smoke,oracle,OracleCF-Pearl,do_complexity_stability,new_metric,,1,,Stage 2 D8 expanded oracle coverage
+smoke,oracle,OracleCF-Pearl,frac_no_do_schedule,new_metric,,0,,Stage 2 D4 explicit do-complexity denominators
+smoke,oracle,OracleCF-Pearl,n,changed_value,5,20,15,Stage 2 D8 oracle rescoring on the regenerated local substrate; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92
+smoke,oracle,OracleCF-Pearl,n_cf_faith_scorable,changed_value,5,20,15,Stage 2 D8 oracle rescoring on the regenerated local substrate; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92
+smoke,oracle,OracleCF-Pearl,n_do_scorable,new_metric,,20,,Stage 2 D4 explicit do-complexity denominators
+smoke,oracle,OracleCF-Pearl,ood,new_metric,,0.029881972189,,Stage 2 D8 expanded oracle coverage
+smoke,oracle,OracleCF-Pearl,proximity_l1,changed_value,17.1802486398,17.1802487045,6.46740652144e-08,Stage 2 D8 oracle rescoring on the regenerated local substrate; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92
+smoke,oracle,OracleCF-Pearl,proximity_l2,changed_value,4.29298948205,4.2929895004,1.83478974236e-08,Stage 2 D8 oracle rescoring on the regenerated local substrate; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92
+smoke,oracle,OracleCF-Pearl,scm_noise_plausibility,changed_value,0.871303498512,0.903394305002,0.0320908064895,Stage 2 D8 oracle rescoring on the regenerated local substrate; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92
+smoke,oracle,OracleCF-Pearl,trsi,changed_value,1.46474426099,1.46474428186,2.08675512425e-08,Stage 2 D8 oracle rescoring on the regenerated local substrate; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92
+smoke,oracle,OracleCF-Pearl,validity,new_metric,,0.65,,Stage 2 D8 expanded oracle coverage
+smoke,oracle,OracleCF-Rollout,cf_faith_pearl_hard_given_valid,new_metric,,0,,Stage 2 D5 conditional-faithfulness metric
+smoke,oracle,OracleCF-Rollout,cf_faith_pearl_hard_valid,new_metric,,0,,Stage 2 D8 expanded oracle coverage
+smoke,oracle,OracleCF-Rollout,cf_faith_pearl_soft,changed_value,0.693561511599,0.769661847653,0.0761003360533,Stage 2 D8 oracle rescoring on the regenerated local substrate; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92
+smoke,oracle,OracleCF-Rollout,cf_faith_rollout_hard_given_valid,new_metric,,1,,Stage 2 D5 conditional-faithfulness metric
+smoke,oracle,OracleCF-Rollout,cf_faith_rollout_hard_valid,new_metric,,0.7,,Stage 2 D8 expanded oracle coverage
+smoke,oracle,OracleCF-Rollout,do_complexity_mean,new_metric,,15,,Stage 2 D8 expanded oracle coverage
+smoke,oracle,OracleCF-Rollout,do_complexity_mean_all,new_metric,,15,,Stage 2 D4 explicit do-complexity denominators
+smoke,oracle,OracleCF-Rollout,do_complexity_mean_pearl_scorable,new_metric,,15,,Stage 2 D4 explicit do-complexity denominators
+smoke,oracle,OracleCF-Rollout,do_complexity_median,new_metric,,15,,Stage 2 D8 expanded oracle coverage
+smoke,oracle,OracleCF-Rollout,do_complexity_stability,new_metric,,1,,Stage 2 D8 expanded oracle coverage
+smoke,oracle,OracleCF-Rollout,frac_no_do_schedule,new_metric,,0,,Stage 2 D4 explicit do-complexity denominators
+smoke,oracle,OracleCF-Rollout,n,changed_value,5,20,15,Stage 2 D8 oracle rescoring on the regenerated local substrate; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92
+smoke,oracle,OracleCF-Rollout,n_cf_faith_scorable,changed_value,5,20,15,Stage 2 D8 oracle rescoring on the regenerated local substrate; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92
+smoke,oracle,OracleCF-Rollout,n_do_scorable,new_metric,,20,,Stage 2 D4 explicit do-complexity denominators
+smoke,oracle,OracleCF-Rollout,ood,new_metric,,0.0584387366544,,Stage 2 D8 expanded oracle coverage
+smoke,oracle,OracleCF-Rollout,proximity_l1,changed_value,37.17934673,29.7377840751,-7.44156265495,Stage 2 D8 oracle rescoring on the regenerated local substrate; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92
+smoke,oracle,OracleCF-Rollout,proximity_l2,changed_value,6.53232580255,5.60199991976,-0.930325882796,Stage 2 D8 oracle rescoring on the regenerated local substrate; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92
+smoke,oracle,OracleCF-Rollout,scm_noise_plausibility,changed_value,0.633772393921,0.621350091741,-0.0124223021796,Stage 2 D8 oracle rescoring on the regenerated local substrate; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92
+smoke,oracle,OracleCF-Rollout,sparsity,changed_value,0.526666666667,0.528,0.00133333333333,Stage 2 D8 oracle rescoring on the regenerated local substrate; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92
+smoke,oracle,OracleCF-Rollout,trsi,changed_value,1.15358119681,1.26499792235,0.111416725539,Stage 2 D8 oracle rescoring on the regenerated local substrate; n_cf increased from 5 to 20 and test accuracy changed 0.94→0.92
+smoke,oracle,OracleCF-Rollout,validity,new_metric,,0.7,,Stage 2 D8 expanded oracle coverage
+smoke_nl,lstm,CftsCOMTE,cf_faith_pearl_hard_given_valid,new_metric,,0,,Stage 2 D5 conditional-faithfulness metric
+smoke_nl,lstm,CftsCOMTE,cf_faith_pearl_soft,changed_value,0.165107039819,0.487223179438,0.322116139619,User-requested CFTS update 2fb4921→f925d1a and adapter migration; accuracy matches run 1 but the GH200 checkpoint was not retained for weight-identical replay
+smoke_nl,lstm,CftsCOMTE,cf_faith_rollout_hard_given_valid,new_metric,,0,,Stage 2 D5 conditional-faithfulness metric
+smoke_nl,lstm,CftsCOMTE,cf_faith_rollout_soft,changed_value,0.165640944076,0.46536349098,0.299722546905,User-requested CFTS update 2fb4921→f925d1a and adapter migration; accuracy matches run 1 but the GH200 checkpoint was not retained for weight-identical replay
+smoke_nl,lstm,CftsCOMTE,do_complexity_mean_all,new_metric,,30,,Stage 2 D4 explicit do-complexity denominators
+smoke_nl,lstm,CftsCOMTE,do_complexity_mean_pearl_scorable,new_metric,,30,,Stage 2 D4 explicit do-complexity denominators
+smoke_nl,lstm,CftsCOMTE,frac_no_do_schedule,new_metric,,0,,Stage 2 D4 explicit do-complexity denominators
+smoke_nl,lstm,CftsCOMTE,n_do_scorable,new_metric,,20,,Stage 2 D4 explicit do-complexity denominators
+smoke_nl,lstm,CftsCOMTE,ood,changed_value,-0.222808337312,-0.0794068191217,0.14340151819,User-requested CFTS update 2fb4921→f925d1a and adapter migration; accuracy matches run 1 but the GH200 checkpoint was not retained for weight-identical replay
+smoke_nl,lstm,CftsCOMTE,pns_PS_A_model_proposed,new_metric,,1,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_nl,lstm,CftsCOMTE,pns_PS_B_model_oracle,new_metric,,1,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_nl,lstm,CftsCOMTE,pns_PS_C_world_oracle,new_metric,,0.85,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_nl,lstm,CftsCOMTE,pns_PS_delta_outcome,new_metric,,0.15,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_nl,lstm,CftsCOMTE,pns_PS_delta_total,new_metric,,0.15,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_nl,lstm,CftsCOMTE,pns_PS_delta_trajectory,new_metric,,0,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_nl,lstm,CftsCOMTE,pns_PS_do_complexity_mean,new_metric,,30,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_nl,lstm,CftsCOMTE,pns_PS_do_complexity_median,new_metric,,30,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_nl,lstm,CftsCOMTE,pns_PS_frac_no_intervention,new_metric,,0,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_nl,lstm,CftsCOMTE,pns_PS_n,new_metric,,20,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_nl,lstm,CftsCOMTE,pns_PS_n_scorable,new_metric,,20,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_nl,lstm,CftsCOMTE,proximity_l1,changed_value,481.891081171,242.073076747,-239.818004424,User-requested CFTS update 2fb4921→f925d1a and adapter migration; accuracy matches run 1 but the GH200 checkpoint was not retained for weight-identical replay
+smoke_nl,lstm,CftsCOMTE,proximity_l2,changed_value,48.5042132748,31.4141952236,-17.0900180512,User-requested CFTS update 2fb4921→f925d1a and adapter migration; accuracy matches run 1 but the GH200 checkpoint was not retained for weight-identical replay
+smoke_nl,lstm,CftsCOMTE,scm_noise_plausibility,changed_value,0.0801117182891,0.0899141604514,0.00980244216233,User-requested CFTS update 2fb4921→f925d1a and adapter migration; accuracy matches run 1 but the GH200 checkpoint was not retained for weight-identical replay
+smoke_nl,lstm,CftsCOMTE,sparsity,changed_value,0,0.6,0.6,User-requested CFTS update 2fb4921→f925d1a and adapter migration; accuracy matches run 1 but the GH200 checkpoint was not retained for weight-identical replay
+smoke_nl,lstm,CftsCOMTE,sparsity_channels,changed_value,0,0.6,0.6,User-requested CFTS update 2fb4921→f925d1a and adapter migration; accuracy matches run 1 but the GH200 checkpoint was not retained for weight-identical replay
+smoke_nl,lstm,CftsCOMTE,trsi,changed_value,0.164589487309,0.0565309542023,-0.108058533107,User-requested CFTS update 2fb4921→f925d1a and adapter migration; accuracy matches run 1 but the GH200 checkpoint was not retained for weight-identical replay
+smoke_nl,lstm,CftsCels,cf_faith_pearl_soft,changed_value,0.998395978328,0.998502632512,0.000106654183766,User-requested CFTS update 2fb4921→f925d1a and adapter migration; accuracy matches run 1 but the GH200 checkpoint was not retained for weight-identical replay
+smoke_nl,lstm,CftsCels,cf_faith_rollout_soft,changed_value,0.882226353608,0.884630631365,0.00240427775765,User-requested CFTS update 2fb4921→f925d1a and adapter migration; accuracy matches run 1 but the GH200 checkpoint was not retained for weight-identical replay
+smoke_nl,lstm,CftsCels,do_complexity_mean,changed_value,6.55,6.1,-0.45,User-requested CFTS update 2fb4921→f925d1a and adapter migration; accuracy matches run 1 but the GH200 checkpoint was not retained for weight-identical replay
+smoke_nl,lstm,CftsCels,do_complexity_mean_all,new_metric,,6.1,,Stage 2 D4 explicit do-complexity denominators
+smoke_nl,lstm,CftsCels,do_complexity_mean_pearl_scorable,new_metric,,6.1,,Stage 2 D4 explicit do-complexity denominators
+smoke_nl,lstm,CftsCels,do_complexity_median,changed_value,6.5,6,-0.5,User-requested CFTS update 2fb4921→f925d1a and adapter migration; accuracy matches run 1 but the GH200 checkpoint was not retained for weight-identical replay
+smoke_nl,lstm,CftsCels,do_complexity_stability,changed_value,11.1,12.05,0.95,User-requested CFTS update 2fb4921→f925d1a and adapter migration; accuracy matches run 1 but the GH200 checkpoint was not retained for weight-identical replay
+smoke_nl,lstm,CftsCels,frac_no_do_schedule,new_metric,,0,,Stage 2 D4 explicit do-complexity denominators
+smoke_nl,lstm,CftsCels,n_do_scorable,new_metric,,20,,Stage 2 D4 explicit do-complexity denominators
+smoke_nl,lstm,CftsCels,ood,changed_value,0.0166640037925,0.0166764126606,1.24088680463e-05,User-requested CFTS update 2fb4921→f925d1a and adapter migration; accuracy matches run 1 but the GH200 checkpoint was not retained for weight-identical replay
+smoke_nl,lstm,CftsCels,pns_PS_A_model_proposed,new_metric,,0,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_nl,lstm,CftsCels,pns_PS_B_model_oracle,new_metric,,0,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_nl,lstm,CftsCels,pns_PS_C_world_oracle,new_metric,,0,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_nl,lstm,CftsCels,pns_PS_delta_outcome,new_metric,,0,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_nl,lstm,CftsCels,pns_PS_delta_total,new_metric,,0,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_nl,lstm,CftsCels,pns_PS_delta_trajectory,new_metric,,0,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_nl,lstm,CftsCels,pns_PS_do_complexity_mean,new_metric,,6.1,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_nl,lstm,CftsCels,pns_PS_do_complexity_median,new_metric,,6,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_nl,lstm,CftsCels,pns_PS_frac_no_intervention,new_metric,,0,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_nl,lstm,CftsCels,pns_PS_n,new_metric,,20,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_nl,lstm,CftsCels,pns_PS_n_scorable,new_metric,,20,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_nl,lstm,CftsCels,proximity_l1,changed_value,0.201914088988,0.164499463649,-0.0374146253389,User-requested CFTS update 2fb4921→f925d1a and adapter migration; accuracy matches run 1 but the GH200 checkpoint was not retained for weight-identical replay
+smoke_nl,lstm,CftsCels,proximity_l2,changed_value,0.187098429351,0.149835392171,-0.0372630371798,User-requested CFTS update 2fb4921→f925d1a and adapter migration; accuracy matches run 1 but the GH200 checkpoint was not retained for weight-identical replay
+smoke_nl,lstm,CftsCels,scm_noise_plausibility,changed_value,0.935295958954,0.936096995286,0.000801036331209,User-requested CFTS update 2fb4921→f925d1a and adapter migration; accuracy matches run 1 but the GH200 checkpoint was not retained for weight-identical replay
+smoke_nl,lstm,CftsCels,sparsity,changed_value,0.958,0.958666666667,0.000666666666667,User-requested CFTS update 2fb4921→f925d1a and adapter migration; accuracy matches run 1 but the GH200 checkpoint was not retained for weight-identical replay
+smoke_nl,lstm,CftsCels,sparsity_channels,changed_value,0.47,0.46,-0.01,User-requested CFTS update 2fb4921→f925d1a and adapter migration; accuracy matches run 1 but the GH200 checkpoint was not retained for weight-identical replay
+smoke_nl,lstm,CftsCels,sparsity_timepoints,changed_value,0.808333333333,0.815,0.00666666666667,User-requested CFTS update 2fb4921→f925d1a and adapter migration; accuracy matches run 1 but the GH200 checkpoint was not retained for weight-identical replay
+smoke_nl,lstm,CftsCels,trsi,changed_value,1.07714723862,1.09306100352,0.0159137648977,User-requested CFTS update 2fb4921→f925d1a and adapter migration; accuracy matches run 1 but the GH200 checkpoint was not retained for weight-identical replay
+smoke_nl,lstm,CftsConfeti,cf_faith_pearl_hard_given_valid,new_metric,,0,,Stage 2 D5 conditional-faithfulness metric
+smoke_nl,lstm,CftsConfeti,cf_faith_pearl_soft,changed_value,0.261891112083,0.260258767311,-0.00163234477224,User-requested CFTS update 2fb4921→f925d1a and adapter migration; accuracy matches run 1 but the GH200 checkpoint was not retained for weight-identical replay
+smoke_nl,lstm,CftsConfeti,cf_faith_rollout_hard_given_valid,new_metric,,0,,Stage 2 D5 conditional-faithfulness metric
+smoke_nl,lstm,CftsConfeti,cf_faith_rollout_soft,changed_value,0.258274585237,0.263067407643,0.00479282240569,User-requested CFTS update 2fb4921→f925d1a and adapter migration; accuracy matches run 1 but the GH200 checkpoint was not retained for weight-identical replay
+smoke_nl,lstm,CftsConfeti,do_complexity_mean,changed_value,29.95,30,0.05,User-requested CFTS update 2fb4921→f925d1a and adapter migration; accuracy matches run 1 but the GH200 checkpoint was not retained for weight-identical replay
+smoke_nl,lstm,CftsConfeti,do_complexity_mean_all,new_metric,,30,,Stage 2 D4 explicit do-complexity denominators
+smoke_nl,lstm,CftsConfeti,do_complexity_mean_pearl_scorable,new_metric,,30,,Stage 2 D4 explicit do-complexity denominators
+smoke_nl,lstm,CftsConfeti,frac_no_do_schedule,new_metric,,0,,Stage 2 D4 explicit do-complexity denominators
+smoke_nl,lstm,CftsConfeti,n_do_scorable,new_metric,,20,,Stage 2 D4 explicit do-complexity denominators
+smoke_nl,lstm,CftsConfeti,ood,changed_value,-0.140868228426,-0.143989714125,-0.00312148569905,User-requested CFTS update 2fb4921→f925d1a and adapter migration; accuracy matches run 1 but the GH200 checkpoint was not retained for weight-identical replay
+smoke_nl,lstm,CftsConfeti,pns_PS_A_model_proposed,new_metric,,1,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_nl,lstm,CftsConfeti,pns_PS_B_model_oracle,new_metric,,0.9,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_nl,lstm,CftsConfeti,pns_PS_C_world_oracle,new_metric,,0.8,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_nl,lstm,CftsConfeti,pns_PS_delta_outcome,new_metric,,0.1,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_nl,lstm,CftsConfeti,pns_PS_delta_total,new_metric,,0.2,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_nl,lstm,CftsConfeti,pns_PS_delta_trajectory,new_metric,,0.1,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_nl,lstm,CftsConfeti,pns_PS_do_complexity_mean,new_metric,,30,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_nl,lstm,CftsConfeti,pns_PS_do_complexity_median,new_metric,,30,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_nl,lstm,CftsConfeti,pns_PS_frac_no_intervention,new_metric,,0,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_nl,lstm,CftsConfeti,pns_PS_n,new_metric,,20,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_nl,lstm,CftsConfeti,pns_PS_n_scorable,new_metric,,20,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_nl,lstm,CftsConfeti,proximity_l1,changed_value,211.118859707,213.884826012,2.76596630492,User-requested CFTS update 2fb4921→f925d1a and adapter migration; accuracy matches run 1 but the GH200 checkpoint was not retained for weight-identical replay
+smoke_nl,lstm,CftsConfeti,proximity_l2,changed_value,25.4334665043,25.6117962512,0.178329746876,User-requested CFTS update 2fb4921→f925d1a and adapter migration; accuracy matches run 1 but the GH200 checkpoint was not retained for weight-identical replay
+smoke_nl,lstm,CftsConfeti,scm_noise_plausibility,changed_value,0.0829646516538,0.082091279544,-0.000873372109784,User-requested CFTS update 2fb4921→f925d1a and adapter migration; accuracy matches run 1 but the GH200 checkpoint was not retained for weight-identical replay
+smoke_nl,lstm,CftsConfeti,sparsity,changed_value,0.407333333333,0.400666666667,-0.00666666666667,User-requested CFTS update 2fb4921→f925d1a and adapter migration; accuracy matches run 1 but the GH200 checkpoint was not retained for weight-identical replay
+smoke_nl,lstm,CftsConfeti,sparsity_timepoints,changed_value,0.00666666666667,0.0166666666667,0.01,User-requested CFTS update 2fb4921→f925d1a and adapter migration; accuracy matches run 1 but the GH200 checkpoint was not retained for weight-identical replay
+smoke_nl,lstm,CftsConfeti,trsi,changed_value,0.837281476961,0.832563348967,-0.00471812799384,User-requested CFTS update 2fb4921→f925d1a and adapter migration; accuracy matches run 1 but the GH200 checkpoint was not retained for weight-identical replay
+smoke_nl,lstm,CftsWachter,cf_faith_pearl_hard,changed_value,0,0.526315789474,0.526315789474,User-requested CFTS update 2fb4921→f925d1a and adapter migration; accuracy matches run 1 but the GH200 checkpoint was not retained for weight-identical replay
+smoke_nl,lstm,CftsWachter,cf_faith_pearl_hard_given_valid,new_metric,,0,,Stage 2 D5 conditional-faithfulness metric
+smoke_nl,lstm,CftsWachter,cf_faith_pearl_soft,changed_value,0.834819152254,0.920222305393,0.0854031531389,User-requested CFTS update 2fb4921→f925d1a and adapter migration; accuracy matches run 1 but the GH200 checkpoint was not retained for weight-identical replay
+smoke_nl,lstm,CftsWachter,cf_faith_rollout_hard_given_valid,new_metric,,0,,Stage 2 D5 conditional-faithfulness metric
+smoke_nl,lstm,CftsWachter,cf_faith_rollout_soft,changed_value,0.884668276876,0.876422334221,-0.008245942655,User-requested CFTS update 2fb4921→f925d1a and adapter migration; accuracy matches run 1 but the GH200 checkpoint was not retained for weight-identical replay
+smoke_nl,lstm,CftsWachter,do_complexity_mean,changed_value,30,17.95,-12.05,User-requested CFTS update 2fb4921→f925d1a and adapter migration; accuracy matches run 1 but the GH200 checkpoint was not retained for weight-identical replay
+smoke_nl,lstm,CftsWachter,do_complexity_mean_all,new_metric,,17.95,,Stage 2 D4 explicit do-complexity denominators
+smoke_nl,lstm,CftsWachter,do_complexity_mean_pearl_scorable,new_metric,,17.95,,Stage 2 D4 explicit do-complexity denominators
+smoke_nl,lstm,CftsWachter,do_complexity_median,changed_value,30,12,-18,User-requested CFTS update 2fb4921→f925d1a and adapter migration; accuracy matches run 1 but the GH200 checkpoint was not retained for weight-identical replay
+smoke_nl,lstm,CftsWachter,do_complexity_stability,changed_value,1,16.65,15.65,User-requested CFTS update 2fb4921→f925d1a and adapter migration; accuracy matches run 1 but the GH200 checkpoint was not retained for weight-identical replay
+smoke_nl,lstm,CftsWachter,frac_degenerate,changed_value,0,0.05,0.05,User-requested CFTS update 2fb4921→f925d1a and adapter migration; accuracy matches run 1 but the GH200 checkpoint was not retained for weight-identical replay
+smoke_nl,lstm,CftsWachter,frac_no_do_schedule,new_metric,,0,,Stage 2 D4 explicit do-complexity denominators
+smoke_nl,lstm,CftsWachter,n_cf_faith_scorable,changed_value,20,19,-1,User-requested CFTS update 2fb4921→f925d1a and adapter migration; accuracy matches run 1 but the GH200 checkpoint was not retained for weight-identical replay
+smoke_nl,lstm,CftsWachter,n_do_scorable,new_metric,,20,,Stage 2 D4 explicit do-complexity denominators
+smoke_nl,lstm,CftsWachter,ood,changed_value,0.031875318309,0.0198047431052,-0.0120705752039,User-requested CFTS update 2fb4921→f925d1a and adapter migration; accuracy matches run 1 but the GH200 checkpoint was not retained for weight-identical replay
+smoke_nl,lstm,CftsWachter,pns_PS_A_model_proposed,new_metric,,0.45,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_nl,lstm,CftsWachter,pns_PS_B_model_oracle,new_metric,,0.45,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_nl,lstm,CftsWachter,pns_PS_C_world_oracle,new_metric,,0.4,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_nl,lstm,CftsWachter,pns_PS_delta_outcome,new_metric,,0.05,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_nl,lstm,CftsWachter,pns_PS_delta_total,new_metric,,0.05,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_nl,lstm,CftsWachter,pns_PS_delta_trajectory,new_metric,,0,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_nl,lstm,CftsWachter,pns_PS_do_complexity_mean,new_metric,,17.95,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_nl,lstm,CftsWachter,pns_PS_do_complexity_median,new_metric,,12,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_nl,lstm,CftsWachter,pns_PS_frac_no_intervention,new_metric,,0,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_nl,lstm,CftsWachter,pns_PS_n,new_metric,,20,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_nl,lstm,CftsWachter,pns_PS_n_scorable,new_metric,,20,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_nl,lstm,CftsWachter,proximity_l1,changed_value,204.543625305,156.254194116,-48.2894311894,User-requested CFTS update 2fb4921→f925d1a and adapter migration; accuracy matches run 1 but the GH200 checkpoint was not retained for weight-identical replay
+smoke_nl,lstm,CftsWachter,proximity_l2,changed_value,21.2508049554,16.0871779177,-5.16362703772,User-requested CFTS update 2fb4921→f925d1a and adapter migration; accuracy matches run 1 but the GH200 checkpoint was not retained for weight-identical replay
+smoke_nl,lstm,CftsWachter,scm_noise_plausibility,changed_value,0.939138071818,0.939159068841,2.09970230508e-05,User-requested CFTS update 2fb4921→f925d1a and adapter migration; accuracy matches run 1 but the GH200 checkpoint was not retained for weight-identical replay
+smoke_nl,lstm,CftsWachter,shift_vr,changed_value,0.727272727273,1,0.272727272727,User-requested CFTS update 2fb4921→f925d1a and adapter migration; accuracy matches run 1 but the GH200 checkpoint was not retained for weight-identical replay
+smoke_nl,lstm,CftsWachter,sparsity,changed_value,0.00533333333333,0.523333333333,0.518,User-requested CFTS update 2fb4921→f925d1a and adapter migration; accuracy matches run 1 but the GH200 checkpoint was not retained for weight-identical replay
+smoke_nl,lstm,CftsWachter,sparsity_channels,changed_value,0,0.12,0.12,User-requested CFTS update 2fb4921→f925d1a and adapter migration; accuracy matches run 1 but the GH200 checkpoint was not retained for weight-identical replay
+smoke_nl,lstm,CftsWachter,sparsity_timepoints,changed_value,0,0.44,0.44,User-requested CFTS update 2fb4921→f925d1a and adapter migration; accuracy matches run 1 but the GH200 checkpoint was not retained for weight-identical replay
+smoke_nl,lstm,CftsWachter,trsi,changed_value,0.571276451248,0.831562770483,0.260286319235,User-requested CFTS update 2fb4921→f925d1a and adapter migration; accuracy matches run 1 but the GH200 checkpoint was not retained for weight-identical replay
+smoke_nl,lstm,CftsWachter,validity,changed_value,0.55,0.45,-0.1,User-requested CFTS update 2fb4921→f925d1a and adapter migration; accuracy matches run 1 but the GH200 checkpoint was not retained for weight-identical replay
+smoke_nl,lstm,CftsWachter,validity_base,changed_value,0.55,0.45,-0.1,User-requested CFTS update 2fb4921→f925d1a and adapter migration; accuracy matches run 1 but the GH200 checkpoint was not retained for weight-identical replay
+smoke_nl,lstm,CftsWachter,validity_shift,changed_value,0.4,0.45,0.05,User-requested CFTS update 2fb4921→f925d1a and adapter migration; accuracy matches run 1 but the GH200 checkpoint was not retained for weight-identical replay
+smoke_nl,lstm,NoiselessSCMRecourse,cf_faith_pearl_hard_given_valid,new_metric,,0,,Stage 2 D5 conditional-faithfulness metric
+smoke_nl,lstm,NoiselessSCMRecourse,cf_faith_pearl_soft,changed_value,0.881772507282,0.742094856582,-0.139677650701,Stage 1 proximity rescaling and bounded prediction-only fallback
+smoke_nl,lstm,NoiselessSCMRecourse,cf_faith_rollout_hard_given_valid,new_metric,,1,,Stage 2 D5 conditional-faithfulness metric
+smoke_nl,lstm,NoiselessSCMRecourse,cf_faith_rollout_hard_valid,changed_value,0,1,1,Stage 1 proximity rescaling and bounded prediction-only fallback
+smoke_nl,lstm,NoiselessSCMRecourse,cf_faith_rollout_soft,changed_value,0.999999915743,0.999999747937,-1.67805736861e-07,Stage 1 proximity rescaling and bounded prediction-only fallback
+smoke_nl,lstm,NoiselessSCMRecourse,do_complexity_mean,changed_value,21,22,1,Stage 1 proximity rescaling and bounded prediction-only fallback
+smoke_nl,lstm,NoiselessSCMRecourse,do_complexity_mean_all,new_metric,,22,,Stage 2 D4 explicit do-complexity denominators
+smoke_nl,lstm,NoiselessSCMRecourse,do_complexity_mean_pearl_scorable,new_metric,,22,,Stage 2 D4 explicit do-complexity denominators
+smoke_nl,lstm,NoiselessSCMRecourse,do_complexity_median,changed_value,21,22,1,Stage 1 proximity rescaling and bounded prediction-only fallback
+smoke_nl,lstm,NoiselessSCMRecourse,frac_no_do_schedule,new_metric,,0,,Stage 2 D4 explicit do-complexity denominators
+smoke_nl,lstm,NoiselessSCMRecourse,frac_vacuous,changed_value,1,0,-1,Stage 1 proximity rescaling and bounded prediction-only fallback
+smoke_nl,lstm,NoiselessSCMRecourse,n_do_scorable,new_metric,,20,,Stage 2 D4 explicit do-complexity denominators
+smoke_nl,lstm,NoiselessSCMRecourse,ood,changed_value,0.0630333846171,-0.100172959898,-0.163206344516,Stage 1 proximity rescaling and bounded prediction-only fallback
+smoke_nl,lstm,NoiselessSCMRecourse,pns_PS_A_model_proposed,new_metric,,1,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_nl,lstm,NoiselessSCMRecourse,pns_PS_B_model_oracle,new_metric,,0.65,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_nl,lstm,NoiselessSCMRecourse,pns_PS_C_world_oracle,new_metric,,0.85,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_nl,lstm,NoiselessSCMRecourse,pns_PS_delta_outcome,new_metric,,-0.2,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_nl,lstm,NoiselessSCMRecourse,pns_PS_delta_total,new_metric,,0.15,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_nl,lstm,NoiselessSCMRecourse,pns_PS_delta_trajectory,new_metric,,0.35,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_nl,lstm,NoiselessSCMRecourse,pns_PS_do_complexity_mean,new_metric,,22,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_nl,lstm,NoiselessSCMRecourse,pns_PS_do_complexity_median,new_metric,,22,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_nl,lstm,NoiselessSCMRecourse,pns_PS_frac_no_intervention,new_metric,,0,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_nl,lstm,NoiselessSCMRecourse,pns_PS_n,new_metric,,20,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_nl,lstm,NoiselessSCMRecourse,pns_PS_n_scorable,new_metric,,20,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_nl,lstm,NoiselessSCMRecourse,proximity_l1,changed_value,13.6610069978,197.260865757,183.599858759,Stage 1 proximity rescaling and bounded prediction-only fallback
+smoke_nl,lstm,NoiselessSCMRecourse,proximity_l2,changed_value,1.85846591637,24.7649197134,22.906453797,Stage 1 proximity rescaling and bounded prediction-only fallback
+smoke_nl,lstm,NoiselessSCMRecourse,scm_noise_plausibility,changed_value,0.285814759221,0.783115343987,0.497300584766,Stage 1 proximity rescaling and bounded prediction-only fallback
+smoke_nl,lstm,NoiselessSCMRecourse,shift_vr,new_metric,,1,,Stage 5 complete phase-03 Shift-VR coverage
+smoke_nl,lstm,NoiselessSCMRecourse,sparsity,changed_value,0.304,0.268333333333,-0.0356666666667,Stage 1 proximity rescaling and bounded prediction-only fallback
+smoke_nl,lstm,NoiselessSCMRecourse,sparsity_timepoints,changed_value,0.3,0.266666666667,-0.0333333333333,Stage 1 proximity rescaling and bounded prediction-only fallback
+smoke_nl,lstm,NoiselessSCMRecourse,trsi,changed_value,1.22669769268,0.457571580696,-0.769126111983,Stage 1 proximity rescaling and bounded prediction-only fallback
+smoke_nl,lstm,NoiselessSCMRecourse,validity,changed_value,0,1,1,Stage 1 proximity rescaling and bounded prediction-only fallback
+smoke_nl,lstm,NoiselessSCMRecourse,validity_base,changed_value,0,1,1,Stage 1 proximity rescaling and bounded prediction-only fallback
+smoke_nl,lstm,NoiselessSCMRecourse,validity_shift,changed_value,0,1,1,Stage 1 proximity rescaling and bounded prediction-only fallback
+smoke_nl,lstm,PearlSCMRecourse,cf_faith_pearl_hard,new_metric,,1,,Stage 2 reporting-schema expansion or newly finite emitted metric
+smoke_nl,lstm,PearlSCMRecourse,cf_faith_pearl_hard_given_valid,new_metric,,1,,Stage 2 D5 conditional-faithfulness metric
+smoke_nl,lstm,PearlSCMRecourse,cf_faith_pearl_hard_valid,changed_value,0,1,1,Stage 1 proximity rescaling and bounded prediction-only fallback
+smoke_nl,lstm,PearlSCMRecourse,cf_faith_pearl_soft,new_metric,,0.999999794537,,Stage 2 reporting-schema expansion or newly finite emitted metric
+smoke_nl,lstm,PearlSCMRecourse,cf_faith_rollout_hard,new_metric,,0,,Stage 2 reporting-schema expansion or newly finite emitted metric
+smoke_nl,lstm,PearlSCMRecourse,cf_faith_rollout_hard_given_valid,new_metric,,0,,Stage 2 D5 conditional-faithfulness metric
+smoke_nl,lstm,PearlSCMRecourse,cf_faith_rollout_soft,new_metric,,0.756580667462,,Stage 2 reporting-schema expansion or newly finite emitted metric
+smoke_nl,lstm,PearlSCMRecourse,do_complexity_mean,changed_value,0,1,1,Stage 1 proximity rescaling and bounded prediction-only fallback
+smoke_nl,lstm,PearlSCMRecourse,do_complexity_mean_all,new_metric,,1,,Stage 2 D4 explicit do-complexity denominators
+smoke_nl,lstm,PearlSCMRecourse,do_complexity_mean_pearl_scorable,new_metric,,1,,Stage 2 D4 explicit do-complexity denominators
+smoke_nl,lstm,PearlSCMRecourse,do_complexity_median,changed_value,0,1,1,Stage 1 proximity rescaling and bounded prediction-only fallback
+smoke_nl,lstm,PearlSCMRecourse,frac_degenerate,changed_value,1,0,-1,Stage 1 proximity rescaling and bounded prediction-only fallback
+smoke_nl,lstm,PearlSCMRecourse,frac_no_do_schedule,new_metric,,0,,Stage 2 D4 explicit do-complexity denominators
+smoke_nl,lstm,PearlSCMRecourse,frac_vacuous,changed_value,1,0,-1,Stage 1 proximity rescaling and bounded prediction-only fallback
+smoke_nl,lstm,PearlSCMRecourse,n_cf_faith_scorable,changed_value,0,20,20,Stage 1 proximity rescaling and bounded prediction-only fallback
+smoke_nl,lstm,PearlSCMRecourse,n_do_scorable,new_metric,,20,,Stage 2 D4 explicit do-complexity denominators
+smoke_nl,lstm,PearlSCMRecourse,ood,changed_value,0.0165962869413,-0.107009533177,-0.123605820119,Stage 1 proximity rescaling and bounded prediction-only fallback
+smoke_nl,lstm,PearlSCMRecourse,pns_PS_A_model_proposed,new_metric,,1,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_nl,lstm,PearlSCMRecourse,pns_PS_B_model_oracle,new_metric,,1,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_nl,lstm,PearlSCMRecourse,pns_PS_C_world_oracle,new_metric,,0.9,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_nl,lstm,PearlSCMRecourse,pns_PS_delta_outcome,new_metric,,0.1,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_nl,lstm,PearlSCMRecourse,pns_PS_delta_total,new_metric,,0.1,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_nl,lstm,PearlSCMRecourse,pns_PS_delta_trajectory,new_metric,,0,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_nl,lstm,PearlSCMRecourse,pns_PS_do_complexity_mean,new_metric,,1,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_nl,lstm,PearlSCMRecourse,pns_PS_do_complexity_median,new_metric,,1,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_nl,lstm,PearlSCMRecourse,pns_PS_frac_no_intervention,new_metric,,0,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_nl,lstm,PearlSCMRecourse,pns_PS_n,new_metric,,20,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_nl,lstm,PearlSCMRecourse,pns_PS_n_scorable,new_metric,,20,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_nl,lstm,PearlSCMRecourse,proximity_l1,changed_value,0.00121414229938,214.753744737,214.752530595,Stage 1 proximity rescaling and bounded prediction-only fallback
+smoke_nl,lstm,PearlSCMRecourse,proximity_l2,changed_value,0.000397938144757,27.0522273679,27.0518294297,Stage 1 proximity rescaling and bounded prediction-only fallback
+smoke_nl,lstm,PearlSCMRecourse,scm_noise_plausibility,changed_value,0.939252104274,0.659159105319,-0.280092998956,Stage 1 proximity rescaling and bounded prediction-only fallback
+smoke_nl,lstm,PearlSCMRecourse,shift_vr,new_metric,,1,,Stage 5 complete phase-03 Shift-VR coverage
+smoke_nl,lstm,PearlSCMRecourse,sparsity,changed_value,1,0.377333333333,-0.622666666667,Stage 1 proximity rescaling and bounded prediction-only fallback
+smoke_nl,lstm,PearlSCMRecourse,sparsity_channels,changed_value,1,0,-1,Stage 1 proximity rescaling and bounded prediction-only fallback
+smoke_nl,lstm,PearlSCMRecourse,sparsity_timepoints,changed_value,1,0.266666666667,-0.733333333333,Stage 1 proximity rescaling and bounded prediction-only fallback
+smoke_nl,lstm,PearlSCMRecourse,trsi,changed_value,1.11730227488,0.235917434779,-0.881384840097,Stage 1 proximity rescaling and bounded prediction-only fallback
+smoke_nl,lstm,PearlSCMRecourse,validity,changed_value,0,1,1,Stage 1 proximity rescaling and bounded prediction-only fallback
+smoke_nl,lstm,PearlSCMRecourse,validity_base,changed_value,0,1,1,Stage 1 proximity rescaling and bounded prediction-only fallback
+smoke_nl,lstm,PearlSCMRecourse,validity_shift,changed_value,0,1,1,Stage 1 proximity rescaling and bounded prediction-only fallback
+smoke_nl,lstm,TSCausal,cf_faith_pearl_hard_given_valid,new_metric,,0,,Stage 2 D5 conditional-faithfulness metric
+smoke_nl,lstm,TSCausal,cf_faith_pearl_soft,changed_value,0.100293582052,0.087937464387,-0.0123561176652,"Fresh local classifier/CF regeneration; diagnostic only, not a fix claim; accuracy matches run 1 but the GH200 checkpoint was not retained for weight-identical replay"
+smoke_nl,lstm,TSCausal,cf_faith_rollout_hard_given_valid,new_metric,,0,,Stage 2 D5 conditional-faithfulness metric
+smoke_nl,lstm,TSCausal,cf_faith_rollout_soft,changed_value,0.102774181776,0.0887014245605,-0.0140727572154,"Fresh local classifier/CF regeneration; diagnostic only, not a fix claim; accuracy matches run 1 but the GH200 checkpoint was not retained for weight-identical replay"
+smoke_nl,lstm,TSCausal,do_complexity_mean_all,new_metric,,30,,Stage 2 D4 explicit do-complexity denominators
+smoke_nl,lstm,TSCausal,do_complexity_mean_pearl_scorable,new_metric,,30,,Stage 2 D4 explicit do-complexity denominators
+smoke_nl,lstm,TSCausal,frac_no_do_schedule,new_metric,,0,,Stage 2 D4 explicit do-complexity denominators
+smoke_nl,lstm,TSCausal,n_do_scorable,new_metric,,20,,Stage 2 D4 explicit do-complexity denominators
+smoke_nl,lstm,TSCausal,ood,changed_value,-0.221075245581,-0.214118895334,0.00695635024722,"Fresh local classifier/CF regeneration; diagnostic only, not a fix claim; accuracy matches run 1 but the GH200 checkpoint was not retained for weight-identical replay"
+smoke_nl,lstm,TSCausal,pns_PS_A_model_proposed,new_metric,,0.45,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_nl,lstm,TSCausal,pns_PS_B_model_oracle,new_metric,,0.45,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_nl,lstm,TSCausal,pns_PS_C_world_oracle,new_metric,,0.4,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_nl,lstm,TSCausal,pns_PS_delta_outcome,new_metric,,0.05,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_nl,lstm,TSCausal,pns_PS_delta_total,new_metric,,0.05,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_nl,lstm,TSCausal,pns_PS_delta_trajectory,new_metric,,0,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_nl,lstm,TSCausal,pns_PS_do_complexity_mean,new_metric,,30,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_nl,lstm,TSCausal,pns_PS_do_complexity_median,new_metric,,30,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_nl,lstm,TSCausal,pns_PS_frac_no_intervention,new_metric,,0,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_nl,lstm,TSCausal,pns_PS_n,new_metric,,20,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_nl,lstm,TSCausal,pns_PS_n_scorable,new_metric,,20,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_nl,lstm,TSCausal,proximity_l1,changed_value,356.983884898,383.445937501,26.4620526035,"Fresh local classifier/CF regeneration; diagnostic only, not a fix claim; accuracy matches run 1 but the GH200 checkpoint was not retained for weight-identical replay"
+smoke_nl,lstm,TSCausal,proximity_l2,changed_value,42.03385952,44.5403255174,2.50646599732,"Fresh local classifier/CF regeneration; diagnostic only, not a fix claim; accuracy matches run 1 but the GH200 checkpoint was not retained for weight-identical replay"
+smoke_nl,lstm,TSCausal,scm_noise_plausibility,changed_value,0.0654533348006,0.0618439582437,-0.0036093765569,"Fresh local classifier/CF regeneration; diagnostic only, not a fix claim; accuracy matches run 1 but the GH200 checkpoint was not retained for weight-identical replay"
+smoke_nl,lstm,TSCausal,shift_vr,changed_value,0.777777777778,1.22222222222,0.444444444444,"Fresh local classifier/CF regeneration; diagnostic only, not a fix claim; accuracy matches run 1 but the GH200 checkpoint was not retained for weight-identical replay"
+smoke_nl,lstm,TSCausal,sparsity,changed_value,0.002,0.00266666666667,0.000666666666667,"Fresh local classifier/CF regeneration; diagnostic only, not a fix claim; accuracy matches run 1 but the GH200 checkpoint was not retained for weight-identical replay"
+smoke_nl,lstm,TSCausal,trsi,changed_value,0.958760390954,0.950308589823,-0.00845180113072,"Fresh local classifier/CF regeneration; diagnostic only, not a fix claim; accuracy matches run 1 but the GH200 checkpoint was not retained for weight-identical replay"
+smoke_nl,lstm,TSCausal,validity_shift,changed_value,0.35,0.55,0.2,"Fresh local classifier/CF regeneration; diagnostic only, not a fix claim; accuracy matches run 1 but the GH200 checkpoint was not retained for weight-identical replay"
+smoke_nl,oracle,OracleCF-Pearl,cf_faith_pearl_hard_given_valid,new_metric,,1,,Stage 2 D5 conditional-faithfulness metric
+smoke_nl,oracle,OracleCF-Pearl,cf_faith_pearl_hard_valid,new_metric,,0.6,,Stage 2 D8 expanded oracle coverage
+smoke_nl,oracle,OracleCF-Pearl,cf_faith_rollout_hard_given_valid,new_metric,,0,,Stage 2 D5 conditional-faithfulness metric
+smoke_nl,oracle,OracleCF-Pearl,cf_faith_rollout_hard_valid,new_metric,,0,,Stage 2 D8 expanded oracle coverage
+smoke_nl,oracle,OracleCF-Pearl,do_complexity_mean,new_metric,,1,,Stage 2 D8 expanded oracle coverage
+smoke_nl,oracle,OracleCF-Pearl,do_complexity_mean_all,new_metric,,1,,Stage 2 D4 explicit do-complexity denominators
+smoke_nl,oracle,OracleCF-Pearl,do_complexity_mean_pearl_scorable,new_metric,,1,,Stage 2 D4 explicit do-complexity denominators
+smoke_nl,oracle,OracleCF-Pearl,do_complexity_median,new_metric,,1,,Stage 2 D8 expanded oracle coverage
+smoke_nl,oracle,OracleCF-Pearl,do_complexity_stability,new_metric,,1,,Stage 2 D8 expanded oracle coverage
+smoke_nl,oracle,OracleCF-Pearl,frac_no_do_schedule,new_metric,,0,,Stage 2 D4 explicit do-complexity denominators
+smoke_nl,oracle,OracleCF-Pearl,n_do_scorable,new_metric,,20,,Stage 2 D4 explicit do-complexity denominators
+smoke_nl,oracle,OracleCF-Pearl,ood,new_metric,,0.0258356160658,,Stage 2 D8 expanded oracle coverage
+smoke_nl,oracle,OracleCF-Pearl,validity,new_metric,,0.6,,Stage 2 D8 expanded oracle coverage
+smoke_nl,oracle,OracleCF-Rollout,cf_faith_pearl_hard_given_valid,new_metric,,0,,Stage 2 D5 conditional-faithfulness metric
+smoke_nl,oracle,OracleCF-Rollout,cf_faith_pearl_hard_valid,new_metric,,0,,Stage 2 D8 expanded oracle coverage
+smoke_nl,oracle,OracleCF-Rollout,cf_faith_rollout_hard_given_valid,new_metric,,1,,Stage 2 D5 conditional-faithfulness metric
+smoke_nl,oracle,OracleCF-Rollout,cf_faith_rollout_hard_valid,new_metric,,0.6,,Stage 2 D8 expanded oracle coverage
+smoke_nl,oracle,OracleCF-Rollout,do_complexity_mean,new_metric,,15,,Stage 2 D8 expanded oracle coverage
+smoke_nl,oracle,OracleCF-Rollout,do_complexity_mean_all,new_metric,,15,,Stage 2 D4 explicit do-complexity denominators
+smoke_nl,oracle,OracleCF-Rollout,do_complexity_mean_pearl_scorable,new_metric,,15,,Stage 2 D4 explicit do-complexity denominators
+smoke_nl,oracle,OracleCF-Rollout,do_complexity_median,new_metric,,15,,Stage 2 D8 expanded oracle coverage
+smoke_nl,oracle,OracleCF-Rollout,do_complexity_stability,new_metric,,1,,Stage 2 D8 expanded oracle coverage
+smoke_nl,oracle,OracleCF-Rollout,frac_no_do_schedule,new_metric,,0,,Stage 2 D4 explicit do-complexity denominators
+smoke_nl,oracle,OracleCF-Rollout,n_do_scorable,new_metric,,20,,Stage 2 D4 explicit do-complexity denominators
+smoke_nl,oracle,OracleCF-Rollout,ood,new_metric,,0.051228865792,,Stage 2 D8 expanded oracle coverage
+smoke_nl,oracle,OracleCF-Rollout,validity,new_metric,,0.6,,Stage 2 D8 expanded oracle coverage
+smoke_spring,lstm,CftsCOMTE,cf_faith_pearl_hard_given_valid,new_metric,,0,,Stage 2 D5 conditional-faithfulness metric
+smoke_spring,lstm,CftsCOMTE,cf_faith_pearl_soft,changed_value,0.0605260613275,0.466014392667,0.40548833134,User-requested CFTS update 2fb4921→f925d1a and adapter migration; local test accuracy changed 0.97→0.98
+smoke_spring,lstm,CftsCOMTE,cf_faith_rollout_hard_given_valid,new_metric,,0,,Stage 2 D5 conditional-faithfulness metric
+smoke_spring,lstm,CftsCOMTE,cf_faith_rollout_soft,changed_value,0.0576646755305,0.325623035844,0.267958360313,User-requested CFTS update 2fb4921→f925d1a and adapter migration; local test accuracy changed 0.97→0.98
+smoke_spring,lstm,CftsCOMTE,do_complexity_mean_all,new_metric,,30,,Stage 2 D4 explicit do-complexity denominators
+smoke_spring,lstm,CftsCOMTE,do_complexity_mean_pearl_scorable,new_metric,,30,,Stage 2 D4 explicit do-complexity denominators
+smoke_spring,lstm,CftsCOMTE,frac_no_do_schedule,new_metric,,0,,Stage 2 D4 explicit do-complexity denominators
+smoke_spring,lstm,CftsCOMTE,n_do_scorable,new_metric,,20,,Stage 2 D4 explicit do-complexity denominators
+smoke_spring,lstm,CftsCOMTE,ood,changed_value,-0.00803317624706,0.0889893930184,0.0970225692655,User-requested CFTS update 2fb4921→f925d1a and adapter migration; local test accuracy changed 0.97→0.98
+smoke_spring,lstm,CftsCOMTE,pns_PS_A_model_proposed,new_metric,,1,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_spring,lstm,CftsCOMTE,pns_PS_B_model_oracle,new_metric,,0.15,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_spring,lstm,CftsCOMTE,pns_PS_C_world_oracle,new_metric,,0.1,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_spring,lstm,CftsCOMTE,pns_PS_delta_outcome,new_metric,,0.05,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_spring,lstm,CftsCOMTE,pns_PS_delta_total,new_metric,,0.9,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_spring,lstm,CftsCOMTE,pns_PS_delta_trajectory,new_metric,,0.85,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_spring,lstm,CftsCOMTE,pns_PS_do_complexity_mean,new_metric,,30,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_spring,lstm,CftsCOMTE,pns_PS_do_complexity_median,new_metric,,30,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_spring,lstm,CftsCOMTE,pns_PS_frac_no_intervention,new_metric,,0,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_spring,lstm,CftsCOMTE,pns_PS_n,new_metric,,20,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_spring,lstm,CftsCOMTE,pns_PS_n_scorable,new_metric,,20,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_spring,lstm,CftsCOMTE,proximity_l1,changed_value,1352.26077754,559.424747641,-792.836029902,User-requested CFTS update 2fb4921→f925d1a and adapter migration; local test accuracy changed 0.97→0.98
+smoke_spring,lstm,CftsCOMTE,proximity_l2,changed_value,88.3252948186,65.7341638563,-22.5911309623,User-requested CFTS update 2fb4921→f925d1a and adapter migration; local test accuracy changed 0.97→0.98
+smoke_spring,lstm,CftsCOMTE,scm_noise_plausibility,changed_value,0.230968655655,0.703390591159,0.472421935504,User-requested CFTS update 2fb4921→f925d1a and adapter migration; local test accuracy changed 0.97→0.98
+smoke_spring,lstm,CftsCOMTE,sparsity,changed_value,0,0.75,0.75,User-requested CFTS update 2fb4921→f925d1a and adapter migration; local test accuracy changed 0.97→0.98
+smoke_spring,lstm,CftsCOMTE,sparsity_channels,changed_value,0,0.75,0.75,User-requested CFTS update 2fb4921→f925d1a and adapter migration; local test accuracy changed 0.97→0.98
+smoke_spring,lstm,CftsCOMTE,trsi,changed_value,0.138333250854,0.0697762130554,-0.068557037799,User-requested CFTS update 2fb4921→f925d1a and adapter migration; local test accuracy changed 0.97→0.98
+smoke_spring,lstm,CftsCels,cf_faith_pearl_hard,changed_value,0.25,0.2,-0.05,User-requested CFTS update 2fb4921→f925d1a and adapter migration; local test accuracy changed 0.97→0.98
+smoke_spring,lstm,CftsCels,cf_faith_pearl_hard_given_valid,new_metric,,0,,Stage 2 D5 conditional-faithfulness metric
+smoke_spring,lstm,CftsCels,cf_faith_pearl_soft,changed_value,0.898695957411,0.841729187686,-0.0569667697251,User-requested CFTS update 2fb4921→f925d1a and adapter migration; local test accuracy changed 0.97→0.98
+smoke_spring,lstm,CftsCels,cf_faith_rollout_hard_given_valid,new_metric,,0,,Stage 2 D5 conditional-faithfulness metric
+smoke_spring,lstm,CftsCels,cf_faith_rollout_soft,changed_value,0.586340487628,0.554282454699,-0.0320580329289,User-requested CFTS update 2fb4921→f925d1a and adapter migration; local test accuracy changed 0.97→0.98
+smoke_spring,lstm,CftsCels,do_complexity_mean,changed_value,20.5,21.55,1.05,User-requested CFTS update 2fb4921→f925d1a and adapter migration; local test accuracy changed 0.97→0.98
+smoke_spring,lstm,CftsCels,do_complexity_mean_all,new_metric,,21.55,,Stage 2 D4 explicit do-complexity denominators
+smoke_spring,lstm,CftsCels,do_complexity_mean_pearl_scorable,new_metric,,21.55,,Stage 2 D4 explicit do-complexity denominators
+smoke_spring,lstm,CftsCels,do_complexity_median,changed_value,19,22,3,User-requested CFTS update 2fb4921→f925d1a and adapter migration; local test accuracy changed 0.97→0.98
+smoke_spring,lstm,CftsCels,do_complexity_stability,changed_value,11.8246408046,8.95361807732,-2.87102272727,User-requested CFTS update 2fb4921→f925d1a and adapter migration; local test accuracy changed 0.97→0.98
+smoke_spring,lstm,CftsCels,frac_no_do_schedule,new_metric,,0,,Stage 2 D4 explicit do-complexity denominators
+smoke_spring,lstm,CftsCels,n_do_scorable,new_metric,,20,,Stage 2 D4 explicit do-complexity denominators
+smoke_spring,lstm,CftsCels,ood,changed_value,0.081114303662,0.0815642785664,0.000449974904402,User-requested CFTS update 2fb4921→f925d1a and adapter migration; local test accuracy changed 0.97→0.98
+smoke_spring,lstm,CftsCels,pns_PS_A_model_proposed,new_metric,,0.4,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_spring,lstm,CftsCels,pns_PS_B_model_oracle,new_metric,,0,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_spring,lstm,CftsCels,pns_PS_C_world_oracle,new_metric,,0,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_spring,lstm,CftsCels,pns_PS_delta_outcome,new_metric,,0,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_spring,lstm,CftsCels,pns_PS_delta_total,new_metric,,0.4,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_spring,lstm,CftsCels,pns_PS_delta_trajectory,new_metric,,0.4,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_spring,lstm,CftsCels,pns_PS_do_complexity_mean,new_metric,,21.55,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_spring,lstm,CftsCels,pns_PS_do_complexity_median,new_metric,,22,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_spring,lstm,CftsCels,pns_PS_frac_no_intervention,new_metric,,0,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_spring,lstm,CftsCels,pns_PS_n,new_metric,,20,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_spring,lstm,CftsCels,pns_PS_n_scorable,new_metric,,20,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_spring,lstm,CftsCels,proximity_l1,changed_value,40.9788206876,68.7800689497,27.8012482621,User-requested CFTS update 2fb4921→f925d1a and adapter migration; local test accuracy changed 0.97→0.98
+smoke_spring,lstm,CftsCels,proximity_l2,changed_value,5.63226029668,10.070986127,4.43872583029,User-requested CFTS update 2fb4921→f925d1a and adapter migration; local test accuracy changed 0.97→0.98
+smoke_spring,lstm,CftsCels,scm_noise_plausibility,changed_value,0.910306212025,0.86039185398,-0.049914358045,User-requested CFTS update 2fb4921→f925d1a and adapter migration; local test accuracy changed 0.97→0.98
+smoke_spring,lstm,CftsCels,shift_vr,changed_value,0.666666666667,0.875,0.208333333333,User-requested CFTS update 2fb4921→f925d1a and adapter migration; local test accuracy changed 0.97→0.98
+smoke_spring,lstm,CftsCels,sparsity,changed_value,0.753666666667,0.691166666667,-0.0625,User-requested CFTS update 2fb4921→f925d1a and adapter migration; local test accuracy changed 0.97→0.98
+smoke_spring,lstm,CftsCels,sparsity_channels,changed_value,0.245,0.205,-0.04,User-requested CFTS update 2fb4921→f925d1a and adapter migration; local test accuracy changed 0.97→0.98
+smoke_spring,lstm,CftsCels,sparsity_timepoints,changed_value,0.426666666667,0.371666666667,-0.055,User-requested CFTS update 2fb4921→f925d1a and adapter migration; local test accuracy changed 0.97→0.98
+smoke_spring,lstm,CftsCels,trsi,changed_value,0.905452196272,0.805437357353,-0.100014838919,User-requested CFTS update 2fb4921→f925d1a and adapter migration; local test accuracy changed 0.97→0.98
+smoke_spring,lstm,CftsCels,validity,changed_value,0.3,0.4,0.1,User-requested CFTS update 2fb4921→f925d1a and adapter migration; local test accuracy changed 0.97→0.98
+smoke_spring,lstm,CftsCels,validity_base,changed_value,0.3,0.4,0.1,User-requested CFTS update 2fb4921→f925d1a and adapter migration; local test accuracy changed 0.97→0.98
+smoke_spring,lstm,CftsCels,validity_shift,changed_value,0.2,0.35,0.15,User-requested CFTS update 2fb4921→f925d1a and adapter migration; local test accuracy changed 0.97→0.98
+smoke_spring,lstm,CftsConfeti,cf_faith_pearl_hard_given_valid,new_metric,,0,,Stage 2 D5 conditional-faithfulness metric
+smoke_spring,lstm,CftsConfeti,cf_faith_pearl_soft,changed_value,0.116579693718,0.0467074692941,-0.0698722244238,User-requested CFTS update 2fb4921→f925d1a and adapter migration; local test accuracy changed 0.97→0.98
+smoke_spring,lstm,CftsConfeti,cf_faith_rollout_hard_given_valid,new_metric,,0,,Stage 2 D5 conditional-faithfulness metric
+smoke_spring,lstm,CftsConfeti,cf_faith_rollout_soft,changed_value,0.0935729983769,0.042938000358,-0.0506349980188,User-requested CFTS update 2fb4921→f925d1a and adapter migration; local test accuracy changed 0.97→0.98
+smoke_spring,lstm,CftsConfeti,do_complexity_mean_all,new_metric,,4.5,,Stage 2 D4 explicit do-complexity denominators
+smoke_spring,lstm,CftsConfeti,do_complexity_mean_pearl_scorable,new_metric,,30,,Stage 2 D4 explicit do-complexity denominators
+smoke_spring,lstm,CftsConfeti,frac_no_do_schedule,new_metric,,0.85,,Stage 2 D4 explicit do-complexity denominators
+smoke_spring,lstm,CftsConfeti,n_do_scorable,new_metric,,3,,Stage 2 D4 explicit do-complexity denominators
+smoke_spring,lstm,CftsConfeti,ood,changed_value,0.0775835501296,0.0773269978346,-0.000256552294977,User-requested CFTS update 2fb4921→f925d1a and adapter migration; local test accuracy changed 0.97→0.98
+smoke_spring,lstm,CftsConfeti,pns_PS_A_model_proposed,new_metric,,1,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_spring,lstm,CftsConfeti,pns_PS_B_model_oracle,new_metric,,0.333333333333,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_spring,lstm,CftsConfeti,pns_PS_C_world_oracle,new_metric,,0.333333333333,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_spring,lstm,CftsConfeti,pns_PS_delta_outcome,new_metric,,0,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_spring,lstm,CftsConfeti,pns_PS_delta_total,new_metric,,0.666666666667,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_spring,lstm,CftsConfeti,pns_PS_delta_trajectory,new_metric,,0.666666666667,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_spring,lstm,CftsConfeti,pns_PS_do_complexity_mean,new_metric,,30,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_spring,lstm,CftsConfeti,pns_PS_do_complexity_median,new_metric,,30,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_spring,lstm,CftsConfeti,pns_PS_frac_no_intervention,new_metric,,0.85,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_spring,lstm,CftsConfeti,pns_PS_n,new_metric,,20,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_spring,lstm,CftsConfeti,pns_PS_n_scorable,new_metric,,3,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_spring,lstm,CftsConfeti,proximity_l1,changed_value,68.6507201363,74.2829973779,5.63227724157,User-requested CFTS update 2fb4921→f925d1a and adapter migration; local test accuracy changed 0.97→0.98
+smoke_spring,lstm,CftsConfeti,proximity_l2,changed_value,7.28479339824,7.62893165222,0.344138253981,User-requested CFTS update 2fb4921→f925d1a and adapter migration; local test accuracy changed 0.97→0.98
+smoke_spring,lstm,CftsConfeti,scm_noise_plausibility,changed_value,0.82690073053,0.827192649734,0.000291919203672,User-requested CFTS update 2fb4921→f925d1a and adapter migration; local test accuracy changed 0.97→0.98
+smoke_spring,lstm,CftsConfeti,sparsity,changed_value,0.926833333333,0.922166666667,-0.00466666666667,User-requested CFTS update 2fb4921→f925d1a and adapter migration; local test accuracy changed 0.97→0.98
+smoke_spring,lstm,CftsConfeti,trsi,changed_value,1.32008090348,1.30199569945,-0.0180852040312,User-requested CFTS update 2fb4921→f925d1a and adapter migration; local test accuracy changed 0.97→0.98
+smoke_spring,lstm,CftsWachter,cf_faith_pearl_hard_given_valid,new_metric,,0,,Stage 2 D5 conditional-faithfulness metric
+smoke_spring,lstm,CftsWachter,cf_faith_pearl_soft,changed_value,0.355847047742,0.420050413377,0.0642033656352,User-requested CFTS update 2fb4921→f925d1a and adapter migration; local test accuracy changed 0.97→0.98
+smoke_spring,lstm,CftsWachter,cf_faith_rollout_hard_given_valid,new_metric,,0,,Stage 2 D5 conditional-faithfulness metric
+smoke_spring,lstm,CftsWachter,cf_faith_rollout_soft,changed_value,0.439401199638,0.504416326684,0.0650151270463,User-requested CFTS update 2fb4921→f925d1a and adapter migration; local test accuracy changed 0.97→0.98
+smoke_spring,lstm,CftsWachter,do_complexity_mean_all,new_metric,,30,,Stage 2 D4 explicit do-complexity denominators
+smoke_spring,lstm,CftsWachter,do_complexity_mean_pearl_scorable,new_metric,,30,,Stage 2 D4 explicit do-complexity denominators
+smoke_spring,lstm,CftsWachter,frac_no_do_schedule,new_metric,,0,,Stage 2 D4 explicit do-complexity denominators
+smoke_spring,lstm,CftsWachter,n_do_scorable,new_metric,,20,,Stage 2 D4 explicit do-complexity denominators
+smoke_spring,lstm,CftsWachter,ood,changed_value,0.0674346786978,0.0741166829507,0.00668200425295,User-requested CFTS update 2fb4921→f925d1a and adapter migration; local test accuracy changed 0.97→0.98
+smoke_spring,lstm,CftsWachter,pns_PS_A_model_proposed,new_metric,,1,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_spring,lstm,CftsWachter,pns_PS_B_model_oracle,new_metric,,0.6,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_spring,lstm,CftsWachter,pns_PS_C_world_oracle,new_metric,,0.7,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_spring,lstm,CftsWachter,pns_PS_delta_outcome,new_metric,,-0.1,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_spring,lstm,CftsWachter,pns_PS_delta_total,new_metric,,0.3,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_spring,lstm,CftsWachter,pns_PS_delta_trajectory,new_metric,,0.4,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_spring,lstm,CftsWachter,pns_PS_do_complexity_mean,new_metric,,30,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_spring,lstm,CftsWachter,pns_PS_do_complexity_median,new_metric,,30,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_spring,lstm,CftsWachter,pns_PS_frac_no_intervention,new_metric,,0,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_spring,lstm,CftsWachter,pns_PS_n,new_metric,,20,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_spring,lstm,CftsWachter,pns_PS_n_scorable,new_metric,,20,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_spring,lstm,CftsWachter,proximity_l1,changed_value,1823.20676928,2181.51789496,358.311125683,User-requested CFTS update 2fb4921→f925d1a and adapter migration; local test accuracy changed 0.97→0.98
+smoke_spring,lstm,CftsWachter,proximity_l2,changed_value,142.245653624,172.081984854,29.8363312299,User-requested CFTS update 2fb4921→f925d1a and adapter migration; local test accuracy changed 0.97→0.98
+smoke_spring,lstm,CftsWachter,scm_noise_plausibility,changed_value,0.714378669712,0.802730683311,0.0883520135998,User-requested CFTS update 2fb4921→f925d1a and adapter migration; local test accuracy changed 0.97→0.98
+smoke_spring,lstm,CftsWachter,shift_vr,changed_value,1.125,0.95,-0.175,User-requested CFTS update 2fb4921→f925d1a and adapter migration; local test accuracy changed 0.97→0.98
+smoke_spring,lstm,CftsWachter,sparsity,changed_value,0.000166666666667,0,-0.000166666666667,User-requested CFTS update 2fb4921→f925d1a and adapter migration; local test accuracy changed 0.97→0.98
+smoke_spring,lstm,CftsWachter,trsi,changed_value,0.0511565184107,0.0423438170433,-0.0088127013674,User-requested CFTS update 2fb4921→f925d1a and adapter migration; local test accuracy changed 0.97→0.98
+smoke_spring,lstm,CftsWachter,validity,changed_value,0.8,1,0.2,User-requested CFTS update 2fb4921→f925d1a and adapter migration; local test accuracy changed 0.97→0.98
+smoke_spring,lstm,CftsWachter,validity_base,changed_value,0.8,1,0.2,User-requested CFTS update 2fb4921→f925d1a and adapter migration; local test accuracy changed 0.97→0.98
+smoke_spring,lstm,CftsWachter,validity_shift,changed_value,0.9,0.95,0.05,User-requested CFTS update 2fb4921→f925d1a and adapter migration; local test accuracy changed 0.97→0.98
+smoke_spring,lstm,NoiselessSCMRecourse,cf_faith_pearl_hard_given_valid,new_metric,,0,,Stage 2 D5 conditional-faithfulness metric
+smoke_spring,lstm,NoiselessSCMRecourse,cf_faith_pearl_soft,changed_value,0.726461209154,0.690705005958,-0.0357562031966,Stage 1 proximity rescaling and bounded prediction-only fallback
+smoke_spring,lstm,NoiselessSCMRecourse,cf_faith_rollout_hard_given_valid,new_metric,,1,,Stage 2 D5 conditional-faithfulness metric
+smoke_spring,lstm,NoiselessSCMRecourse,cf_faith_rollout_hard_valid,changed_value,0.2,1,0.8,Stage 1 proximity rescaling and bounded prediction-only fallback
+smoke_spring,lstm,NoiselessSCMRecourse,cf_faith_rollout_soft,changed_value,0.999999408061,0.999999301982,-1.06079067308e-07,Stage 1 proximity rescaling and bounded prediction-only fallback
+smoke_spring,lstm,NoiselessSCMRecourse,do_complexity_mean,changed_value,16.75,22,5.25,Stage 1 proximity rescaling and bounded prediction-only fallback
+smoke_spring,lstm,NoiselessSCMRecourse,do_complexity_mean_all,new_metric,,22,,Stage 2 D4 explicit do-complexity denominators
+smoke_spring,lstm,NoiselessSCMRecourse,do_complexity_mean_pearl_scorable,new_metric,,22,,Stage 2 D4 explicit do-complexity denominators
+smoke_spring,lstm,NoiselessSCMRecourse,do_complexity_median,changed_value,15,22,7,Stage 1 proximity rescaling and bounded prediction-only fallback
+smoke_spring,lstm,NoiselessSCMRecourse,do_complexity_stability,changed_value,1.00357142857,1,-0.00357142857143,Stage 1 proximity rescaling and bounded prediction-only fallback
+smoke_spring,lstm,NoiselessSCMRecourse,frac_no_do_schedule,new_metric,,0,,Stage 2 D4 explicit do-complexity denominators
+smoke_spring,lstm,NoiselessSCMRecourse,n_do_scorable,new_metric,,20,,Stage 2 D4 explicit do-complexity denominators
+smoke_spring,lstm,NoiselessSCMRecourse,ood,changed_value,0.0824345345199,0.0418997638983,-0.0405347706216,Stage 1 proximity rescaling and bounded prediction-only fallback
+smoke_spring,lstm,NoiselessSCMRecourse,pns_PS_A_model_proposed,new_metric,,1,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_spring,lstm,NoiselessSCMRecourse,pns_PS_B_model_oracle,new_metric,,0.7,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_spring,lstm,NoiselessSCMRecourse,pns_PS_C_world_oracle,new_metric,,0.45,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_spring,lstm,NoiselessSCMRecourse,pns_PS_delta_outcome,new_metric,,0.25,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_spring,lstm,NoiselessSCMRecourse,pns_PS_delta_total,new_metric,,0.55,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_spring,lstm,NoiselessSCMRecourse,pns_PS_delta_trajectory,new_metric,,0.3,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_spring,lstm,NoiselessSCMRecourse,pns_PS_do_complexity_mean,new_metric,,22,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_spring,lstm,NoiselessSCMRecourse,pns_PS_do_complexity_median,new_metric,,22,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_spring,lstm,NoiselessSCMRecourse,pns_PS_frac_no_intervention,new_metric,,0,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_spring,lstm,NoiselessSCMRecourse,pns_PS_n,new_metric,,20,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_spring,lstm,NoiselessSCMRecourse,pns_PS_n_scorable,new_metric,,20,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_spring,lstm,NoiselessSCMRecourse,proximity_l1,changed_value,79.0764225366,801.60136446,722.524941924,Stage 1 proximity rescaling and bounded prediction-only fallback
+smoke_spring,lstm,NoiselessSCMRecourse,proximity_l2,changed_value,7.71603390032,62.0161587538,54.3001248534,Stage 1 proximity rescaling and bounded prediction-only fallback
+smoke_spring,lstm,NoiselessSCMRecourse,scm_noise_plausibility,changed_value,0.497191163936,0.660603043363,0.163411879427,Stage 1 proximity rescaling and bounded prediction-only fallback
+smoke_spring,lstm,NoiselessSCMRecourse,shift_vr,new_metric,,1,,Stage 5 complete phase-03 Shift-VR coverage
+smoke_spring,lstm,NoiselessSCMRecourse,sparsity,changed_value,0.443333333333,0.266833333333,-0.1765,Stage 1 proximity rescaling and bounded prediction-only fallback
+smoke_spring,lstm,NoiselessSCMRecourse,sparsity_timepoints,changed_value,0.441666666667,0.266666666667,-0.175,Stage 1 proximity rescaling and bounded prediction-only fallback
+smoke_spring,lstm,NoiselessSCMRecourse,trsi,changed_value,0.318882160677,0.120269039916,-0.198613120761,Stage 1 proximity rescaling and bounded prediction-only fallback
+smoke_spring,lstm,NoiselessSCMRecourse,validity,changed_value,0.2,1,0.8,Stage 1 proximity rescaling and bounded prediction-only fallback
+smoke_spring,lstm,NoiselessSCMRecourse,validity_base,changed_value,0.2,1,0.8,Stage 1 proximity rescaling and bounded prediction-only fallback
+smoke_spring,lstm,NoiselessSCMRecourse,validity_shift,changed_value,0.25,1,0.75,Stage 1 proximity rescaling and bounded prediction-only fallback
+smoke_spring,lstm,PearlSCMRecourse,cf_faith_pearl_hard_given_valid,new_metric,,1,,Stage 2 D5 conditional-faithfulness metric
+smoke_spring,lstm,PearlSCMRecourse,cf_faith_pearl_hard_valid,changed_value,0.4,1,0.6,Stage 1 proximity rescaling and bounded prediction-only fallback
+smoke_spring,lstm,PearlSCMRecourse,cf_faith_pearl_soft,changed_value,0.999999639589,0.999999549351,-9.02382619739e-08,Stage 1 proximity rescaling and bounded prediction-only fallback
+smoke_spring,lstm,PearlSCMRecourse,cf_faith_rollout_hard_given_valid,new_metric,,0,,Stage 2 D5 conditional-faithfulness metric
+smoke_spring,lstm,PearlSCMRecourse,cf_faith_rollout_soft,changed_value,0.715647270362,0.690705049874,-0.0249422204875,Stage 1 proximity rescaling and bounded prediction-only fallback
+smoke_spring,lstm,PearlSCMRecourse,do_complexity_mean_all,new_metric,,1,,Stage 2 D4 explicit do-complexity denominators
+smoke_spring,lstm,PearlSCMRecourse,do_complexity_mean_pearl_scorable,new_metric,,1,,Stage 2 D4 explicit do-complexity denominators
+smoke_spring,lstm,PearlSCMRecourse,frac_no_do_schedule,new_metric,,0,,Stage 2 D4 explicit do-complexity denominators
+smoke_spring,lstm,PearlSCMRecourse,n_do_scorable,new_metric,,20,,Stage 2 D4 explicit do-complexity denominators
+smoke_spring,lstm,PearlSCMRecourse,ood,changed_value,0.0784716573727,0.044313986108,-0.0341576712647,Stage 1 proximity rescaling and bounded prediction-only fallback
+smoke_spring,lstm,PearlSCMRecourse,pns_PS_A_model_proposed,new_metric,,1,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_spring,lstm,PearlSCMRecourse,pns_PS_B_model_oracle,new_metric,,1,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_spring,lstm,PearlSCMRecourse,pns_PS_C_world_oracle,new_metric,,0.5,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_spring,lstm,PearlSCMRecourse,pns_PS_delta_outcome,new_metric,,0.5,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_spring,lstm,PearlSCMRecourse,pns_PS_delta_total,new_metric,,0.5,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_spring,lstm,PearlSCMRecourse,pns_PS_delta_trajectory,new_metric,,0,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_spring,lstm,PearlSCMRecourse,pns_PS_do_complexity_mean,new_metric,,1,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_spring,lstm,PearlSCMRecourse,pns_PS_do_complexity_median,new_metric,,1,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_spring,lstm,PearlSCMRecourse,pns_PS_frac_no_intervention,new_metric,,0,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_spring,lstm,PearlSCMRecourse,pns_PS_n,new_metric,,20,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_spring,lstm,PearlSCMRecourse,pns_PS_n_scorable,new_metric,,20,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_spring,lstm,PearlSCMRecourse,proximity_l1,changed_value,110.696616827,779.113233051,668.416616224,Stage 1 proximity rescaling and bounded prediction-only fallback
+smoke_spring,lstm,PearlSCMRecourse,proximity_l2,changed_value,9.35010527261,60.6384258117,51.2883205391,Stage 1 proximity rescaling and bounded prediction-only fallback
+smoke_spring,lstm,PearlSCMRecourse,scm_noise_plausibility,changed_value,0.895775115235,0.630224878945,-0.26555023629,Stage 1 proximity rescaling and bounded prediction-only fallback
+smoke_spring,lstm,PearlSCMRecourse,shift_vr,changed_value,1.375,1,-0.375,Stage 1 proximity rescaling and bounded prediction-only fallback
+smoke_spring,lstm,PearlSCMRecourse,sparsity,changed_value,0.4105,0.266666666667,-0.143833333333,Stage 1 proximity rescaling and bounded prediction-only fallback
+smoke_spring,lstm,PearlSCMRecourse,sparsity_timepoints,changed_value,0.406666666667,0.266666666667,-0.14,Stage 1 proximity rescaling and bounded prediction-only fallback
+smoke_spring,lstm,PearlSCMRecourse,trsi,changed_value,0.108914762613,0.0918088024802,-0.017105960133,Stage 1 proximity rescaling and bounded prediction-only fallback
+smoke_spring,lstm,PearlSCMRecourse,validity,changed_value,0.4,1,0.6,Stage 1 proximity rescaling and bounded prediction-only fallback
+smoke_spring,lstm,PearlSCMRecourse,validity_base,changed_value,0.4,1,0.6,Stage 1 proximity rescaling and bounded prediction-only fallback
+smoke_spring,lstm,PearlSCMRecourse,validity_shift,changed_value,0.55,1,0.45,Stage 1 proximity rescaling and bounded prediction-only fallback
+smoke_spring,lstm,TSCausal,cf_faith_pearl_hard_given_valid,new_metric,,0,,Stage 2 D5 conditional-faithfulness metric
+smoke_spring,lstm,TSCausal,cf_faith_pearl_soft,changed_value,0.221284357351,0.2246683018,0.00338394444842,"Fresh local classifier/CF regeneration; diagnostic only, not a fix claim; local test accuracy changed 0.97→0.98"
+smoke_spring,lstm,TSCausal,cf_faith_rollout_hard_given_valid,new_metric,,0,,Stage 2 D5 conditional-faithfulness metric
+smoke_spring,lstm,TSCausal,cf_faith_rollout_soft,changed_value,0.218832496472,0.23801308899,0.0191805925178,"Fresh local classifier/CF regeneration; diagnostic only, not a fix claim; local test accuracy changed 0.97→0.98"
+smoke_spring,lstm,TSCausal,do_complexity_mean_all,new_metric,,30,,Stage 2 D4 explicit do-complexity denominators
+smoke_spring,lstm,TSCausal,do_complexity_mean_pearl_scorable,new_metric,,30,,Stage 2 D4 explicit do-complexity denominators
+smoke_spring,lstm,TSCausal,frac_no_do_schedule,new_metric,,0,,Stage 2 D4 explicit do-complexity denominators
+smoke_spring,lstm,TSCausal,n_do_scorable,new_metric,,20,,Stage 2 D4 explicit do-complexity denominators
+smoke_spring,lstm,TSCausal,ood,changed_value,0.0546687463145,0.0551031122182,0.000434365903725,"Fresh local classifier/CF regeneration; diagnostic only, not a fix claim; local test accuracy changed 0.97→0.98"
+smoke_spring,lstm,TSCausal,pns_PS_A_model_proposed,new_metric,,0.45,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_spring,lstm,TSCausal,pns_PS_B_model_oracle,new_metric,,0,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_spring,lstm,TSCausal,pns_PS_C_world_oracle,new_metric,,0,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_spring,lstm,TSCausal,pns_PS_delta_outcome,new_metric,,0,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_spring,lstm,TSCausal,pns_PS_delta_total,new_metric,,0.45,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_spring,lstm,TSCausal,pns_PS_delta_trajectory,new_metric,,0.45,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_spring,lstm,TSCausal,pns_PS_do_complexity_mean,new_metric,,30,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_spring,lstm,TSCausal,pns_PS_do_complexity_median,new_metric,,30,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_spring,lstm,TSCausal,pns_PS_frac_no_intervention,new_metric,,0,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_spring,lstm,TSCausal,pns_PS_n,new_metric,,20,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_spring,lstm,TSCausal,pns_PS_n_scorable,new_metric,,20,,Stage 5 complete phase-07 PNS coverage for all smoke configs
+smoke_spring,lstm,TSCausal,proximity_l1,changed_value,491.11046037,485.525231841,-5.58522852946,"Fresh local classifier/CF regeneration; diagnostic only, not a fix claim; local test accuracy changed 0.97→0.98"
+smoke_spring,lstm,TSCausal,proximity_l2,changed_value,36.7208757883,36.8369508028,0.116075014528,"Fresh local classifier/CF regeneration; diagnostic only, not a fix claim; local test accuracy changed 0.97→0.98"
+smoke_spring,lstm,TSCausal,scm_noise_plausibility,changed_value,0.110230301191,0.111410917628,0.00118061643729,"Fresh local classifier/CF regeneration; diagnostic only, not a fix claim; local test accuracy changed 0.97→0.98"
+smoke_spring,lstm,TSCausal,shift_vr,changed_value,1.25,1.22222222222,-0.0277777777778,"Fresh local classifier/CF regeneration; diagnostic only, not a fix claim; local test accuracy changed 0.97→0.98"
+smoke_spring,lstm,TSCausal,sparsity,changed_value,0.0195,0.0193333333333,-0.000166666666667,"Fresh local classifier/CF regeneration; diagnostic only, not a fix claim; local test accuracy changed 0.97→0.98"
+smoke_spring,lstm,TSCausal,trsi,changed_value,0.570223286569,0.577533808962,0.00731052239239,"Fresh local classifier/CF regeneration; diagnostic only, not a fix claim; local test accuracy changed 0.97→0.98"
+smoke_spring,lstm,TSCausal,validity,changed_value,0.4,0.45,0.05,"Fresh local classifier/CF regeneration; diagnostic only, not a fix claim; local test accuracy changed 0.97→0.98"
+smoke_spring,lstm,TSCausal,validity_base,changed_value,0.4,0.45,0.05,"Fresh local classifier/CF regeneration; diagnostic only, not a fix claim; local test accuracy changed 0.97→0.98"
+smoke_spring,lstm,TSCausal,validity_shift,changed_value,0.5,0.55,0.05,"Fresh local classifier/CF regeneration; diagnostic only, not a fix claim; local test accuracy changed 0.97→0.98"
+smoke_spring,oracle,OracleCF-Pearl,cf_faith_pearl_hard_given_valid,new_metric,,1,,Stage 2 D5 conditional-faithfulness metric
+smoke_spring,oracle,OracleCF-Pearl,cf_faith_pearl_hard_valid,new_metric,,0.5,,Stage 2 D8 expanded oracle coverage
+smoke_spring,oracle,OracleCF-Pearl,cf_faith_rollout_hard_given_valid,new_metric,,0,,Stage 2 D5 conditional-faithfulness metric
+smoke_spring,oracle,OracleCF-Pearl,cf_faith_rollout_hard_valid,new_metric,,0,,Stage 2 D8 expanded oracle coverage
+smoke_spring,oracle,OracleCF-Pearl,do_complexity_mean,new_metric,,1,,Stage 2 D8 expanded oracle coverage
+smoke_spring,oracle,OracleCF-Pearl,do_complexity_mean_all,new_metric,,1,,Stage 2 D4 explicit do-complexity denominators
+smoke_spring,oracle,OracleCF-Pearl,do_complexity_mean_pearl_scorable,new_metric,,1,,Stage 2 D4 explicit do-complexity denominators
+smoke_spring,oracle,OracleCF-Pearl,do_complexity_median,new_metric,,1,,Stage 2 D8 expanded oracle coverage
+smoke_spring,oracle,OracleCF-Pearl,do_complexity_stability,new_metric,,1,,Stage 2 D8 expanded oracle coverage
+smoke_spring,oracle,OracleCF-Pearl,frac_no_do_schedule,new_metric,,0,,Stage 2 D4 explicit do-complexity denominators
+smoke_spring,oracle,OracleCF-Pearl,n_do_scorable,new_metric,,20,,Stage 2 D4 explicit do-complexity denominators
+smoke_spring,oracle,OracleCF-Pearl,ood,new_metric,,0.0764905535242,,Stage 2 D8 expanded oracle coverage
+smoke_spring,oracle,OracleCF-Pearl,validity,new_metric,,0.5,,Stage 2 D8 expanded oracle coverage
+smoke_spring,oracle,OracleCF-Rollout,cf_faith_pearl_hard_given_valid,new_metric,,0,,Stage 2 D5 conditional-faithfulness metric
+smoke_spring,oracle,OracleCF-Rollout,cf_faith_pearl_hard_valid,new_metric,,0,,Stage 2 D8 expanded oracle coverage
+smoke_spring,oracle,OracleCF-Rollout,cf_faith_rollout_hard_given_valid,new_metric,,1,,Stage 2 D5 conditional-faithfulness metric
+smoke_spring,oracle,OracleCF-Rollout,cf_faith_rollout_hard_valid,new_metric,,0.5,,Stage 2 D8 expanded oracle coverage
+smoke_spring,oracle,OracleCF-Rollout,do_complexity_mean,new_metric,,15,,Stage 2 D8 expanded oracle coverage
+smoke_spring,oracle,OracleCF-Rollout,do_complexity_mean_all,new_metric,,15,,Stage 2 D4 explicit do-complexity denominators
+smoke_spring,oracle,OracleCF-Rollout,do_complexity_mean_pearl_scorable,new_metric,,15,,Stage 2 D4 explicit do-complexity denominators
+smoke_spring,oracle,OracleCF-Rollout,do_complexity_median,new_metric,,15,,Stage 2 D8 expanded oracle coverage
+smoke_spring,oracle,OracleCF-Rollout,do_complexity_stability,new_metric,,1,,Stage 2 D8 expanded oracle coverage
+smoke_spring,oracle,OracleCF-Rollout,frac_no_do_schedule,new_metric,,0,,Stage 2 D4 explicit do-complexity denominators
+smoke_spring,oracle,OracleCF-Rollout,n_do_scorable,new_metric,,20,,Stage 2 D4 explicit do-complexity denominators
+smoke_spring,oracle,OracleCF-Rollout,ood,new_metric,,0.0776213029633,,Stage 2 D8 expanded oracle coverage
+smoke_spring,oracle,OracleCF-Rollout,validity,new_metric,,0.5,,Stage 2 D8 expanded oracle coverage

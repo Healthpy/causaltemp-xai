@@ -1,0 +1,38 @@
+{
+  "status": "complete",
+  "source_commit": "18b21df04dc09fed0d676a0d7cab8ffa3504834b",
+  "slurm_job_id": "21337328",
+  "configs": {
+    "smoke_spring": {
+      "summary_sha256": "76b636715151b1eafdf5ec1698dd1e8b337151547ee501d2d8de8ae3214e6739",
+      "oracle_sha256": "b36761ed70e9bb38d0cd41d2a327491d6041031903bea8b6c8b1ae079905f730",
+      "pns_sha256": "cb6ca9283ddcbbb34b537419d7fd23a1331256b09887dae7ce893e29df806dce",
+      "table_sha256": "103638c8e9286619aed4cb6407335c925bd07b456fbd94c944482d3a477cfd77"
+    },
+    "full_spring": {
+      "summary_sha256": "da59a16ea36ec9345660bad896a492a4e6cf2f533746d6e6c1d50e4b9f7eaa6e",
+      "oracle_sha256": "19d16d421c5503e6d34288090b60b8a7e813838e6b0d3f77c20544a062f1c526",
+      "pns_sha256": "8a906cf594e0c9d4a751a02e3f71e7f2a1b7d2d752704c3ef68a808257c916d1",
+      "table_sha256": "9350d54605e553cf47ef91a8a4c742768d5695fa6439b65367e8e473e33c1987"
+    }
+  },
+  "published_results": [
+    "/net/storage/pr3/plgrid/plggcfsgenwro/users/plgofurman/causaltemp-xai/runs/20260826-18b21df-full-fullnl-spring/results/smoke_spring",
+    "/net/storage/pr3/plgrid/plggcfsgenwro/users/plgofurman/causaltemp-xai/runs/20260826-18b21df-full-fullnl-spring/results/full_spring"
+  ],
+  "published_data": [
+    "/net/storage/pr3/plgrid/plggcfsgenwro/users/plgofurman/causaltemp-xai/runs/20260826-18b21df-full-fullnl-spring/datasets/scm_t/smoke_spring",
+    "/net/storage/pr3/plgrid/plggcfsgenwro/users/plgofurman/causaltemp-xai/runs/20260826-18b21df-full-fullnl-spring/datasets/scm_t/smoke_spring_shift",
+    "/net/storage/pr3/plgrid/plggcfsgenwro/users/plgofurman/causaltemp-xai/runs/20260826-18b21df-full-fullnl-spring/datasets/scm_t/full_spring",
+    "/net/storage/pr3/plgrid/plggcfsgenwro/users/plgofurman/causaltemp-xai/runs/20260826-18b21df-full-fullnl-spring/datasets/scm_t/full_spring_shift"
+  ],
+  "table": {
+    "input_rows": {
+      "/net/storage/pr3/plgrid/plggcfsgenwro/users/plgofurman/causaltemp-xai/runs/20260826-18b21df-full-fullnl-spring/results/tables/table_axis_c_cf_faith.csv": 18,
+      "/net/storage/pr3/plgrid/plggcfsgenwro/users/plgofurman/causaltemp-xai/runs/20260826-18b21df-full-fullnl-spring/parallel/smoke_spring/results/tables/table_axis_c_cf_faith.csv": 9,
+      "/net/storage/pr3/plgrid/plggcfsgenwro/users/plgofurman/causaltemp-xai/runs/20260826-18b21df-full-fullnl-spring/parallel/full_spring/results/tables/table_axis_c_cf_faith.csv": 9
+    },
+    "merged_unique_rows": 36,
+    "sha256": "e6434b140ef6882ff51c8b3a5c3db9eacf2e1c9a8dcc609b7bdcef80d505d918"
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "name": "full_spring",
+  "status": "run-specific derived contract; not registered in commit 18b21df",
+  "derivation": {
+    "mechanism_and_structure_fields_from": "smoke_spring",
+    "scale_and_seed_fields_from": "full"
+  },
+  "config": {
+    "k": 10,
+    "L": 1,
+    "sparsity": 0.3,
+    "noise_type": "laplace",
+    "T": 100,
+    "N": 10000,
+    "seed": 42,
+    "name": "full_spring",
+    "mechanism_type": "spring",
+    "nonlinear": {
+      "k_spring": 0.3,
+      "dt": 0.1,
+      "n_exogenous": 2
+    },
+    "label_fn": "terminal_threshold",
+    "label_params": null
+  },
+  "n_cf": 100,
+  "git_commit": "18b21df04dc09fed0d676a0d7cab8ffa3504834b",
+  "driver_sha256": "9bf8e1848f5fcc144ec92594ee34a8e7d900ab75c1d63a35db25618a844ad454",
+  "sbatch_sha256": "8ce8d1c2e3766a6a2ef4b1cd0aa8978fcc03454173220a9e2358614b1b13520b"
+}

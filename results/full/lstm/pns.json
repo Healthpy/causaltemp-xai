@@ -1,0 +1,78 @@
+{
+  "git_commit": "94182f5d0cd61c2e22ae6047cb2c9696b536c419",
+  "git_dirty": true,
+  "seed": 42,
+  "config": "full",
+  "label_threshold": -0.007906164455137353,
+  "PS": {
+    "CARLA": {
+      "n": 100,
+      "n_scorable": 100,
+      "frac_no_intervention": 0.0,
+      "A_model_proposed": 1.0,
+      "B_model_oracle": 0.0,
+      "C_world_oracle": 0.0,
+      "delta_total": 1.0,
+      "delta_trajectory": 1.0,
+      "delta_outcome": 0.0
+    },
+    "CftsCels": {
+      "n": 100,
+      "n_scorable": 93,
+      "frac_no_intervention": 0.07,
+      "A_model_proposed": 0.8709677419354839,
+      "B_model_oracle": 0.0,
+      "C_world_oracle": 0.0,
+      "delta_total": 0.8709677419354839,
+      "delta_trajectory": 0.8709677419354839,
+      "delta_outcome": 0.0
+    },
+    "CftsCOMTE": {
+      "n": 100,
+      "n_scorable": 100,
+      "frac_no_intervention": 0.0,
+      "A_model_proposed": 1.0,
+      "B_model_oracle": 0.0,
+      "C_world_oracle": 0.0,
+      "delta_total": 1.0,
+      "delta_trajectory": 1.0,
+      "delta_outcome": 0.0
+    },
+    "CftsConfeti": {
+      "n": 100,
+      "n_scorable": 54,
+      "frac_no_intervention": 0.46,
+      "A_model_proposed": 1.0,
+      "B_model_oracle": 0.0,
+      "C_world_oracle": 0.0,
+      "delta_total": 1.0,
+      "delta_trajectory": 1.0,
+      "delta_outcome": 0.0
+    },
+    "CftsWachter": {
+      "n": 100,
+      "n_scorable": 100,
+      "frac_no_intervention": 0.0,
+      "A_model_proposed": 0.99,
+      "B_model_oracle": 0.0,
+      "C_world_oracle": 0.0,
+      "delta_total": 0.99,
+      "delta_trajectory": 0.99,
+      "delta_outcome": 0.0
+    },
+    "PearlCARLA": {
+      "n": 100,
+      "n_scorable": 99,
+      "frac_no_intervention": 0.01,
+      "A_model_proposed": 0.0,
+      "B_model_oracle": 0.0,
+      "C_world_oracle": 0.0,
+      "delta_total": 0.0,
+      "delta_trajectory": 0.0,
+      "delta_outcome": 0.0
+    }
+  },
+  "direction": "PS",
+  "PN_world": null,
+  "PN_note": "PN direction not run (pass --with-pn). Combined PNS is deliberately not synthesised from a missing term."
+}

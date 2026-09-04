@@ -1,0 +1,6 @@
+stage	job_id	dependency
+preflight	21243871	-
+full	21243872	afterok:21243871
+full_nl	21243873	afterok:21243871,afterany:21243872
+smoke_spring	21243874	afterok:21243871,afterany:21243873
+reports	21243875	afterok:21243872:21243873:21243874

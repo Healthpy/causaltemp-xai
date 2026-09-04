@@ -1,12 +1,13 @@
 """Phase 05: Oracle structural-CF **positive control** — any mechanism.
 
-This phase runs **no explainer and no classifier**. It is the oracle
+This phase runs **no explainer**. It is the oracle
 counterpart to Phase 03/04, not their nonlinear variant: where 03 runs real CF
-methods (Wachter/CARLA/cfts-*) against a trained LSTM and 04 scores what they
+methods (Wachter/NoiselessSCMRecourse/cfts-*) against a trained LSTM and 04 scores what they
 produced, this phase *constructs* counterfactuals analytically via
 :func:`~causaltemp_xai.benchmarks.structural_cf.structural_counterfactual`
-(abduct -> intervene -> re-roll) and scores CF-faith **classifier-free** on
-them.
+(abduct -> intervene -> re-roll). Oracle construction and CF-faith remain
+classifier-independent; the trained LSTM is loaded only to add the same
+outcome-quality metrics reported for every other counterfactual method.
 
 Its job is the positive control the rest of Axis C leans on: these CFs are
 correct **by construction**, so CF-faith *must* certify them. Without that
@@ -19,8 +20,8 @@ emitted, which also pins the rollout-vs-Pearl contrast at experiment scale:
 **Runs on every config, linear and nonlinear** (2026-07-15). It was previously
 named ``05_run_oracle_nonlinear.py`` and hard-rejected linear configs with
 "use 03 + 04 instead" — stale advice from when nonlinear CF methods were
-deferred to a collaborator's track (``docs/plans/nlinearscm-t/index.md``
-Backlog #2; Phase 03 has since supported ``*_nl`` configs). That gate conflated
+deferred to a collaborator's track (historical:
+``docs/archive/plans/nlinearscm-t/``; Phase 03 has since supported ``*_nl`` configs). That gate conflated
 *oracle vs explainer* with *linear vs nonlinear*: 03+04 give you explainers on
 linear, never the oracle control, so the linear configs had no experiment-scale
 control at all (only unit-scale, in ``tests/test_metric_adversarial.py``).
@@ -55,38 +56,45 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 from causaltemp_xai.benchmarks.structural_cf import structural_counterfactual  # noqa: E402
-from causaltemp_xai.config import CONFIGS, get_config  # noqa: E402
+from causaltemp_xai.classifiers import LSTMClassifier  # noqa: E402
+from causaltemp_xai.config import CONFIGS, get_config, seeded_variant  # noqa: E402
 from causaltemp_xai.data_io import DEFAULT_OUT_DIR, generate_and_save, load_dataset  # noqa: E402
+from causaltemp_xai.eval import evaluate_method  # noqa: E402
+from causaltemp_xai.metrics.taxonomy import AXIS_METRICS  # noqa: E402
 from experiments._common import (  # noqa: E402
+    ORACLE_SHIFT,
     TABLES_DIR,
-    aggregate_method_row,
     append_table,
     config_dir,
     dump_json,
-    per_instance_records,
+    oracle_intervention_spec,
     print_summary_table,
+    score_and_collect,
+    set_run_context,
     write_csv,
 )
 
-ORACLE_SHIFT = 1.5
-
 
 def build_oracle_cfs(X_sel, mechanism, noiseless, shift=ORACLE_SHIFT) -> np.ndarray:
-    """Build a (N, T, k) batch of oracle structural counterfactuals."""
+    """Build a (N, T, k) batch of oracle structural counterfactuals.
+
+    The ``do()`` convention comes from
+    :func:`experiments._common.oracle_intervention_spec` — shared with the
+    Axis-A fixtures so the control and the thing it anchors cannot drift apart.
+    """
     X_sel = np.asarray(X_sel, dtype=float)
-    T = X_sel.shape[1]
-    k = mechanism.k
-    t0 = T // 2
-    cfs = []
-    for i, x in enumerate(X_sel):
-        node = i % k
-        value = float(x[t0, node]) + shift
-        cfs.append(structural_counterfactual(x, mechanism, t0, node, value, noiseless=noiseless))
+    cfs = [
+        structural_counterfactual(x, mechanism, t0, node, value, noiseless=noiseless)
+        for x, (t0, node, value) in zip(X_sel, oracle_intervention_spec(X_sel, mechanism.k, shift))
+    ]
     return np.asarray(cfs, dtype=np.float32)
 
 
-def run(config_name: str, n_cf: int, out_dir) -> None:
+def run(config_name: str, n_cf: int, out_dir, seed: int | None = None) -> None:
     cfg = get_config(config_name)
+    if seed is not None:
+        cfg = seeded_variant(cfg, seed)
+    set_run_context(seed=cfg.seed, config=cfg.name)
     try:
         data = load_dataset(cfg.name, out_dir=out_dir)
     except FileNotFoundError:
@@ -96,6 +104,10 @@ def run(config_name: str, n_cf: int, out_dir) -> None:
 
     X_test = data["X_test"]
     graph, mech = data["graph"], data["mechanism"]
+    ckpt = Path(out_dir) / cfg.name / "lstm.pt"
+    if not ckpt.exists():
+        raise SystemExit(f"missing classifier checkpoint {ckpt}; run Phase 02 first")
+    clf = LSTMClassifier.load(ckpt)
     n = min(n_cf, len(X_test))
     X_sel = X_test[:n]
     print(
@@ -109,10 +121,29 @@ def run(config_name: str, n_cf: int, out_dir) -> None:
         print(f"[05] building oracle CFs: {name} ...")
         cfs = build_oracle_cfs(X_sel, mech, noiseless=noiseless)
 
-        instance_rows = per_instance_records(cfg.name, "oracle", name, X_sel, cfs, graph, mech)
+        batch_rec = evaluate_method(
+            clf,
+            X_sel,
+            cfs,
+            data["X_train"],
+            graph,
+            mech,
+            target_class=1,
+        )
+        batch_rec["method"] = name
+        instance_rows, agg_rec = score_and_collect(
+            cfg, "oracle", name, X_sel, cfs, graph, mech, clf=clf
+        )
+        # evaluate_method owns batch-only metrics such as OOD; the shared
+        # per-instance path owns TRSI and SCM-noise plausibility. Merge by the
+        # taxonomy, preserving the list-of-dicts summary schema consumed by the
+        # final-table builder.
+        for key in AXIS_METRICS["C"]:
+            if key not in batch_rec and key in agg_rec:
+                batch_rec[key] = agg_rec[key]
+        rec = batch_rec
         all_instance_rows.extend(instance_rows)
-        rec = aggregate_method_row(cfg.name, "oracle", name, instance_rows)
-        table_rows.append(rec)
+        table_rows.append({**agg_rec, **rec})
         summary.append(rec)
 
         dump_json(res_dir / f"eval_{name}.json", rec)
@@ -122,7 +153,9 @@ def run(config_name: str, n_cf: int, out_dir) -> None:
 
     results = {
         "provenance": {
-            "config": cfg.as_dict(), "seed": cfg.seed, "n_cf": int(len(X_sel)),
+            "config": cfg.as_dict(),
+            "seed": cfg.seed,
+            "n_cf": len(X_sel),
             "mechanism_type": cfg.mechanism_type,
         },
         "methods": summary,
@@ -137,15 +170,27 @@ def run(config_name: str, n_cf: int, out_dir) -> None:
 
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(
-        description="Oracle structural-CF positive control (any mechanism; classifier-free)."
+        description="Oracle structural-CF positive control with outcome-quality scoring."
     )
     parser.add_argument("--config", required=True, choices=sorted(CONFIGS))
     parser.add_argument("--n-cf", type=int, default=None)
     parser.add_argument("--out-dir", default=str(DEFAULT_OUT_DIR))
+    parser.add_argument(
+        "--seed",
+        type=int,
+        default=None,
+        help=(
+            "Multi-seed replicate: override --config's registered seed via "
+            "causaltemp_xai.config.seeded_variant, reading/writing under "
+            "'<config>_seed<seed>'. Added 2026-08-04 -- until then the oracle "
+            "control was the only phase that could not be replicated, so the "
+            "benchmark's anchor was reported without a CI."
+        ),
+    )
     args = parser.parse_args(argv)
 
     n_cf = args.n_cf or (20 if args.config.startswith("smoke") else 100)
-    run(args.config, n_cf, args.out_dir)
+    run(args.config, n_cf, args.out_dir, seed=args.seed)
     return 0
 
 

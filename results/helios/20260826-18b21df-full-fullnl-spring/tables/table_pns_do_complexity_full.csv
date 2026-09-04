@@ -1,0 +1,8 @@
+config,mode,method,n_seeds,A_model_proposed,A_model_proposed_lo,A_model_proposed_hi,B_model_oracle,B_model_oracle_lo,B_model_oracle_hi,C_world_oracle,C_world_oracle_lo,C_world_oracle_hi,delta_total,delta_total_lo,delta_total_hi,delta_trajectory,delta_trajectory_lo,delta_trajectory_hi,delta_outcome,delta_outcome_lo,delta_outcome_hi,do_complexity_mean,do_complexity_mean_lo,do_complexity_mean_hi
+full,single_slice,CftsCOMTE,1,1.0,1.0,1.0,0.0,0.0,0.0,0.0,0.0,0.0,1.0,1.0,1.0,1.0,1.0,1.0,0.0,0.0,0.0,100.0,100.0,100.0
+full,single_slice,CftsCels,1,0.9433962264150944,0.9433962264150944,0.9433962264150944,0.0,0.0,0.0,0.0,0.0,0.0,0.9433962264150944,0.9433962264150944,0.9433962264150944,0.9433962264150944,0.9433962264150944,0.9433962264150944,0.0,0.0,0.0,6.735849056603773,6.735849056603773,6.735849056603773
+full,single_slice,CftsConfeti,1,1.0,1.0,1.0,0.0,0.0,0.0,0.0,0.0,0.0,1.0,1.0,1.0,1.0,1.0,1.0,0.0,0.0,0.0,100.0,100.0,100.0
+full,single_slice,CftsWachter,1,0.9,0.9,0.9,0.0,0.0,0.0,0.0,0.0,0.0,0.9,0.9,0.9,0.9,0.9,0.9,0.0,0.0,0.0,98.32,98.32,98.32
+full,single_slice,NoiselessSCMRecourse,1,1.0,1.0,1.0,0.0,0.0,0.0,0.0,0.0,0.0,1.0,1.0,1.0,1.0,1.0,1.0,0.0,0.0,0.0,75.0,75.0,75.0
+full,single_slice,PearlSCMRecourse,1,0.64,0.64,0.64,0.64,0.64,0.64,0.35,0.35,0.35,0.29000000000000004,0.29000000000000004,0.29000000000000004,0.0,0.0,0.0,0.29000000000000004,0.29000000000000004,0.29000000000000004,1.0,1.0,1.0
+full,single_slice,TSCausal,1,1.0,1.0,1.0,0.0,0.0,0.0,0.0,0.0,0.0,1.0,1.0,1.0,1.0,1.0,1.0,0.0,0.0,0.0,100.0,100.0,100.0

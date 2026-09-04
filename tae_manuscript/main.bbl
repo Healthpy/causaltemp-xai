@@ -1,0 +1,252 @@
+\begin{thebibliography}{33}
+\providecommand{\natexlab}[1]{#1}
+\providecommand{\url}[1]{\texttt{#1}}
+\expandafter\ifx\csname urlstyle\endcsname\relax
+  \providecommand{\doi}[1]{doi: #1}\else
+  \providecommand{\doi}{doi: \begingroup \urlstyle{rm}\Url}\fi
+
+\bibitem[Ates et~al.(2021)Ates, Aksar, Leung, and Coskun]{ates2021comte}
+Emre Ates, Burak Aksar, Vitus~J. Leung, and Ayse~K. Coskun.
+\newblock Counterfactual explanations for multivariate time series.
+\newblock In \emph{International Conference on Applied Artificial Intelligence
+  (ICAPAI)}, 2021.
+\newblock code: \url{https://github.com/peaclab/CoMTE}.
+
+\bibitem[Bahri et~al.(2025)Bahri, Li, Hosseinzadeh, Filali~Boubrahimi, and
+  Hamdi]{bahri2025causalfeasibility}
+Omar Bahri, Peiyu Li, Pouya Hosseinzadeh, Soukaina Filali~Boubrahimi, and
+  Shah~Muhammad Hamdi.
+\newblock Improving causal feasibility in counterfactual explanations for
+  multivariate time series classification.
+\newblock In \emph{IEEE International Conference on Big Data (BigData)}, 2025.
+\newblock \doi{10.1109/BIGDATA66926.2025.11402392}.
+
+\bibitem[Cheng et~al.(2024)Cheng, Wang, Xiao, Zhong, Suo, and
+  He]{cheng2024causaltime}
+Yuxiao Cheng, Ziqian Wang, Tingxiong Xiao, Qin Zhong, Jinli Suo, and Kunlun He.
+\newblock {CausalTime}: Realistically generated time-series for benchmarking of
+  causal discovery.
+\newblock In \emph{International Conference on Learning Representations
+  (ICLR)}, 2024.
+
+\bibitem[Delaney et~al.(2021)Delaney, Greene, and
+  Keane]{delaney2021nativeguide}
+Eoin Delaney, Derek Greene, and Mark~T. Keane.
+\newblock Instance-based counterfactual explanations for time series
+  classification.
+\newblock In \emph{International Conference on Case-Based Reasoning (ICCBR)},
+  2021.
+
+\bibitem[Ferdous et~al.(2025)Ferdous, Hossain, and Gani]{ferdous2025timegraph}
+Muhammad~Hasan Ferdous, Emam Hossain, and Md~Osman Gani.
+\newblock {TimeGraph}: Synthetic benchmark datasets for robust time-series
+  causal discovery.
+\newblock In \emph{ACM SIGKDD Conference on Knowledge Discovery and Data Mining
+  (KDD), Datasets and Benchmarks Track}, 2025.
+\newblock \doi{10.1145/3711896.3737439}.
+
+\bibitem[Ghorbani et~al.(2019)Ghorbani, Abid, and Zou]{ghorbani2019fragile}
+Amirata Ghorbani, Abubakar Abid, and James Zou.
+\newblock Interpretation of neural networks is fragile.
+\newblock In \emph{AAAI Conference on Artificial Intelligence}, 2019.
+
+\bibitem[Gkorgkolis et~al.(2025)Gkorgkolis, Kougioulis, Wang, Caglayan, Tonon,
+  Simionato, and Tsamardinos]{gkorgkolis2025tcs}
+Nikolaos Gkorgkolis, Nikolaos Kougioulis, MingXue Wang, Bora Caglayan, Andrea
+  Tonon, Dario Simionato, and Ioannis Tsamardinos.
+\newblock Temporal causal-based simulation for realistic time-series
+  generation, 2025.
+\newblock v1 title; retitled Adversarial Causal Tuning (ACT) in v2, May 2026.
+
+\bibitem[Herdeanu et~al.(2025)Herdeanu, Nathaniel, Roesch, Buch, Ramien, Haux,
+  and Gentine]{herdeanu2025causaldynamics}
+Benjamin Herdeanu, Juan Nathaniel, Carla Roesch, Jatan Buch, Gregor Ramien,
+  Johannes Haux, and Pierre Gentine.
+\newblock {CausalDynamics}: A large-scale benchmark for structural discovery of
+  dynamical causal models.
+\newblock In \emph{Advances in Neural Information Processing Systems (NeurIPS),
+  Datasets and Benchmarks Track}, 2025.
+
+\bibitem[H{\"o}llig et~al.(2022)H{\"o}llig, Kulbach, and
+  Thoma]{hollig2022tsevo}
+Jacqueline H{\"o}llig, Cedric Kulbach, and Steffen Thoma.
+\newblock {TSEvo}: Evolutionary counterfactual explanations for time series
+  classification.
+\newblock In \emph{IEEE International Conference on Machine Learning and
+  Applications (ICMLA)}, 2022.
+
+\bibitem[H{\"o}llig et~al.(2023{\natexlab{a}})H{\"o}llig, Markus, de~Slegte,
+  and Bagave]{hollig2023semantic}
+Jacqueline H{\"o}llig, Aniek~F. Markus, Jef de~Slegte, and Prachi Bagave.
+\newblock Semantic meaningfulness: Evaluating counterfactual approaches for
+  real-world plausibility and feasibility.
+\newblock In \emph{World Conference on Explainable Artificial Intelligence
+  (xAI)}, volume 1902 of \emph{Communications in Computer and Information
+  Science}, pages 636--659, 2023{\natexlab{a}}.
+\newblock \doi{10.1007/978-3-031-44067-0_32}.
+
+\bibitem[H{\"o}llig et~al.(2023{\natexlab{b}})H{\"o}llig, Thoma, and
+  Grimm]{hollig2023xtscbench}
+Jacqueline H{\"o}llig, Steffen Thoma, and Florian Grimm.
+\newblock {XTSC-Bench}: Quantitative benchmarking for explainers on time series
+  classification.
+\newblock In \emph{IEEE International Conference on Machine Learning and
+  Applications (ICMLA)}, 2023{\natexlab{b}}.
+
+\bibitem[Hoyer et~al.(2008)Hoyer, Janzing, Mooij, Peters, and
+  Sch{\"o}lkopf]{hoyer2008anm}
+Patrik~O. Hoyer, Dominik Janzing, Joris~M. Mooij, Jonas Peters, and Bernhard
+  Sch{\"o}lkopf.
+\newblock Nonlinear causal discovery with additive noise models.
+\newblock In \emph{Advances in Neural Information Processing Systems
+  (NeurIPS)}, 2008.
+
+\bibitem[Karimi et~al.(2021)Karimi, Sch{\"o}lkopf, and
+  Valera]{karimi2021recourse}
+Amir-Hossein Karimi, Bernhard Sch{\"o}lkopf, and Isabel Valera.
+\newblock Algorithmic recourse: from counterfactual explanations to
+  interventions.
+\newblock In \emph{ACM Conference on Fairness, Accountability, and Transparency
+  (FAccT)}, 2021.
+
+\bibitem[Kostrzewa et~al.(2026)Kostrzewa, Galus, and
+  Zi{\k{e}}ba]{kostrzewa2026plausibility}
+Marcin Kostrzewa, Krzysztof Galus, and Maciej Zi{\k{e}}ba.
+\newblock Towards plausibility in time series counterfactual explanations,
+  2026.
+
+\bibitem[Laugel et~al.(2019)Laugel, Lesot, Marsala, Renard, and
+  Detyniecki]{laugel2019dangers}
+Thibault Laugel, Marie-Jeanne Lesot, Christophe Marsala, Xavier Renard, and
+  Marcin Detyniecki.
+\newblock The dangers of post-hoc interpretability: Unjustified counterfactual
+  explanations.
+\newblock In \emph{International Joint Conference on Artificial Intelligence
+  (IJCAI)}, 2019.
+
+\bibitem[Li et~al.(2024)Li, Bahri, Filali~Boubrahimi, and Hamdi]{li2024mcels}
+Peiyu Li, Omar Bahri, Soukaina Filali~Boubrahimi, and Shah~Muhammad Hamdi.
+\newblock {M-CELS}: Counterfactual explanation for multivariate time series
+  data guided by learned saliency maps.
+\newblock In \emph{IEEE International Conference on Machine Learning and
+  Applications (ICMLA)}, 2024.
+
+\bibitem[L{\"u}tkepohl(2005)]{lutkepohl2005}
+Helmut L{\"u}tkepohl.
+\newblock \emph{New Introduction to Multiple Time Series Analysis}.
+\newblock Springer, 2005.
+
+\bibitem[Mozolewski et~al.(2026)Mozolewski, Bobek, and
+  Nalepa]{mozolewski2026explaints}
+Maciej Mozolewski, Szymon Bobek, and Grzegorz~J. Nalepa.
+\newblock {ExplainTS}: A benchmark dataset of pretrained models and post-hoc
+  explanations for time-series classification.
+\newblock \emph{Frontiers in Artificial Intelligence}, 2026.
+\newblock \doi{10.3389/frai.2026.1759110}.
+
+\bibitem[Nguyen et~al.(2024)Nguyen, Le~Nguyen, and Ifrim]{nguyen2024amee}
+Thu~Trang Nguyen, Thach Le~Nguyen, and Georgiana Ifrim.
+\newblock Robust explainer recommendation for time series classification.
+\newblock \emph{Data Mining and Knowledge Discovery}, 2024.
+\newblock \doi{10.1007/s10618-024-01045-8}.
+
+\bibitem[Pamfil et~al.(2020)Pamfil, Sriwattanaworachai, Desai, Pilgerstorfer,
+  Georgatzis, Beaumont, and Aragam]{pamfil2020dynotears}
+Roxana Pamfil, Nisara Sriwattanaworachai, Shaan Desai, Philip Pilgerstorfer,
+  Konstantinos Georgatzis, Paul Beaumont, and Bryon Aragam.
+\newblock {DYNOTEARS}: Structure learning from time-series data.
+\newblock In \emph{International Conference on Artificial Intelligence and
+  Statistics (AISTATS)}, 2020.
+
+\bibitem[Paredes~Cetina et~al.(2025)Paredes~Cetina, Benguessoum,
+  Louren{\c{c}}o, and Kubler]{paredescetina2025confetti}
+Alan~G. Paredes~Cetina, Kaouther Benguessoum, Raoni Louren{\c{c}}o, and Sylvain
+  Kubler.
+\newblock {CONFETTI}: A multi-objective counterfactual explanation method for
+  multivariate time series, 2025.
+
+\bibitem[Pawelczyk et~al.(2021)Pawelczyk, Bielawski, van~den Heuvel, Richter,
+  and Kasneci]{pawelczyk2021carla}
+Martin Pawelczyk, Sascha Bielawski, Johannes van~den Heuvel, Tobias Richter,
+  and Gjergji Kasneci.
+\newblock {CARLA}: A {P}ython library to benchmark algorithmic recourse and
+  counterfactual explanation algorithms.
+\newblock In \emph{Advances in Neural Information Processing Systems (NeurIPS),
+  Datasets and Benchmarks Track}, 2021.
+
+\bibitem[Pearl(2009)]{pearl2009causality}
+Judea Pearl.
+\newblock \emph{Causality: Models, Reasoning, and Inference}.
+\newblock Cambridge University Press, 2nd edition, 2009.
+
+\bibitem[Poyiadzi et~al.(2020)Poyiadzi, Sokol, Santos-Rodriguez, De~Bie, and
+  Flach]{poyiadzi2020face}
+Rafael Poyiadzi, Kacper Sokol, Raul Santos-Rodriguez, Tijl De~Bie, and Peter
+  Flach.
+\newblock {FACE}: Feasible and actionable counterfactual explanations.
+\newblock In \emph{AAAI/ACM Conference on AI, Ethics, and Society (AIES)},
+  2020.
+
+\bibitem[Runge et~al.(2019)Runge, Nowack, Kretschmer, Flaxman, and
+  Sejdinovic]{runge2019pcmci}
+Jakob Runge, Peer Nowack, Marlene Kretschmer, Seth Flaxman, and Dino
+  Sejdinovic.
+\newblock Detecting and quantifying causal associations in large nonlinear time
+  series datasets.
+\newblock \emph{Science Advances}, 5\penalty0 (11):\penalty0 eaau4996, 2019.
+
+\bibitem[Runge et~al.(2023)Runge, Gerhardus, Varando, Eyring, and
+  Camps-Valls]{runge2023causal}
+Jakob Runge, Andreas Gerhardus, Gherardo Varando, Veronika Eyring, and Gustau
+  Camps-Valls.
+\newblock Causal inference for time series.
+\newblock \emph{Nature Reviews Earth \& Environment}, 4:\penalty0 487--505,
+  2023.
+\newblock \doi{10.1038/s43017-023-00431-y}.
+
+\bibitem[Thumm and Chen(2026)]{thumm2026interventional}
+Dennis Thumm and Ying Chen.
+\newblock Interventional time series priors for causal foundation models, 2026.
+
+\bibitem[Voets et~al.(2026)Voets, Tercan, Meisen, and Baum]{voets2026contex}
+Jan Voets, Hasan Tercan, Tobias Meisen, and Sebastian Baum.
+\newblock {ConTex}: Reformulating counterfactual generation for time series
+  forecasting, 2026.
+
+\bibitem[Wachter et~al.(2018)Wachter, Mittelstadt, and
+  Russell]{wachter2017counterfactual}
+Sandra Wachter, Brent Mittelstadt, and Chris Russell.
+\newblock Counterfactual explanations without opening the black box: Automated
+  decisions and the {GDPR}.
+\newblock \emph{Harvard Journal of Law \& Technology}, 31\penalty0
+  (2):\penalty0 841--887, 2018.
+
+\bibitem[Wu et~al.(2026)Wu, Qiu, and Xie]{doflow2025}
+Dongze Wu, Feng Qiu, and Yao Xie.
+\newblock {DoFlow}: Flow-based generative models for interventional and
+  counterfactual forecasting on time series.
+\newblock In \emph{International Conference on Learning Representations
+  (ICLR)}, 2026.
+
+\bibitem[Yan and Wang(2023)]{yan2023counts}
+Jingquan Yan and Hao Wang.
+\newblock Self-interpretable time series prediction with counterfactual
+  explanations.
+\newblock In \emph{International Conference on Machine Learning (ICML)}, volume
+  202 of \emph{PMLR}, 2023.
+
+\bibitem[Yeh et~al.(2019)Yeh, Hsieh, Suggala, Inouye, and
+  Ravikumar]{yeh2019infidelity}
+Chih-Kuan Yeh, Cheng-Yu Hsieh, Arun~Sai Suggala, David~I. Inouye, and Pradeep
+  Ravikumar.
+\newblock On the (in)fidelity and sensitivity of explanations.
+\newblock In \emph{Advances in Neural Information Processing Systems
+  (NeurIPS)}, 2019.
+
+\bibitem[Zuin and Veloso(2026)]{zuin2026navigating}
+Gianlucca Zuin and Adriano Veloso.
+\newblock Navigating time's possibilities: Plausible counterfactual
+  explanations for multivariate time-series forecast through genetic
+  algorithms, 2026.
+
+\end{thebibliography}
