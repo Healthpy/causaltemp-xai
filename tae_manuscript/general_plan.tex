@@ -1,0 +1,573 @@
+\documentclass[11pt]{article}
+
+% --- Packages ---
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{bm}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{enumitem}
+\usepackage{hyperref}
+\usepackage{microtype}
+
+% --- Convenience macros ---
+\newcommand{\Etest}{\mathcal{E}_{\text{test}}}
+\newcommand{\Deltatotal}{\Delta_{\mathrm{total}}}
+\newcommand{\Deltatraj}{\Delta_{\mathrm{trajectory}}}
+\newcommand{\Deltaout}{\Delta_{\mathrm{outcome}}}
+
+\title{CausalTemp-XAI: A Benchmark and Audit Protocol\\
+       for Temporal Counterfactual Explanations}
+\author{}
+\date{Aligned with \texttt{docs/general\_plan.md} (live contract, 2026-08-12)}
+
+\begin{document}
+\maketitle
+
+\noindent\textit{This file is the manuscript-facing statement of the live
+scientific contract.} The repository source of truth is
+\texttt{docs/general\_plan.md}. Pre-registration detail, thresholds, and
+venue strategy live outside the repository. Method APIs and result schemas
+use \texttt{NoiselessSCMRecourse} and \texttt{PearlSCMRecourse}; artifacts
+produced before 2026-08-21 may still carry the historical labels
+\texttt{CARLA} / \texttt{PearlCARLA} and are evidence, not migration inputs.
+
+\section{Motivation}
+
+Counterfactual explanation methods answer the question practitioners ask in
+high-stakes sequential settings: \emph{what would have had to be different
+in this trajectory for the model to predict otherwise?} The temporal CF
+literature scores its answers with validity, proximity, sparsity, and
+OOD-plausibility --- every one of which measures the CF against
+\textbf{the model}, none against \textbf{the process that generated the
+data}.
+
+That gap is unmeasurable without a benchmark that knows its own mechanism.
+This work builds one and uses it to ask: \emph{when a CF method claims a
+change would produce an outcome, does the world agree?}
+
+On every wired method the answer is \textbf{no} or \textbf{only vacuously
+yes} --- separating those two is the instrument's job. Under the
+whole-proposal reading, methods buy claimed validity by declaring most of
+the trajectory as interventions (do-complexity $D$ near $T$). A
+single-$\mathrm{do}()$ recourse control is the only method proposing an
+intervention in the usual sense of the word.
+
+\section{Scope}
+
+\begin{quote}
+A benchmark and audit protocol for counterfactual explanation methods on
+time series, evaluated on whether their claimed causal efficacy is realised
+by the data-generating process.
+\end{quote}
+
+\begin{itemize}[leftmargin=*]
+  \item \textbf{CF explainers only.} Attribution (TimeSHAP, Dynamask) and
+        concept-based methods (TCAV-T, CBM-T, LEAP, iVAE, $\beta$-VAE) are
+        out of scope. The former concept axis (ICC, MIG, DCI, MCC) was
+        deleted 2026-08-03; axis letters were reassigned (\S\ref{sec:protocol}).
+        Concept stability is dropped with it.
+  \item \textbf{Causal-graph access is an assumption, not a discovery
+        problem.} On the synthetic tiers the graph is the generator's
+        ground truth. Discovery is load-bearing only in deferred Tier~3,
+        where one graph is propagated to both methods and metrics.
+  \item \textbf{Robustness is its own axis}, not a grab-bag shared with
+        attribution diagnostics.
+\end{itemize}
+
+Proposing a method that scores well against this protocol is the natural
+follow-up. Nothing here depends on it.
+
+\section{Gap in the Literature}
+
+\begin{itemize}[leftmargin=*]
+  \item \textbf{Temporal XAI benchmarks} (CFTS, XTSC-Bench, AMEE, CARLA):
+        validity, proximity, sparsity, OOD --- no causal faithfulness, no
+        way to ask whether a proposed intervention \emph{works}.
+  \item \textbf{Temporal causal discovery benchmarks} (CausalDynamics,
+        CausalTime, CITRIS): graph recovery, no explanation method in the
+        loop.
+  \item \textbf{Necessity/sufficiency for explanation} (LEWIS; Watson
+        et~al.\ 2021): the right question, asked in the static setting,
+        necessarily answered with Tian--Pearl \emph{bounds} because both
+        potential outcomes are never jointly observed.
+  \item \textbf{SCM-regularised temporal CF} (Bahri et~al., IEEE BigData
+        2025): the SOTA in causally-motivated temporal CF. It uses the SCM
+        to \textbf{penalise} implausible edits --- a residual
+        $\lVert T'_t - f(\mathrm{Pa}(T'_t))\rVert$ added to a
+        Wachter-style objective over a free perturbation $T' = T + \Delta$.
+        No $\mathrm{do}()$, no intervention time, no abduction.
+\end{itemize}
+
+\noindent\textbf{Related-work framing:} the field uses SCMs to
+\textbf{penalise} counterfactuals; nobody uses them to \textbf{derive} the
+counterfactual a proposal is scored against.
+
+\noindent\textbf{The delta:} in the temporal additive-noise setting,
+abduction is exact subtraction, so both potential outcomes are computable
+and necessity/sufficiency is \textbf{exact rather than bounded} --- plus a
+model-vs-world decomposition separating ``the CF is not what the world
+would produce'' from ``the classifier does not track the true label
+rule''.
+
+A residual penalty is a \emph{local one-step} check: it never propagates
+the intervention and never abducts the factual noise. A CF that is locally
+mechanism-consistent at every timestep while its intervention has
+\textbf{no effect on the outcome} scores perfectly. That is the
+\texttt{NoiselessSCMRecourse} pathology (CF-faith $1.00$, validity $1.00$,
+intervention effect $\sim 2.6{\times}10^{-4}$): the strongest published
+causal-CF criterion is structurally blind to the failure mode
+\S\ref{sec:contrib} measures.
+
+The surviving novelty is structural ground truth \textbf{as an evaluation
+oracle for independently produced, post-hoc CF explainers} --- not the
+artifact of shipping a ground-truth DAG with classification labels, which
+other work already provides.
+
+\section{Contributions}
+\label{sec:contrib}
+
+Ordered by strength. Each is defensible if the others are challenged, and
+\textbf{none requires any evaluated method to succeed.}
+
+\begin{enumerate}[leftmargin=*]
+  \item \textbf{A model-vs-world audit instrument for temporal CF
+        explanations.} For a proposed CF, the same intervention is
+        realised by the true mechanism and the two outcomes compared,
+        decomposing the disagreement additively into a trajectory term and
+        an outcome term. Necessity and sufficiency are computed
+        \textbf{exactly}, not bounded. Because the audit's answer depends
+        on how the proposal is read, the benchmark reports
+        \textbf{do-complexity $D$} --- the number of timesteps a proposal
+        must declare as actions before the mechanism can reproduce it ---
+        beside $\Deltatraj$.
+
+        \emph{Headline (restated 2026-08-03).} The earlier claim ``no
+        wired method makes a causal intervention,
+        $\Deltatraj \approx 1.0$'' was an artifact of the single-slice
+        reading and is \textbf{retracted}. What replaces it: methods buy
+        claimed validity by intervening almost everywhere. Pooled over 3
+        seeds on \texttt{full} ($T = 100$), $D$ reads
+        \texttt{PearlSCMRecourse} $\mathbf{1.0}$,
+        \texttt{CftsCels} $6.6$,
+        \texttt{NoiselessSCMRecourse} $69.7$,
+        \texttt{CftsCOMTE} $83.3$,
+        \texttt{CftsWachter} $96.4$,
+        \texttt{CftsConfeti} $\mathbf{100.0}$.
+        \texttt{CftsWachter} fails both readings ($D = 96.4$ \textbf{and}
+        $\Deltatotal = 0.39$). The single-$\mathrm{do}()$ control is the
+        only method at $D = 1$.
+
+  \item \textbf{Intervention-to-outcome distance as a required reporting
+        condition.} SCM stability requires spectral radius $< 1$, so an
+        intervention's effect on the label attenuates geometrically in the
+        distance from $t_0$ to the \textbf{label site} $t_{\mathrm{label}}$,
+        not automatically to $T$. Recourse feasibility is a property of
+        the benchmark configuration, not of the method; beyond a
+        computable horizon no causally valid recourse exists, and any
+        validity reported there exploits a non-causal artifact. The
+        contribution is the diagnostic and the reporting rule, not an
+        impossibility claim.
+
+  \item \textbf{A benchmark suite with exact structural counterfactuals.}
+        \textbf{LinearSCM-T} (VAR($L$)) and \textbf{NlinearSCM-T}
+        (per-node additive-noise MLP transitions), each shipping true
+        graph, true mechanism, and oracle
+        abduction--action--prediction counterfactuals.
+        \textbf{SpringSCM-T} is the non-dissipative family used to attack
+        the horizon claim. The label functional is a configurable axis,
+        which is what makes the distance reporting rule testable.
+\end{enumerate}
+
+\noindent\textbf{CF-faith is the admission gate, not a fourth
+contribution.} Two mutually exclusive semantics
+(\texttt{noiseless\_rollout}, \texttt{pearl\_delta}) --- a single CF
+cannot be hard-faithful under both --- but it is a pass/fail check with no
+dynamic range across real methods. Listing it as a contribution invites
+evaluation as a ranking metric. Rankings by traditional CF metrics vs
+CF-faith are a \textbf{demoted descriptive observation} (H6), not the key
+finding: CF-faith has no dynamic range across real methods, so the
+correlation is structurally underpowered.
+
+\section{Evaluation Protocol}
+\label{sec:protocol}
+
+\textbf{Three axes, and every reported metric belongs to exactly one}
+(map: \texttt{causaltemp\_xai/metrics/taxonomy.py}):
+
+\begin{center}
+\begin{tabular}{@{}lll@{}}
+  \toprule
+  \textbf{Axis} & \textbf{Scores} & \textbf{Unit} \\
+  \midrule
+  A --- structure & the benchmark & per \textbf{dataset} \\
+  B --- robustness & methods & per method \\
+  C --- counterfactual quality & methods & per method \\
+  \bottomrule
+\end{tabular}
+\end{center}
+
+Axis~A characterises the data-generating process; B and C characterise
+explainers. Presenting all three as parallel per-method scores is a
+category error. The former Axis~A (concept/representation quality) was
+deleted with the concept-based methods it scored. There is no Axis~D;
+robustness was relettered into B.
+
+\subsection{Axis C --- Counterfactual Quality \emph{(per method)}}
+
+\begin{itemize}[leftmargin=*]
+  \item \textbf{Validity} --- fraction of CFs that flip the classifier.
+        Must be reported alongside the intervention-to-outcome distance;
+        it is not interpretable without it.
+  \item \textbf{Proximity} --- $\lVert \hat{x}^{n} - x^{n} \rVert_{p}$
+        ($L_1 / L_2$).
+  \item \textbf{Sparsity} --- fraction of the $T \times k$ features left
+        \textbf{unchanged} ($\lvert\Delta\rvert \le
+        \texttt{INTERVENTION\_TOL}$); \textbf{higher $=$ sparser edit},
+        $1.0$ $=$ CF identical to the original. Complement:
+        \texttt{frac\_altered}. Structured variants
+        \texttt{sparsity\_channels} / \texttt{sparsity\_timepoints}
+        report channels (resp.\ timesteps) left entirely untouched.
+  \item \textbf{OOD plausibility} --- Isolation Forest (LOF specified;
+        Isolation Forest is the wired estimator).
+  \item \textbf{CF-faith} \emph{(admission gate)} ---
+        no-retroactive-change $\wedge$ graph-propagation, under
+        \texttt{noiseless\_rollout} \emph{or} \texttt{pearl\_delta}.
+        Hard (indicator) and soft ($\exp(-\mathrm{residual}/\mathrm{scale})$)
+        variants. Returns \textbf{NaN}, not $1.0$, when
+        $\texttt{intervention\_t} \ge T-1$; callers report
+        \texttt{frac\_degenerate} / \texttt{n\_cf\_faith\_scorable}
+        alongside every value.
+  \item \textbf{TRSI} --- Temporal Relevance Smoothness Index;
+        mechanism-free descriptor of edit coherence. \textbf{Not} claimed
+        as a contribution. Not T-stab (deleted; never implemented).
+\end{itemize}
+
+\subsection{Necessity / Sufficiency Audit --- PNS \emph{(per method)}}
+
+For a factual $x$, a method's CF $x_{\mathrm{cf}}$, and
+$t_0 = \mathrm{derive\_intervention\_t}(x, x_{\mathrm{cf}})$
+(the same intervention CF-faith scores):
+
+\begin{center}
+\begin{tabular}{@{}llll@{}}
+  \toprule
+  \textbf{Symbol} & \textbf{Outcome fn} & \textbf{Trajectory} & \textbf{Meaning} \\
+  \midrule
+  $A$ & classifier & method's $x_{\mathrm{cf}}$ & what the explanation \textbf{claims} \\
+  $B$ & classifier & oracle CF of the same intervention & the claim, on the world's trajectory \\
+  $C$ & SCM label rule & oracle CF of the same intervention & what the world \textbf{does} \\
+  \bottomrule
+\end{tabular}
+\end{center}
+
+\begin{align}
+  \Deltatotal      &= A - C, \\
+  \Deltatraj       &= A - B
+    \quad\text{(proposed CF is not what the world would produce),} \\
+  \Deltaout        &= B - C
+    \quad\text{(classifier does not track the true label rule),} \\
+  \Deltatotal      &= \Deltatraj + \Deltaout.
+\end{align}
+
+Signed; both directions informative: $> 0$ the explanation claims an
+efficacy the world denies; $< 0$ the model is blind to a real dependence.
+The oracle uses \textbf{Pearl semantics} (re-injecting abducted factual
+noise), because the question is what would have happened \emph{to this
+instance}.
+
+\textbf{Do-complexity $D$ is reported on every row.} A $\Delta$ of either
+kind must never be cited without it. $D = 0$ is the vacuous case;
+\texttt{frac\_vacuous} is the $D = 0$ row of the same distribution.
+
+Both directions are estimated --- \textbf{PS} on flip-candidates,
+\textbf{PN} on the complement --- and combined as
+$\mathrm{PNS} = P(x,y)\,\mathrm{PN} + P(x',y')\,\mathrm{PS}$.
+PN, PS, and the mixing weights are \textbf{always reported separately}:
+on flip-candidates alone the model side collapses into validity, so a
+combined-only report would misname the quantity.
+
+\subsection{Axis B --- Robustness \emph{(per method)}}
+
+\begin{itemize}[leftmargin=*]
+  \item \textbf{Shift-VR} --- validity retention on held-out environments
+        $\Etest$ (wired: same SCM, uniform noise; frozen classifier).
+  \item \textbf{Input sensitivity} --- Lipschitz constant w.r.t.\ the
+        input, where exposed. Specified; not a live pipeline column for
+        the CF-only method set.
+\end{itemize}
+
+\subsection{Axis A --- Structure \emph{(per dataset)}}
+
+SHD, lag accuracy, lagged-edge F1, residual dependence, graph-error
+decomposition, AUC-ROC against ground truth --- computed once per dataset
+in Phase~01. It characterises the \emph{benchmark}, not any method.
+
+The diagnostic is live post-retune (a random graph costs $0.748$; a
+well-recovered DYNOTEARS graph still costs $0.163$--$0.687$). It must not
+be printed as a per-method score alongside B and C.
+
+\section{Why CF-faith Is a Gate and $\Deltatotal$ Ranks}
+
+CF-faith (hard) is an \textbf{indicator}. Every method that is not a
+positive control fails it identically. On \texttt{full},
+\texttt{NoiselessSCMRecourse} scores $1.00$ (tautological: it emits the
+noiseless rollout it is scored against), \texttt{PearlSCMRecourse} is
+NaN under the noiseless semantics, and every other method is exactly
+$0.00$. Ranking that column measures ``is this the oracle'', not method
+quality.
+
+PNS ranks at smoke scale ($T = 30$) and not at paper scale ($T = 100$):
+at $t_0 \in \{25, 50\}$ before a terminal label at $T = 100$,
+$\mathrm{PN}_{\mathrm{world}} = 0$ for all methods --- zero causal
+effect, not a small one. \textbf{What ranks at paper scale is
+$\Deltatotal$}, per direction, read with $D$.
+
+Therefore: CF-faith admits or rejects; $\Deltatotal$ and do-complexity
+rank; PNS is reportable where the horizon leaves it non-degenerate
+(smoke) and reported as a null with both terms shown where it does not
+(\texttt{full}); and $t_{\mathrm{label}} - t_0$ conditions the
+interpretation of all of them.
+
+\section{Benchmarks}
+
+Tiers are \textbf{external validity} for the findings, not validation of
+the metrics. A metric can only be shown faithful where a ground-truth
+mechanism exists --- Tier~1 and nowhere else. Tiers~2 and~3 cannot tell
+whether CF-faith, PNS, or $D$ measure what they claim; they test whether
+the Tier~1 phenomenon travels. Increasing realism buys generality, not
+construct validity.
+
+\subsection{Tier 1 --- Synthetic, ground-truth graph}
+
+The only tier where the causal claim, and every metric-validity argument,
+is established.
+
+\begin{enumerate}[leftmargin=*]
+  \item \textbf{LinearSCM-T} --- VAR($L$). Design space:
+        $k \in \{5, 10, 20\}$,
+        $L \in \{1, 3\}$,
+        sparsity $s/k^{2} \in \{0.1, 0.2, 0.3\}$,
+        non-Gaussian noise (Laplace, uniform),
+        $T \in \{50, 100, 200\}$, $N = 10{,}000$.
+        Ships with true graph, true mechanism, and oracle CF trajectories.
+        Observation is identity: nonlinear mixing $x = g(z)$ is
+        deliberately deferred.
+
+  \item \textbf{NlinearSCM-T} --- same structure, per-node MLP
+        transitions
+        $x_t^i = \mathrm{decay}_i \cdot x_{t-1}^i
+        + \mathrm{gain}\cdot\tanh(\mathrm{MLP}_i(\text{masked lags}))
+        + \varepsilon_t^i$,
+        spectral-norm-capped. \textbf{Additive noise is load-bearing}:
+        Pearl abduction remains exact subtraction, so CF-faith, the
+        oracle structural CF, and exact PNS carry over unchanged.
+        Nonlinear \emph{transitions}, not nonlinear mixing.
+
+  \item \textbf{SpringSCM-T} --- 2nd-order Newtonian (Kipf et~al.\ NRI,
+        as used by Bahri et~al.). Conservative dynamics (measured
+        $\rho = +0.024$ vs \texttt{full\_nl}'s $-0.689$) with
+        terminal-time labels, putting the horizon claim in the regime
+        where effects persist. Additive-noise, so the protocol carries
+        over. KuramotoSCM-T was removed 2026-08-11.
+\end{enumerate}
+
+\noindent\textbf{Registered paper presets} currently lock $L = 1$
+(\texttt{smoke}: $k{=}5$, $T{=}30$, $N{=}500$;
+\texttt{full} / \texttt{full\_nl}: $k{=}10$, $T{=}100$, $N{=}10{,}000$;
+\texttt{smoke\_spring}: $k{=}10$, $T{=}30$). Uniform noise is the
+Shift-VR environment, not a separate paper cell. Changing $L$ requires
+revisiting VAR stability and is not a casual preset edit.
+
+\subsection{Tier 2 --- Real signal, horizon external validity}
+
+UCR/UEA multivariate subset (BasicMotions, RacketSports, Epilepsy) used
+for \textbf{one} purpose: testing whether the horizon result holds
+outside synthetic SCMs. Requires a classifier, a label site, and a
+measurable intervention-to-outcome distance --- \textbf{no causal
+graph}. Discovered-graph CF-faith on real data is a narrow disclosed
+exception (variance quantified by a DYNOTEARS ensemble; bias from the
+linear-SEM assumption is not resolved).
+
+\subsection{Tier 3 --- SepsisSim \emph{(deferred)}}
+
+MIMIC-IV sepsis cohort with a clinician-validated DAG is \textbf{not} a
+current contribution. A dataset- and graph-source-agnostic orchestrator
+exists as machinery; it is not a commitment to SepsisSim. If later
+green-lit, this is the only tier where discovery is load-bearing, and
+its graph-error is then the ceiling on everything scored against it.
+
+\section{Methods Evaluated}
+
+\begin{table}[h!]
+  \centering
+  \begin{tabularx}{\textwidth}{@{}lX@{}}
+    \toprule
+    \textbf{Family} & \textbf{Methods} \\
+    \midrule
+    Counterfactual &
+      Wachter, COMTE, CONFETI, CELS (vendored \texttt{cfts} repo);
+      CounTS is registered in the Phase-03 method set \\
+    Causal recourse
+      \emph{(positive controls)} &
+      \texttt{NoiselessSCMRecourse} (noiseless rollout),
+      \texttt{PearlSCMRecourse} (noise-reinjecting) \\
+    SCM-regularised
+      \emph{(Related-Work foil)} &
+      \texttt{TSCausalCF} (Bahri et~al.; faithfulness is \emph{not}
+      true by construction) \\
+    Discovery diagnostics
+      \emph{(not CF methods)} &
+      DYNOTEARS, PCMCIplus --- graph recovery vs truth (Tier~1) or
+      between methods (Tier~2); not post-hoc CF filters \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+\texttt{NoiselessSCMRecourse} and \texttt{PearlSCMRecourse} are
+\textbf{positive controls}, labelled as such wherever they appear.
+\texttt{TSCausalCF} is not: it is the third-party foil being critiqued.
+
+\noindent\textbf{Out of scope:} attribution methods, concept-based
+methods, DiCE, CITRIS/iCITRIS, CtrlNS, Karimi CARLA-causal (replaced by
+the SCM-recourse controls), Native Guide (adapter exists, not in the
+default run set).
+
+\noindent\textbf{Classifier held fixed:} LSTM. TCN and Transformer were
+descoped 2026-07-08; classifier generalisation is not the claim. The
+two-mechanism-family axis (linear VAR vs nonlinear MLP) is the stated
+generalisation evidence. $\ge 90\%$ test accuracy is a target, not a
+hard gate; interior-label presets that train at chance are retained as
+recorded failures.
+
+\section{Reporting Rules the Protocol Operationalizes}
+
+\begin{table}[h!]
+  \centering
+  \begin{tabularx}{\textwidth}{@{}l X X@{}}
+    \toprule
+    \textbf{Rule} & \textbf{What it requires} & \textbf{Measured by} \\
+    \midrule
+    Validity with distance &
+      No validity number without $t_{\mathrm{label}} - t_0$
+      (and $T - t_0$) &
+      Axis~C validity; horizon sweep \\
+    Gate before rank &
+      CF-faith admits or rejects; it does not rank &
+      CF-faith hard/soft under one named semantic \\
+    $(D, \Delta)$ as a pair &
+      Neither single-slice nor whole-schedule reading is privileged &
+      $\Deltatotal$, $\Deltatraj$, $D$, \texttt{frac\_vacuous} \\
+    PN and PS separately &
+      Combined PNS alone misnames the estimand on flip-candidates &
+      PN, PS, mixing weights \\
+    Axis units &
+      Dataset diagnostics are never printed as method scores &
+      Axis~A vs B/C in the taxonomy \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+\section{Hypotheses}
+
+Short form. Renumbered 2026-08-06 to six entries, ordered by strength.
+Closed pre-renumbering IDs (H3a, H8, H8b, H8c, H9) are historical
+record only.
+
+\begin{description}[leftmargin=*, style=nextline]
+  \item[H1.] Standard temporal CF methods achieve high validity ($> 0.9$)
+    with CF-faith $\approx 0$.
+    \emph{Split verdict:} the CF-faith clause is universal (all four
+    wired standard explainers score $0.000$ on \texttt{full}). Validity
+    $> 0.9$ is not --- only COMTE and Wachter clear it; CELS and CONFETI
+    do not. None buy causal faithfulness with whatever validity they
+    achieve.
+
+  \item[H2.] Given a well-recovered graph, the oracle structural CF
+    retains near-full CF-faith, so explainer failures are
+    \textbf{propagation} failures, not graph-estimation failures.
+    \textbf{Refuted 2026-08-12.} A random graph costs $0.748$;
+    DYNOTEARS's own graph costs $0.547$ at AUC $0.965$ / SHD~$4$. Graph
+    estimation is a first-order error source. ``Graph quality is not the
+    problem'' must not appear in the manuscript.
+
+  \item[H2$'$.] \emph{(Post-hoc, not pre-registered.)} Explainer choice
+    spans a wider range of mechanism-infidelity than graph quality does,
+    in both contraction regimes. A claim about dynamic range only; it
+    does \textbf{not} assert graph error is negligible.
+
+  \item[H3.] \emph{(Lead empirical claim.)} For every wired CF method,
+    $\Deltatotal > 0$, attributable almost entirely to $\Deltatraj$:
+    the proposed CF is not what the world would produce, and when the
+    world realises the method's own intervention the classifier does not
+    flip.
+
+  \item[H4.] Recourse validity decays with the intervention-to-outcome
+    distance at a rate governed by the SCM's spectral radius; beyond a
+    computable horizon no valid causal recourse exists, and any validity
+    there is a non-causal artifact of the CF semantics.
+    Evidence~(i): non-dissipative families show no such decay (validity
+    \emph{increases} with horizon). Evidence~(ii): validity and PN decay
+    with distance to the \textbf{label site}, not with trajectory
+    length --- confirmed at smoke scale, weakly supported at paper
+    scale.
+
+  \item[H5.] \emph{(Retrospective synthesis, not itself pre-registered.)}
+    The validity--CF-faith divergence is invariant to noise family
+    (Gaussian vs Laplace), mechanism monotonicity ($\tanh$ vs $\sin$),
+    and regime stationarity --- a property of the additive-noise causal
+    structure, not of any one generalisation axis.
+
+  \item[H6.] Rankings by traditional CF metrics do not track rankings by
+    CF-faith. \textbf{Demoted} to a descriptive observation:
+    underpowered and structurally hard to power, since CF-faith has no
+    dynamic range across real methods. Must never be labelled the key
+    finding.
+\end{description}
+
+\noindent\textbf{Not a hypothesis --- construction check.} Causal
+recourse attaining CF-faith $> 0.7$ is entailed by definition:
+\texttt{NoiselessSCMRecourse} emits the noiseless rollout it is scored
+against, and \texttt{PearlSCMRecourse} has $\Deltatraj = 0$ because the
+oracle is a Pearl rollout of the same intervention. The non-tautological
+quantity for \texttt{PearlSCMRecourse} is $C$ --- whether the world
+delivers the outcome change --- and only $C$ may be cited.
+
+\section{Scope Boundaries}
+
+\begin{description}[leftmargin=*, style=nextline]
+  \item[O1. Concept / representation quality.] Former Axis~A (ICC, MIG,
+    DCI, MCC) removed with its code. Reinstating means reinstating an
+    axis, not restoring a module.
+  \item[O2. Attribution-method evaluation.] No axis scores them.
+  \item[O3. Latent confounding.] Causal sufficiency is assumed;
+    unmeasured confounders are future work.
+  \item[O4. Nonlinear mixing and non-additive noise.]
+    NlinearSCM-T covers nonlinear \emph{transitions} with additive
+    noise, which is what keeps abduction exact. Relaxing additivity
+    costs the exactness \S3 identifies as this work's delta.
+  \item[O5. Horizon limit.] With spectral radius $< 1$, configurations
+    exist in which \emph{no} method can succeed. Every validity and PNS
+    number is reported with $T - t_0$ \textbf{and}
+    $t_{\mathrm{label}} - t_0$.
+  \item[O6. Intervention reading.] Neither the single-slice nor the
+    whole-schedule reading is privileged. Only the pair $(D, \Delta)$
+    is reportable.
+  \item[O7. Label functional.] $C$, $\Deltaout$, PN, and PS are
+    properties of a design choice, not a fact about the world. Default
+    is a terminal single-channel threshold.
+  \item[O8. CF-faith has no dynamic range across real methods.] The
+    gate rejects every non-control entrant; that is a finding, not a
+    leaderboard.
+  \item[O9. $\mathtt{graph\_error}$ is not scale-free.] It is a
+    difference of $\exp(-\mathrm{residual})$ soft scores. Cross-config
+    comparison requires the $\mathtt{graph\_error\_sigma}$ companion.
+  \item[O10. Tier 3 only.] Causal-discovery accuracy is the ceiling on
+    everything scored against a discovered graph. SepsisSim / MIMIC-IV
+    / continuous-time hybrid systems remain deferred; there is no
+    Neural-ODE clinical benchmark in the current suite.
+  \item[O11. Computational tractability.] Joint-training efficiency of
+    causal methods is not benchmarked.
+\end{description}
+
+\end{document}
