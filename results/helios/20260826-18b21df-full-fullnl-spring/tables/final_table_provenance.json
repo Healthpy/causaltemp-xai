@@ -1,0 +1,232 @@
+{
+  "full": {
+    "lstm": {
+      "seed": 42,
+      "git_commit": "18b21df04dc09fed0d676a0d7cab8ffa3504834b",
+      "git_dirty": false,
+      "git_worktree_dirty": true,
+      "config": {
+        "k": 10,
+        "L": 1,
+        "sparsity": 0.2,
+        "noise_type": "laplace",
+        "T": 100,
+        "N": 10000,
+        "seed": 42,
+        "name": "full",
+        "mechanism_type": "linear",
+        "nonlinear": null,
+        "label_fn": "terminal_threshold",
+        "label_params": null
+      }
+    },
+    "oracle": {
+      "seed": 42,
+      "git_commit": "18b21df04dc09fed0d676a0d7cab8ffa3504834b",
+      "git_dirty": false,
+      "git_worktree_dirty": true,
+      "config": {
+        "k": 10,
+        "L": 1,
+        "sparsity": 0.2,
+        "noise_type": "laplace",
+        "T": 100,
+        "N": 10000,
+        "seed": 42,
+        "name": "full",
+        "mechanism_type": "linear",
+        "nonlinear": null,
+        "label_fn": "terminal_threshold",
+        "label_params": null
+      }
+    }
+  },
+  "full_nl": {
+    "lstm": {
+      "seed": 42,
+      "git_commit": "18b21df04dc09fed0d676a0d7cab8ffa3504834b",
+      "git_dirty": false,
+      "git_worktree_dirty": true,
+      "config": {
+        "k": 10,
+        "L": 1,
+        "sparsity": 0.2,
+        "noise_type": "laplace",
+        "T": 100,
+        "N": 10000,
+        "seed": 42,
+        "name": "full_nl",
+        "mechanism_type": "mlp",
+        "nonlinear": {
+          "hidden": 16,
+          "gain": 1.5,
+          "decay_range": [
+            0.1,
+            0.4
+          ],
+          "spectral_cap": 6.0,
+          "init_gain": 3.0,
+          "activation": "tanh"
+        },
+        "label_fn": "terminal_threshold",
+        "label_params": null
+      }
+    },
+    "oracle": {
+      "seed": 42,
+      "git_commit": "18b21df04dc09fed0d676a0d7cab8ffa3504834b",
+      "git_dirty": false,
+      "git_worktree_dirty": true,
+      "config": {
+        "k": 10,
+        "L": 1,
+        "sparsity": 0.2,
+        "noise_type": "laplace",
+        "T": 100,
+        "N": 10000,
+        "seed": 42,
+        "name": "full_nl",
+        "mechanism_type": "mlp",
+        "nonlinear": {
+          "hidden": 16,
+          "gain": 1.5,
+          "decay_range": [
+            0.1,
+            0.4
+          ],
+          "spectral_cap": 6.0,
+          "init_gain": 3.0,
+          "activation": "tanh"
+        },
+        "label_fn": "terminal_threshold",
+        "label_params": null
+      }
+    }
+  },
+  "smoke_spring": {
+    "lstm": {
+      "seed": 0,
+      "git_commit": "18b21df04dc09fed0d676a0d7cab8ffa3504834b",
+      "git_dirty": false,
+      "git_worktree_dirty": true,
+      "config": {
+        "k": 10,
+        "L": 1,
+        "sparsity": 0.3,
+        "noise_type": "laplace",
+        "T": 30,
+        "N": 500,
+        "seed": 0,
+        "name": "smoke_spring",
+        "mechanism_type": "spring",
+        "nonlinear": {
+          "k_spring": 0.3,
+          "dt": 0.1,
+          "n_exogenous": 2
+        },
+        "label_fn": "terminal_threshold",
+        "label_params": null
+      }
+    },
+    "oracle": {
+      "seed": 0,
+      "git_commit": "18b21df04dc09fed0d676a0d7cab8ffa3504834b",
+      "git_dirty": false,
+      "git_worktree_dirty": true,
+      "config": {
+        "k": 10,
+        "L": 1,
+        "sparsity": 0.3,
+        "noise_type": "laplace",
+        "T": 30,
+        "N": 500,
+        "seed": 0,
+        "name": "smoke_spring",
+        "mechanism_type": "spring",
+        "nonlinear": {
+          "k_spring": 0.3,
+          "dt": 0.1,
+          "n_exogenous": 2
+        },
+        "label_fn": "terminal_threshold",
+        "label_params": null
+      }
+    }
+  },
+  "full_spring": {
+    "lstm": {
+      "seed": 42,
+      "git_commit": "18b21df04dc09fed0d676a0d7cab8ffa3504834b",
+      "git_dirty": false,
+      "git_worktree_dirty": true,
+      "config": {
+        "k": 10,
+        "L": 1,
+        "sparsity": 0.3,
+        "noise_type": "laplace",
+        "T": 100,
+        "N": 10000,
+        "seed": 42,
+        "name": "full_spring",
+        "mechanism_type": "spring",
+        "nonlinear": {
+          "k_spring": 0.3,
+          "dt": 0.1,
+          "n_exogenous": 2
+        },
+        "label_fn": "terminal_threshold",
+        "label_params": null
+      }
+    },
+    "oracle": {
+      "seed": 42,
+      "git_commit": "18b21df04dc09fed0d676a0d7cab8ffa3504834b",
+      "git_dirty": false,
+      "git_worktree_dirty": true,
+      "config": {
+        "k": 10,
+        "L": 1,
+        "sparsity": 0.3,
+        "noise_type": "laplace",
+        "T": 100,
+        "N": 10000,
+        "seed": 42,
+        "name": "full_spring",
+        "mechanism_type": "spring",
+        "nonlinear": {
+          "k_spring": 0.3,
+          "dt": 0.1,
+          "n_exogenous": 2
+        },
+        "label_fn": "terminal_threshold",
+        "label_params": null
+      }
+    }
+  },
+  "_suppressed_metrics": [
+    {
+      "dataset": "full_nl",
+      "classifier": "lstm",
+      "method": "TSCausal",
+      "metric": "cf_faith_rollout_hard_given_valid"
+    },
+    {
+      "dataset": "full_nl",
+      "classifier": "lstm",
+      "method": "TSCausal",
+      "metric": "cf_faith_pearl_hard_given_valid"
+    },
+    {
+      "dataset": "smoke_spring",
+      "classifier": "lstm",
+      "method": "TSCausal",
+      "metric": "cf_faith_rollout_hard_given_valid"
+    },
+    {
+      "dataset": "smoke_spring",
+      "classifier": "lstm",
+      "method": "TSCausal",
+      "metric": "cf_faith_pearl_hard_given_valid"
+    }
+  ]
+}

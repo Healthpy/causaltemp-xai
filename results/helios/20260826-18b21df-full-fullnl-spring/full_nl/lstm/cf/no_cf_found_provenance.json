@@ -1,0 +1,44 @@
+{
+  "seed": 42,
+  "config": "full_nl",
+  "git_commit": "18b21df04dc09fed0d676a0d7cab8ffa3504834b",
+  "git_dirty": false,
+  "git_worktree_dirty": true,
+  "methods": {
+    "NoiselessSCMRecourse": {
+      "source": "generated",
+      "n": 100,
+      "n_no_cf_found": 51
+    },
+    "PearlSCMRecourse": {
+      "source": "generated",
+      "n": 100,
+      "n_no_cf_found": 42
+    },
+    "CftsWachter": {
+      "source": "inferred",
+      "n": 100,
+      "n_no_cf_found": 0
+    },
+    "CftsCOMTE": {
+      "source": "inferred",
+      "n": 100,
+      "n_no_cf_found": 0
+    },
+    "CftsConfeti": {
+      "source": "inferred",
+      "n": 100,
+      "n_no_cf_found": 0
+    },
+    "CftsCels": {
+      "source": "inferred",
+      "n": 100,
+      "n_no_cf_found": 0
+    },
+    "TSCausal": {
+      "source": "generated",
+      "n": 100,
+      "n_no_cf_found": 100
+    }
+  }
+}

@@ -1,0 +1,6 @@
+submitted_at=2026-08-26T15:28:21+02:00
+commit=18b21df04dc09fed0d676a0d7cab8ffa3504834b
+project=/net/home/plgrid/plgofurman/projects/causaltemp-xai-18b21df
+run_root=/net/storage/pr3/plgrid/plggcfsgenwro/users/plgofurman/causaltemp-xai/runs/20260826-18b21df-full-fullnl-spring
+run_config_sha256=6f660f57972e9b6ae38d2de731bb0346472239d1ee05acaaa4759f578741c80d
+reports_sha256=d8ad221f7002782a11bfdddb1deff885f8a1caff6131cef5e08726c50c693e31

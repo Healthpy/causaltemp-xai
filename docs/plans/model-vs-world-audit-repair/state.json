@@ -1,0 +1,13 @@
+{
+  "plan": "model-vs-world-audit-repair",
+  "created": "2026-08-26",
+  "stages": [
+    {"id": 1, "title": "", "file": "stages/01-.md", "status": "PENDING", "depends_on": [], "commit": null, "note": null, "blocked_by": []},
+    {"id": 2, "title": "", "file": "stages/02-.md", "status": "PENDING", "depends_on": [], "commit": null, "note": null, "blocked_by": []},
+    {"id": 3, "title": "", "file": "stages/03-.md", "status": "PENDING", "depends_on": [], "commit": null, "note": null, "blocked_by": []},
+    {"id": 4, "title": "", "file": "stages/04-.md", "status": "PENDING", "depends_on": [], "commit": null, "note": null, "blocked_by": []},
+    {"id": 5, "title": "", "file": "stages/05-.md", "status": "PENDING", "depends_on": [], "commit": null, "note": null, "blocked_by": []},
+    {"id": 6, "title": "", "file": "stages/06-.md", "status": "PENDING", "depends_on": [], "commit": null, "note": null, "blocked_by": []},
+    {"id": 7, "title": "", "file": "stages/07-.md", "status": "PENDING", "depends_on": [], "commit": null, "note": null, "blocked_by": []}
+  ]
+}
