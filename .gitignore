@@ -75,3 +75,6 @@ manuscript/*
 results/**/*.npy
 docs/metrics*
 docs/paper/
+
+AGENTS.md
+CLAUDE.md
