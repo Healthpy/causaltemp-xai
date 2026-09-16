@@ -70,9 +70,8 @@ eggs/
 *.egg
 MANIFEST
 
-AAAI_Position_Paper.pdf
-Improving_*.pdf
 docs/reviews/*
 manuscript/*
 results/**/*.npy
 docs/metrics*
+docs/paper/

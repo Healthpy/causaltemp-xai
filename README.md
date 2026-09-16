@@ -32,9 +32,7 @@ would actually have produced.
   `TSCausalCF` (SCM-regularised, Bahri et al. 2025).
 
 Findings are established on the synthetic tier, which is the only tier with
-a ground-truth mechanism. See [`docs/general_plan.md`](docs/general_plan.md)
-for the full scientific claim and protocol, and [`DECISIONS.md`](DECISIONS.md)
-for the retraction/decision history.
+a ground-truth mechanism.
 
 ## Installation
 
